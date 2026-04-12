@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats() {
@@ -34,7 +35,15 @@ export async function getChatMessages(chatId: string) {
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
     include: {
-      lead: true,
+      lead: {
+        include: {
+          project: {
+            include: {
+              botConfig: true
+            }
+          }
+        }
+      },
       messages: {
         orderBy: { createdAt: 'asc' }
       }
@@ -81,7 +90,7 @@ export async function requestHandoff(chatId: string) {
 }
 
 // Simula la entrada de un mensaje por WhatsApp
-export async function simulateIncomingWhatsApp(phone: string, text: string) {
+export async function simulateIncomingWhatsApp(phone: string, text: string, name?: string) {
   const project = await prisma.project.findFirst();
   if (!project) throw new Error("No se encontró ningún proyecto en la base de datos.");
 
@@ -96,7 +105,7 @@ export async function simulateIncomingWhatsApp(phone: string, text: string) {
       data: {
         phone,
         projectId: project.id,
-        name: `+503 ${phone}`
+        name: name || `+503 ${phone}`
       },
       include: { chat: true }
     });
@@ -130,7 +139,7 @@ export async function simulateIncomingWhatsApp(phone: string, text: string) {
 }
 
 // Guarda la respuesta generada por la IA en la BD
-export async function saveAssistantReply(chatId: string, text: string) {
+export async function saveAssistantReply(chatId: string, text: string, scoreBump: number = 0) {
   await prisma.message.create({
     data: {
       chatId,
@@ -144,27 +153,79 @@ export async function saveAssistantReply(chatId: string, text: string) {
     data: { lastActiveAt: new Date() }
   });
 
+  // Lógica de puntuación
+  const chat = await prisma.chat.findUnique({ 
+    where: { id: chatId }, 
+    include: { lead: true, _count: { select: { messages: true } } } 
+  });
+
+  if (chat?.lead) {
+    let finalScoreBump = scoreBump;
+
+    // Bono de Retención: +10 puntos si el chat dura más de 10 mensajes (5 vueltas)
+    // Solo lo aplicamos una vez justo cuando llega al mensaje 11 (6 del bot o 5 del user + 6 del bot)
+    if (chat._count.messages === 11) {
+      finalScoreBump += 10;
+      console.log("Bono de Retención detectado (+10 pts)");
+    }
+
+    if (finalScoreBump !== 0) {
+      let newScore = (chat.lead.score || 0) + finalScoreBump;
+      newScore = Math.max(0, Math.min(100, newScore));
+      
+      let newHeat = "FRIO";
+      if (newScore >= 80) newHeat = "CALIENTE";
+      else if (newScore >= 40) newHeat = "TIBIO";
+
+      await prisma.lead.update({
+        where: { id: chat.lead.id },
+        data: { score: newScore, heat: newHeat }
+      });
+    }
+  }
+
   revalidatePath('/');
 }
 
 // Guarda respuestas y acciones del Agente Humano en el frontend (bot desactivado)
 export async function saveAgentMessage(chatId: string, text: string) {
+  // 1. Guardar en BD local
   await prisma.message.create({
-    data: { chatId, role: 'assistant', content: text }
+    data: { chatId, role: 'agent', content: text }
   });
   
   const chat = await prisma.chat.update({
     where: { id: chatId },
     data: { lastActiveAt: new Date() },
-    select: { leadId: true }
+    include: { 
+      lead: { 
+        include: { 
+          project: { 
+            include: { botConfig: true } 
+          } 
+        } 
+      } 
+    }
   });
 
-  // Si un agente habla, ya no es "NEEDS_AGENT", pasa a "IN_PROGRESS"
   if (chat?.leadId) {
+    // Si un agente habla, ya no es "NEEDS_AGENT", pasa a "IN_PROGRESS"
     await prisma.lead.update({
       where: { id: chat.leadId },
       data: { status: 'IN_PROGRESS' }
     });
+
+    // 2. Enviar mensaje REAL a WhatsApp vía Meta API
+    const phone = chat.lead.phone;
+    const phoneId = chat.lead.project?.botConfig?.whatsappPhoneId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const token = chat.lead.project?.botConfig?.whatsappToken || process.env.WHATSAPP_ACCESS_TOKEN;
+
+    if (phone && phoneId && token) {
+        await sendWhatsAppMessage(phone, text, phoneId, token);
+        console.log(`[Manual Agent] Mensaje enviado a ${phone}`);
+    } else {
+        console.error('[Manual Agent] Missing credentials to send WhatsApp message');
+    }
   }
 
   revalidatePath('/');

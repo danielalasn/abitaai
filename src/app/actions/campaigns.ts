@@ -1,30 +1,75 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { sendWhatsAppTemplate } from '@/lib/whatsapp';
+import { getApprovedTemplates } from '@/lib/whatsapp';
 import { revalidatePath } from 'next/cache';
 
-export async function createCampaign(name: string, templateMessage: string, leadsData: any[]) {
-  const project = await prisma.project.findFirst();
-  if (!project) throw new Error("No se encontró el proyecto base.");
+// Helper: get project + credentials
+async function getProjectWithCredentials() {
+  const project = await prisma.project.findFirst({
+    include: { botConfig: true }
+  });
+  if (!project) throw new Error('No se encontró el proyecto base.');
+  return project;
+}
 
-  // Crear la campaña en la base de datos
+/**
+ * Fetch all Meta-approved templates for the project's WABID.
+ */
+export async function fetchMetaTemplates() {
+  const project = await getProjectWithCredentials();
+  const config = project.botConfig;
+  if (!config?.whatsappBusinessId || !config?.whatsappToken) {
+    return { error: 'Configura el WhatsApp Business ID y el Access Token en Configuración.', templates: [] };
+  }
+  const templates = await getApprovedTemplates(config.whatsappBusinessId, config.whatsappToken);
+  return { templates, error: null };
+}
+
+/**
+ * Launch a campaign using a Meta-approved template.
+ * variableMapping: { "1": "nombre", "2": "empresa" }  (template {{1}} → CSV col "nombre")
+ */
+export async function createCampaign(
+  name: string,
+  templateName: string,
+  templateText: string, // Nuevo: texto base de la plantilla
+  languageCode: string,
+  variableMapping: Record<string, string>, // { "1": "colCSV", "2": "colCSV2" }
+  leadsData: any[]
+) {
+  const project = await getProjectWithCredentials();
+  const config = project.botConfig;
+
+  if (!config?.whatsappPhoneId || !config?.whatsappToken) {
+    throw new Error('Configura el Phone Number ID y el Access Token en Configuración antes de lanzar campañas.');
+  }
+
   const campaign = await prisma.campaign.create({
     data: {
       projectId: project.id,
       name,
       status: 'RUNNING',
       leadCount: leadsData.length,
-      csvData: JSON.stringify(leadsData)
+      csvData: JSON.stringify(leadsData),
+      templateName,
+      variableMapping: JSON.stringify(variableMapping),
     }
   });
 
-  // Idealmente, esto se enviaría a una cola (como BullMQ) para procesar
-  // en segundo plano y no bloquear la respuesta HTTP.  
-  // Para MVP, procesaremos de forma asíncrona pero sin queue manager.
-  
-  // Procesamos en modo "fire and forget" para que el Server Action retorne rápido
-  processCampaign(campaign.id, project.id, templateMessage, leadsData).catch(console.error);
+  // Fire-and-forget background worker
+  processCampaign(
+    campaign.id,
+    project.id,
+    templateName,
+    templateText,
+    languageCode,
+    variableMapping,
+    leadsData,
+    config.whatsappPhoneId,
+    config.whatsappToken
+  ).catch(console.error);
 
   revalidatePath('/campaigns');
   return campaign;
@@ -33,80 +78,88 @@ export async function createCampaign(name: string, templateMessage: string, lead
 export async function getCampaigns() {
   const project = await prisma.project.findFirst();
   if (!project) return [];
-
   return await prisma.campaign.findMany({
     where: { projectId: project.id },
     orderBy: { createdAt: 'desc' }
   });
 }
 
-// Worker improvisado
-async function processCampaign(campaignId: string, projectId: string, templateMessage: string, leadsData: any[]) {
-  let successCount = 0;
-
+// ──────────────────────────────────────────────
+// Background worker — sends one message per lead
+// ──────────────────────────────────────────────
+async function processCampaign(
+  campaignId: string,
+  projectId: string,
+  templateName: string,
+  templateText: string,
+  languageCode: string,
+  variableMapping: Record<string, string>,
+  leadsData: any[],
+  phoneNumberId: string,
+  accessToken: string
+) {
   for (const leadData of leadsData) {
     const rawPhone = leadData['#'];
     if (!rawPhone) continue;
-      
-    // 1. Limpiar el número (remover espacios, sumar código de país si es necesario)
+
     const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
-    if (cleanPhone.length < 8) continue; // Número inválido muy corto
+    if (cleanPhone.length < 8) continue;
 
-    // Reemplazar dinámicamente las variables en el mensaje
-    let personalizedMessage = templateMessage;
-    
-    // Buscar todas las variables como @nombre_columna en el texto
-    const variableMap = Object.keys(leadData);
-    
-    for (const key of variableMap) {
-        // Reemplazar la variante @Nombre (case-insensitive para mayor flexibilidad, si se puede)
-        // Pero usamos un simple split/join para evitar regex complicados al escapar caracteres
-        const searchPattern = `@${key}`;
-        personalizedMessage = personalizedMessage.split(searchPattern).join(leadData[key]);
-    }
-      
-    // 2. Buscar o crear el Lead en la DB
-    let lead = await prisma.lead.findFirst({
-      where: { phone: cleanPhone, projectId }
+    // Build template body components
+    const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
+    const bodyParams = paramEntries.map(([, colName]) => ({
+      type: 'text' as const,
+      text: String(leadData[colName] ?? ''),
+    }));
+
+    const components = bodyParams.length > 0
+      ? [{ type: 'body' as const, parameters: bodyParams }]
+      : [];
+
+    // Build a readable preview by replacing {{1}}, {{2}} with actual values
+    let previewText = templateText;
+    paramEntries.forEach(([k, col]) => {
+        const val = leadData[col] ?? '';
+        previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
     });
+    
+    // Si no hay variables o el texto está vacío, fallback al formato anterior
+    if (!previewText) {
+        previewText = `Plantilla: ${templateName} → ${paramEntries.map(([k, col]) => `{{${k}}}=${leadData[col] ?? ''}`).join(', ')}`;
+    }
 
+    // Upsert Lead
+    let lead = await prisma.lead.findFirst({ where: { phone: cleanPhone, projectId } });
     if (!lead) {
-      // Si la tabla tiene la columna 'nombre', la usamos para crear el lead con nombre
-      // Buscamos 'nombre' ignorando mayúsculas/minúsculas
       const nameKey = Object.keys(leadData).find(k => k.toLowerCase() === 'nombre');
-      const leadName = nameKey ? leadData[nameKey] : `Lead Campaña ${campaignId.slice(-4)}`;
-        
       lead = await prisma.lead.create({
         data: {
           phone: cleanPhone,
           projectId,
-          name: leadName
+          name: nameKey ? leadData[nameKey] : `Lead ${cleanPhone.slice(-4)}`,
         }
       });
     }
 
-    // 3. Obtener o crear Chat
-    let chat = await prisma.chat.findUnique({
-      where: { leadId: lead.id }
-    });
-
+    // Upsert Chat
+    let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
     if (!chat) {
-      chat = await prisma.chat.create({
-        data: { leadId: lead.id }
-      });
+      chat = await prisma.chat.create({ data: { leadId: lead.id } });
     }
 
-    // 4. Enviar mensaje por WhatsApp
-    // Como es MVP, intentamos enviarlo, fallará silenciomente si no hay token real
-    await sendWhatsAppMessage(cleanPhone, personalizedMessage);
+    // Send via WhatsApp Cloud API
+    await sendWhatsAppTemplate(
+      cleanPhone,
+      templateName,
+      languageCode,
+      components,
+      phoneNumberId,
+      accessToken
+    );
 
-    // 5. Guardar el mensaje enviado en la BD para que aparezca en el Inbox
+    // Store message in DB for Inbox
     await prisma.message.create({
-      data: {
-        chatId: chat.id,
-        role: 'assistant',
-        content: personalizedMessage
-      }
+      data: { chatId: chat.id, role: 'assistant', content: previewText }
     });
 
     await prisma.chat.update({
@@ -114,13 +167,10 @@ async function processCampaign(campaignId: string, projectId: string, templateMe
       data: { lastActiveAt: new Date() }
     });
 
-    successCount++;
-    
-    // Pequeño delay de 1 segundo entre envíos para no hacer rate limit a Meta API
-    await new Promise(r => setTimeout(r, 1000));
+    // Respect Meta's rate limits (~80 msg/min on Cloud API tier 1)
+    await new Promise(r => setTimeout(r, 800));
   }
 
-  // Marcar campaña como finalizada
   await prisma.campaign.update({
     where: { id: campaignId },
     data: { status: 'COMPLETED' }

@@ -54,11 +54,25 @@ export async function saveBotConfig(
   instructions: string, 
   knowledgeData: string,
   knowledgeRaw: string,
-  faq: string
+  faq: string,
+  leadScoringRules: string,
+  whatsappToken: string,
+  whatsappPhoneId: string,
+  whatsappBusinessId: string
 ) {
   await prisma.botConfig.update({
     where: { projectId },
-    data: { identity, instructions, knowledgeData, knowledgeRaw, faq }
+    data: { 
+      identity, 
+      instructions, 
+      knowledgeData, 
+      knowledgeRaw, 
+      faq, 
+      leadScoringRules,
+      whatsappToken,
+      whatsappPhoneId,
+      whatsappBusinessId
+    }
   });
   
   revalidatePath('/settings');
@@ -79,8 +93,15 @@ export async function compileKnowledgeWithAI(text: string) {
 Your ONLY job is to take the unstructured text provided by the user and convert it into a clean, highly structured JSON object. 
 Identify the main categories and their attributes. 
 
-CRITICAL RULE: You MUST use Spanish keys for the JSON (e.g., "proyectos", "modelos", "habitaciones", "baños", "precio", "ubicacion", "amenidades", "muebles", "reglas").
-Output ONLY a valid JSON string without any markdown \`\`\`json wrappers or explanations.`,
+CRITICAL CATEGORIES:
+- "proyectos": Array of project objects.
+- "amenidades": ONLY positive features (piscina, gym, etc.).
+- "reglas": Prohibitions, schedules, and restrictions (No AirBnB, no pets, noise limits). NEVER put rules inside "amenidades".
+- "modelos": Pricing and specs of units.
+
+CRITICAL RULE: You MUST use Spanish keys for the JSON (e.g., "proyectos", "modelos", "baños", "precio", "reglas").
+Output ONLY a valid JSON string without any markdown wrappers or explanations.
+`,
     messages: [
       { role: "user", content: text }
     ]
@@ -88,4 +109,32 @@ Output ONLY a valid JSON string without any markdown \`\`\`json wrappers or expl
 
   const rawJson = response.content[0].type === 'text' ? response.content[0].text : "{}";
   return rawJson.trim();
+}
+
+export async function verifyWhatsappConnection(
+  whatsappPhoneId: string,
+  whatsappToken: string
+): Promise<{ success: boolean; message: string }> {
+  if (!whatsappPhoneId || !whatsappToken) {
+    return { success: false, message: 'Faltan credenciales. Ingresa el Phone Number ID y el Access Token.' }
+  }
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v19.0/${whatsappPhoneId}?fields=display_phone_number,verified_name,quality_rating&access_token=${whatsappToken}`,
+      { method: 'GET', cache: 'no-store' }
+    )
+    const data = await res.json()
+
+    if (!res.ok || data.error) {
+      const errMsg = data.error?.message || 'Token o Phone ID inválido.'
+      return { success: false, message: errMsg }
+    }
+
+    const phone = data.display_phone_number || 'desconocido'
+    const name = data.verified_name || 'Sin nombre'
+    return { success: true, message: `✓ Conectado: ${name} (${phone})` }
+  } catch (e) {
+    return { success: false, message: 'Error de red al contactar Meta.' }
+  }
 }

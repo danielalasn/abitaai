@@ -30,15 +30,21 @@ model Project {
 }
 
 model BotConfig {
-  id             String  @id @default(cuid())
-  projectId      String  @unique
-  identity       String?
-  instructions   String?
-  knowledgeData  String?
-  knowledgeRaw   String?
-  faq            String?
+  id               String  @id @default(cuid())
+  projectId        String  @unique
+  identity         String?
+  instructions     String?
+  knowledgeData    String?
+  knowledgeRaw     String?
+  faq              String?
+  leadScoringRules String? // Reglas de puntuación en texto natural
   
-  project        Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // WhatsApp Configuration
+  whatsappToken      String?
+  whatsappPhoneId    String?
+  whatsappBusinessId String?
+  
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Lead {
@@ -47,6 +53,8 @@ model Lead {
   phone     String
   name      String?
   status    String   @default("PENDING")
+  score     Int      @default(0) // Puntuación de interés del cliente
+  heat      String   @default("FRIO") // FRIO, TIBIO, CALIENTE
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -76,13 +84,15 @@ model Message {
 }
 
 model Campaign {
-  id        String   @id @default(cuid())
-  projectId String
-  name      String
-  status    String   @default("DRAFT")
-  leadCount Int      @default(0)
-  csvData   String?
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  projectId       String
+  name            String
+  status          String   @default("DRAFT")
+  leadCount       Int      @default(0)
+  csvData         String?
+  templateName    String?  // nombre de la template aprobada en Meta
+  variableMapping String?  // JSON: { "1": "nombre", "2": "empresa" } etc.
+  createdAt       DateTime @default(now())
 
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

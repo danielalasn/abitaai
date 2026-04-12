@@ -28,6 +28,20 @@ export async function POST(req: NextRequest) {
     const changes = entry?.changes?.[0];
     const value = changes?.value;
     const message = value?.messages?.[0];
+    const status = value?.statuses?.[0];
+
+    // Caso A: Notificación de ESTADO (sent, delivered, failed, read)
+    if (status) {
+        if (status.status === 'failed') {
+            const error = status.errors?.[0];
+            console.error(`❌ [WA STATUS] Falló el mensaje a ${status.recipient_id}.`);
+            console.error(`   Error Code: ${error?.code} - ${error?.title}`);
+            console.error(`   Detalle: ${error?.message}`);
+        } else {
+            console.log(`✅ [WA STATUS] Mensaje ${status.id} a ${status.recipient_id} está: ${status.status}`);
+        }
+        return NextResponse.json({ status: 'ok' });
+    }
 
     if (!message) {
       return NextResponse.json({ status: 'ok', detail: 'No message in payload' });
@@ -35,16 +49,17 @@ export async function POST(req: NextRequest) {
 
     const from = message.from; // Número del cliente
     const text = message.text?.body; // Texto del mensaje
+    const profileName = body.entry?.[0]?.changes?.[0]?.value?.contacts?.[0]?.profile?.name;
 
     if (!text) {
         return NextResponse.json({ status: 'ok', detail: 'Empty text' });
     }
 
-    console.log(`Mensaje recibido de ${from}: ${text}`);
+    console.log(`Mensaje recibido de ${from} (${profileName || 'Unknown'}): ${text}`);
 
     // 1. Procesar mensaje entrante (Lo guarda en BD y crea Chat/Lead si no existen)
-    // Reutilizamos la lógica del simulador que ya creamos
-    const chatId = await simulateIncomingWhatsApp(from, text);
+    // Pasamos el profileName si es un lead nuevo
+    const chatId = await simulateIncomingWhatsApp(from, text, profileName);
     
     // 2. Obtener estado del chat (¿Bot activo?)
     const chatDetails = await getChatMessages(chatId);
@@ -52,15 +67,23 @@ export async function POST(req: NextRequest) {
     if (chatDetails?.botActive) {
         // 3. Generar respuesta de la IA
         const history = chatDetails.messages.slice(0, -1);
-        const botData = await sendTestMessage(text, history);
+        const botData = await sendTestMessage(text, history, chatDetails.lead.name || profileName);
         
         if (botData && typeof botData !== 'string') {
-            // 4. Guardar respuesta en nuestra Base de Datos
-            await saveAssistantReply(chatId, botData.reply);
+            // 4. Guardar respuesta y actualizar score
+            await saveAssistantReply(chatId, botData.reply, botData.scoreBump);
             
             // 5. Enviar mensaje REAL a WhatsApp vía Meta API
-            await sendWhatsAppMessage(from, botData.reply);
-            console.log(`Respuesta enviada a ${from} vía WhatsApp Cloud API`);
+            // Prioridad: BotConfig (DB) > .env (para pruebas locales)
+            const phoneId = (chatDetails as any)?.lead?.project?.botConfig?.whatsappPhoneId || process.env.WHATSAPP_PHONE_NUMBER_ID;
+            const token = (chatDetails as any)?.lead?.project?.botConfig?.whatsappToken || process.env.WHATSAPP_ACCESS_TOKEN;
+
+            if (phoneId && token) {
+                await sendWhatsAppMessage(from, botData.reply, phoneId, token);
+                console.log(`Respuesta enviada a ${from} vía WhatsApp Cloud API`);
+            } else {
+                console.error('[Webhook] Missing WhatsApp credentials in BotConfig AND .env');
+            }
 
             // 6. Si hubo un Handoff, desactivar el bot
             if (botData.isHandoff) {

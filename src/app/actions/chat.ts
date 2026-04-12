@@ -8,7 +8,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export async function sendTestMessage(message: string, history: { role: string, content: string }[]) {
+export async function sendTestMessage(message: string, history: { role: string, content: string }[], clientName?: string) {
   // Get the default configuration
   const project = await prisma.project.findFirst({
     include: { botConfig: true },
@@ -20,6 +20,21 @@ export async function sendTestMessage(message: string, history: { role: string, 
     return "No se ha configurado el bot. Por favor entra a Settings y guarda la configuración primero.";
   }
 
+  let scoringText = "No hay reglas de calificación definidas.";
+  try {
+    if (config.leadScoringRules) {
+      const rules = JSON.parse(config.leadScoringRules);
+      if (Array.isArray(rules) && rules.length > 0) {
+        scoringText = rules.map((r: any) => `- Si el cliente: "${r.condition}" -> Otorga este puntaje exacto: +${r.score}`).join("\n");
+      }
+    }
+  } catch (e) {
+    // Falls back gracefully if JSON is invalid
+  }
+
+  const isRealName = clientName && !clientName.startsWith('+');
+  const finalName = isRealName ? clientName : "Desconocido";
+
   // Create the system prompt
   const systemPrompt = `
 <identity>
@@ -27,9 +42,14 @@ ${config.identity || "Eres un asistente virtual"}
 </identity>
 
 <client_context>
-Nombre: Test User
-Proyecto Interesado: Demo Test
+Nombre: ${finalName}
+Proyecto Interesado: ${project?.name || "Demo Test"}
 </client_context>
+
+<critical_rules_mentioning_names>
+- Si el Nombre es "Desconocido", NO intentes adivinarlo ni uses el número de teléfono para saludar. Limítate a decir "Hola" o "Hola, bienvenido".
+- Si el Nombre es un nombre real, puedes usarlo para personalizar el saludo.
+</critical_rules_mentioning_names>
 
 <knowledge_base>
 ${config.knowledgeData || "{}"}
@@ -49,6 +69,8 @@ ${config.instructions || ""}
 REGLA DE ORO DE NEGOCIO: Si la información no está en la KNOWLEDGE BASE, di que es un detalle técnico y ofrece pasarle el chat a un asesor. NUNCA inventes precios ni datos.
 ¡VERIFICA LAS REGLAS DE NEGOCIO ANTES DE MOSTRAR PRECIOS O DATOS AL CLIENTE!
 
+REGLA DE PROHIBICIÓN DE OFERTAS (CRÍTICA): TIENES PROHIBIDO ofrecer explicar procesos, opciones de crédito, o cualquier detalle (como el "proceso de compra", "cronograma de pagos", etc.) si NO están explícitamente detallados en la KNOWLEDGE BASE. Solo ofrece lo que puedes cumplir con datos reales en el siguiente paso.
+
 REGLA ESTRICTA DE PRECIOS Y MODELOS (¡IMPORTANTE!):
 A menos que el cliente haya preguntado EXPRESAMENTE por "precios", "costos", "cuánto vale", o "modelos":
 1. TIENES PROHIBIDO listar todos los modelos de habitaciones y sus precios de golpe en tu primera respuesta.
@@ -61,6 +83,15 @@ INSTRUCCIÓN ESPECIAL DE TRANSFERENCIA A HUMANO:
    a) Si el cliente responde afirmativamente (ej: "Sí", "Por favor", "claro") a tu pregunta de transferencia.
    b) Si el flujo de la conversación llega a un cierre natural donde prometes que un asesor contactará al cliente (ej: "Te contacto con un asesor para que veas la propiedad").
 4. REGLA DE ORO: NUNCA menciones que "un asesor te contactará" sin poner [ACTION: HANDOFF] al final. Si lo prometes, debes activarlo.
+
+SISTEMA DE CALIFICACIÓN (HEATMAP SCORE):
+Tu trabajo en segundo plano también es calificar el interés del cliente ("Heatmap"). Revisa estas reglas dadas por el dueño:
+REGLAS DE EVENTOS (Suma 100 en total):
+${scoringText}
+
+Si en el ÚLTIMO mensaje del cliente has detectado que acaba de cumplir una de estas condiciones POR PRIMERA VEZ, agrega esta etiqueta exacta al final de tu respuesta (reemplazando X por el número indicado en la regla):
+Ejemplo: [ACTION: SCORE_BUMP +20]
+(Importante: NO premies dos veces por la misma cosa. Solo envía la etiqueta si el hito de interés se acaba de cumplir en este exacto turno).
 
 SISTEMA DE APRENDIZAJE:
 Si el cliente te hace una pregunta que NO está contestada en las FAQs ni en la Knowledge Base, DEBES ser honesto, decirle amablemente que no tienes esa información a la mano, y agregar EXACTAMENTE esta etiqueta al final de tu mensaje:
@@ -78,12 +109,6 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
     })) as Anthropic.MessageParam[];
 
     messages.push({ role: 'user', content: message });
-
-    // DEBUG: Ver qué se está enviando a Anthropic
-    console.log("--- DEBUG AI PROMPT ---");
-    console.log("SYSTEM PROMPT:", systemPrompt);
-    console.log("MESSAGES HISTORY:", JSON.stringify(messages, null, 2));
-    console.log("-----------------------");
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
@@ -124,12 +149,20 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
       }
     }
 
+    // Check for Score Bumps
+    let scoreBump = 0;
+    const scoreMatch = rawReply.match(/\[ACTION: SCORE_BUMP ([+-]?\d+)\]/);
+    if (scoreMatch && scoreMatch[1]) {
+      scoreBump = parseInt(scoreMatch[1]);
+      console.log(`Heatmap Score Detectado: ${scoreBump}`);
+    }
+
     const reply = rawReply.replace(/\[ACTION: .+?\]/g, "").trim();
 
-    return { reply, isHandoff };
+    return { reply, isHandoff, scoreBump };
 
   } catch (error: any) {
     console.error("AI Error:", error);
-    return { reply: `Error conectando con la IA: ${error.message}`, isHandoff: false };
+    return { reply: `Error conectando con la IA: ${error.message}`, isHandoff: false, scoreBump: 0 };
   }
 }
