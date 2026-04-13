@@ -49,10 +49,10 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
     setIsLoadingTemplates(false);
   };
 
-  const extractVars = (template: MetaTemplate) => {
-    const body = template.components.find(c => c.type === 'BODY');
+  const extractVars = (template: MetaTemplate): string[] => {
+    const body = template.components.find((c: any) => c.type === 'BODY');
     if (!body?.text) return [];
-    const matches = body.text.match(/\{\{(\d+)\}\}/g) || [];
+    const matches = (body.text as string).match(/\{\{(\d+)\}\}/g) || [];
     return [...new Set(matches.map((m: string) => m.replace(/[{}]/g, '')))].sort((a, b) => Number(a) - Number(b));
   };
 
@@ -60,7 +60,9 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
     setSelectedTemplate(t);
     const vars = extractVars(t);
     const initial: Record<string, string> = {};
-    vars.forEach(v => { initial[v] = ''; });
+    vars.forEach((v: string) => { 
+      initial[v] = ''; 
+    });
     setVariables(initial);
     setStep(2);
   };
@@ -71,7 +73,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
     setIsSending(true);
     setError(null);
     try {
-      const bodyText = selectedTemplate.components.find(c => c.type === 'BODY')?.text ?? '';
+      const bodyText = selectedTemplate.components.find((c: any) => c.type === 'BODY')?.text ?? '';
       const chatId = await startIndividualChatAction(
         phone,
         selectedTemplate.name,
@@ -153,7 +155,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
                         <span className="text-[8px] font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded tracking-tighter uppercase">{t.language}</span>
                       </div>
                       <p className="text-xs text-[#6F6F6F] line-clamp-2 italic">
-                        {t.components.find(c => c.type === 'BODY')?.text}
+                        {t.components.find((c: any) => c.type === 'BODY')?.text}
                       </p>
                     </button>
                   ))}
@@ -180,7 +182,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
               <div className="bg-white/40 dark:bg-zinc-900/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4">
                 <p className="text-[9px] font-bold text-[#F36A2D] uppercase tracking-widest mb-2 opacity-70">Vista Previa Original</p>
                 <p className="text-xs text-[#6F6F6F] leading-relaxed italic">
-                  {selectedTemplate.components.find(c => c.type === 'BODY')?.text}
+                  {selectedTemplate.components.find((c: any) => c.type === 'BODY')?.text}
                 </p>
               </div>
 
