@@ -16,21 +16,43 @@ const handler = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
+        console.log('Login attempt for:', credentials?.email)
+        if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials')
+          return null
+        }
 
-        const client = await prisma.client.findUnique({
-          where: { email: credentials.email },
-        })
+        try {
+          const client = await prisma.client.findUnique({
+            where: { email: credentials.email },
+          })
 
-        if (!client || !client.password) return null
+          if (!client) {
+            console.log('Client not found in DB')
+            return null
+          }
 
-        const passwordValid = await bcrypt.compare(credentials.password, client.password)
-        if (!passwordValid) return null
+          if (!client.password) {
+            console.log('Client has no password set')
+            return null
+          }
 
-        return {
-          id:    client.id,
-          name:  client.name,
-          email: client.email,
+          const passwordValid = await bcrypt.compare(credentials.password, client.password)
+          
+          if (!passwordValid) {
+            console.log('Invalid password for:', credentials.email)
+            return null
+          }
+
+          console.log('Login successful for:', credentials.email)
+          return {
+            id:    client.id,
+            name:  client.name,
+            email: client.email,
+          }
+        } catch (error) {
+          console.error('DATABASE ERROR during login:', error)
+          return null
         }
       },
     }),
