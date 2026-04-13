@@ -48,8 +48,9 @@ const handler = NextAuth({
             name:  client.name,
             email: client.email,
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('DATABASE ERROR during login:', error)
+          console.error('Error details:', JSON.stringify(error, null, 2))
           return null
         }
       },
