@@ -18,7 +18,7 @@ export function Sidebar() {
           <span className="text-[#F36A2D] font-bold text-base tracking-tight">a</span>
         </div>
         <span className="font-semibold text-xl tracking-tight text-[#111111] dark:text-[#EDE9E0]">
-          abita.ai
+          abitaai.com
         </span>
       </div>
       
@@ -78,7 +78,7 @@ export function Sidebar() {
           </div>
           <div className="flex flex-col text-left">
             <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0]">Administrador</span>
-            <span className="text-xs text-[#6F6F6F]">abita.ai</span>
+            <span className="text-xs text-[#6F6F6F]">abitaai.com</span>
           </div>
         </button>
       </div>

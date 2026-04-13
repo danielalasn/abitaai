@@ -1,16 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, ArrowRight } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Limpiar la URL si tiene callbackUrl redundante
+  useEffect(() => {
+    const callbackUrl = searchParams.get('callbackUrl')
+    if (callbackUrl && (callbackUrl === window.location.origin || callbackUrl === window.location.origin + '/')) {
+      window.history.replaceState({}, '', '/login')
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,7 +42,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#E9E4D8] flex flex-col md:flex-row items-stretch overflow-hidden font-sans selection:bg-[#F36A2D]/20">
+    <div className="min-h-dvh bg-[#E9E4D8] flex flex-col md:flex-row items-stretch overflow-hidden font-sans selection:bg-[#F36A2D]/20">
 
       {/* Columna Izquierda: Branding & Mood */}
       <div className="hidden md:flex flex-col justify-between p-16 w-1/2 border-r border-[#DEDAD0]/60 relative overflow-hidden">
@@ -45,7 +54,7 @@ export default function LoginPage() {
             <div className="h-10 w-10 bg-[#111111] rounded-xl flex items-center justify-center">
               <span className="text-[#F36A2D] font-bold text-xl">a</span>
             </div>
-            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">abita.ai</span>
+            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">abitaai.com</span>
           </div>
         </div>
 
@@ -69,7 +78,7 @@ export default function LoginPage() {
           <div className="h-8 w-8 bg-[#111111] rounded-lg flex items-center justify-center">
             <span className="text-[#F36A2D] font-bold text-sm">a</span>
           </div>
-          <span className="font-semibold text-lg tracking-tight text-[#111111]">abita.ai</span>
+          <span className="font-semibold text-lg tracking-tight text-[#111111]">abitaai.com</span>
         </div>
 
         <div className="w-full max-w-sm space-y-10">
@@ -133,10 +142,22 @@ export default function LoginPage() {
 
           <p className="text-center text-[10px] text-[#6F6F6F] leading-relaxed">
             Al ingresar, aceptas nuestros términos de servicio y políticas de privacidad.<br />
-            © 2026 abita.ai
+            © 2026 abitaai.com
           </p>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-dvh bg-[#E9E4D8] flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#F36A2D]" size={32} />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

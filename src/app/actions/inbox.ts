@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from '@/lib/whatsapp';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats() {
@@ -246,4 +246,91 @@ export async function deleteChat(chatId: string) {
   }
   
   revalidatePath('/');
+}
+// Envía una plantilla de Meta a un contacto individual (Inicia nuevo chat)
+export async function startIndividualChatAction(
+  phone: string,
+  templateName: string,
+  languageCode: string,
+  variables: Record<string, string>,
+  templateText: string
+) {
+  const project = await prisma.project.findFirst({
+    include: { botConfig: true }
+  });
+  if (!project) throw new Error('No se encontró el proyecto base.');
+  const config = project.botConfig;
+  
+  if (!config?.whatsappPhoneId || !config?.whatsappToken) {
+    throw new Error('Configura el Phone Number ID y el CRM Token en Ajustes antes de iniciar chats.');
+  }
+
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  if (cleanPhone.length < 7) throw new Error('El número de teléfono es demasiado corto.');
+
+  // Construir parámetros del cuerpo
+  const paramEntries = Object.entries(variables).sort(([a], [b]) => Number(a) - Number(b));
+  const bodyParams = paramEntries.map(([, val]) => ({
+    type: 'text' as const,
+    text: val,
+  }));
+
+  const components = bodyParams.length > 0
+    ? [{ type: 'body' as const, parameters: bodyParams }]
+    : [];
+
+  // Texto amigable para el historial del chat
+  let previewText = templateText;
+  paramEntries.forEach(([k, val]) => {
+    previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
+  });
+
+  // 1. Upsert Lead
+  let lead = await prisma.lead.findFirst({ where: { phone: cleanPhone, projectId: project.id } });
+  if (!lead) {
+    lead = await prisma.lead.create({
+      data: {
+        phone: cleanPhone,
+        projectId: project.id,
+        name: `Lead ${cleanPhone.slice(-4)}`,
+      }
+    });
+  }
+
+  // 2. Upsert Chat
+  let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
+  if (!chat) {
+    chat = await prisma.chat.create({ data: { leadId: lead.id } });
+  }
+
+  // 3. Enviar vía WhatsApp Cloud API
+  await sendWhatsAppTemplate(
+    cleanPhone,
+    templateName,
+    languageCode,
+    components as any,
+    config.whatsappPhoneId,
+    config.whatsappToken
+  );
+
+  // 4. Guardar mensaje en el historial (como asistente ya que es una plantilla)
+  await prisma.message.create({
+    data: { 
+      chatId: chat.id, 
+      role: 'assistant', 
+      content: previewText 
+    }
+  });
+
+  // 5. Actualizar última actividad y desactivar bot para que el humano siga la conversación
+  await prisma.chat.update({
+    where: { id: chat.id },
+    data: { 
+      lastActiveAt: new Date(),
+      botActive: false // Desactivamos el bot para atención manual tras el primer contacto
+    }
+  });
+
+  revalidatePath('/');
+  return chat.id;
 }

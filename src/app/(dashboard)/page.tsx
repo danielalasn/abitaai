@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock } from "lucide-react";
 import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
+import { Plus } from "lucide-react";
+import { NewChatModal } from "@/components/NewChatModal";
 
 // Helper component for the Wait Timer
 function WaitTimer({ startTime }: { startTime: string | Date }) {
@@ -84,7 +86,11 @@ export default function InboxPage() {
   const [chats, setChats] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+
+  // Cache de chats abiertos para cambio instantáneo
+  const [chatsCache, setChatsCache] = useState<Record<string, any>>({});
 
   // States para los dos inputs mockeados
   const [clientInput, setClientInput] = useState('');
@@ -93,10 +99,12 @@ export default function InboxPage() {
   // States para filtros de inbox
   const [filterHeat, setFilterHeat] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
   // Refs para control de estado optimista y polling
   const pendingOptimistic = useRef<Set<string>>(new Set());
   const activeChatIdRef = useRef<string | null>(null);
+  const lastRequestedId = useRef<string | null>(null);
 
   // Sincronizar el Ref con el ID activo
   useEffect(() => {
@@ -143,6 +151,13 @@ export default function InboxPage() {
     setChats(data);
   };
 
+  // Sincronizar cache cada vez que el chat activo cambie (por polling u optimismo)
+  useEffect(() => {
+    if (activeChat?.id) {
+      setChatsCache(prev => ({ ...prev, [activeChat.id]: activeChat }));
+    }
+  }, [activeChat]);
+
   // Efecto inicial y selección automática por primera vez
   useEffect(() => {
     const initialLoad = async () => {
@@ -176,7 +191,10 @@ export default function InboxPage() {
         if (currentId && !hasOptimistic) {
           const refreshed = await getChatMessages(currentId);
           if (cancelled) return;
+          
+          // Actualizar tanto el activo como el cache silenciosamente
           setActiveChat(refreshed);
+          setChatsCache(prev => ({ ...prev, [currentId]: refreshed }));
         }
       } catch (e) {
         // Silenciar errores de polling para no romper la app
@@ -197,10 +215,37 @@ export default function InboxPage() {
     };
   }, []);
 
-  // Cargar detalle de un chat
+  // Cargar detalle de un chat con CACHE para respuesta instantánea
   const loadChatDetails = async (chatId: string) => {
-    const data = await getChatMessages(chatId);
-    setActiveChat(data);
+    // 0. Registrar el ID solicitado inmediatamente para evitar condiciones de carrera
+    lastRequestedId.current = chatId;
+    activeChatIdRef.current = chatId;
+
+    // 1. Cambio instantáneo si ya tenemos los datos en cache
+    if (chatsCache[chatId]) {
+      setActiveChat(chatsCache[chatId]);
+      // Si ya hay cache, no activamos el loader "full" pero el fetch va en paralelo
+    } else {
+      // Solo mostramos el loader principal si NO hay cache previo
+      setIsChatLoading(true);
+    }
+
+    try {
+      const data = await getChatMessages(chatId);
+      
+      // 2. IMPORTANTE: Solo actualizamos el estado si el usuario NO ha cambiado de chat mientras cargaba
+      if (lastRequestedId.current === chatId) {
+        setChatsCache(prev => ({ ...prev, [chatId]: data }));
+        setActiveChat(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar chat:", error);
+    } finally {
+      // Solo quitamos el loader si seguimos en este chat
+      if (lastRequestedId.current === chatId) {
+        setIsChatLoading(false);
+      }
+    }
   };
 
   // Toggle Bot Handover
@@ -243,34 +288,6 @@ export default function InboxPage() {
     loadChats();
   };
 
-  // 1. Simular creación de un lead nuevo desde WhatsApp
-  const onCreateLead = async () => {
-    setIsSimulating(true);
-    try {
-      const fakePhone = "7000" + Math.floor(1000 + Math.random() * 9000);
-      const fakeMsg = "¿Hola, qué tal? Quisiera saber más información.";
-      const chatId = await simulateIncomingWhatsApp(fakePhone, fakeMsg);
-
-      const chatDetails = await getChatMessages(chatId);
-      if (chatDetails?.botActive) {
-        const botData = await sendTestMessage(fakeMsg, [], chatDetails.lead.name || undefined);
-        if (botData && typeof botData !== 'string') {
-          await saveAssistantReply(chatId, botData.reply, botData.scoreBump);
-
-          if (botData.isHandoff) {
-            await requestHandoff(chatId);
-          }
-        }
-      }
-
-      await loadChats(chatId); // Refresh y autoseleccionar
-    } catch (error: any) {
-      console.error(error);
-      alert("Error: " + error.message);
-    } finally {
-      setIsSimulating(false);
-    }
-  };
 
   // 2. Simular que el CLIENTE envía un mensaje por WhatsApp al chat actual
   const handleClientSubmit = async () => {
@@ -395,6 +412,13 @@ export default function InboxPage() {
               {filteredChats.length}
             </span>
           </h2>
+          <button 
+            onClick={() => setIsNewChatModalOpen(true)}
+            className="p-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg hover:scale-105 transition-all shadow-sm"
+            title="Nuevo Chat Individual"
+          >
+            <Plus size={18} />
+          </button>
         </div>
 
         <div className="px-4 py-3 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col gap-2 bg-[#E9E4D8]/60 dark:bg-[#1A1714]">
@@ -494,20 +518,20 @@ export default function InboxPage() {
           )}
         </div>
 
-        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800/60">
-          <button
-            onClick={onCreateLead}
-            disabled={isSimulating}
-            className="w-full py-2.5 bg-[#111111] hover:bg-[#333] text-white dark:bg-[#E9E4D8] dark:hover:bg-white dark:text-[#111111] rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-          >
-            {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />}
-            Nuevo Lead Random (Prueba)
-          </button>
-        </div>
       </div>
 
       {/* 2. VENTANA DE CHAT CENTRAL */}
       <div className="flex-1 flex flex-col bg-white dark:bg-[#1A1714] relative">
+        {/* Loader de transición rápida */}
+        {isChatLoading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#E9E4D8]/30 dark:bg-[#1A1714]/30 backdrop-blur-[2px] animate-in fade-in">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl flex items-center gap-3 border border-[#DEDAD0] dark:border-zinc-800">
+               <Loader2 className="animate-spin text-[#F36A2D]" size={20} />
+               <span className="text-xs font-semibold text-[#111111] dark:text-[#EDE9E0]">Cargando conversación...</span>
+            </div>
+          </div>
+        )}
+
         {!activeChat ? (
           <div className="h-full flex flex-col items-center justify-center text-zinc-400">
             <MessageSquare size={48} className="mb-4 opacity-20" />
@@ -674,6 +698,15 @@ export default function InboxPage() {
           </>
         )}
       </div>
+
+      <NewChatModal 
+        isOpen={isNewChatModalOpen} 
+        onClose={() => setIsNewChatModalOpen(false)}
+        onSuccess={(chatId) => {
+          loadChats(chatId);
+          // Opcional: mostrar un toast o mensaje de éxito
+        }}
+      />
     </div>
   );
 }
