@@ -36,7 +36,11 @@ export async function sendWhatsAppMessage(
       }),
     })
     const data = await res.json()
-    if (!res.ok) console.error('[WA] sendTextMessage error:', data)
+    if (!res.ok) {
+      console.error('[WA] sendTextMessage error:', JSON.stringify(data, null, 2))
+    } else {
+      console.log('[WA] Message sent successfully:', data.messages?.[0]?.id)
+    }
     return data
   } catch (err) {
     console.error('[WA] sendTextMessage network error:', err)
