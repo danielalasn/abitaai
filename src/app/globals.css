@@ -1,5 +1,8 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,200;0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
+@import "tailwindcss";
+
+/* ✅ Tailwind v4: class-based dark mode. Without this, dark: variants are ignored. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ─────────────────────────────────────────
    ABITA AI — Design Tokens
@@ -13,7 +16,7 @@
 
   /* Surfaces */
   --abita-beige:     #E9E4D8;
-  --abita-beige-alt: #DEDAD0;  /* beige levemente más oscuro para bordes */
+  --abita-beige-alt: #DEDAD0;
 
   /* Typography */
   --abita-black:     #111111;
@@ -25,11 +28,11 @@
   --foreground:  var(--abita-black);
 }
 
-/* Dark mode: inversión controlada, preservando el brand cálido */
+/* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background:  #1A1714;   /* casi-negro cálido */
-    --foreground:  #EDE9E0;   /* beige claro */
+    --background:  #1A1714;
+    --foreground:  #EDE9E0;
   }
 }
 

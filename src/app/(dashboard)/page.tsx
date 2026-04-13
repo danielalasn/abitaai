@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Bot, User, Phone, Loader2, Send, Trash2, AlertCircle, TrendingUp, Clock } from "lucide-react";
+import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock } from "lucide-react";
 import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
 
@@ -40,7 +40,7 @@ function WaitTimer({ startTime }: { startTime: string | Date }) {
 const formatDateLabel = (date: Date) => {
   const now = new Date();
   const d = new Date(date);
-  
+
   const isToday = d.toDateString() === now.toDateString();
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
@@ -62,11 +62,11 @@ const formatSidebarDate = (date: Date) => {
   const now = new Date();
   const d = new Date(date);
   const isToday = d.toDateString() === now.toDateString();
-  
+
   if (isToday) {
     return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true }).replace(" p. m.", " pm").replace(" a. m.", " am");
   }
-  
+
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return "Ayer";
@@ -93,6 +93,9 @@ export default function InboxPage() {
   // States para filtros de inbox
   const [filterHeat, setFilterHeat] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+
+  // Guard: mientras haya mensajes optímistas en vuelo, el polling no sobrescribe el chat
+  const pendingOptimistic = useRef<Set<string>>(new Set());
 
   // Lee los filtros de la URL al cargar la página si vienen desde el Analytics Dashboard
   useEffect(() => {
@@ -127,6 +130,13 @@ export default function InboxPage() {
     setIsLoading(false);
   };
 
+  // Sync silencioso: solo actualiza la lista lateral SIN recargar el chat activo
+  // Usado para preservar mensajes optímistas en el chat actual
+  const syncChatsList = async () => {
+    const data = await getActiveChats();
+    setChats(data);
+  };
+
   // Efecto inicial y selección automática por primera vez
   useEffect(() => {
     const initialLoad = async () => {
@@ -146,8 +156,8 @@ export default function InboxPage() {
       const data = await getActiveChats();
       setChats(data);
 
-      // Si hay un chat activo, refrescamos sus mensajes sin cambiar de chat
-      if (activeChat?.id) {
+      // Solo refrescamos mensajes si NO hay mensajes optimistas en vuelo
+      if (activeChat?.id && pendingOptimistic.current.size === 0) {
         const refreshed = await getChatMessages(activeChat.id);
         setActiveChat(refreshed);
       }
@@ -250,17 +260,61 @@ export default function InboxPage() {
     }
   };
 
-  // 3. Simular que el AGENTE (Tú) envía un mensaje manualmente desde el Inbox
-  const handleAgentSubmit = async () => {
+  // 3. El AGENTE envía un mensaje: aparece INSTANTÁNEO en UI, BD en background
+  const handleAgentSubmit = () => {
     if (!agentInput.trim() || !activeChat || activeChat.botActive) return;
-    try {
-      const msg = agentInput.trim();
-      setAgentInput('');
-      await saveAgentMessage(activeChat.id, msg);
-      await loadChats();
-    } catch (error: any) {
-      console.error(error);
-    }
+
+    const msgContent = agentInput.trim();
+    const chatId = activeChat.id;
+    setAgentInput('');
+
+    const temporaryId = 'temp-' + Date.now();
+    const optimisticMessage = {
+      id: temporaryId,
+      role: 'agent',
+      content: msgContent,
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    // Registrar como en vuelo → bloquea el polling
+    pendingOptimistic.current.add(temporaryId);
+
+    // Mostrar el mensaje INMEDIATAMENTE al final de la lista
+    setActiveChat((prev: any) => {
+      if (!prev) return prev;
+      return { ...prev, messages: [...prev.messages, optimisticMessage] };
+    });
+
+    // Todo lo demás en background
+    (async () => {
+      try {
+        await saveAgentMessage(chatId, msgContent);
+
+        // Marcar como enviado → aparece el cheque ✓
+        setActiveChat((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map((m: any) =>
+              m.id === temporaryId ? { ...m, status: 'sent' } : m
+            )
+          };
+        });
+
+        // Desbloquear el polling DESPUÉS de confirmar el cheque
+        pendingOptimistic.current.delete(temporaryId);
+        syncChatsList();
+      } catch (error) {
+        console.error(error);
+        pendingOptimistic.current.delete(temporaryId);
+        // Eliminar el mensaje optimista si falló
+        setActiveChat((prev: any) => {
+          if (!prev) return prev;
+          return { ...prev, messages: prev.messages.filter((m: any) => m.id !== temporaryId) };
+        });
+      }
+    })();
   };
 
   // Filtrado de chats
@@ -283,7 +337,7 @@ export default function InboxPage() {
     <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* 1. SIDEBAR DE CHATS */}
       <div className="w-[340px] border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col shrink-0">
-        <div className="p-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between">
+        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between">
           <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
             Inbox
             <span className="bg-[#F36A2D]/10 text-[#F36A2D] text-[10px] px-2 py-0.5 rounded-full font-bold">
@@ -327,52 +381,65 @@ export default function InboxPage() {
               <p className="text-sm">No hay conversaciones con estos filtros.</p>
             </div>
           ) : (
-            filteredChats.map((chat: any) => (
-              <button
-                key={chat.id}
-                onClick={() => loadChatDetails(chat.id)}
-                className={`w-full text-left p-3 rounded-xl transition-all flex flex-col gap-1 ${activeChat?.id === chat.id
-                  ? 'bg-blue-50 dark:bg-blue-900/10 ring-1 ring-blue-200 dark:ring-blue-800/50'
-                  : !chat.botActive && chat.lead.status === 'NEEDS_AGENT'
-                    ? 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50'
-                    : !chat.botActive ? 'bg-green-50 dark:bg-green-900/10' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800/40'
-                  }`}
-              >
-                <div className="flex justify-between items-center w-full gap-2">
-                  <div className="flex items-center gap-2 truncate flex-1">
-                    {chat.lead.heat === 'CALIENTE' && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
-                    {chat.lead.heat === 'TIBIO' && <span className="text-[10px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={10} /> {chat.lead.score}</span>}
-                    {(chat.lead.heat === 'FRIO' || !chat.lead.heat) && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
- 
-                    <span className="font-medium text-sm text-zinc-900 dark:text-zinc-200 truncate">
-                      {chat.lead.name || chat.lead.phone}
-                    </span>
+            filteredChats.map((chat: any) => {
+              const isSelected = activeChat?.id === chat.id;
+              const isHandoff = chat.lead.status === 'NEEDS_AGENT';
+              const isBot = chat.botActive;
+              const isHuman = !chat.botActive && !isHandoff;
+
+              return (
+                <button
+                  key={chat.id}
+                  onClick={() => loadChatDetails(chat.id)}
+                  className={`w-full text-left p-4 rounded-2xl transition-all duration-200 flex flex-col gap-1 border-1 shadow-sm ${isSelected
+                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 ring-2 ring-blue-400/20'
+                    : isHandoff
+                      ? 'bg-red-50 dark:bg-red-950/30 border-red-400 dark:border-red-800'
+                      : isBot
+                        ? 'bg-white dark:bg-zinc-900/60 border-[#F36A2D] dark:border-[#F36A2D]/80'
+                        : isHuman
+                          ? 'bg-white dark:bg-zinc-900/60 border-emerald-500 dark:border-emerald-600'
+                          : 'bg-white/50 dark:bg-zinc-900/20 border-transparent'
+                    }`}
+                >
+                  <div className="flex justify-between items-center w-full gap-2">
+                    <div className="flex items-center gap-2 truncate flex-1">
+                      {chat.lead.heat === 'CALIENTE' && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
+                      {chat.lead.heat === 'TIBIO' && <span className="text-[10px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={10} /> {chat.lead.score}</span>}
+                      {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
+
+                      <span className="font-semibold text-sm text-[#111111] dark:text-[#EDE9E0] truncate">
+                        {chat.lead.name || chat.lead.phone}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px] text-[#6F6F6F] font-medium opacity-70">
+                        {formatSidebarDate(new Date(chat.lastActiveAt))}
+                      </span>
+                      {isBot ? (
+                        <Bot size={13} className="text-[#F36A2D]" />
+                      ) : isHandoff ? (
+                        <div className="relative">
+                          <AlertCircle size={13} className="text-red-500 animate-pulse" />
+                        </div>
+                      ) : (
+                        <User size={13} className="text-emerald-500" />
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-zinc-400 font-medium">
-                      {formatSidebarDate(new Date(chat.lastActiveAt))}
-                    </span>
-                    {chat.botActive ? (
-                      <Bot size={13} className="text-blue-500" />
-                    ) : chat.lead.status === 'NEEDS_AGENT' ? (
-                      <AlertCircle size={13} className="text-red-500" />
-                    ) : (
-                      <User size={13} className="text-emerald-500" />
-                    )}
+
+                  {isHandoff && (
+                    <div className="flex justify-end -mt-1 mb-1">
+                      <WaitTimer startTime={chat.lastActiveAt} />
+                    </div>
+                  )}
+                  <div className="text-xs text-[#6F6F6F] truncate pr-4 opacity-80 italic">
+                    {chat.messages?.[0]?.content || "Sin mensajes"}
                   </div>
-                </div>
-                
-                {!chat.botActive && chat.lead.status === 'NEEDS_AGENT' && (
-                  <div className="flex justify-end -mt-1 mb-1">
-                    <WaitTimer startTime={chat.lastActiveAt} />
-                  </div>
-                )}
-                <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate pr-4">
-                  {chat.messages?.[0]?.content || "Sin mensajes"}
-                </div>
-              </button>
-            ))
+                </button>
+              );
+            })
           )}
         </div>
 
@@ -397,19 +464,19 @@ export default function InboxPage() {
           </div>
         ) : (
           <>
-            <header className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-white/50 dark:bg-zinc-900/10 backdrop-blur-md">
+            <header className="h-16 px-6 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-[#E9E4D8]/80 dark:bg-[#111111]/10 backdrop-blur-md">
               <div className="flex items-center gap-4">
-                <div className="h-10 w-10 bg-gradient-to-tr from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
-                  {activeChat.lead.name?.[0]?.toUpperCase() || '#'}
+                <div className="h-10 w-10 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-bold shadow-sm">
+                  {activeChat.lead.name?.[0]?.toUpperCase() || 'a'}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                  <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
                     {activeChat.lead.name}
-                    <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded-md font-mono border border-zinc-200 dark:border-zinc-700">
+                    <span className="text-[10px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded-md font-mono border border-[#DEDAD0] dark:border-zinc-700">
                       WhatsApp
                     </span>
                   </h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{activeChat.lead.phone}</p>
+                  <p className="text-xs text-[#6F6F6F]">{activeChat.lead.phone}</p>
                 </div>
               </div>
 
@@ -417,18 +484,18 @@ export default function InboxPage() {
                 <button
                   onClick={handleDeleteChat}
                   title="Eliminar chat"
-                  className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
+                  className="p-2 text-[#6F6F6F] hover:text-[#F36A2D] hover:bg-[#F36A2D]/5 rounded-xl transition-all"
                 >
                   <Trash2 size={18} />
                 </button>
-                <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
-                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">IA Activa:</span>
+                <div className="w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
+                <span className="text-sm font-medium text-[#6F6F6F]">IA Activa</span>
                 <button
                   onClick={handleToggleBot}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 ${activeChat.botActive ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${activeChat.botActive ? 'bg-[#F36A2D]' : 'bg-[#DEDAD0] dark:bg-zinc-700'
                     }`}
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeChat.botActive ? 'translate-x-6' : 'translate-x-1'
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeChat.botActive ? 'translate-x-[22px]' : 'translate-x-1'
                     }`} />
                 </button>
               </div>
@@ -439,7 +506,7 @@ export default function InboxPage() {
                 const isUser = msg.role === 'user';
                 const isBot = msg.role === 'assistant';
                 const isAgent = msg.role === 'agent';
-                
+
                 const currentMsgDate = new Date(msg.createdAt);
                 const prevMsgDate = idx > 0 ? new Date(activeChat.messages[idx - 1].createdAt) : null;
                 const showDateHeader = !prevMsgDate || currentMsgDate.toDateString() !== prevMsgDate.toDateString();
@@ -454,37 +521,39 @@ export default function InboxPage() {
                       </div>
                     )}
 
-                    <div className={`flex items-end gap-2 max-w-[85%] mb-4 ${
-                      isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
-                    }`}>
+                    <div className={`flex items-end gap-2 max-w-[85%] mb-4 ${isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
+                      }`}>
                       {/* Avatar icon */}
                       {isBot && (
-                        <div className="shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1">
+                        <div className="shrink-0 w-6 h-6 rounded-full bg-[#F36A2D]/10 text-[#F36A2D] flex items-center justify-center mb-1">
                           <Bot size={13} />
                         </div>
                       )}
                       {isAgent && (
-                        <div className="shrink-0 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1">
+                        <div className="shrink-0 w-6 h-6 rounded-full bg-[#111111]/10 text-[#111111] dark:bg-[#EDE9E0]/10 dark:text-[#EDE9E0] flex items-center justify-center mb-1">
                           <User size={13} />
                         </div>
                       )}
 
-                      <div className={`relative p-3 pb-6 rounded-2xl text-sm shadow-sm min-w-[90px] w-fit ${
-                        isUser
-                          ? 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800/80 dark:text-zinc-200 rounded-tl-sm border border-zinc-200 dark:border-zinc-700/50'
-                          : isBot
-                          ? 'bg-blue-600 text-white rounded-tr-sm'
-                          : 'bg-emerald-600 text-white rounded-tr-sm'
-                      }`}>
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
-                        <div className={`absolute bottom-1 right-2 text-[9px] opacity-70 font-mono whitespace-nowrap ${
-                          isUser ? 'text-zinc-500' : 'text-zinc-100'
-                        }`}>
-                          {new Date(msg.createdAt).toLocaleTimeString('es-ES', { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                          })}
+                      <div className={`relative p-3 pb-6 rounded-2xl text-sm min-w-[90px] w-fit font-sans transition-opacity duration-300 ${isUser
+                        ? 'bg-white text-[#111111] dark:bg-[#111111]/40 dark:text-zinc-200 rounded-tl-sm border border-[#DEDAD0] dark:border-zinc-800'
+                        : isBot
+                          ? 'bg-[#F36A2D] text-white rounded-tr-sm shadow-md'
+                          : 'bg-[#1A1714] text-white dark:bg-[#EDE9E0] dark:text-[#111111] rounded-tr-sm shadow-md'
+                        } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'}`}>
+                        <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                        <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
+                          }`}>
+                          <span className="opacity-60">
+                            {new Date(msg.createdAt).toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                          {(isAgent || isBot) && msg.status !== 'pending' && (
+                            <Check size={10} className="opacity-100" />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -494,13 +563,13 @@ export default function InboxPage() {
 
               {isSimulating && (
                 <div className="flex items-end gap-2 max-w-[80%] ml-auto flex-row-reverse">
-                  <div className="shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1">
+                  <div className="shrink-0 w-6 h-6 rounded-full bg-[#F36A2D]/10 text-[#F36A2D] flex items-center justify-center mb-1">
                     <Bot size={13} />
                   </div>
-                  <div className="p-3 rounded-2xl bg-blue-600/50 text-white rounded-tr-sm flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce"></span>
-                    <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                    <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                  <div className="p-3 rounded-2xl bg-[#F36A2D]/20 text-[#F36A2D] rounded-tr-sm flex items-center gap-1.5 shadow-sm">
+                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
+                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:0.4s]"></span>
                   </div>
                 </div>
               )}
@@ -508,13 +577,13 @@ export default function InboxPage() {
             </div>
 
             {/* CONTROLES DE SIMULACIÓN MVP */}
-            <div className="border-t border-zinc-200 dark:border-zinc-800/60 bg-white dark:bg-[#09090b] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-10 shrink-0">
+            <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-2">
 
-              {/* CLIENT SIMULATOR (Lo que el cliente escribe en WhatsApp) */}
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-                <div className="text-xs font-semibold text-zinc-500 mb-2 flex items-center justify-between">
-                  <span>SIMULADOR DE CELULAR CLIENTE</span>
-                  <Phone size={12} />
+              {/* CLIENT SIMULATOR */}
+              <div className="px-4 py-2 bg-[#E9E4D8]/30 dark:bg-[#111111]/20 border-b border-[#DEDAD0] dark:border-zinc-800/60">
+                <div className="text-[10px] font-bold text-[#6F6F6F] mb-1.5 flex items-center justify-between tracking-widest">
+                  <span>CLIENTE (WHATSAPP SIMULADOR)</span>
+                  <Phone size={10} />
                 </div>
                 <div className="relative">
                   <textarea
@@ -527,25 +596,25 @@ export default function InboxPage() {
                       }
                     }}
                     disabled={isSimulating}
-                    placeholder="Envía un mensaje como si fueras el cliente desde WhatsApp..."
-                    className="w-full bg-white dark:bg-[#0a0a0c] border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 min-h-[40px] max-h-24 resize-none outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 text-sm disabled:opacity-50"
+                    placeholder="Mensaje del cliente..."
+                    className="w-full bg-transparent border-none py-1 text-[#111111] dark:text-zinc-200 placeholder-[#9A9A9A] outline-none text-sm disabled:opacity-50"
                     rows={1}
                   />
                   <button
                     onClick={handleClientSubmit}
                     disabled={isSimulating || !clientInput.trim()}
-                    className="absolute right-2 bottom-2 p-1.5 bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 rounded-md transition-colors disabled:opacity-50"
+                    className="absolute right-0 bottom-1 p-1.5 text-[#6F6F6F] hover:text-[#111111] transition-colors disabled:opacity-30"
                   >
                     <Send size={14} className="mt-0.5 ml-0.5" />
                   </button>
                 </div>
               </div>
 
-              {/* AGENT INPUT (Tu panel en Respond.io) */}
-              <div className="p-4">
-                <div className="text-xs font-semibold text-blue-500 mb-2 flex items-center justify-between">
-                  <span>TU INBOX PANEL (AGENTE REAL)</span>
-                  <User size={12} />
+              {/* AGENT INPUT */}
+              <div className="px-4 py-3">
+                <div className="text-[10px] font-bold text-[#F36A2D] mb-1.5 flex items-center justify-between tracking-widest">
+                  <span>AGENTE REAL (TU RESPUESTA)</span>
+                  <User size={10} />
                 </div>
 
                 <div className="relative">
@@ -559,15 +628,15 @@ export default function InboxPage() {
                       }
                     }}
                     disabled={activeChat.botActive}
-                    placeholder={activeChat.botActive ? "Para escribir manualmente a este cliente, apaga el Bot Arriba." : "Escribe una respuesta manual al cliente..."}
-                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 min-h-[56px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
+                    placeholder={activeChat.botActive ? "Desactiva la IA para responder" : "Escribe una respuesta..."}
+                    className="w-full bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-3 min-h-[48px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/50 text-sm"
                     rows={1}
                   />
                   {!activeChat.botActive && (
                     <button
                       onClick={handleAgentSubmit}
                       disabled={!agentInput.trim()}
-                      className="absolute right-2 bottom-2 p-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center h-8 w-8"
+                      className="absolute right-2 bottom-2 p-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg transition-all disabled:opacity-50 flex items-center justify-center h-8 w-8 hover:scale-105"
                     >
                       <Send size={14} className="mt-[1px] ml-[1px]" />
                     </button>
@@ -575,9 +644,9 @@ export default function InboxPage() {
                 </div>
 
                 {activeChat.botActive && (
-                  <div className="mt-2 flex items-center justify-center gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/10 py-1.5 rounded-lg border border-blue-100 dark:border-blue-800/30">
-                    <Bot size={14} />
-                    La Inteligencia Artificial está gestionando esta conversación en automático.
+                  <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#6F6F6F] bg-[#DEDAD0]/30 dark:bg-zinc-800/20 py-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-800/40 opacity-80">
+                    <Bot size={12} className="text-[#F36A2D]" />
+                    Inteligencia Artificial Gestionando
                   </div>
                 )}
               </div>

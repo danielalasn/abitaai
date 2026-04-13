@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BarChart3, Users, MessageSquareText, Megaphone, Flame, TrendingUp, Zap, HelpCircle } from 'lucide-react'
+import { BarChart3, Users, MessageSquareText, Megaphone, Flame, TrendingUp, Zap, HelpCircle, Bot, AlertCircle, Loader2 } from 'lucide-react'
 import { getAnalyticsData } from '@/app/actions/analytics'
 import Link from 'next/link'
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -183,29 +183,29 @@ export default function AnalyticsDashboard() {
               <div className="space-y-4">
                 <Link href="/?status=BOT" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
-                      <Zap size={10} /> BOT
+                    <span className="text-xs font-bold text-[#F36A2D] bg-[#F36A2D]/10 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
+                      <Bot size={10} /> BOT
                     </span>
                     <span className="text-xs font-bold text-[#6F6F6F]">{data?.botActiveLeads}</span>
                   </div>
                   <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.botActiveLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
+                    <div className="bg-[#F36A2D] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.botActiveLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                   </div>
                 </Link>
                 <Link href="/?status=NEEDS_AGENT" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
-                      <HelpCircle size={10} /> ALERTA
+                    <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
+                      <AlertCircle size={10} /> ALERTA
                     </span>
                     <span className="text-xs font-bold text-[#6F6F6F]">{data?.needsAgentLeads}</span>
                   </div>
                   <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
-                    <div className="bg-red-500 h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.needsAgentLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
+                    <div className="bg-red-500 h-2 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]" style={{ width: `${data?.totalLeads ? Math.round(((data?.needsAgentLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                   </div>
                 </Link>
                 <Link href="/?status=AGENT" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
                       <Users size={10} /> HUMANO
                     </span>
                     <span className="text-xs font-bold text-[#6F6F6F]">{data?.agentLeads}</span>

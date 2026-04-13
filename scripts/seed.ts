@@ -1,16 +1,20 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Seed empezando...')
-  
+
+  const hashedPassword = await bcrypt.hash('abita_test', 12)
+
   const client = await prisma.client.upsert({
     where: { email: 'test@test.com' },
-    update: {},
+    update: { password: hashedPassword },
     create: {
       name: 'test_user',
       email: 'test@test.com',
+      password: hashedPassword,
       projects: {
         create: {
           name: 'Proyecto Inicial',
@@ -28,9 +32,10 @@ async function main() {
     }
   })
 
-  console.log('✅ Usuario creado:', client.name)
-  console.log('✅ Proyecto creado:', client.projects[0].name)
-  console.log('🚀 ¡Listo! Ya puedes loguearte con test@test.com')
+  console.log('✅ Usuario creado/actualizado:', client.name)
+  console.log('✅ Email:', client.email)
+  console.log('✅ Contraseña hasheada lista')
+  console.log('🚀 ¡Listo! Ya puedes loguearte con test@test.com / abita_test')
 }
 
 main()

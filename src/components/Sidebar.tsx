@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, BarChart3 } from 'lucide-react'
+import { signOut } from 'next-auth/react'
+import { Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, BarChart3, LogOut } from 'lucide-react'
+import ThemeSwitch from '@/components/ui/theme-switch'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -49,6 +51,24 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Actions */}
+      <div className="space-y-1 mb-2">
+        {/* Theme Toggle */}
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-xs font-medium text-[#6F6F6F] uppercase tracking-wider">Tema</span>
+          <ThemeSwitch />
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-[#6F6F6F] hover:bg-rose-500/10 hover:text-rose-600 transition-all duration-150"
+        >
+          <LogOut size={16} className="opacity-70" />
+          Cerrar Sesión
+        </button>
+      </div>
 
       {/* User */}
       <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 pt-4 mt-auto">
