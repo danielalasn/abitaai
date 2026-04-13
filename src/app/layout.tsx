@@ -3,7 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "abitaai.com",
+  title: "abita.ai",
   description: "Plataforma de ventas y atención al cliente con Inteligencia Artificial",
 };
 

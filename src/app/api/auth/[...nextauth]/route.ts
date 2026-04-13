@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs'
 
 console.log('NEXTAUTH_SECRET check:', !!process.env.NEXTAUTH_SECRET)
 
-const handler = NextAuth({
+export const authOptions = {
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -57,21 +57,24 @@ const handler = NextAuth({
       },
     }),
   ],
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt' as any },
   pages: {
     signIn: '/login',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) (token as any).id = (user as any).id
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) (session.user as any).id = (token as any).id
       return session
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-})
+};
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST }
+

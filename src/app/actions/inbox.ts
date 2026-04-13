@@ -3,10 +3,11 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '@/lib/whatsapp';
+import { getCurrentProject } from '@/lib/auth-server';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats() {
-  const project = await prisma.project.findFirst();
+  const project = await getCurrentProject();
   if (!project) return [];
 
   const chats = await prisma.chat.findMany({
@@ -90,9 +91,25 @@ export async function requestHandoff(chatId: string) {
 }
 
 // Simula la entrada de un mensaje por WhatsApp
-export async function simulateIncomingWhatsApp(phone: string, text: string, name?: string) {
-  const project = await prisma.project.findFirst();
-  if (!project) throw new Error("No se encontró ningún proyecto en la base de datos.");
+export async function simulateIncomingWhatsApp(phone: string, text: string, name?: string, phoneId?: string) {
+  let project: any = null;
+
+  if (phoneId) {
+    const config = await prisma.botConfig.findFirst({ where: { whatsappPhoneId: phoneId } });
+    if (config) {
+      project = await prisma.project.findUnique({ where: { id: config.projectId } });
+    }
+  }
+
+  if (!project) {
+    project = await getCurrentProject();
+  }
+
+  if (!project) {
+    project = await prisma.project.findFirst(); // Fallback for backwards compatibility if needed
+  }
+  
+  if (!project) throw new Error("No se encontró ningún proyecto.");
 
   // Buscar o crear Lead
   let currentLead = await prisma.lead.findFirst({
@@ -313,11 +330,11 @@ export async function startIndividualChatAction(
     config.whatsappToken
   );
 
-  // 4. Guardar mensaje en el historial (como asistente ya que es una plantilla)
+  // 4. Guardar mensaje en el historial (como agente ya que es una acción proactiva nuestra)
   await prisma.message.create({
     data: { 
       chatId: chat.id, 
-      role: 'assistant', 
+      role: 'agent', 
       content: previewText 
     }
   });

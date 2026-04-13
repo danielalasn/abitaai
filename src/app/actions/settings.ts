@@ -3,31 +3,16 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import Anthropic from '@anthropic-ai/sdk'
+import { getCurrentProject } from '@/lib/auth-server'
 
-// Inicializador temporal MVP (Para no tener Auth por ahora)
 export async function getOrCreateDefaultConfig() {
-  let project = await prisma.project.findFirst({
-    include: { botConfig: true }
-  });
+  const project = await getCurrentProject();
 
   if (!project) {
-    // Crear cliente y proyecto paracaidas 
-    const client = await prisma.client.create({
-      data: {
-        name: "Acme Corp",
-        email: "admin@acme.com"
-      }
-    });
-
-    project = await prisma.project.create({
-      data: {
-        name: "Acme Main Support",
-        clientId: client.id,
-      },
-      include: { botConfig: true }
-    });
+    throw new Error('Project not found for current session.');
   }
 
+  // Si no tiene botConfig, lo creamos
   if (!project.botConfig) {
     await prisma.botConfig.create({
       data: {
@@ -39,13 +24,11 @@ export async function getOrCreateDefaultConfig() {
     });
     
     // Recargar con el botconfig recien creado
-    project = await prisma.project.findFirst({
-      where: { id: project.id },
-      include: { botConfig: true }
-    });
+    const updatedProject = await getCurrentProject();
+    return updatedProject!.botConfig;
   }
 
-  return project!.botConfig;
+  return project.botConfig;
 }
 
 export async function saveBotConfig(

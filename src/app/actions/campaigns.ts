@@ -4,12 +4,11 @@ import { prisma } from '@/lib/prisma';
 import { sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { getApprovedTemplates } from '@/lib/whatsapp';
 import { revalidatePath } from 'next/cache';
+import { getCurrentProject } from '@/lib/auth-server';
 
 // Helper: get project + credentials
 async function getProjectWithCredentials() {
-  const project = await prisma.project.findFirst({
-    include: { botConfig: true }
-  });
+  const project = await getCurrentProject();
   if (!project) throw new Error('No se encontró el proyecto base.');
   return project;
 }
@@ -159,7 +158,7 @@ async function processCampaign(
 
     // Store message in DB for Inbox
     await prisma.message.create({
-      data: { chatId: chat.id, role: 'assistant', content: previewText }
+      data: { chatId: chat.id, role: 'agent', content: previewText }
     });
 
     await prisma.chat.update({

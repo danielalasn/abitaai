@@ -58,7 +58,7 @@ function LoginContent() {
             <div className="h-10 w-10 bg-[#111111] rounded-xl flex items-center justify-center">
               <span className="text-[#F36A2D] font-bold text-xl">a</span>
             </div>
-            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">abitaai.com</span>
+            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">abita.ai</span>
           </div>
         </div>
 
@@ -82,7 +82,7 @@ function LoginContent() {
           <div className="h-8 w-8 bg-[#111111] rounded-lg flex items-center justify-center">
             <span className="text-[#F36A2D] font-bold text-sm">a</span>
           </div>
-          <span className="font-semibold text-lg tracking-tight text-[#111111]">abitaai.com</span>
+          <span className="font-semibold text-lg tracking-tight text-[#111111]">abita.ai</span>
         </div>
 
         <div className="w-full max-w-sm space-y-10">
@@ -146,7 +146,7 @@ function LoginContent() {
 
           <p className="text-center text-[10px] text-[#6F6F6F] leading-relaxed">
             Al ingresar, aceptas nuestros términos de servicio y políticas de privacidad.<br />
-            © 2026 abitaai.com
+            © 2026 abita.ai
           </p>
         </div>
       </div>

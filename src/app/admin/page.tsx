@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle } from 'lucide-react';
+import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut } from 'lucide-react';
 import { getClients, createClient, updateBotConfig, updateClient, deleteClient } from '@/app/actions/admin';
 
 export default function AdminPage() {
@@ -170,6 +170,29 @@ export default function AdminPage() {
     }
   };
 
+  const formatRelativeDate = (dateString: string | Date) => {
+    if (!dateString) return 'Sin actividad';
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    // Reset hours to compare days only
+    const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const d2 = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffTime = d1.getTime() - d2.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
+
+    const timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+    if (diffDays === 0) return `Hoy ${timeStr}`;
+    if (diffDays === 1) return `Ayer ${timeStr}`;
+    if (diffDays < 7) {
+      const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      return `${days[date.getDay()]} ${timeStr}`;
+    }
+    
+    return `${date.toLocaleDateString('es-ES')} ${timeStr}`;
+  };
+
   if (status === 'loading' || isLoading) {
     return (
       <div className="flex h-64 w-full items-center justify-center">
@@ -194,12 +217,14 @@ export default function AdminPage() {
             Visualiza y administra todas las cuentas de la plataforma.
           </p>
         </div>
-        <button 
-          onClick={() => setShowCreate(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium tracking-wide shadow-md transition-all flex items-center gap-2"
-        >
-          <Plus size={18} /> Nuevo Cliente
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowCreate(true)}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium tracking-wide shadow-md transition-all flex items-center gap-2"
+          >
+            <Plus size={18} /> Nuevo Cliente
+          </button>
+        </div>
       </div>
 
       {/* CREATE MODAL */}
@@ -257,16 +282,30 @@ export default function AdminPage() {
                   {client.name.charAt(0).toUpperCase()}
                 </div>
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white line-clamp-1">{client.name}</h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate mb-6">{client.email}</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">{client.email}</p>
+                <div className="flex items-center gap-1.5 mt-2 mb-6">
+                  <div className={`h-1.5 w-1.5 rounded-full ${project?.lastUseAt ? 'bg-green-500' : 'bg-zinc-300'}`} />
+                  <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
+                    Último uso: {formatRelativeDate(project?.lastUseAt)}
+                  </span>
+                </div>
                 
-                <div className="mt-auto grid grid-cols-2 gap-3 border-t border-zinc-100 dark:border-zinc-800/60 pt-4">
+                <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3 border-t border-zinc-100 dark:border-zinc-800/60 pt-4">
                    <div className="flex flex-col">
-                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Leads</span>
-                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">{leadsCount}</span>
+                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Leads Totales</span>
+                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{leadsCount}</span>
                    </div>
                    <div className="flex flex-col">
-                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Campañas</span>
-                     <span className="font-semibold text-zinc-800 dark:text-zinc-200">{campCount}</span>
+                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Campañas</span>
+                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{campCount}</span>
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Respuestas Bot</span>
+                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.botMessagesCount || 0}</span>
+                   </div>
+                   <div className="flex flex-col">
+                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Contactos Nosotros</span>
+                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.agentMessagesCount || 0}</span>
                    </div>
                 </div>
               </div>
@@ -300,6 +339,10 @@ export default function AdminPage() {
                   <span className="text-zinc-300 dark:text-zinc-700">•</span>
                   <span className="flex items-center gap-1">
                     <Calendar size={14} /> Creado: {new Date(selectedClient.createdAt).toLocaleDateString()}
+                  </span>
+                  <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                  <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                    <Clock size={14} /> Último uso: {formatRelativeDate(selectedClient.projects?.[0]?.lastUseAt)}
                   </span>
                 </div>
               </div>
@@ -346,6 +389,7 @@ export default function AdminPage() {
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                     <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Métricas Generales</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {/* Fila 1: Leads y Campañas */}
                       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex items-center gap-4">
                         <div className="h-14 w-14 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center">
                            <MessageSquare size={28} />
@@ -362,9 +406,33 @@ export default function AdminPage() {
                            <Megaphone size={28} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Campañas</p>
+                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total Campañas</p>
                           <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
                             {selectedClient.projects?.[0]?._count?.campaigns || 0}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Fila 2: Mensajes Bot y Contactos Nosotros */}
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+                        <div className="h-14 w-14 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center">
+                           <Bot size={28} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mensajes Bot</p>
+                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
+                            {selectedClient.projects?.[0]?.botMessagesCount || 0}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+                        <div className="h-14 w-14 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-2xl flex items-center justify-center">
+                           <User size={28} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Contactos Nosotros</p>
+                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
+                            {selectedClient.projects?.[0]?.agentMessagesCount || 0}
                           </p>
                         </div>
                       </div>
@@ -449,7 +517,7 @@ export default function AdminPage() {
                   <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Configuración del Agente</h4>
+                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Configuración del Agente</h3>
                         <p className="text-sm text-zinc-500">Credenciales Meta y reglas de inteligencia artificial.</p>
                       </div>
                       <button 

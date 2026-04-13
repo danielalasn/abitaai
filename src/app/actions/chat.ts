@@ -3,16 +3,15 @@
 import { prisma } from '@/lib/prisma';
 import Anthropic from '@anthropic-ai/sdk';
 import { GLOBAL_SYSTEM_GUARDRAILS } from '@/lib/guardrails';
+import { getCurrentProject } from '@/lib/auth-server';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function sendTestMessage(message: string, history: { role: string, content: string }[], clientName?: string) {
-  // Get the default configuration
-  const project = await prisma.project.findFirst({
-    include: { botConfig: true },
-  });
+  // Get the configuration from current session project
+  const project = await getCurrentProject();
 
   const config = project?.botConfig;
 

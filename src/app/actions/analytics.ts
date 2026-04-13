@@ -1,9 +1,9 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
-
+import { getCurrentProject } from '@/lib/auth-server'
 export async function getAnalyticsData(dateRange?: { start?: string, end?: string }) {
-  const project = await prisma.project.findFirst()
+  const project = await getCurrentProject()
   if (!project) return null
 
   // Construir filtro de fecha si se proporciona

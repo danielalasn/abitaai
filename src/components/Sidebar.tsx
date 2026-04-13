@@ -2,12 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import { Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, BarChart3, LogOut } from 'lucide-react'
 import ThemeSwitch from '@/components/ui/theme-switch'
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+
+  const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
 
   return (
     <aside className="w-64 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col p-4 shrink-0 transition-colors duration-200">
@@ -18,7 +21,7 @@ export function Sidebar() {
           <span className="text-[#F36A2D] font-bold text-base tracking-tight">a</span>
         </div>
         <span className="font-semibold text-xl tracking-tight text-[#111111] dark:text-[#EDE9E0]">
-          abitaai.com
+          abita.ai
         </span>
       </div>
       
@@ -72,15 +75,19 @@ export function Sidebar() {
 
       {/* User */}
       <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 pt-4 mt-auto">
-        <button className="flex items-center gap-3 px-2 py-2 w-full rounded-xl hover:bg-white/60 dark:hover:bg-white/5 transition-colors">
+        <div className="flex items-center gap-3 px-2 py-2 w-full rounded-xl">
           <div className="h-8 w-8 rounded-full bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-xs font-bold shadow-sm shrink-0">
-            AD
+            {userInitial}
           </div>
-          <div className="flex flex-col text-left">
-            <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0]">Administrador</span>
-            <span className="text-xs text-[#6F6F6F]">abitaai.com</span>
+          <div className="flex flex-col text-left overflow-hidden">
+            <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] truncate">
+              {session?.user?.name || 'Usuario'}
+            </span>
+            <span className="text-[10px] text-[#6F6F6F] truncate">
+              {session?.user?.email || 'email@ejemplo.com'}
+            </span>
           </div>
-        </button>
+        </div>
       </div>
     </aside>
   )

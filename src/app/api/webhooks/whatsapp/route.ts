@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     const value = changes?.value;
     const message = value?.messages?.[0];
     const status = value?.statuses?.[0];
+    const metadataPhoneId = value?.metadata?.phone_number_id;
 
     // Caso A: Notificación de ESTADO (sent, delivered, failed, read)
     if (status) {
@@ -58,8 +59,8 @@ export async function POST(req: NextRequest) {
     console.log(`Mensaje recibido de ${from} (${profileName || 'Unknown'}): ${text}`);
 
     // 1. Procesar mensaje entrante (Lo guarda en BD y crea Chat/Lead si no existen)
-    // Pasamos el profileName si es un lead nuevo
-    const chatId = await simulateIncomingWhatsApp(from, text, profileName);
+    // Pasamos el profileName si es un lead nuevo y el metadataPhoneId para saber a qué proyecto pertenece
+    const chatId = await simulateIncomingWhatsApp(from, text, profileName, metadataPhoneId);
     
     // 2. Obtener estado del chat (¿Bot activo?)
     const chatDetails = await getChatMessages(chatId);

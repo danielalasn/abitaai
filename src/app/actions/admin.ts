@@ -20,7 +20,41 @@ export async function getClients() {
       }
     },
     orderBy: { createdAt: 'desc' }
-  });
+  }) as any[];
+  
+  // Agregar conteos de mensajes
+  for (const client of clients) {
+    if (client.projects) {
+      for (const project of client.projects) {
+        // Mensajes del BOT (Auto-respuestas)
+        project.botMessagesCount = await prisma.message.count({
+          where: {
+            role: 'assistant',
+            chat: { lead: { projectId: project.id } }
+          }
+        });
+
+        // Contactos NUESTROS (Campañas, Individuales, Manuales)
+        project.agentMessagesCount = await prisma.message.count({
+          where: {
+            role: 'agent',
+            chat: { lead: { projectId: project.id } }
+          }
+        });
+
+        // Fecha de ÚLTIMO USO (último mensaje nuestro)
+        const lastMsg = await prisma.message.findFirst({
+          where: {
+            role: { in: ['assistant', 'agent'] },
+            chat: { lead: { projectId: project.id } }
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true }
+        });
+        project.lastUseAt = lastMsg?.createdAt || null;
+      }
+    }
+  }
   
   return clients;
 }
