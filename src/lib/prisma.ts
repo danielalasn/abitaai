@@ -1,9 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  console.log('Initializing Prisma Client...')
   return new PrismaClient({
-    log: ['query', 'error', 'warn'],
+    log: ['error'],
   })
 }
 

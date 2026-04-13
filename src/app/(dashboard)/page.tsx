@@ -94,8 +94,14 @@ export default function InboxPage() {
   const [filterHeat, setFilterHeat] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
-  // Guard: mientras haya mensajes optímistas en vuelo, el polling no sobrescribe el chat
+  // Refs para control de estado optimista y polling
   const pendingOptimistic = useRef<Set<string>>(new Set());
+  const activeChatIdRef = useRef<string | null>(null);
+
+  // Sincronizar el Ref con el ID activo
+  useEffect(() => {
+    activeChatIdRef.current = activeChat?.id || null;
+  }, [activeChat?.id]);
 
   // Lee los filtros de la URL al cargar la página si vienen desde el Analytics Dashboard
   useEffect(() => {
@@ -150,28 +156,46 @@ export default function InboxPage() {
     initialLoad();
   }, []);
 
-  // Polling solo para actualizar la LISTA de chats y el contenido del chat ACTUAL
+  // Polling inteligente: usa setTimeout recursivo para evitar solapamiento
   useEffect(() => {
-    const interval = setInterval(async () => {
-      // Si hay mensajes enviándose O un toggle de bot pendiente, pausamos el refresh del activeChat
-      const isPendingMessage = pendingOptimistic.current.size > 0;
-      const isPendingToggle = activeChat && pendingOptimistic.current.has('toggle-' + activeChat.id);
+    let cancelled = false;
 
-      if (isPendingMessage || isPendingToggle) {
-        // Solo refrescamos la lista lateral, no el chat activo
-        syncChatsList();
-        return;
-      }
-      
-      if (activeChat) {
-        const refreshed = await getChatMessages(activeChat.id);
-        setActiveChat(refreshed);
-      }
-      syncChatsList();
-    }, 5000);
+    const syncData = async () => {
+      if (cancelled) return;
 
-    return () => clearInterval(interval);
-  }, [activeChat?.id]);
+      try {
+        // Sincronizar lista lateral
+        const latestChats = await getActiveChats();
+        if (cancelled) return;
+        setChats(latestChats);
+
+        // Sincronizar chat activo si existe y no hay operaciones optimistas
+        const currentId = activeChatIdRef.current;
+        const hasOptimistic = pendingOptimistic.current.size > 0;
+        
+        if (currentId && !hasOptimistic) {
+          const refreshed = await getChatMessages(currentId);
+          if (cancelled) return;
+          setActiveChat(refreshed);
+        }
+      } catch (e) {
+        // Silenciar errores de polling para no romper la app
+      }
+
+      // Programar el siguiente ciclo DESPUÉS de que termine este
+      if (!cancelled) {
+        setTimeout(syncData, 8000);
+      }
+    };
+
+    // Iniciar el primer ciclo después de 8 segundos
+    const initialTimeout = setTimeout(syncData, 8000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initialTimeout);
+    };
+  }, []);
 
   // Cargar detalle de un chat
   const loadChatDetails = async (chatId: string) => {
@@ -606,45 +630,14 @@ export default function InboxPage() {
             {/* CONTROLES DE SIMULACIÓN MVP */}
             <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-2">
 
-              {/* CLIENT SIMULATOR */}
-              <div className="px-4 py-2 bg-[#E9E4D8]/30 dark:bg-[#111111]/20 border-b border-[#DEDAD0] dark:border-zinc-800/60">
-                <div className="text-[10px] font-bold text-[#6F6F6F] mb-1.5 flex items-center justify-between tracking-widest">
-                  <span>CLIENTE (WHATSAPP SIMULADOR)</span>
-                  <Phone size={10} />
-                </div>
-                <div className="relative">
-                  <textarea
-                    value={clientInput}
-                    onChange={(e) => setClientInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleClientSubmit();
-                      }
-                    }}
-                    disabled={isSimulating}
-                    placeholder="Mensaje del cliente..."
-                    className="w-full bg-transparent border-none py-1 text-[#111111] dark:text-zinc-200 placeholder-[#9A9A9A] outline-none text-sm disabled:opacity-50"
-                    rows={1}
-                  />
-                  <button
-                    onClick={handleClientSubmit}
-                    disabled={isSimulating || !clientInput.trim()}
-                    className="absolute right-0 bottom-1 p-1.5 text-[#6F6F6F] hover:text-[#111111] transition-colors disabled:opacity-30"
-                  >
-                    <Send size={14} className="mt-0.5 ml-0.5" />
-                  </button>
-                </div>
-              </div>
-
               {/* AGENT INPUT */}
-              <div className="px-4 py-3">
-                <div className="text-[10px] font-bold text-[#F36A2D] mb-1.5 flex items-center justify-between tracking-widest">
+              <div className="px-4 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 bg-[#F8F5EE] dark:bg-[#1A1714]">
+                <div className="text-[10px] font-bold text-[#F36A2D] mb-2 flex items-center justify-between tracking-widest px-1">
                   <span>AGENTE REAL (TU RESPUESTA)</span>
                   <User size={10} />
                 </div>
 
-                <div className="relative">
+                <div className="relative flex items-center">
                   <textarea
                     value={agentInput}
                     onChange={(e) => setAgentInput(e.target.value)}
@@ -656,16 +649,16 @@ export default function InboxPage() {
                     }}
                     disabled={activeChat.botActive}
                     placeholder={activeChat.botActive ? "Desactiva la IA para responder" : "Escribe una respuesta..."}
-                    className="w-full bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-3 min-h-[48px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/50 text-sm"
+                    className="w-full bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-14 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 text-sm text-[#111111] dark:text-white"
                     rows={1}
                   />
                   {!activeChat.botActive && (
                     <button
                       onClick={handleAgentSubmit}
                       disabled={!agentInput.trim()}
-                      className="absolute right-2 bottom-2 p-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg transition-all disabled:opacity-50 flex items-center justify-center h-8 w-8 hover:scale-105"
+                      className="absolute right-2 p-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center h-9 w-9 hover:scale-105 shadow-sm"
                     >
-                      <Send size={14} className="mt-[1px] ml-[1px]" />
+                      <Send size={15} />
                     </button>
                   )}
                 </div>
