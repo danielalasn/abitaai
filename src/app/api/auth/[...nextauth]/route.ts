@@ -47,6 +47,7 @@ const handler = NextAuth({
             id:    client.id,
             name:  client.name,
             email: client.email,
+            theme: client.theme,
           }
         } catch (error: any) {
           console.error('DATABASE ERROR during login:', error)
@@ -61,12 +62,18 @@ const handler = NextAuth({
     signIn: '/login',
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) token.id = user.id
+    async jwt({ token, user }: any) {
+      if (user) {
+        token.id = user.id
+        token.theme = user.theme
+      }
       return token
     },
-    async session({ session, token }) {
-      if (session.user) (session.user as any).id = token.id
+    async session({ session, token }: any) {
+      if (session.user) {
+        (session.user as any).id = token.id
+        (session.user as any).theme = token.theme
+      }
       return session
     },
   },

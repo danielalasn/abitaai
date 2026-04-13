@@ -3,6 +3,8 @@
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
+import { updateUserTheme } from "@/app/actions/settings";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -11,18 +13,39 @@ const ThemeSwitch = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => {
   const { resolvedTheme, setTheme } = useTheme();
+  const { data: session } = useSession();
   const [checked, setChecked] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => setChecked(resolvedTheme === "dark"), [resolvedTheme]);
 
+  // Sincronizar tema con la sesión al montar por primera vez
+  useEffect(() => {
+    if (session?.user && (session.user as any).theme && mounted) {
+      const userTheme = (session.user as any).theme;
+      if (userTheme !== resolvedTheme) {
+        setTheme(userTheme);
+      }
+    }
+  }, [session, mounted]);
+
   const handleCheckedChange = useCallback(
-    (isChecked: boolean) => {
+    async (isChecked: boolean) => {
+      const newTheme = isChecked ? "dark" : "light";
       setChecked(isChecked);
-      setTheme(isChecked ? "dark" : "light");
+      setTheme(newTheme);
+      
+      // Guardar en la base de datos si hay sesión
+      if (session?.user) {
+        try {
+          await updateUserTheme((session.user as any).id, newTheme);
+        } catch (error) {
+          console.error('Error saving theme preference:', error);
+        }
+      }
     },
-    [setTheme],
+    [setTheme, session],
   );
 
   if (!mounted) return null;

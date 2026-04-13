@@ -138,3 +138,11 @@ export async function verifyWhatsappConnection(
     return { success: false, message: 'Error de red al contactar Meta.' }
   }
 }
+
+export async function updateUserTheme(userId: string, theme: 'light' | 'dark') {
+  await prisma.client.update({
+    where: { id: userId },
+    data: { theme }
+  });
+  return { success: true };
+}
