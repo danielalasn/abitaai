@@ -124,7 +124,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="Ej: 50376001234"
-                  className="w-full bg-white/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-4 py-3 outline-none focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 transition-all text-sm"
+                  className="w-full bg-white/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-4 py-3 outline-none focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
                 />
               </div>
 
@@ -176,7 +176,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
                 <button onClick={() => setStep(1)} className="text-xs text-[#F36A2D] font-bold hover:underline">
                   ← Cambiar plantilla
                 </button>
-                <div className="text-[10px] font-bold text-zinc-400">PARA: {phone}</div>
+                <div className="text-[10px] font-bold text-[#6F6F6F] dark:text-zinc-400 uppercase tracking-widest">PARA: {phone}</div>
               </div>
 
               <div className="bg-white/40 dark:bg-zinc-900/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4">
@@ -201,7 +201,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
                       value={variables[v] || ''}
                       onChange={e => setVariables(prev => ({ ...prev, [v]: e.target.value }))}
                       placeholder={`Valor para variable ${v}`}
-                      className="flex-1 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:border-[#F36A2D] text-sm"
+                      className="flex-1 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:border-[#F36A2D] text-sm text-[#111111] dark:text-[#EDE9E0]"
                     />
                   </div>
                 ))}
