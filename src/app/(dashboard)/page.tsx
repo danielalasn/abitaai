@@ -153,14 +153,21 @@ export default function InboxPage() {
   // Polling solo para actualizar la LISTA de chats y el contenido del chat ACTUAL
   useEffect(() => {
     const interval = setInterval(async () => {
-      const data = await getActiveChats();
-      setChats(data);
+      // Si hay mensajes enviándose O un toggle de bot pendiente, pausamos el refresh del activeChat
+      const isPendingMessage = pendingOptimistic.current.size > 0;
+      const isPendingToggle = activeChat && pendingOptimistic.current.has('toggle-' + activeChat.id);
 
-      // Solo refrescamos mensajes si NO hay mensajes optimistas en vuelo
-      if (activeChat?.id && pendingOptimistic.current.size === 0) {
+      if (isPendingMessage || isPendingToggle) {
+        // Solo refrescamos la lista lateral, no el chat activo
+        syncChatsList();
+        return;
+      }
+      
+      if (activeChat) {
         const refreshed = await getChatMessages(activeChat.id);
         setActiveChat(refreshed);
       }
+      syncChatsList();
     }, 5000);
 
     return () => clearInterval(interval);
@@ -175,10 +182,30 @@ export default function InboxPage() {
   // Toggle Bot Handover
   const handleToggleBot = async () => {
     if (!activeChat) return;
-    const newState = !activeChat.botActive;
-    setActiveChat({ ...activeChat, botActive: newState }); // Optimistic
-    await toggleBotActive(activeChat.id, newState);
-    loadChats();
+    const newStatus = !activeChat.botActive;
+    const chatId = activeChat.id;
+
+    // --- ACTUALIZACIÓN OPTIMISTA ---
+    // Cambiamos el estado en UI instantáneamente
+    setActiveChat((prev: any) => ({ ...prev, botActive: newStatus }));
+    
+    // Bloqueamos el polling para este ID temporalmente (usando el mismo Set de los mensajes)
+    pendingOptimistic.current.add('toggle-' + chatId);
+
+    try {
+      await toggleBotActive(chatId, newStatus);
+      // Solo actualizamos la lista lateral
+      syncChatsList();
+    } catch (error) {
+      console.error(error);
+      // Revertir si falla
+      setActiveChat((prev: any) => ({ ...prev, botActive: !newStatus }));
+    } finally {
+      // Desbloqueamos el polling después de un pequeño delay para asegurar consistencia
+      setTimeout(() => {
+        pendingOptimistic.current.delete('toggle-' + chatId);
+      }, 2000);
+    }
   };
 
   // Delete Chat
