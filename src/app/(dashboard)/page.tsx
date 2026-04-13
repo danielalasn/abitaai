@@ -37,6 +37,49 @@ function WaitTimer({ startTime }: { startTime: string | Date }) {
   );
 }
 
+const formatDateLabel = (date: Date) => {
+  const now = new Date();
+  const d = new Date(date);
+  
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+
+  if (isToday) return "Hoy";
+  if (isYesterday) return "Ayer";
+
+  const diffTime = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 7) {
+    return d.toLocaleDateString('es-ES', { weekday: 'long' }).replace(/^\w/, (c) => c.toUpperCase());
+  }
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const formatSidebarDate = (date: Date) => {
+  const now = new Date();
+  const d = new Date(date);
+  const isToday = d.toDateString() === now.toDateString();
+  
+  if (isToday) {
+    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true }).replace(" p. m.", " pm").replace(" a. m.", " am");
+  }
+  
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return "Ayer";
+
+  const diffTime = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 7) {
+    return d.toLocaleDateString('es-ES', { weekday: 'short' }).replace(/^\w/, c => c.toUpperCase());
+  }
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+};
+
 export default function InboxPage() {
   const [chats, setChats] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<any | null>(null);
@@ -284,40 +327,42 @@ export default function InboxPage() {
               <p className="text-sm">No hay conversaciones con estos filtros.</p>
             </div>
           ) : (
-            filteredChats.map(chat => (
+            filteredChats.map((chat: any) => (
               <button
                 key={chat.id}
                 onClick={() => loadChatDetails(chat.id)}
                 className={`w-full text-left p-3 rounded-xl transition-all flex flex-col gap-1 ${activeChat?.id === chat.id
                   ? 'bg-blue-50 dark:bg-blue-900/10 ring-1 ring-blue-200 dark:ring-blue-800/50'
-                  : chat.botActive === false && chat.lead.status === 'NEEDS_AGENT'
+                  : !chat.botActive && chat.lead.status === 'NEEDS_AGENT'
                     ? 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50'
-                    : chat.botActive === false ? 'bg-green-50 dark:bg-green-900/10' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800/40'
+                    : !chat.botActive ? 'bg-green-50 dark:bg-green-900/10' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800/40'
                   }`}
               >
-                <div className="flex justify-between items-center w-full">
-                  <div className="flex items-center gap-2 truncate">
-                    {/* Indicador de Heatmap ANTES del nombre */}
+                <div className="flex justify-between items-center w-full gap-2">
+                  <div className="flex items-center gap-2 truncate flex-1">
                     {chat.lead.heat === 'CALIENTE' && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
                     {chat.lead.heat === 'TIBIO' && <span className="text-[10px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={10} /> {chat.lead.score}</span>}
                     {(chat.lead.heat === 'FRIO' || !chat.lead.heat) && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
-
+ 
                     <span className="font-medium text-sm text-zinc-900 dark:text-zinc-200 truncate">
                       {chat.lead.name || chat.lead.phone}
                     </span>
                   </div>
-                  {chat.botActive ? (
-                    <Bot size={14} className="text-blue-500 shrink-0" />
-                  ) : chat.lead.status === 'NEEDS_AGENT' ? (
-                    <div className="flex flex-col items-end gap-1">
-                      <AlertCircle size={14} className="text-red-500 shrink-0" />
-                    </div>
-                  ) : (
-                    <User size={14} className="text-emerald-500 shrink-0" />
-                  )}
+                  
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] text-zinc-400 font-medium">
+                      {formatSidebarDate(new Date(chat.lastActiveAt))}
+                    </span>
+                    {chat.botActive ? (
+                      <Bot size={13} className="text-blue-500" />
+                    ) : chat.lead.status === 'NEEDS_AGENT' ? (
+                      <AlertCircle size={13} className="text-red-500" />
+                    ) : (
+                      <User size={13} className="text-emerald-500" />
+                    )}
+                  </div>
                 </div>
                 
-                {/* Timer for Warning Status */}
                 {!chat.botActive && chat.lead.status === 'NEEDS_AGENT' && (
                   <div className="flex justify-end -mt-1 mb-1">
                     <WaitTimer startTime={chat.lastActiveAt} />
@@ -390,35 +435,58 @@ export default function InboxPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {activeChat.messages?.map((msg: any) => {
+              {activeChat.messages?.map((msg: any, idx: number) => {
                 const isUser = msg.role === 'user';
                 const isBot = msg.role === 'assistant';
                 const isAgent = msg.role === 'agent';
+                
+                const currentMsgDate = new Date(msg.createdAt);
+                const prevMsgDate = idx > 0 ? new Date(activeChat.messages[idx - 1].createdAt) : null;
+                const showDateHeader = !prevMsgDate || currentMsgDate.toDateString() !== prevMsgDate.toDateString();
 
                 return (
-                  <div key={msg.id} className={`flex items-end gap-2 max-w-[80%] ${
-                    isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
-                  }`}>
-                    {/* Avatar icon */}
-                    {isBot && (
-                      <div className="shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1">
-                        <Bot size={13} />
-                      </div>
-                    )}
-                    {isAgent && (
-                      <div className="shrink-0 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1">
-                        <User size={13} />
+                  <div key={msg.id}>
+                    {showDateHeader && (
+                      <div className="flex justify-center my-6">
+                        <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700/50">
+                          {formatDateLabel(currentMsgDate)}
+                        </span>
                       </div>
                     )}
 
-                    <div className={`p-3 rounded-2xl whitespace-pre-wrap text-sm ${
-                      isUser
-                        ? 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800/80 dark:text-zinc-200 rounded-tl-sm border border-zinc-200 dark:border-zinc-700/50'
-                        : isBot
-                        ? 'bg-blue-600 text-white rounded-tr-sm shadow-sm'
-                        : 'bg-emerald-600 text-white rounded-tr-sm shadow-sm'
+                    <div className={`flex items-end gap-2 max-w-[85%] mb-4 ${
+                      isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
                     }`}>
-                      {msg.content}
+                      {/* Avatar icon */}
+                      {isBot && (
+                        <div className="shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-1">
+                          <Bot size={13} />
+                        </div>
+                      )}
+                      {isAgent && (
+                        <div className="shrink-0 w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-1">
+                          <User size={13} />
+                        </div>
+                      )}
+
+                      <div className={`relative p-3 pb-6 rounded-2xl text-sm shadow-sm min-w-[90px] w-fit ${
+                        isUser
+                          ? 'bg-zinc-100 text-zinc-800 dark:bg-zinc-800/80 dark:text-zinc-200 rounded-tl-sm border border-zinc-200 dark:border-zinc-700/50'
+                          : isBot
+                          ? 'bg-blue-600 text-white rounded-tr-sm'
+                          : 'bg-emerald-600 text-white rounded-tr-sm'
+                      }`}>
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className={`absolute bottom-1 right-2 text-[9px] opacity-70 font-mono whitespace-nowrap ${
+                          isUser ? 'text-zinc-500' : 'text-zinc-100'
+                        }`}>
+                          {new Date(msg.createdAt).toLocaleTimeString('es-ES', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: true 
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
