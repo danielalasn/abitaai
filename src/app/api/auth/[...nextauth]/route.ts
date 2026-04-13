@@ -1,9 +1,7 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-
-const prisma = new PrismaClient()
 
 console.log('NEXTAUTH_SECRET check:', !!process.env.NEXTAUTH_SECRET)
 
@@ -25,7 +23,7 @@ const handler = NextAuth({
         try {
           const client = await prisma.client.findUnique({
             where: { email: credentials.email },
-          })
+          }) as any
 
           if (!client) {
             console.log('Client not found in DB')
