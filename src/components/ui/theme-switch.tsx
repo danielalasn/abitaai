@@ -17,32 +17,30 @@ const ThemeSwitch = ({
   const [checked, setChecked] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
-  useEffect(() => setChecked(resolvedTheme === "dark"), [resolvedTheme]);
-
-  // Sincronizar tema con la sesión al montar por primera vez
+  // Al montar, aplicar el tema guardado (primero sesión, luego localStorage)
   useEffect(() => {
-    if (session?.user && (session.user as any).theme && mounted) {
-      const userTheme = (session.user as any).theme;
-      if (userTheme !== resolvedTheme) {
-        setTheme(userTheme);
-      }
-    }
-  }, [session, mounted]);
+    setMounted(true);
+    const savedTheme = (session?.user as any)?.theme 
+      || localStorage.getItem('abita-theme') 
+      || 'light';
+    setTheme(savedTheme);
+  }, [session]);
+
+  useEffect(() => {
+    setChecked(resolvedTheme === "dark");
+  }, [resolvedTheme]);
 
   const handleCheckedChange = useCallback(
     async (isChecked: boolean) => {
       const newTheme = isChecked ? "dark" : "light";
       setChecked(isChecked);
       setTheme(newTheme);
-      
-      // Guardar en la base de datos si hay sesión
-      if (session?.user) {
-        try {
-          await updateUserTheme((session.user as any).id, newTheme);
-        } catch (error) {
-          console.error('Error saving theme preference:', error);
-        }
+      // Guardar en localStorage inmediatamente
+      localStorage.setItem('abita-theme', newTheme);
+      // Guardar en DB si hay sesión
+      const userId = (session?.user as any)?.id;
+      if (userId) {
+        updateUserTheme(userId, newTheme).catch(console.error);
       }
     },
     [setTheme, session],
