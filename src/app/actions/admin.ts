@@ -12,7 +12,10 @@ export async function getClients() {
     include: {
       projects: {
         include: {
-          botConfig: true
+          botConfig: true,
+          _count: {
+            select: { leads: true, campaigns: true }
+          }
         }
       }
     },
@@ -56,4 +59,29 @@ export async function updateBotConfig(projectId: string, configData: any) {
   });
   revalidatePath('/admin');
   return updated;
+}
+
+export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string }) {
+  const updateData: any = {};
+  if (data.name) updateData.name = data.name;
+  if (data.email) updateData.email = data.email;
+  if (data.password) {
+    updateData.password = await bcrypt.hash(data.password, 10);
+  }
+
+  const updated = await prisma.client.update({
+    where: { id: clientId },
+    data: updateData
+  });
+  
+  revalidatePath('/admin');
+  return updated;
+}
+
+export async function deleteClient(clientId: string) {
+  await prisma.client.delete({
+    where: { id: clientId }
+  });
+  revalidatePath('/admin');
+  return true;
 }
