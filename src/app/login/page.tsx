@@ -36,7 +36,11 @@ function LoginContent() {
       setError('Credenciales no válidas')
       setIsLoading(false)
     } else {
-      router.push('/')
+      if (email.toLowerCase() === 'info@abitaai.com') {
+        router.push('/admin')
+      } else {
+        router.push('/')
+      }
       router.refresh()
     }
   }

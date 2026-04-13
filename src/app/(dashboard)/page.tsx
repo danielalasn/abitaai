@@ -101,8 +101,10 @@ export default function InboxPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
+    } else if (status === 'authenticated' && session?.user?.email === 'info@abitaai.com') {
+      router.push('/admin');
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   // States para los dos inputs mockeados
   const [clientInput, setClientInput] = useState('');
