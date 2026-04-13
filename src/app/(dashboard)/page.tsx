@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock } from "lucide-react";
 import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { NewChatModal } from "@/components/NewChatModal";
 
@@ -83,6 +85,9 @@ const formatSidebarDate = (date: Date) => {
 };
 
 export default function InboxPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
   const [chats, setChats] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +96,13 @@ export default function InboxPage() {
 
   // Cache de chats abiertos para cambio instantáneo
   const [chatsCache, setChatsCache] = useState<Record<string, any>>({});
+
+  // Redirigir si no hay sesión (en lugar de hacerlo en el Middleware)
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
 
   // States para los dos inputs mockeados
   const [clientInput, setClientInput] = useState('');
@@ -400,6 +412,19 @@ export default function InboxPage() {
     }
     return true;
   });
+
+  if (status === 'loading') {
+    return (
+      <div className="flex h-dvh w-full items-center justify-center bg-[#E9E4D8] dark:bg-[#1A1714]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-[#F36A2D]" size={40} />
+          <span className="text-sm font-medium text-[#6F6F6F] animate-pulse">Iniciando plataforma...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) return null;
 
   return (
     <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714]">
