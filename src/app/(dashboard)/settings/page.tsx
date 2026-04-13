@@ -94,14 +94,14 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-zinc-50/30 dark:bg-[#09090b]">
+    <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* Header */}
-      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-zinc-200 dark:border-zinc-800/60 bg-white/50 dark:bg-[#09090b]/50 backdrop-blur-md z-10 sticky top-0">
+      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
             <Bot size={18} />
           </div>
-          <h1 className="text-xl font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+          <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
             Configuración del Bot
           </h1>
         </div>
@@ -110,8 +110,8 @@ export default function SettingsPage() {
           disabled={isSaving}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm disabled:opacity-70 ${
             saveStatus === 'success' 
-              ? "bg-green-600 text-white" 
-              : "bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-black"
+              ? "bg-emerald-600 text-white" 
+              : "bg-[#111111] hover:bg-[#333] dark:bg-[#E9E4D8] dark:hover:bg-white text-white dark:text-[#111111]"
           }`}
         >
           {isSaving ? (
@@ -163,12 +163,12 @@ export default function SettingsPage() {
           </div>
 
           {/* AI Identity Section */}
-          <section className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden transition-all hover:shadow-md">
-            <div className="border-b border-zinc-200 dark:border-zinc-800 p-6 bg-zinc-50/50 dark:bg-zinc-900/50 flex items-center gap-3">
-              <Fingerprint className="text-zinc-500 dark:text-zinc-400" size={20} />
+          <section className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden transition-all hover:shadow-md">
+            <div className="border-b border-[#DEDAD0] dark:border-zinc-800 p-6 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex items-center gap-3">
+              <Fingerprint className="text-[#F36A2D]" size={20} />
               <div>
-                <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Identidad del Agente</h2>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Define la personalidad y el comportamiento principal de tu asistente de IA.</p>
+                <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">Identidad del Agente</h2>
+                <p className="text-sm text-[#6F6F6F] mt-1">Define la personalidad y el comportamiento principal de tu asistente de IA.</p>
               </div>
             </div>
             <div className="p-6">

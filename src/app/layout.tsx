@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chat AI",
-  description: "Manage your AI agents and conversations",
+  title: "abita.ai",
+  description: "Plataforma de ventas y atención al cliente con Inteligencia Artificial",
 };
 
 export default function RootLayout({

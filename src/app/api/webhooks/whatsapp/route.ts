@@ -74,15 +74,15 @@ export async function POST(req: NextRequest) {
             await saveAssistantReply(chatId, botData.reply, botData.scoreBump);
             
             // 5. Enviar mensaje REAL a WhatsApp vía Meta API
-            // Prioridad: BotConfig (DB) > .env (para pruebas locales)
-            const phoneId = (chatDetails as any)?.lead?.project?.botConfig?.whatsappPhoneId || process.env.WHATSAPP_PHONE_NUMBER_ID;
-            const token = (chatDetails as any)?.lead?.project?.botConfig?.whatsappToken || process.env.WHATSAPP_ACCESS_TOKEN;
+            // En un sistema SaaS, estas credenciales DEBEN venir de la base de datos (BotConfig)
+            const phoneId = (chatDetails as any)?.lead?.project?.botConfig?.whatsappPhoneId;
+            const token = (chatDetails as any)?.lead?.project?.botConfig?.whatsappToken;
 
             if (phoneId && token) {
                 await sendWhatsAppMessage(from, botData.reply, phoneId, token);
                 console.log(`Respuesta enviada a ${from} vía WhatsApp Cloud API`);
             } else {
-                console.error('[Webhook] Missing WhatsApp credentials in BotConfig AND .env');
+                console.error(`[Webhook] No hay credenciales configuradas para el proyecto del chat ${chatId}`);
             }
 
             // 6. Si hubo un Handoff, desactivar el bot

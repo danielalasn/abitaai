@@ -217,14 +217,14 @@ export async function saveAgentMessage(chatId: string, text: string) {
 
     // 2. Enviar mensaje REAL a WhatsApp vía Meta API
     const phone = chat.lead.phone;
-    const phoneId = chat.lead.project?.botConfig?.whatsappPhoneId || process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const token = chat.lead.project?.botConfig?.whatsappToken || process.env.WHATSAPP_ACCESS_TOKEN;
+    const phoneId = chat.lead.project?.botConfig?.whatsappPhoneId;
+    const token = chat.lead.project?.botConfig?.whatsappToken;
 
     if (phone && phoneId && token) {
         await sendWhatsAppMessage(phone, text, phoneId, token);
         console.log(`[Manual Agent] Mensaje enviado a ${phone}`);
     } else {
-        console.error('[Manual Agent] Missing credentials to send WhatsApp message');
+        console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas en los ajustes del bot para este proyecto.');
     }
   }
 

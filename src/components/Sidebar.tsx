@@ -8,52 +8,57 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex flex-col p-4 shrink-0 transition-colors duration-200">
+    <aside className="w-64 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col p-4 shrink-0 transition-colors duration-200">
+      
+      {/* Logo Abita AI */}
       <div className="flex items-center gap-3 mb-8 px-2">
-        <div className="h-9 w-9 bg-black dark:bg-white rounded-lg flex items-center justify-center shadow-md">
-          <span className="text-white dark:text-black font-bold text-base">C</span>
+        <div className="h-9 w-9 bg-[#111111] dark:bg-[#E9E4D8] rounded-xl flex items-center justify-center shadow-md shrink-0">
+          <span className="text-[#F36A2D] font-bold text-base tracking-tight">a</span>
         </div>
-        <span className="font-semibold text-xl tracking-tight text-zinc-900 dark:text-zinc-100">
-          Chat <span className="opacity-70 font-normal">AI</span>
+        <span className="font-semibold text-xl tracking-tight text-[#111111] dark:text-[#EDE9E0]">
+          abita.ai
         </span>
       </div>
       
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 space-y-0.5">
         {[
-          { icon: Inbox, label: 'Bandeja de entrada', href: '/' },
-          { icon: BarChart3, label: 'Dashboard', href: '/analytics' },
-          { icon: Megaphone, label: 'Campañas', href: '/campaigns' },
-          { icon: BrainCircuit, label: 'Mejora Continua', href: '/learning' },
-          { icon: Settings, label: 'Configuración Bot', href: '/settings' },
-          { icon: MessageSquareCode, label: 'Probar Simulador', href: '/test-chat' },
+          { icon: Inbox,             label: 'Bandeja de entrada', href: '/' },
+          { icon: BarChart3,         label: 'Dashboard',          href: '/analytics' },
+          { icon: Megaphone,         label: 'Campañas',           href: '/campaigns' },
+          { icon: BrainCircuit,      label: 'Mejora Continua',    href: '/learning' },
+          { icon: Settings,          label: 'Configuración Bot',  href: '/settings' },
+          { icon: MessageSquareCode, label: 'Probar Simulador',   href: '/test-chat' },
         ].map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.label}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                 isActive 
-                  ? 'bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-900/80 dark:text-zinc-100' 
-                  : 'text-zinc-600 hover:bg-zinc-100/50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900/50 dark:hover:text-zinc-200'
+                  ? 'bg-white dark:bg-[#111111]/60 text-[#111111] dark:text-[#EDE9E0] shadow-sm' 
+                  : 'text-[#6F6F6F] hover:bg-white/60 dark:hover:bg-white/5 hover:text-[#111111] dark:hover:text-[#EDE9E0]'
               }`}
             >
-              <item.icon size={18} className={isActive ? 'opacity-100' : 'opacity-70'} />
+              <item.icon
+                size={16}
+                className={isActive ? 'text-[#F36A2D]' : 'opacity-60'}
+              />
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      {/* User Element Mockup */}
-      <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 mt-auto">
-        <button className="flex items-center gap-3 px-2 py-2 w-full rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900/50 transition-colors">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+      {/* User */}
+      <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 pt-4 mt-auto">
+        <button className="flex items-center gap-3 px-2 py-2 w-full rounded-xl hover:bg-white/60 dark:hover:bg-white/5 transition-colors">
+          <div className="h-8 w-8 rounded-full bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-xs font-bold shadow-sm shrink-0">
             AD
           </div>
           <div className="flex flex-col text-left">
-            <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Administrador</span>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">Agencia Real Estate</span>
+            <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0]">Administrador</span>
+            <span className="text-xs text-[#6F6F6F]">abita.ai</span>
           </div>
         </button>
       </div>

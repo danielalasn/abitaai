@@ -280,23 +280,23 @@ export default function InboxPage() {
   });
 
   return (
-    <div className="flex h-full w-full bg-white dark:bg-[#09090b]">
+    <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* 1. SIDEBAR DE CHATS */}
-      <div className="w-[340px] border-r border-zinc-200 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-[#0a0a0c] flex flex-col shrink-0">
-        <div className="p-4 border-b border-zinc-200 dark:border-zinc-800/60 flex items-center justify-between">
-          <h2 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+      <div className="w-[340px] border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col shrink-0">
+        <div className="p-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between">
+          <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
             Inbox
-            <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px] px-2 py-0.5 rounded-full font-bold">
+            <span className="bg-[#F36A2D]/10 text-[#F36A2D] text-[10px] px-2 py-0.5 rounded-full font-bold">
               {filteredChats.length}
             </span>
           </h2>
         </div>
 
-        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800/60 flex flex-col gap-2 bg-zinc-50 dark:bg-[#0c0c0e]">
+        <div className="px-4 py-3 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col gap-2 bg-[#E9E4D8]/60 dark:bg-[#1A1714]">
           <select
             value={filterHeat}
             onChange={(e) => setFilterHeat(e.target.value)}
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs rounded-lg p-2 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+            className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
           >
             <option value="ALL">Todas las temperaturas</option>
             <option value="CALIENTE">Caliente</option>
@@ -307,7 +307,7 @@ export default function InboxPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs rounded-lg p-2 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+            className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
           >
             <option value="ALL">Todos los estados</option>
             <option value="BOT">IA Gestionando</option>
@@ -380,7 +380,7 @@ export default function InboxPage() {
           <button
             onClick={onCreateLead}
             disabled={isSimulating}
-            className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:hover:bg-zinc-200 dark:text-black rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+            className="w-full py-2.5 bg-[#111111] hover:bg-[#333] text-white dark:bg-[#E9E4D8] dark:hover:bg-white dark:text-[#111111] rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
           >
             {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />}
             Nuevo Lead Random (Prueba)
@@ -389,7 +389,7 @@ export default function InboxPage() {
       </div>
 
       {/* 2. VENTANA DE CHAT CENTRAL */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#09090b] relative">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#1A1714] relative">
         {!activeChat ? (
           <div className="h-full flex flex-col items-center justify-center text-zinc-400">
             <MessageSquare size={48} className="mb-4 opacity-20" />
