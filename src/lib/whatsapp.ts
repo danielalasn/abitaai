@@ -37,9 +37,14 @@ export async function sendWhatsAppMessage(
     })
     const data = await res.json()
     if (!res.ok) {
-      console.error('[WA] sendTextMessage error:', JSON.stringify(data, null, 2))
+      console.error('[WA] ERROR DETECTADO:', {
+        status: res.status,
+        message: data.error?.message,
+        code: data.error?.code,
+        subcode: data.error?.error_subcode
+      })
     } else {
-      console.log('[WA] Message sent successfully:', data.messages?.[0]?.id)
+      console.log('[WA] Mensaje enviado correctamente. ID:', data.messages?.[0]?.id)
     }
     return data
   } catch (err) {
@@ -96,7 +101,16 @@ export async function sendWhatsAppTemplate(
       body: JSON.stringify(body),
     })
     const data = await res.json()
-    if (!res.ok) console.error('[WA] sendTemplate error:', data)
+    if (!res.ok) {
+      console.error('[WA] ERROR EN PLANTILLA:', {
+        status: res.status,
+        message: data.error?.message,
+        code: data.error?.code,
+        subcode: data.error?.error_subcode
+      })
+    } else {
+      console.log('[WA] Plantilla enviada con éxito. ID:', data.messages?.[0]?.id)
+    }
     return data
   } catch (err) {
     console.error('[WA] sendTemplate network error:', err)

@@ -68,7 +68,12 @@ export async function POST(req: NextRequest) {
     if (chatDetails?.botActive) {
         // 3. Generar respuesta de la IA
         const history = chatDetails.messages.slice(0, -1);
-        const botData = await sendTestMessage(text, history, chatDetails.lead.name || profileName);
+        const botData = await sendTestMessage(
+            text, 
+            history, 
+            chatDetails.lead.name || profileName,
+            chatDetails.lead.projectId // Pasamos el ID del proyecto explícitamente
+        );
         
         if (botData && typeof botData !== 'string') {
             // 4. Guardar respuesta y actualizar score

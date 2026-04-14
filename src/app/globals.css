@@ -46,6 +46,10 @@
 
 /* ─── Base ─── */
 @layer base {
+  *, ::before, ::after {
+    box-sizing: border-box;
+  }
+
   button, 
   [role="button"],
   a,
@@ -53,7 +57,7 @@
   input[type="checkbox"],
   input[type="radio"],
   .cursor-pointer {
-    cursor: pointer !important;
+    cursor: pointer;
   }
 }
 

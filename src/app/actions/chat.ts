@@ -9,9 +9,23 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export async function sendTestMessage(message: string, history: { role: string, content: string }[], clientName?: string) {
-  // Get the configuration from current session project
-  const project = await getCurrentProject();
+export async function sendTestMessage(
+  message: string, 
+  history: { role: string, content: string }[], 
+  clientName?: string,
+  projectId?: string
+) {
+  // Get the configuration from current session project (if available) or by ID
+  let project = null;
+  
+  if (projectId) {
+    project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { botConfig: true }
+    });
+  } else {
+    project = await getCurrentProject();
+  }
 
   const config = project?.botConfig;
 

@@ -104,7 +104,7 @@ export async function verifyWhatsappConnection(
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${whatsappPhoneId}?fields=display_phone_number,verified_name,quality_rating&access_token=${whatsappToken}`,
+      `https://graph.facebook.com/v19.0/${whatsappPhoneId}?fields=display_phone_number,verified_name,quality_rating,status,code_verification_status&access_token=${whatsappToken}`,
       { method: 'GET', cache: 'no-store' }
     )
     const data = await res.json()
@@ -116,7 +116,14 @@ export async function verifyWhatsappConnection(
 
     const phone = data.display_phone_number || 'desconocido'
     const name = data.verified_name || 'Sin nombre'
-    return { success: true, message: `✓ Conectado: ${name} (${phone})` }
+    const quality = data.quality_rating || 'PENDING'
+    const status = data.status || 'UNKNOWN'
+    
+    // Si Meta devuelve "UNKNOWN" o un estado así, es que falta algo en el registro
+    return { 
+      success: true, 
+      message: `✓ ${name} (${phone})\nEstado: ${status}\nCalidad: ${quality}` 
+    }
   } catch (e) {
     return { success: false, message: 'Error de red al contactar Meta.' }
   }
