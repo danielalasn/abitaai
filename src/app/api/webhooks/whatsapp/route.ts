@@ -72,24 +72,30 @@ export async function POST(req: NextRequest) {
             text, 
             history, 
             chatDetails.lead.name || profileName,
-            chatDetails.lead.projectId // Pasamos el ID del proyecto explícitamente
+            chatDetails.lead.projectId,
+            chatDetails.lead.agentId || undefined // Pass agent assignment if exists
         );
         
         if (botData && typeof botData !== 'string') {
-            // 4. Guardar respuesta y actualizar score
-            await saveAssistantReply(chatId, botData.reply, botData.scoreBump);
+            // 4. Guardar respuesta y actualizar score (incluye tokens para monitoreo de costos)
+            // Nota: waCategory se determina al enviar a WA, default SERVICE para respuestas del bot
+            let waCategory = 'SERVICE';
             
             // 5. Enviar mensaje REAL a WhatsApp vía Meta API
-            // En un sistema SaaS, estas credenciales DEBEN venir de la base de datos (BotConfig)
-            const phoneId = (chatDetails as any)?.lead?.project?.botConfig?.whatsappPhoneId;
-            const token = (chatDetails as any)?.lead?.project?.botConfig?.whatsappToken;
+            // Credenciales ahora vienen del Project directamente
+            const phoneId = (chatDetails as any)?.lead?.project?.whatsappPhoneId;
+            const token = (chatDetails as any)?.lead?.project?.whatsappToken;
 
             if (phoneId && token) {
-                await sendWhatsAppMessage(from, botData.reply, phoneId, token);
-                console.log(`Respuesta enviada a ${from} vía WhatsApp Cloud API`);
+                const waResult = await sendWhatsAppMessage(from, botData.reply, phoneId, token);
+                waCategory = waResult.category || 'SERVICE';
+                console.log(`Respuesta enviada a ${from} vía WhatsApp Cloud API (categoría: ${waCategory})`);
             } else {
                 console.error(`[Webhook] No hay credenciales configuradas para el proyecto del chat ${chatId}`);
             }
+
+            console.log(`[DEBUG Webhook] BEFORE saveAssistantReply: inputTokens=${botData.inputTokens} outputTokens=${botData.outputTokens} waCategory=${waCategory} scoreBump=${botData.scoreBump}`);
+            await saveAssistantReply(chatId, botData.reply, botData.scoreBump, botData.inputTokens, botData.outputTokens, waCategory);
 
             // 6. Si hubo un Handoff, desactivar el bot
             if (botData.isHandoff) {

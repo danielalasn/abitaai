@@ -8,6 +8,6 @@ export async function getCurrentProject() {
   
   return prisma.project.findFirst({
     where: { clientId: session.user.id },
-    include: { botConfig: true }
+    include: { agents: true }
   });
 }

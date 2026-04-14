@@ -42,20 +42,24 @@ export async function answerAndTrain(id: string, answer: string) {
 
   if (!questionRecord) return { success: false, message: 'Pregunta no encontrada' };
 
-  const project = await prisma.project.findUnique({
-    where: { id: questionRecord.projectId },
-    include: { botConfig: true }
-  });
+  // Find the agent that couldn't answer (or fall back to the first agent)
+  let agent = null;
+  if (questionRecord.agentId) {
+    agent = await prisma.agent.findUnique({ where: { id: questionRecord.agentId } });
+  }
+  if (!agent) {
+    agent = await prisma.agent.findFirst({ where: { projectId: questionRecord.projectId } });
+  }
 
-  if (!project?.botConfig) return { success: false, message: 'Configuración de bot no encontrada' };
+  if (!agent) return { success: false, message: 'Agente no encontrado' };
 
-  const currentFaq = project.botConfig.faq || "";
+  const currentFaq = agent.faq || "";
   const newFaqEntry = `\nP: ${questionRecord.question}\nR: ${answer}`;
   const updatedFaq = currentFaq + newFaqEntry;
 
-  // Actualizar FAQ
-  await prisma.botConfig.update({
-    where: { id: project.botConfig.id },
+  // Actualizar FAQ del agente
+  await prisma.agent.update({
+    where: { id: agent.id },
     data: { faq: updatedFaq }
   });
 

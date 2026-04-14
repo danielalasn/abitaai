@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock } from "lucide-react";
+import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
 import { useSession } from "next-auth/react";
@@ -109,6 +109,7 @@ export default function InboxPage() {
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [isInboxSidebarOpen, setIsInboxSidebarOpen] = useState(true);
 
   // Refs para control de estado optimista y polling
   const pendingOptimistic = useRef<Set<string>>(new Set());
@@ -422,7 +423,7 @@ export default function InboxPage() {
 
         const botData = await sendTestMessage(msg, history, chatDetails.lead.name || undefined);
         if (botData && typeof botData !== 'string') {
-          await saveAssistantReply(chatId, botData.reply, botData.scoreBump);
+          await saveAssistantReply(chatId, botData.reply, botData.scoreBump, botData.inputTokens, botData.outputTokens, 'SERVICE');
 
           if (botData.isHandoff) {
             await requestHandoff(chatId);
@@ -453,7 +454,8 @@ export default function InboxPage() {
       role: 'agent',
       content: msgContent,
       createdAt: new Date().toISOString(),
-      status: 'pending'
+      status: 'pending',
+      sendError: null as string | null,
     };
 
     // Registrar como en vuelo → bloquea el polling
@@ -468,26 +470,39 @@ export default function InboxPage() {
     // Todo lo demás en background
     (async () => {
       try {
-        await saveAgentMessage(chatId, msgContent);
+        const result = await saveAgentMessage(chatId, msgContent);
 
-        // Marcar como enviado → aparece el cheque ✓
-        setActiveChat((prev: any) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            messages: prev.messages.map((m: any) =>
-              m.id === temporaryId ? { ...m, status: 'sent' } : m
-            )
-          };
-        });
+        if (result.success) {
+          // Marcar como enviado → aparece el cheque ✓
+          setActiveChat((prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              messages: prev.messages.map((m: any) =>
+                m.id === temporaryId ? { ...m, status: 'sent' } : m
+              )
+            };
+          });
+        } else {
+          // Marcar como FALLIDO → aparece ⚠ con el error de Meta
+          setActiveChat((prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              messages: prev.messages.map((m: any) =>
+                m.id === temporaryId ? { ...m, status: 'failed', sendError: result.error } : m
+              )
+            };
+          });
+        }
 
-        // Desbloquear el polling DESPUÉS de confirmar el cheque
+        // Desbloquear el polling DESPUÉS de confirmar el estado
         pendingOptimistic.current.delete(temporaryId);
         syncChatsList();
       } catch (error) {
         console.error(error);
         pendingOptimistic.current.delete(temporaryId);
-        // Eliminar el mensaje optimista si falló
+        // Eliminar el mensaje optimista si falló completamente (error de red, etc.)
         setActiveChat((prev: any) => {
           if (!prev) return prev;
           return { ...prev, messages: prev.messages.filter((m: any) => m.id !== temporaryId) };
@@ -528,8 +543,8 @@ export default function InboxPage() {
   return (
     <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* 1. SIDEBAR DE CHATS */}
-      <div className="w-[340px] border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col shrink-0">
-        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#E9E4D8] dark:bg-[#1A1714]">
+      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col transition-all duration-300 ease-in-out ${isInboxSidebarOpen ? 'w-[340px]' : 'w-0 opacity-0 pointer-events-none'}`}>
+        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#E9E4D8] dark:bg-[#1A1714] min-w-[340px]">
           {selectedIds.size > 0 ? (
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center gap-3">
@@ -736,6 +751,12 @@ export default function InboxPage() {
           <>
             <header className="h-16 px-6 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-[#E9E4D8]/80 dark:bg-[#111111]/10 backdrop-blur-md">
               <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setIsInboxSidebarOpen(!isInboxSidebarOpen)}
+                  className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors"
+                >
+                  {isInboxSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+                </button>
                 <div className="h-10 w-10 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-bold shadow-sm">
                   {activeChat.lead.name?.[0]?.toUpperCase() || 'a'}
                 </div>
@@ -810,7 +831,7 @@ export default function InboxPage() {
                         : isBot
                           ? 'bg-[#F36A2D] text-white rounded-tr-sm shadow-md'
                           : 'bg-[#1A1714] text-white dark:bg-[#EDE9E0] dark:text-[#111111] rounded-tr-sm shadow-md'
-                        } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'}`}>
+                        } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${msg.status === 'failed' ? 'ring-2 ring-red-500/50' : ''}`}>
                         <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                         <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
                           }`}>
@@ -821,11 +842,23 @@ export default function InboxPage() {
                               hour12: true
                             })}
                           </span>
-                          {(isAgent || isBot) && msg.status !== 'pending' && (
+                          {(isAgent || isBot) && msg.status === 'failed' && (
+                            <AlertCircle size={10} className="text-red-400" />
+                          )}
+                          {(isAgent || isBot) && msg.status !== 'pending' && msg.status !== 'failed' && (
                             <Check size={10} className="opacity-100" />
                           )}
                         </div>
                       </div>
+                      {/* Error banner debajo de la burbuja */}
+                      {msg.status === 'failed' && msg.sendError && (
+                        <div className="mt-1 px-3 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl max-w-full">
+                          <p className="text-[10px] font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
+                            <AlertCircle size={10} /> No se envió por WhatsApp
+                          </p>
+                          <p className="text-[10px] text-red-500 dark:text-red-400/80 mt-0.5 break-words">{msg.sendError}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

@@ -13,24 +13,36 @@ export async function sendTestMessage(
   message: string, 
   history: { role: string, content: string }[], 
   clientName?: string,
-  projectId?: string
+  projectId?: string,
+  agentId?: string
 ) {
-  // Get the configuration from current session project (if available) or by ID
+  // Get project
   let project = null;
   
   if (projectId) {
     project = await prisma.project.findUnique({
       where: { id: projectId },
-      include: { botConfig: true }
+      include: { agents: true }
     });
   } else {
     project = await getCurrentProject();
   }
 
-  const config = project?.botConfig;
+  if (!project) {
+    return "No se encontró el proyecto. Verifica tu sesión.";
+  }
+
+  // Find the right agent
+  let config = null;
+  if (agentId) {
+    config = project.agents?.find((a: any) => a.id === agentId && a.isActive);
+  }
+  if (!config) {
+    config = project.agents?.find((a: any) => a.isActive);
+  }
 
   if (!config) {
-    return "No se ha configurado el bot. Por favor entra a Settings y guarda la configuración primero.";
+    return "No se ha configurado ningun agente. Por favor entra a Settings y crea un agente primero.";
   }
 
   let scoringText = "No hay reglas de calificación definidas.";
@@ -90,12 +102,22 @@ A menos que el cliente haya preguntado EXPRESAMENTE por "precios", "costos", "cu
 2. Si piden "más información", limítate a mencionar la ubicación y las amenidades principales, y pregunta qué tipo de espacio buscan (estudio, suite, etc) ANTES de dar cualquier número.
 
 INSTRUCCIÓN ESPECIAL DE TRANSFERENCIA A HUMANO:
-1. DETECCIÓN: Si el cliente solicita hablar con una persona, asesor, agente, o humano (ej: "asesor", "quiero hablar con alguien"), NO actives la transferencia de inmediato.
-2. PREGUNTA: Tu primera respuesta debe ser ofrecer la ayuda amablemente: "¿Te gustaría que te transfiera con un asesor humano para que te ayude personalmente?".
-3. ACTIVACIÓN: DEBES incluir al final del mensaje la etiqueta exacta [ACTION: HANDOFF] en estos dos casos:
-   a) Si el cliente responde afirmativamente (ej: "Sí", "Por favor", "claro") a tu pregunta de transferencia.
-   b) Si el flujo de la conversación llega a un cierre natural donde prometes que un asesor contactará al cliente (ej: "Te contacto con un asesor para que veas la propiedad").
-4. REGLA DE ORO: NUNCA menciones que "un asesor te contactará" sin poner [ACTION: HANDOFF] al final. Si lo prometes, debes activarlo.
+1. DETECCIÓN DE INTENCIÓN: Si el cliente solicita hablar con una persona, asesor, agente, o humano por PRIMERA vez:
+   - NO actives la transferencia de inmediato.
+   - PREGUNTA obligatoriamente: "¿Te gustaría que te transfiera con un asesor humano para que te ayude personalmente?"
+2. DETECCIÓN DE CONFIRMACIÓN (¡CRÍTICO — LEE ESTO CON MÁXIMA PRIORIDAD!):
+   Revisa TODO el historial de conversación. Si en CUALQUIER turno anterior TÚ (assistant) ya hiciste la pregunta de transferencia (mencionaste "asesor", "transferir", "humano", "persona real"):
+   - Y el cliente responde CUALQUIER cosa afirmativa (ej: "Sí", "Dale", "Por favor", "Ok", "Bueno", "Quiero", "Claro", "Ya", "Pues sí", incluso un simple "sí"):
+   - DEBES activar la transferencia DE INMEDIATO incluyendo la etiqueta [ACTION: HANDOFF] al final de tu respuesta.
+   - Di algo como: "Perfecto, te estoy transfiriendo ahora mismo con un asesor especialista. Un momento por favor."
+   - TIENES PROHIBIDO volver a preguntar "¿quieres que te transfiera?" si ya lo preguntaste antes. Eso irrita al cliente.
+3. ANTI-REPETICIÓN (¡IMPORTANTÍSIMO!): Revisa el historial. Si ya ofreciste la transferencia en algún mensaje previo, NO vuelvas a ofrecer la transferencia. Si el cliente continúa chateando sin confirmar, simplemente sigue ayudándole normalmente.
+4. CIERRE NATURAL: Si el flujo llega a un punto donde prometes contacto humano (ej: "Un asesor te contactará"), DEBES incluir [ACTION: HANDOFF] al final.
+REGLA DE ORO: Si prometes que alguien lo atenderá o confirmas la transferencia, la etiqueta [ACTION: HANDOFF] es OBLIGATORIA. NUNCA preguntes dos veces si quiere la transferencia.
+
+REGLA DE FORMATO VISUAL (¡MANDATORIA!): 
+- NUNCA uses doble asteriscos (**texto**) para negritas. WhatsApp NO los reconoce.
+- USA SIEMPRE un solo asterisco (*texto*) para poner palabras en negrita.
 
 SISTEMA DE CALIFICACIÓN (HEATMAP SCORE):
 Tu trabajo en segundo plano también es calificar el interés del cliente ("Heatmap"). Revisa estas reglas dadas por el dueño:
@@ -124,11 +146,16 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
     messages.push({ role: 'user', content: message });
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: 1024,
       system: systemPrompt,
       messages: messages,
     });
+
+    // Capturar uso de tokens para monitoreo de costos
+    const inputTokens = response.usage?.input_tokens || 0;
+    const outputTokens = response.usage?.output_tokens || 0;
+    console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Total: ${inputTokens + outputTokens}`);
 
     const rawReply = response.content[0].type === 'text' ? response.content[0].text : "No hubo respuesta de texto";
     
@@ -146,7 +173,7 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
       // Deduplicación: Revisar si la misma pregunta ya se guardó hace poco
       const existing = await prisma.unansweredQuestion.findFirst({
         where: {
-          projectId: config.projectId,
+          projectId: project.id,
           question: question,
           createdAt: {
             gte: new Date(Date.now() - 5 * 60 * 1000) // últimos 5 minutos
@@ -158,9 +185,10 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
         console.log(`[DEBUG] Intentando guardar PREGUNTA: "${question}" con RESPUESTA: "${reply}"`);
         await prisma.unansweredQuestion.create({
           data: {
-            projectId: config.projectId,
+            projectId: project.id,
+            agentId: config.id,
             question: question,
-            botAnswer: reply || rawReply // Fallback por si el reply limpio queda vacío
+            botAnswer: reply || rawReply
           }
         });
         console.log(`[DEBUG] Guardado exitoso en DB.`);
@@ -175,10 +203,10 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
       console.log(`Heatmap Score Detectado: ${scoreBump}`);
     }
 
-    return { reply, isHandoff, scoreBump };
+    return { reply, isHandoff, scoreBump, inputTokens, outputTokens };
 
   } catch (error: any) {
     console.error("AI Error:", error);
-    return { reply: `Error conectando con la IA: ${error.message}`, isHandoff: false, scoreBump: 0 };
+    return { reply: `Error conectando con la IA: ${error.message}`, isHandoff: false, scoreBump: 0, inputTokens: 0, outputTokens: 0 };
   }
 }

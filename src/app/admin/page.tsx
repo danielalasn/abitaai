@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut } from 'lucide-react';
-import { getClients, createClient, updateBotConfig, updateClient, deleteClient } from '@/app/actions/admin';
+import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw } from 'lucide-react';
+import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, type ProjectUsageStats } from '@/app/actions/admin';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -22,7 +22,35 @@ export default function AdminPage() {
 
   // Modal / Tab state
   const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot' | 'usage'>('dashboard');
+  const [isRefreshingClient, setIsRefreshingClient] = useState(false);
+
+  const handleRefreshClient = async () => {
+    if (!selectedClient) return;
+    setIsRefreshingClient(true);
+    try {
+      const data = await getClients();
+      setClients(data);
+      const updatedClient = data.find((c: any) => c.id === selectedClient.id);
+      if (updatedClient) {
+        setSelectedClient(updatedClient);
+        // Refresh usage stats too
+        const project = updatedClient.projects?.[0];
+        if (project?.id) {
+          const stats = await getUsageStats(project.id);
+          setUsageStats(stats);
+        }
+      }
+    } catch (err) {
+      console.error("Error refreshing client info:", err);
+    } finally {
+      setIsRefreshingClient(false);
+    }
+  };
+
+  // Usage / Cost state
+  const [usageStats, setUsageStats] = useState<ProjectUsageStats | null>(null);
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
 
   // Edit Config state
   const [configData, setConfigData] = useState<any>({});
@@ -93,7 +121,7 @@ export default function AdminPage() {
 
     // Init Bot Config tab
     const project = client.projects?.[0];
-    const initialConfig = project?.botConfig || {};
+    const initialConfig = project?.agents?.[0] || {};
     setConfigData({
       identity: initialConfig.identity || '',
       instructions: initialConfig.instructions || '',
@@ -105,6 +133,16 @@ export default function AdminPage() {
       whatsappPhoneId: initialConfig.whatsappPhoneId || '',
       whatsappBusinessId: initialConfig.whatsappBusinessId || '',
     });
+
+    // Preload usage stats
+    setUsageStats(null);
+    if (project?.id) {
+      setIsLoadingUsage(true);
+      getUsageStats(project.id).then(stats => {
+        setUsageStats(stats);
+        setIsLoadingUsage(false);
+      }).catch(() => setIsLoadingUsage(false));
+    }
   };
 
   const handleSaveConfig = async () => {
@@ -348,6 +386,15 @@ export default function AdminPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleRefreshClient} 
+                  disabled={isRefreshingClient}
+                  className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors disabled:opacity-50"
+                  title="Refrescar datos"
+                >
+                  <RefreshCw size={20} className={isRefreshingClient ? "animate-spin text-purple-600" : ""} />
+                </button>
+                <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
                 <button onClick={() => setSelectedClient(null)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors">
                   <X size={24} />
                 </button>
@@ -378,6 +425,13 @@ export default function AdminPage() {
                 >
                   <Settings size={18} />
                   Bot Config
+                </button>
+                <button 
+                  onClick={() => setActiveTab('usage')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'usage' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                >
+                  <CreditCard size={18} />
+                  Consumo
                 </button>
               </div>
 
@@ -574,6 +628,134 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* --- TAB: USAGE / CONSUMO --- */}
+                {activeTab === 'usage' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Consumo y Costos</h3>
+                      <p className="text-sm text-zinc-500 mt-1">Desglose de créditos consumidos en IA (Claude) y WhatsApp (Meta).</p>
+                    </div>
+
+                    {isLoadingUsage ? (
+                      <div className="flex items-center justify-center py-16">
+                        <Loader2 size={32} className="animate-spin text-purple-600" />
+                      </div>
+                    ) : usageStats ? (
+                      <>
+                        {/* Costo Total Estimado */}
+                        <div className="bg-gradient-to-br from-purple-600 to-indigo-700 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                          <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <DollarSign size={100} />
+                          </div>
+                          <div className="relative z-10">
+                            <p className="text-purple-200 text-xs font-bold uppercase tracking-widest">Costo Total Estimado</p>
+                            <p className="text-4xl font-bold mt-2">${usageStats.totalEstimatedCostUsd.toFixed(4)}</p>
+                            <p className="text-purple-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.5 y Meta WA API (LATAM).</p>
+                          </div>
+                        </div>
+
+                        {/* AI Section */}
+                        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+                          <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                            <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
+                              <Cpu size={16} />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Inteligencia Artificial (Claude 4.5)</h4>
+                              <p className="text-[10px] text-zinc-500">$3.00/MTok entrada · $15.00/MTok salida</p>
+                            </div>
+                            <div className="ml-auto">
+                              <span className="text-sm font-bold text-blue-600 dark:text-blue-400">${usageStats.estimatedAiCostUsd.toFixed(4)}</span>
+                            </div>
+                          </div>
+                          <div className="p-6 grid grid-cols-2 gap-6">
+                            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Entrada</p>
+                              <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalInputTokens.toLocaleString()}</p>
+                              <p className="text-[10px] text-zinc-400 mt-1">Prompt + historial de conversación</p>
+                            </div>
+                            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Salida</p>
+                              <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalOutputTokens.toLocaleString()}</p>
+                              <p className="text-[10px] text-zinc-400 mt-1">Respuestas generadas por la IA</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* WhatsApp Section */}
+                        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+                          <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                            <div className="h-8 w-8 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg flex items-center justify-center">
+                              <Phone size={16} />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">WhatsApp (Meta API)</h4>
+                              <p className="text-[10px] text-zinc-500">Precios por conversación según categoría LATAM</p>
+                            </div>
+                            <div className="ml-auto">
+                              <span className="text-sm font-bold text-green-600 dark:text-green-400">${usageStats.estimatedWaCostUsd.toFixed(4)}</span>
+                            </div>
+                          </div>
+                          <div className="p-6 space-y-4">
+                            {/* Service */}
+                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 bg-green-500 rounded-full" />
+                                <div>
+                                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">Service</p>
+                                  <p className="text-[10px] text-zinc-500">Respuestas dentro de la ventana 24h (gratis)</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waServiceMessages}</p>
+                                <p className="text-[10px] text-green-600 font-medium">$0.00</p>
+                              </div>
+                            </div>
+
+                            {/* Marketing */}
+                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 bg-orange-500 rounded-full" />
+                                <div>
+                                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">Marketing</p>
+                                  <p className="text-[10px] text-zinc-500">Plantillas de campañas ($0.0520/msj)</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waMarketingMessages}</p>
+                                <p className="text-[10px] text-orange-600 font-medium">${(usageStats.waMarketingMessages * 0.0520).toFixed(4)}</p>
+                              </div>
+                            </div>
+
+                            {/* Utility */}
+                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                              <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                                <div>
+                                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">Utility</p>
+                                  <p className="text-[10px] text-zinc-500">Confirmaciones, alertas ($0.0080/msj)</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waUtilityMessages}</p>
+                                <p className="text-[10px] text-blue-600 font-medium">${(usageStats.waUtilityMessages * 0.0080).toFixed(4)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-16 flex flex-col items-center justify-center text-center">
+                        <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4">
+                          <CreditCard size={32} />
+                        </div>
+                        <h3 className="font-semibold text-zinc-900 dark:text-white">Sin datos de consumo</h3>
+                        <p className="text-sm text-zinc-500 mt-1 max-w-sm">Aún no hay mensajes registrados para este proyecto.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -40,11 +40,7 @@ export async function getChatMessages(chatId: string) {
     include: {
       lead: {
         include: {
-          project: {
-            include: {
-              botConfig: true
-            }
-          }
+          project: true
         }
       },
       messages: {
@@ -95,10 +91,7 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
   let project: any = null;
 
   if (phoneId) {
-    const config = await prisma.botConfig.findFirst({ where: { whatsappPhoneId: phoneId } });
-    if (config) {
-      project = await prisma.project.findUnique({ where: { id: config.projectId } });
-    }
+    project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
   }
 
   if (!project) {
@@ -110,6 +103,12 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
   }
   
   if (!project) throw new Error("No se encontró ningún proyecto.");
+
+  // Buscar todos los agentes activos del proyecto para decidir si auto-asignar
+  const activeAgents = await prisma.agent.findMany({
+    where: { projectId: project.id, isActive: true },
+    select: { id: true }
+  });
 
   // Buscar o crear Lead
   let currentLead = await prisma.lead.findFirst({
@@ -126,6 +125,16 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
       },
       include: { chat: true }
     });
+  }
+
+  // REGLA DE NEGOCIO: Si el lead no tiene agente y solo hay uno disponible, asignarlo de inmediato
+  if (!currentLead.agentId && activeAgents.length === 1) {
+    currentLead = await prisma.lead.update({
+      where: { id: currentLead.id },
+      data: { agentId: activeAgents[0].id },
+      include: { chat: true }
+    });
+    console.log(`[Simulate] Auto-asignado único agente (${activeAgents[0].id}) al lead ${currentLead.id}`);
   }
 
   // Buscar o crear Chat
@@ -156,12 +165,22 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
 }
 
 // Guarda la respuesta generada por la IA en la BD
-export async function saveAssistantReply(chatId: string, text: string, scoreBump: number = 0) {
+export async function saveAssistantReply(chatId: string, text: string, scoreBump: number = 0, inputTokens: number = 0, outputTokens: number = 0, waCategory: string = 'SERVICE') {
+  // Forzar valores explícitos para evitar undefined/null que Prisma convierte a NULL
+  const safeInputTokens = inputTokens ?? 0;
+  const safeOutputTokens = outputTokens ?? 0;
+  const safeWaCategory = waCategory || 'SERVICE';
+  
+  console.log(`[saveAssistantReply] chatId=${chatId} inputTokens=${safeInputTokens} outputTokens=${safeOutputTokens} waCategory=${safeWaCategory} (raw: ${inputTokens}/${outputTokens}/${waCategory})`);
+  
   await prisma.message.create({
     data: {
       chatId,
       role: 'assistant',
-      content: text
+      content: text,
+      inputTokens: safeInputTokens,
+      outputTokens: safeOutputTokens,
+      waCategory: safeWaCategory,
     }
   });
   
@@ -210,25 +229,22 @@ export async function saveAssistantReply(chatId: string, text: string, scoreBump
 }
 
 // Guarda respuestas y acciones del Agente Humano en el frontend (bot desactivado)
-export async function saveAgentMessage(chatId: string, text: string) {
-  // 1. Guardar en BD local
-  await prisma.message.create({
-    data: { chatId, role: 'agent', content: text }
-  });
-  
+// Retorna { success, error } para que el UI muestre errores de envío al usuario
+export async function saveAgentMessage(chatId: string, text: string): Promise<{ success: boolean; error?: string }> {
   const chat = await prisma.chat.update({
     where: { id: chatId },
     data: { lastActiveAt: new Date() },
     include: { 
       lead: { 
-        include: { 
-          project: { 
-            include: { botConfig: true } 
-          } 
+        include: {           project: true
         } 
       } 
     }
   });
+
+  let waCategory: string | null = null;
+  let waSendSuccess = true;
+  let waSendError: string | undefined;
 
   if (chat?.leadId) {
     // Si un agente habla, ya no es "NEEDS_AGENT", pasa a "IN_PROGRESS"
@@ -239,18 +255,36 @@ export async function saveAgentMessage(chatId: string, text: string) {
 
     // 2. Enviar mensaje REAL a WhatsApp vía Meta API
     const phone = chat.lead.phone;
-    const phoneId = chat.lead.project?.botConfig?.whatsappPhoneId;
-    const token = chat.lead.project?.botConfig?.whatsappToken;
+    const phoneId = chat.lead.project?.whatsappPhoneId;
+    const token = chat.lead.project?.whatsappToken;
 
     if (phone && phoneId && token) {
-        await sendWhatsAppMessage(phone, text, phoneId, token);
-        console.log(`[Manual Agent] Mensaje enviado a ${phone}`);
+        const result = await sendWhatsAppMessage(phone, text, phoneId, token);
+        waSendSuccess = result.success;
+        waCategory = result.category;
+
+        if (!result.success) {
+          const errMsg = result.raw?.error?.message || 'Error desconocido al enviar mensaje';
+          const errCode = result.raw?.error?.code || '';
+          waSendError = `WhatsApp Error${errCode ? ` (${errCode})` : ''}: ${errMsg}`;
+          console.error(`[Manual Agent] FALLO al enviar a ${phone}: ${waSendError}`);
+        } else {
+          console.log(`[Manual Agent] Mensaje enviado a ${phone} (categoría: ${waCategory})`);
+        }
     } else {
+        waSendSuccess = false;
+        waSendError = 'No hay credenciales de WhatsApp configuradas. Ve a Ajustes y configura el Phone Number ID y el Token.';
         console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas en los ajustes del bot para este proyecto.');
     }
   }
 
+  // Guardar en BD local — el mensaje se guarda siempre para que quede en el historial
+  await prisma.message.create({
+    data: { chatId, role: 'agent', content: text, waCategory }
+  });
+
   revalidatePath('/');
+  return { success: waSendSuccess, error: waSendError };
 }
 
 // Archiva el chat de la bandeja (NO borra el lead, mensajes ni datos de métricas)
@@ -310,13 +344,10 @@ export async function startIndividualChatAction(
   variables: Record<string, string>,
   templateText: string
 ) {
-  const project = await prisma.project.findFirst({
-    include: { botConfig: true }
-  });
+  const project = await getCurrentProject();
   if (!project) throw new Error('No se encontró el proyecto base.');
-  const config = project.botConfig;
   
-  if (!config?.whatsappPhoneId || !config?.whatsappToken) {
+  if (!project.whatsappPhoneId || !project.whatsappToken) {
     throw new Error('Configura el Phone Number ID y el CRM Token en Ajustes antes de iniciar chats.');
   }
 
@@ -359,21 +390,29 @@ export async function startIndividualChatAction(
   }
 
   // 3. Enviar vía WhatsApp Cloud API
-  await sendWhatsAppTemplate(
+  const waResult = await sendWhatsAppTemplate(
     cleanPhone,
     templateName,
     languageCode,
     components as any,
-    config.whatsappPhoneId,
-    config.whatsappToken
+    project.whatsappPhoneId!,
+    project.whatsappToken!
   );
+
+  // Si el envío falló, lanzar error para que el UI lo muestre al usuario
+  if (!waResult.success) {
+    const errMsg = waResult.raw?.error?.message || 'Error desconocido al enviar plantilla';
+    const errCode = waResult.raw?.error?.code || '';
+    throw new Error(`WhatsApp Error${errCode ? ` (${errCode})` : ''}: ${errMsg}`);
+  }
 
   // 4. Guardar mensaje en el historial (como agente ya que es una acción proactiva nuestra)
   await prisma.message.create({
     data: { 
       chatId: chat.id, 
       role: 'agent', 
-      content: previewText 
+      content: previewText,
+      waCategory: waResult.category || 'MARKETING'
     }
   });
 

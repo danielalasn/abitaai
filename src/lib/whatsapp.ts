@@ -5,17 +5,29 @@
  */
 
 // ──────────────────────────────────────────────
+// Result type for all WA send operations
+// ──────────────────────────────────────────────
+export interface WaSendResult {
+  success: boolean
+  messageId: string | null
+  /** WhatsApp billing category: SERVICE (free within 24h), MARKETING, UTILITY */
+  category: 'SERVICE' | 'MARKETING' | 'UTILITY' | null
+  raw: any
+}
+
+// ──────────────────────────────────────────────
 // Send a FREE-TEXT message (only valid inside a 24h session window)
+// These are always categorised as SERVICE by Meta
 // ──────────────────────────────────────────────
 export async function sendWhatsAppMessage(
   to: string,
   text: string,
   phoneNumberId: string,
   accessToken: string
-) {
+): Promise<WaSendResult> {
   if (!accessToken || !phoneNumberId) {
     console.error('[WA] Missing credentials — skipping send')
-    return null
+    return { success: false, messageId: null, category: null, raw: null }
   }
 
   const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
@@ -43,13 +55,16 @@ export async function sendWhatsAppMessage(
         code: data.error?.code,
         subcode: data.error?.error_subcode
       })
+      return { success: false, messageId: null, category: null, raw: data }
     } else {
-      console.log('[WA] Mensaje enviado correctamente. ID:', data.messages?.[0]?.id)
+      const msgId = data.messages?.[0]?.id || null
+      console.log('[WA] Mensaje enviado correctamente. ID:', msgId)
+      // Text messages within 24h window are always SERVICE
+      return { success: true, messageId: msgId, category: 'SERVICE', raw: data }
     }
-    return data
   } catch (err) {
     console.error('[WA] sendTextMessage network error:', err)
-    return null
+    return { success: false, messageId: null, category: null, raw: null }
   }
 }
 
@@ -70,11 +85,13 @@ export async function sendWhatsAppTemplate(
   languageCode: string = 'es',
   components: TemplateComponent[],
   phoneNumberId: string,
-  accessToken: string
-) {
+  accessToken: string,
+  /** Override the default category. Templates are MARKETING by default. */
+  templateCategory: 'MARKETING' | 'UTILITY' = 'MARKETING'
+): Promise<WaSendResult> {
   if (!accessToken || !phoneNumberId) {
     console.error('[WA] Missing credentials — skipping template send')
-    return null
+    return { success: false, messageId: null, category: null, raw: null }
   }
 
   const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
@@ -108,13 +125,15 @@ export async function sendWhatsAppTemplate(
         code: data.error?.code,
         subcode: data.error?.error_subcode
       })
+      return { success: false, messageId: null, category: null, raw: data }
     } else {
-      console.log('[WA] Plantilla enviada con éxito. ID:', data.messages?.[0]?.id)
+      const msgId = data.messages?.[0]?.id || null
+      console.log('[WA] Plantilla enviada con éxito. ID:', msgId)
+      return { success: true, messageId: msgId, category: templateCategory, raw: data }
     }
-    return data
   } catch (err) {
     console.error('[WA] sendTemplate network error:', err)
-    return null
+    return { success: false, messageId: null, category: null, raw: null }
   }
 }
 
@@ -129,7 +148,7 @@ export async function getApprovedTemplates(
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${businessId}/message_templates?status=APPROVED&fields=name,components,language&limit=100`,
+      `https://graph.facebook.com/v19.0/${businessId}/message_templates?status=APPROVED&fields=name,components,language,category&limit=100`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: 'no-store',

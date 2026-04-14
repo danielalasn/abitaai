@@ -12,7 +12,7 @@ export async function getClients() {
     include: {
       projects: {
         include: {
-          botConfig: true,
+          agents: true,
           _count: {
             select: { leads: true, campaigns: true }
           }
@@ -70,8 +70,12 @@ export async function createClient(data: { name: string, email: string, password
       projects: {
         create: {
           name: 'Proyecto Principal',
-          botConfig: {
-            create: {} // config inicial vacía
+          agents: {
+            create: {
+              name: 'Agente Principal',
+              identity: 'You are a helpful and polite virtual assistant.',
+              instructions: 'Answer concisely and guide users to buy our products.',
+            }
           }
         }
       }
@@ -83,16 +87,23 @@ export async function createClient(data: { name: string, email: string, password
 }
 
 export async function updateBotConfig(projectId: string, configData: any) {
-  const updated = await prisma.botConfig.upsert({
-    where: { projectId },
-    update: configData,
-    create: {
-      projectId,
-      ...configData
-    }
-  });
-  revalidatePath('/admin');
-  return updated;
+  // Find the first agent for this project
+  let agent = await prisma.agent.findFirst({ where: { projectId } });
+  
+  if (agent) {
+    const updated = await prisma.agent.update({
+      where: { id: agent.id },
+      data: configData
+    });
+    revalidatePath('/admin');
+    return updated;
+  } else {
+    const created = await prisma.agent.create({
+      data: { projectId, ...configData }
+    });
+    revalidatePath('/admin');
+    return created;
+  }
 }
 
 export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string }) {
@@ -118,4 +129,111 @@ export async function deleteClient(clientId: string) {
   });
   revalidatePath('/admin');
   return true;
+}
+
+// ──────────────────────────────────────────────
+// Consumption & Cost Tracking
+// ──────────────────────────────────────────────
+
+// Precios Claude Sonnet 4.5 (USD por 1M tokens) — actualizar si cambian
+const AI_PRICING = {
+  inputPerMillion: 3.00,    // $3.00 / 1M input tokens
+  outputPerMillion: 15.00,  // $15.00 / 1M output tokens
+}
+
+// Precios Meta WhatsApp Business API (LATAM / El Salvador approx, USD por conversación)
+const WA_PRICING = {
+  MARKETING: 0.0520,
+  UTILITY: 0.0080,
+  SERVICE: 0.0000,  // Gratis en las primeras 1,000 conversaciones/mes
+}
+
+export interface ProjectUsageStats {
+  // AI (Claude)
+  totalInputTokens: number
+  totalOutputTokens: number
+  estimatedAiCostUsd: number
+
+  // WhatsApp
+  waServiceMessages: number
+  waMarketingMessages: number
+  waUtilityMessages: number
+  estimatedWaCostUsd: number
+
+  // Totals
+  totalEstimatedCostUsd: number
+}
+
+export async function getUsageStats(projectId: string): Promise<ProjectUsageStats> {
+  // AI Token aggregation — sum all assistant messages' inputTokens & outputTokens
+  const tokenAgg = await prisma.message.aggregate({
+    where: {
+      role: 'assistant',
+      chat: { lead: { projectId } }
+    },
+    _sum: {
+      inputTokens: true,
+      outputTokens: true,
+    }
+  });
+
+  const totalInputTokens = tokenAgg._sum.inputTokens || 0;
+  const totalOutputTokens = tokenAgg._sum.outputTokens || 0;
+  const estimatedAiCostUsd = 
+    (totalInputTokens / 1_000_000) * AI_PRICING.inputPerMillion +
+    (totalOutputTokens / 1_000_000) * AI_PRICING.outputPerMillion;
+
+  // WhatsApp message counts by category
+  // Nota: mensajes con waCategory = null se cuentan como SERVICE (respuestas del bot antes del fix de tracking)
+  const waServiceExplicit = await prisma.message.count({
+    where: {
+      waCategory: 'SERVICE',
+      role: { in: ['assistant', 'agent'] },
+      chat: { lead: { projectId } }
+    }
+  });
+
+  const waServiceNull = await prisma.message.count({
+    where: {
+      waCategory: null,
+      role: { in: ['assistant', 'agent'] },
+      chat: { lead: { projectId } }
+    }
+  });
+
+  const waServiceMessages = waServiceExplicit + waServiceNull;
+
+  const waMarketingMessages = await prisma.message.count({
+    where: {
+      waCategory: 'MARKETING',
+      role: { in: ['assistant', 'agent'] },
+      chat: { lead: { projectId } }
+    }
+  });
+
+  const waUtilityMessages = await prisma.message.count({
+    where: {
+      waCategory: 'UTILITY',
+      role: { in: ['assistant', 'agent'] },
+      chat: { lead: { projectId } }
+    }
+  });
+
+  const estimatedWaCostUsd = 
+    (waMarketingMessages * WA_PRICING.MARKETING) +
+    (waUtilityMessages * WA_PRICING.UTILITY) +
+    (waServiceMessages * WA_PRICING.SERVICE);
+
+  const totalEstimatedCostUsd = estimatedAiCostUsd + estimatedWaCostUsd;
+
+  return {
+    totalInputTokens,
+    totalOutputTokens,
+    estimatedAiCostUsd,
+    waServiceMessages,
+    waMarketingMessages,
+    waUtilityMessages,
+    estimatedWaCostUsd,
+    totalEstimatedCostUsd,
+  };
 }

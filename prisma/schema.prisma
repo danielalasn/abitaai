@@ -25,8 +25,14 @@ model Project {
   name      String
   createdAt DateTime @default(now())
 
+  // WhatsApp Configuration (migrado desde BotConfig)
+  whatsappToken      String?
+  whatsappPhoneId    String?
+  whatsappBusinessId String?
+
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   botConfig BotConfig?
+  agents    Agent[]
   leads               Lead[]
   campaigns           Campaign[]
   unansweredQuestions UnansweredQuestion[]
@@ -53,6 +59,7 @@ model BotConfig {
 model Lead {
   id        String   @id @default(cuid())
   projectId String
+  agentId   String?
   phone     String
   name      String?
   status    String   @default("PENDING")
@@ -64,6 +71,7 @@ model Lead {
   latestCampaignId String?
 
   project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agent          Agent?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
   latestCampaign Campaign? @relation(fields: [latestCampaignId], references: [id], onDelete: SetNull)
   chat           Chat?
 }
@@ -81,11 +89,14 @@ model Chat {
 }
 
 model Message {
-  id        String   @id @default(cuid())
-  chatId    String
-  role      String
-  content   String
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  chatId       String
+  role         String
+  content      String
+  inputTokens  Int?     // Tokens de entrada (prompt + historia)
+  outputTokens Int?     // Tokens de salida (la respuesta generada)
+  waCategory   String?  // Categoría de WhatsApp: MARKETING, UTILITY, SERVICE, etc.
+  createdAt    DateTime @default(now())
 
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
@@ -93,6 +104,7 @@ model Message {
 model Campaign {
   id              String   @id @default(cuid())
   projectId       String
+  agentId         String?
   name            String
   status          String   @default("DRAFT")
   leadCount       Int      @default(0)
@@ -102,16 +114,39 @@ model Campaign {
   createdAt       DateTime @default(now())
 
   project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agent          Agent?   @relation(fields: [agentId], references: [id], onDelete: SetNull)
   leadsGenerated Lead[]
 }
 
 model UnansweredQuestion {
   id        String   @id @default(cuid())
   projectId String
+  agentId   String?
   question  String
   botAnswer String?
   resolved  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agent     Agent?   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+}
+
+model Agent {
+  id               String  @id @default(cuid())
+  projectId        String  
+  name             String  @default("Agente Principal")
+  description      String? 
+  isActive         Boolean @default(true)
+  
+  identity         String?
+  instructions     String?
+  knowledgeData    String?
+  knowledgeRaw     String?
+  faq              String?
+  leadScoringRules String?
+  
+  project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  leads               Lead[]
+  campaigns           Campaign[]
+  unansweredQuestions UnansweredQuestion[]
 }

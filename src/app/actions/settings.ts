@@ -5,36 +5,153 @@ import { revalidatePath } from 'next/cache'
 import Anthropic from '@anthropic-ai/sdk'
 import { getCurrentProject } from '@/lib/auth-server'
 
+// ──────────────────────────────────────────────
+// Project-level: WhatsApp Config & Agents list
+// ──────────────────────────────────────────────
+
+export async function getProjectConfig() {
+  const project = await getCurrentProject();
+  if (!project) throw new Error('Project not found for current session.');
+
+  return {
+    projectId: project.id,
+    whatsappToken: project.whatsappToken || '',
+    whatsappPhoneId: project.whatsappPhoneId || '',
+    whatsappBusinessId: project.whatsappBusinessId || '',
+    agents: project.agents || [],
+  };
+}
+
+export async function saveProjectWhatsApp(
+  projectId: string,
+  whatsappToken: string,
+  whatsappPhoneId: string,
+  whatsappBusinessId: string
+) {
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { whatsappToken, whatsappPhoneId, whatsappBusinessId }
+  });
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+// ──────────────────────────────────────────────
+// Agent-level: CRUD & Config
+// ──────────────────────────────────────────────
+
+export async function getAgentConfig(agentId: string) {
+  const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+  if (!agent) throw new Error('Agent not found.');
+  return agent;
+}
+
+export async function createAgent(projectId: string, name: string, description?: string) {
+  const agent = await prisma.agent.create({
+    data: {
+      projectId,
+      name,
+      description: description || '',
+      isActive: true,
+      identity: "Eres un asistente virtual amigable y profesional.",
+      instructions: "Responde de forma concisa y guía a los usuarios.",
+      faq: "",
+    }
+  });
+  revalidatePath('/settings');
+  return agent;
+}
+
+export async function deleteAgent(agentId: string) {
+  await prisma.agent.delete({ where: { id: agentId } });
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function saveAgentConfig(
+  agentId: string,
+  name: string,
+  description: string,
+  identity: string,
+  instructions: string,
+  knowledgeData: string,
+  knowledgeRaw: string,
+  faq: string,
+  leadScoringRules: string
+) {
+  await prisma.agent.update({
+    where: { id: agentId },
+    data: {
+      name,
+      description,
+      identity,
+      instructions,
+      knowledgeData,
+      knowledgeRaw,
+      faq,
+      leadScoringRules,
+    }
+  });
+
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function toggleAgent(agentId: string, isActive: boolean) {
+  await prisma.agent.update({
+    where: { id: agentId },
+    data: { isActive }
+  });
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+// ──────────────────────────────────────────────
+// Legacy compatibility wrapper
+// (For pages that haven't been refactored yet)
+// ──────────────────────────────────────────────
+
 export async function getOrCreateDefaultConfig() {
   const project = await getCurrentProject();
+  if (!project) throw new Error('Project not found for current session.');
 
-  if (!project) {
-    throw new Error('Project not found for current session.');
-  }
-
-  // Si no tiene botConfig, lo creamos
-  if (!project.botConfig) {
-    await prisma.botConfig.create({
+  // Return the first agent as the "default" config
+  const agent = project.agents?.[0];
+  
+  if (!agent) {
+    // Create a default agent if none exists
+    const newAgent = await prisma.agent.create({
       data: {
         projectId: project.id,
+        name: 'Agente Principal',
         identity: "You are a helpful and polite virtual assistant.",
         instructions: "Answer concisely and guide users to buy our products.",
         faq: "P: ¿Cuáles son sus horarios?\nR: Estamos abiertos de 9am a 5pm."
       }
     });
     
-    // Recargar con el botconfig recien creado
-    const updatedProject = await getCurrentProject();
-    return updatedProject!.botConfig;
+    return {
+      ...newAgent,
+      projectId: project.id,
+      whatsappToken: project.whatsappToken || '',
+      whatsappPhoneId: project.whatsappPhoneId || '',
+      whatsappBusinessId: project.whatsappBusinessId || '',
+    };
   }
 
-  return project.botConfig;
+  return {
+    ...agent,
+    projectId: project.id,
+    whatsappToken: project.whatsappToken || '',
+    whatsappPhoneId: project.whatsappPhoneId || '',
+    whatsappBusinessId: project.whatsappBusinessId || '',
+  };
 }
 
 export async function saveBotConfig(
-  projectId: string, 
-  identity: string, 
-  instructions: string, 
+  projectId: string,
+  identity: string,
+  instructions: string,
   knowledgeData: string,
   knowledgeRaw: string,
   faq: string,
@@ -43,24 +160,28 @@ export async function saveBotConfig(
   whatsappPhoneId: string,
   whatsappBusinessId: string
 ) {
-  await prisma.botConfig.update({
-    where: { projectId },
-    data: { 
-      identity, 
-      instructions, 
-      knowledgeData, 
-      knowledgeRaw, 
-      faq, 
-      leadScoringRules,
-      whatsappToken,
-      whatsappPhoneId,
-      whatsappBusinessId
-    }
+  // Save WhatsApp at project level
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { whatsappToken, whatsappPhoneId, whatsappBusinessId }
   });
-  
+
+  // Save agent config on the first agent
+  const agents = await prisma.agent.findMany({ where: { projectId } });
+  if (agents.length > 0) {
+    await prisma.agent.update({
+      where: { id: agents[0].id },
+      data: { identity, instructions, knowledgeData, knowledgeRaw, faq, leadScoringRules }
+    });
+  }
+
   revalidatePath('/settings');
   return { success: true };
 }
+
+// ──────────────────────────────────────────────
+// AI Knowledge Compilation
+// ──────────────────────────────────────────────
 
 export async function compileKnowledgeWithAI(text: string) {
   if (!text.trim()) return "{}";
@@ -70,7 +191,7 @@ export async function compileKnowledgeWithAI(text: string) {
   });
 
   const response = await anthropic.messages.create({
-    model: "claude-3-5-sonnet-latest", 
+    model: "claude-sonnet-4-5-20250929", 
     max_tokens: 8192,
     system: `You are an expert Data Engineer. 
 Your ONLY job is to take the unstructured text provided by the user and convert it into a clean, highly structured JSON object. 
@@ -98,6 +219,10 @@ Output ONLY a valid JSON string. Do not include markdown wrappers or explanation
   return rawJson;
 }
 
+// ──────────────────────────────────────────────
+// WhatsApp Connection Verification
+// ──────────────────────────────────────────────
+
 export async function verifyWhatsappConnection(
   whatsappPhoneId: string,
   whatsappToken: string
@@ -106,32 +231,51 @@ export async function verifyWhatsappConnection(
     return { success: false, message: 'Faltan credenciales. Ingresa el Phone Number ID y el Access Token.' }
   }
 
+  console.log(`[WA_VERIFY] Iniciando verificación para PhoneId: ${whatsappPhoneId}`);
+
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${whatsappPhoneId}?fields=display_phone_number,verified_name,quality_rating,status,code_verification_status&access_token=${whatsappToken}`,
+      `https://graph.facebook.com/v21.0/${whatsappPhoneId}?fields=display_phone_number,verified_name,status&access_token=${whatsappToken}`,
       { method: 'GET', cache: 'no-store' }
     )
     const data = await res.json()
 
     if (!res.ok || data.error) {
-      const errMsg = data.error?.message || 'Token o Phone ID inválido.'
-      return { success: false, message: errMsg }
+      console.error('[WA_VERIFY_ERROR] Detalle completo de Meta:', JSON.stringify(data.error, null, 2));
+      
+      const error = data.error;
+      let detailedMsg = error?.message || 'Error desconocido de Meta API.';
+      
+      if (error?.code === 190) detailedMsg = "🔑 El Access Token ha expirado o es inválido. Por favor genera uno nuevo en Meta Developers.";
+      if (error?.code === 100) detailedMsg = "📱 El Phone Number ID parece ser incorrecto o no tienes permiso para verlo.";
+      if (error?.code === 33) detailedMsg = "🚫 API Blocked: Tu cuenta de WhatsApp Business tiene restricciones o el número no está bien configurado en el Business Manager.";
+      if (error?.code === 200) detailedMsg = "🔒 Permisos insuficientes. Asegúrate de que el token tenga 'whatsapp_business_management' y 'whatsapp_business_messaging'.";
+      
+      return { 
+        success: false, 
+        message: `Error (${error?.code || '??'}): ${detailedMsg}` 
+      }
     }
 
     const phone = data.display_phone_number || 'desconocido'
     const name = data.verified_name || 'Sin nombre'
-    const quality = data.quality_rating || 'PENDING'
     const status = data.status || 'UNKNOWN'
     
-    // Si Meta devuelve "UNKNOWN" o un estado así, es que falta algo en el registro
+    console.log(`[WA_VERIFY_SUCCESS] Conectado a: ${name}`);
+
     return { 
       success: true, 
-      message: `✓ ${name} (${phone})\nEstado: ${status}\nCalidad: ${quality}` 
+      message: `✅ ¡Conexión Exitosa!\n• Nombre: ${name}\n• Número: ${phone}\n• Estado: ${status}` 
     }
-  } catch (e) {
-    return { success: false, message: 'Error de red al contactar Meta.' }
+  } catch (e: any) {
+    console.error('[WA_VERIFY_CRITICAL] Error de red:', e);
+    return { success: false, message: `Error de red: ${e.message || 'No se pudo contactar con Meta.'}` }
   }
 }
+
+// ──────────────────────────────────────────────
+// User Theme
+// ──────────────────────────────────────────────
 
 export async function updateUserTheme(userId: string, theme: 'light' | 'dark') {
   await prisma.client.update({

@@ -18,11 +18,10 @@ async function getProjectWithCredentials() {
  */
 export async function fetchMetaTemplates() {
   const project = await getProjectWithCredentials();
-  const config = project.botConfig;
-  if (!config?.whatsappBusinessId || !config?.whatsappToken) {
+  if (!project.whatsappBusinessId || !project.whatsappToken) {
     return { error: 'Configura el WhatsApp Business ID y el Access Token en Configuración.', templates: [] };
   }
-  const templates = await getApprovedTemplates(config.whatsappBusinessId, config.whatsappToken);
+  const templates = await getApprovedTemplates(project.whatsappBusinessId, project.whatsappToken);
   return { templates, error: null };
 }
 
@@ -39,9 +38,8 @@ export async function createCampaign(
   leadsData: any[]
 ) {
   const project = await getProjectWithCredentials();
-  const config = project.botConfig;
 
-  if (!config?.whatsappPhoneId || !config?.whatsappToken) {
+  if (!project.whatsappPhoneId || !project.whatsappToken) {
     throw new Error('Configura el Phone Number ID y el Access Token en Configuración antes de lanzar campañas.');
   }
 
@@ -66,8 +64,8 @@ export async function createCampaign(
     languageCode,
     variableMapping,
     leadsData,
-    config.whatsappPhoneId,
-    config.whatsappToken
+    project.whatsappPhoneId,
+    project.whatsappToken
   ).catch(console.error);
 
   revalidatePath('/campaigns');
@@ -154,7 +152,7 @@ async function processCampaign(
     }
 
     // Send via WhatsApp Cloud API
-    await sendWhatsAppTemplate(
+    const waResult = await sendWhatsAppTemplate(
       cleanPhone,
       templateName,
       languageCode,
@@ -163,9 +161,9 @@ async function processCampaign(
       accessToken
     );
 
-    // Store message in DB for Inbox
+    // Store message in DB for Inbox (with WA billing category)
     await prisma.message.create({
-      data: { chatId: chat.id, role: 'agent', content: previewText }
+      data: { chatId: chat.id, role: 'agent', content: previewText, waCategory: waResult.category || 'MARKETING' }
     });
 
     await prisma.chat.update({
