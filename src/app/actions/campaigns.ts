@@ -136,7 +136,14 @@ async function processCampaign(
           phone: cleanPhone,
           projectId,
           name: nameKey ? leadData[nameKey] : `Lead ${cleanPhone.slice(-4)}`,
+          latestCampaignId: campaignId,
         }
+      });
+    } else {
+      // Si el lead ya existe, actualizamos a la campaña más reciente
+      lead = await prisma.lead.update({
+        where: { id: lead.id },
+        data: { latestCampaignId: campaignId }
       });
     }
 

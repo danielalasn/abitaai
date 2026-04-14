@@ -1,0 +1,107 @@
+'use server';
+
+import { prisma } from '@/lib/prisma';
+import { getCurrentProject } from '@/lib/auth-server';
+import Anthropic from '@anthropic-ai/sdk';
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+export async function getLeads() {
+  const project = await getCurrentProject();
+  if (!project) return [];
+
+  const leads = await prisma.lead.findMany({
+    where: { projectId: project.id },
+    include: {
+      latestCampaign: { select: { name: true } },
+      chat: {
+        include: {
+          messages: {
+            select: { role: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return leads.map((lead) => {
+    const messages = lead.chat?.messages || [];
+    const userMessages = messages.filter((m) => m.role === 'user').length;
+    const lastMessageAt = messages[0]?.createdAt || null;
+
+    return {
+      id: lead.id,
+      phone: lead.phone,
+      name: lead.name,
+      status: lead.status,
+      score: lead.score,
+      heat: lead.heat,
+      aiSummary: lead.aiSummary,
+      latestCampaignName: lead.latestCampaign?.name || null,
+      createdAt: lead.createdAt,
+      lastMessageAt,
+      userMessageCount: userMessages,
+    };
+  });
+}
+
+export async function updateLeadAISummary(chatId: string) {
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: {
+      lead: true,
+      messages: { orderBy: { createdAt: 'asc' } },
+    },
+  });
+
+  if (!chat || !chat.lead) return;
+
+  const userMessages = chat.messages.filter((m) => m.role === 'user');
+  const count = userMessages.length;
+
+  // Generate summary on 3rd user message, then every 5 after
+  const shouldUpdate = count === 3 || (count > 3 && (count - 3) % 5 === 0);
+  if (!shouldUpdate) return;
+
+  // Build conversation transcript
+  const transcript = chat.messages
+    .map((m) => {
+      const role = m.role === 'user' ? 'Cliente' : 'Asistente';
+      return `${role}: ${m.content}`;
+    })
+    .join('\n');
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 200,
+      messages: [
+        {
+          role: 'user',
+          content: `Analiza esta conversación entre un cliente y un asistente virtual. 
+Genera un resumen de máximo 2 oraciones que explique:
+1. Qué preguntó o buscaba el cliente
+2. En qué punto se detuvo la conversación o cuál fue el momento clave
+
+Responde SOLO el resumen, sin introducción ni explicación adicional. Usa español.
+
+CONVERSACIÓN:
+${transcript}`,
+        },
+      ],
+    });
+
+    const summary =
+      response.content[0].type === 'text' ? response.content[0].text.trim() : null;
+    if (!summary) return;
+
+    await prisma.lead.update({
+      where: { id: chat.lead.id },
+      data: { aiSummary: summary },
+    });
+  } catch (e) {
+    console.error('[AI Summary] Error generando resumen:', e);
+  }
+}

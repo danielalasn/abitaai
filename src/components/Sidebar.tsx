@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, BarChart3, LogOut } from 'lucide-react'
+import { Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, BarChart3, LogOut, UserCheck } from 'lucide-react'
 import ThemeSwitch from '@/components/ui/theme-switch'
 
 export function Sidebar() {
@@ -29,6 +29,7 @@ export function Sidebar() {
         {[
           { icon: Inbox,             label: 'Bandeja de entrada', href: '/' },
           { icon: BarChart3,         label: 'Dashboard',          href: '/analytics' },
+          { icon: UserCheck,         label: 'Base de Leads',      href: '/leads' },
           { icon: Megaphone,         label: 'Campañas',           href: '/campaigns' },
           { icon: BrainCircuit,      label: 'Mejora Continua',    href: '/learning' },
           { icon: Settings,          label: 'Configuración Bot',  href: '/settings' },

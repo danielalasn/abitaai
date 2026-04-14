@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { getCurrentProject } from '@/lib/auth-server';
+import { updateLeadAISummary } from '@/app/actions/leads';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats() {
@@ -12,6 +13,7 @@ export async function getActiveChats() {
 
   const chats = await prisma.chat.findMany({
     where: {
+      isArchived: false,
       lead: {
         projectId: project.id
       }
@@ -68,8 +70,6 @@ export async function toggleBotActive(chatId: string, botActive: boolean) {
       data: { status: 'PENDING' }
     });
   }
-  
-  revalidatePath('/');
 }
 
 // Apaga la IA automáticamente y marca como prioridad roja
@@ -145,10 +145,10 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
     }
   });
 
-  // Actualizar lastActiveAt
+  // Actualizar lastActiveAt y des-archivar si estaba archivado (volvió a escribir)
   await prisma.chat.update({
     where: { id: chat.id },
-    data: { lastActiveAt: new Date() }
+    data: { lastActiveAt: new Date(), isArchived: false }
   });
 
   revalidatePath('/');
@@ -201,6 +201,11 @@ export async function saveAssistantReply(chatId: string, text: string, scoreBump
     }
   }
 
+  // Disparar resumen IA de forma asíncrona (no bloquea el mensaje)
+  updateLeadAISummary(chatId).catch((e) =>
+    console.error('[AI Summary] Error en disparo asíncrono:', e)
+  );
+
   revalidatePath('/');
 }
 
@@ -248,21 +253,54 @@ export async function saveAgentMessage(chatId: string, text: string) {
   revalidatePath('/');
 }
 
-// Elimina el chat completo y toda su historia/lead
+// Archiva el chat de la bandeja (NO borra el lead, mensajes ni datos de métricas)
 export async function deleteChat(chatId: string) {
-  const chat = await prisma.chat.findUnique({
+  await prisma.chat.update({
     where: { id: chatId },
-    select: { leadId: true }
+    data: { isArchived: true }
+  });
+  revalidatePath('/');
+}
+
+// --- ACCIONES EN MASA ---
+
+// Archiva múltiples chats
+export async function bulkArchiveChats(chatIds: string[]) {
+  await prisma.chat.updateMany({
+    where: { id: { in: chatIds } },
+    data: { isArchived: true }
+  });
+  revalidatePath('/');
+}
+
+// Desactiva la IA SOLO en chats donde actualmente está activa
+export async function bulkDisableBot(chatIds: string[]) {
+  await prisma.chat.updateMany({
+    where: { id: { in: chatIds }, botActive: true },
+    data: { botActive: false }
+  });
+}
+
+// Activa la IA en todos los chats seleccionados
+export async function bulkEnableBot(chatIds: string[]) {
+  await prisma.chat.updateMany({
+    where: { id: { in: chatIds }, botActive: false },
+    data: { botActive: true }
   });
   
-  if (chat?.leadId) {
-    // Al borrar el 'lead', la base de datos borrará en cascada el chat y los mensajes.
-    await prisma.lead.delete({
-      where: { id: chat.leadId }
+  // También reiniciamos los leads a PENDING
+  const chats = await prisma.chat.findMany({
+    where: { id: { in: chatIds } },
+    select: { leadId: true }
+  });
+
+  const leadIds = chats.map(c => c.leadId).filter(Boolean) as string[];
+  if (leadIds.length > 0) {
+    await prisma.lead.updateMany({
+      where: { id: { in: leadIds } },
+      data: { status: 'PENDING' }
     });
   }
-  
-  revalidatePath('/');
 }
 // Envía una plantilla de Meta a un contacto individual (Inicia nuevo chat)
 export async function startIndividualChatAction(

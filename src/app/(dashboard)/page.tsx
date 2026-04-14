@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock } from "lucide-react";
-import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat } from "@/app/actions/inbox";
+import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -115,6 +115,10 @@ export default function InboxPage() {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+
   // Refs para control de estado optimista y polling
   const pendingOptimistic = useRef<Set<string>>(new Set());
   const activeChatIdRef = useRef<string | null>(null);
@@ -145,24 +149,37 @@ export default function InboxPage() {
   }, [activeChat?.messages]);
 
   // Cargar chats
+  // Aplica datos del servidor pero preservando cualquier estado optimista pendiente en botActive
+  const mergeChats = (latestChats: any[], prev: any[], source: string) => {
+    return latestChats.map(newChat => {
+      // Buscamos si hay CUALQUIER llave en pendingOptimistic que contenga este ID
+      const pendingKeys = Array.from(pendingOptimistic.current);
+      const isPending = pendingKeys.some(key => key.includes(newChat.id));
+      
+      if (isPending) {
+        // Si está pendiente, forzamos el valor que está actualmente en la pantalla (prev)
+        const chatEnPantalla = prev.find(p => p.id === newChat.id);
+        if (chatEnPantalla !== undefined && chatEnPantalla.botActive !== newChat.botActive) {
+          console.log(`[DEBUG - mergeChats] Bloqueando reversión en ID ${newChat.id.slice(-4)}. Servidor dice ${newChat.botActive}, mantenemos local ${chatEnPantalla.botActive}`);
+          return { ...newChat, botActive: chatEnPantalla.botActive };
+        }
+      }
+      return newChat;
+    });
+  };
+
+  // Recarga completa de la lista (con merge inteligente)
   const loadChats = async (selectId?: string) => {
     const data = await getActiveChats();
-    setChats(data);
-
-    // Solo seleccionamos el primero si realmente no hay nada seleccionado
-    // Usamos una variable auxiliar para no depender del estado que puede ser stale en el closure
-    if (selectId) {
-      loadChatDetails(selectId);
-    }
-
+    setChats(prev => mergeChats(data, prev, 'loadChats'));
+    if (selectId) loadChatDetails(selectId);
     setIsLoading(false);
   };
 
-  // Sync silencioso: solo actualiza la lista lateral SIN recargar el chat activo
-  // Usado para preservar mensajes optímistas en el chat actual
+  // Sync silencioso: solo actualiza la lista lateral (con merge inteligente)
   const syncChatsList = async () => {
     const data = await getActiveChats();
-    setChats(data);
+    setChats(prev => mergeChats(data, prev, 'syncChatsList'));
   };
 
   // Sincronizar cache cada vez que el chat activo cambie (por polling u optimismo)
@@ -193,10 +210,11 @@ export default function InboxPage() {
       if (cancelled) return;
 
       try {
-        // Sincronizar lista lateral
+        // Sincronizar lista lateral (Fusionando con estados optimistas pendientes)
         const latestChats = await getActiveChats();
         if (cancelled) return;
-        setChats(latestChats);
+        
+        setChats(prev => mergeChats(latestChats, prev, 'polling'));
 
         // Sincronizar chat activo si existe y no hay operaciones optimistas
         const currentId = activeChatIdRef.current;
@@ -269,16 +287,17 @@ export default function InboxPage() {
     const chatId = activeChat.id;
 
     // --- ACTUALIZACIÓN OPTIMISTA ---
-    // Cambiamos el estado en UI instantáneamente
-    setActiveChat((prev: any) => ({ ...prev, botActive: newStatus }));
+    // 1. Cambiamos el estado en el chat activo
+    setActiveChat((prev: any) => prev?.id === chatId ? { ...prev, botActive: newStatus } : prev);
     
-    // Bloqueamos el polling para este ID temporalmente (usando el mismo Set de los mensajes)
+    // 2. Cambiamos el estado en la lista lateral (UI instantánea)
+    setChats(prev => prev.map(c => c.id === chatId ? { ...c, botActive: newStatus } : c));
+
+    // Bloqueamos el polling para este ID temporalmente
     pendingOptimistic.current.add('toggle-' + chatId);
 
     try {
       await toggleBotActive(chatId, newStatus);
-      // Solo actualizamos la lista lateral
-      syncChatsList();
     } catch (error) {
       console.error(error);
       // Revertir si falla
@@ -298,8 +317,95 @@ export default function InboxPage() {
     if (!confirmDelete) return;
 
     await deleteChat(activeChat.id);
+    setSelectedIds(new Set());
     setActiveChat(null);
     loadChats();
+  };
+
+  // Bulk handlers
+  const handleBulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkLoading(true);
+    await bulkArchiveChats([...selectedIds]);
+    setSelectedIds(new Set());
+    if (activeChat && selectedIds.has(activeChat.id)) setActiveChat(null);
+    await loadChats();
+    setIsBulkLoading(false);
+  };
+
+  const handleBulkDisableBot = async () => {
+    if (selectedIds.size === 0) return;
+    const idsToUpdate = [...selectedIds];
+    
+    // --- OPTIMISTA ---
+    setChats(prev => prev.map(c => idsToUpdate.includes(c.id) ? { ...c, botActive: false } : c));
+    
+    // Registrar IDs como pendientes
+    idsToUpdate.forEach(id => pendingOptimistic.current.add('bulk-' + id));
+
+    if (activeChat && idsToUpdate.includes(activeChat.id)) {
+      setActiveChat((prev: any) => ({ ...prev, botActive: false }));
+    }
+    
+    setSelectedIds(new Set());
+
+    try {
+      await bulkDisableBot(idsToUpdate);
+    } catch (error) {
+      console.error(error);
+      loadChats(); 
+    } finally {
+      // Damos 5 segundos de margen para actualizaciones masivas (más pesado para la BD)
+      setTimeout(() => {
+        idsToUpdate.forEach(id => pendingOptimistic.current.delete('bulk-' + id));
+      }, 5000);
+    }
+  };
+  const handleBulkEnableBot = async () => {
+    if (selectedIds.size === 0) return;
+    const idsToUpdate = [...selectedIds];
+    
+    // --- OPTIMISTA ---
+    setChats(prev => prev.map(c => idsToUpdate.includes(c.id) ? { ...c, botActive: true } : c));
+
+    // Registrar IDs como pendientes
+    idsToUpdate.forEach(id => pendingOptimistic.current.add('bulk-' + id));
+
+    if (activeChat && idsToUpdate.includes(activeChat.id)) {
+      setActiveChat((prev: any) => ({ ...prev, botActive: true }));
+    }
+
+    setSelectedIds(new Set());
+
+    try {
+      await bulkEnableBot(idsToUpdate);
+    } catch (error) {
+      console.error(error);
+      loadChats(); 
+    } finally {
+      // 5 segundos de margen para acciones masivas
+      setTimeout(() => {
+        idsToUpdate.forEach(id => pendingOptimistic.current.delete('bulk-' + id));
+      }, 5000);
+    }
+  };
+
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredChats.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredChats.map((c: any) => c.id)));
+    }
   };
 
 
@@ -432,20 +538,74 @@ export default function InboxPage() {
     <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* 1. SIDEBAR DE CHATS */}
       <div className="w-[340px] border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col shrink-0">
-        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between">
-          <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
-            Inbox
-            <span className="bg-[#F36A2D]/10 text-[#F36A2D] text-[10px] px-2 py-0.5 rounded-full font-bold">
-              {filteredChats.length}
-            </span>
-          </h2>
-          <button 
-            onClick={() => setIsNewChatModalOpen(true)}
-            className="p-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg hover:scale-105 transition-all shadow-sm"
-            title="Nuevo Chat Individual"
-          >
-            <Plus size={18} />
-          </button>
+        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#E9E4D8] dark:bg-[#1A1714]">
+          {selectedIds.size > 0 ? (
+            <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#6F6F6F]"
+                >
+                  <Plus size={18} className="rotate-45" />
+                </button>
+                <span className="text-sm font-bold text-[#F36A2D]">{selectedIds.size} seleccionados</span>
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleBulkEnableBot}
+                  disabled={isBulkLoading}
+                  className="p-2 text-[#6F6F6F] hover:text-[#F36A2D] hover:bg-[#F36A2D]/10 rounded-xl transition-all disabled:opacity-30"
+                  title="Activar IA"
+                >
+                  <Bot size={18} />
+                </button>
+                <button
+                  onClick={handleBulkDisableBot}
+                  disabled={isBulkLoading}
+                  className="p-2 text-[#6F6F6F] hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all disabled:opacity-30"
+                  title="Pausar IA"
+                >
+                  <User size={18} />
+                </button>
+                <button
+                  onClick={handleBulkArchive}
+                  disabled={isBulkLoading}
+                  className="p-2 text-[#6F6F6F] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-30"
+                  title="Eliminar"
+                >
+                  <Trash2 size={18} />
+                </button>
+                {isBulkLoading && <Loader2 size={14} className="animate-spin text-[#F36A2D] ml-1" />}
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
+                Inbox
+                <span className="bg-[#F36A2D]/10 text-[#F36A2D] text-[10px] px-2 py-0.5 rounded-full font-bold">
+                  {filteredChats.length}
+                </span>
+              </h2>
+              <div className="flex items-center gap-2">
+                {filteredChats.length > 0 && (
+                  <button
+                    onClick={toggleSelectAll}
+                    className="p-1.5 rounded-lg text-xs font-bold text-[#6F6F6F] hover:bg-white/60 dark:hover:bg-white/5 transition-all"
+                  >
+                    ⬜
+                  </button>
+                )}
+                <button 
+                  onClick={() => setIsNewChatModalOpen(true)}
+                  className="p-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg hover:scale-105 transition-all shadow-sm"
+                  title="Nuevo Chat Individual"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="px-4 py-3 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col gap-2 bg-[#E9E4D8]/60 dark:bg-[#1A1714]">
@@ -472,7 +632,7 @@ export default function InboxPage() {
           </select>
         </div>
 
-        <div className="flex-1 overflow-y-auto w-full p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto w-full p-2 space-y-1 relative">
           {isLoading && chats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-zinc-400">
               <Loader2 className="animate-spin mb-2" size={20} />
@@ -485,15 +645,31 @@ export default function InboxPage() {
           ) : (
             filteredChats.map((chat: any) => {
               const isSelected = activeChat?.id === chat.id;
+              const isMultiSelected = selectedIds.has(chat.id);
               const isHandoff = chat.lead.status === 'NEEDS_AGENT';
               const isBot = chat.botActive;
               const isHuman = !chat.botActive && !isHandoff;
 
               return (
+                <div key={chat.id} className="relative group">
+                  {/* Checkbox */}
+                  <div
+                    onClick={(e) => toggleSelect(chat.id, e)}
+                    className={`absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all ${
+                      isMultiSelected
+                        ? 'bg-purple-600 border-purple-600'
+                        : 'border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 opacity-0 group-hover:opacity-100'
+                    }`}
+                  >
+                    {isMultiSelected && <span className="text-white text-[10px] font-bold">✓</span>}
+                  </div>
+
                 <button
-                  key={chat.id}
-                  onClick={() => loadChatDetails(chat.id)}
-                  className={`w-full text-left p-4 rounded-2xl transition-all duration-200 flex flex-col gap-1 border-1 shadow-sm ${isSelected
+                  onClick={() => { if (selectedIds.size > 0) toggleSelect(chat.id, { stopPropagation: () => {} } as any); else loadChatDetails(chat.id); }}
+                  className={`w-full text-left p-4 pl-8 rounded-2xl transition-all duration-200 flex flex-col gap-1 border-1 shadow-sm ${
+                    isMultiSelected
+                      ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600 ring-2 ring-purple-400/20'
+                      : isSelected
                     ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 ring-2 ring-blue-400/20'
                     : isHandoff
                       ? 'bg-red-50 dark:bg-red-950/30 border-red-400 dark:border-red-800'
@@ -540,6 +716,7 @@ export default function InboxPage() {
                     {chat.messages?.[0]?.content || "Sin mensajes"}
                   </div>
                 </button>
+                </div>
               );
             })
           )}
