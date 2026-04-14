@@ -131,6 +131,9 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
     });
 
     const rawReply = response.content[0].type === 'text' ? response.content[0].text : "No hubo respuesta de texto";
+    
+    // Clean up reply from tags early so we can store it
+    const reply = rawReply.replace(/\[ACTION: .+?\]/g, "").trim();
 
     // Check if the AI generated the handoff tag
     const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
@@ -140,7 +143,7 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
     if (unansweredMatch && unansweredMatch[1]) {
       const question = unansweredMatch[1].trim();
       
-      // Deduplicación: Revisar si la misma pregunta ya se guardó hace poco (evitar duplicados por re-renders o IA doble tag)
+      // Deduplicación: Revisar si la misma pregunta ya se guardó hace poco
       const existing = await prisma.unansweredQuestion.findFirst({
         where: {
           projectId: config.projectId,
@@ -152,13 +155,15 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
       });
 
       if (!existing) {
+        console.log(`[DEBUG] Intentando guardar PREGUNTA: "${question}" con RESPUESTA: "${reply}"`);
         await prisma.unansweredQuestion.create({
           data: {
             projectId: config.projectId,
-            question: question
+            question: question,
+            botAnswer: reply || rawReply // Fallback por si el reply limpio queda vacío
           }
         });
-        console.log(`Guardada pregunta sin respuesta: ${question}`);
+        console.log(`[DEBUG] Guardado exitoso en DB.`);
       }
     }
 
@@ -169,8 +174,6 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
       scoreBump = parseInt(scoreMatch[1]);
       console.log(`Heatmap Score Detectado: ${scoreBump}`);
     }
-
-    const reply = rawReply.replace(/\[ACTION: .+?\]/g, "").trim();
 
     return { reply, isHandoff, scoreBump };
 

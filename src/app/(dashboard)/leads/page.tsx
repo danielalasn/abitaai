@@ -29,17 +29,17 @@ type SortDir = 'asc' | 'desc';
 
 function HeatBadge({ heat, score }: { heat: string; score: number }) {
   if (heat === 'CALIENTE') return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 uppercase tracking-wider">
       <Flame size={11} /> {score}pts
     </span>
   );
   if (heat === 'TIBIO') return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-wider">
       <Thermometer size={11} /> {score}pts
     </span>
   );
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-wider">
       <Snowflake size={11} /> {score}pts
     </span>
   );
@@ -63,10 +63,10 @@ function formatRelative(date: Date | string | null) {
 }
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) return <ChevronsUpDown size={13} className="text-zinc-400" />;
+  if (!active) return <ChevronsUpDown size={13} className="text-[#6F6F6F]" />;
   return dir === 'asc'
-    ? <ChevronUp size={13} className="text-purple-500" />
-    : <ChevronDown size={13} className="text-purple-500" />;
+    ? <ChevronUp size={13} className="text-[#F36A2D]" />
+    : <ChevronDown size={13} className="text-[#F36A2D]" />;
 }
 
 export default function LeadsPage() {
@@ -147,200 +147,205 @@ export default function LeadsPage() {
   ];
 
   return (
-    <div className="min-h-full bg-[#F4F1EC] dark:bg-[#0E0E10] p-6 font-sans">
+    <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="h-10 w-10 rounded-xl bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-            <Users size={20} className="text-white" />
+      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
+            <Users size={18} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Base de Leads</h1>
-            <p className="text-sm text-zinc-500">Historial completo de contactos con resumen IA</p>
+            <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Base de Leads</h1>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, número o resumen..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-purple-500 transition-colors"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={load}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl hover:border-purple-400 transition-all"
-          >
-            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-            Actualizar
-          </button>
-          <button
-            onClick={exportCSV}
-            disabled={filtered.length === 0}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl shadow-md shadow-purple-500/20 transition-all"
-          >
-            <Download size={14} />
-            Exportar CSV
-          </button>
-        </div>
-      </div>
+      <div className="flex-1 overflow-auto p-8">
+        <div className="max-w-7xl mx-auto space-y-6 pb-12">
+          
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6F6F6F]" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, número o resumen..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl text-[#111111] dark:text-[#EDE9E0] placeholder-[#6F6F6F] outline-none focus:border-[#F36A2D] transition-all"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={load}
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0] rounded-2xl transition-all"
+              >
+                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                Actualizar
+              </button>
+              <button
+                onClick={exportCSV}
+                disabled={filtered.length === 0}
+                className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold bg-[#111111] dark:bg-[#EDE9E0] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:scale-100 text-white dark:text-[#111111] rounded-2xl shadow-xl shadow-black/10 transition-all"
+              >
+                <Download size={14} />
+                Exportar CSV
+              </button>
+            </div>
+          </div>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        {[
-          { label: 'Total Leads', value: leads.length, color: 'text-zinc-900 dark:text-white' },
-          { label: 'Calientes 🔥', value: leads.filter(l => l.heat === 'CALIENTE').length, color: 'text-red-600 dark:text-red-400' },
-          { label: 'Con Resumen IA', value: leads.filter(l => l.aiSummary).length, color: 'text-purple-600 dark:text-purple-400' },
-        ].map(stat => (
-          <div key={stat.label} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3">
-            <p className="text-xs text-zinc-500 font-medium">{stat.label}</p>
-            <p className={`text-2xl font-bold mt-0.5 ${stat.color}`}>{stat.value}</p>
+          {/* Stats Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              { label: 'TOTAL LEADS', value: leads.length, color: 'text-[#111111] dark:text-[#EDE9E0]' },
+              { label: 'CALIENTES 🔥', value: leads.filter(l => l.heat === 'CALIENTE').length, color: 'text-red-600' },
+              { label: 'CON RESUMEN IA', value: leads.filter(l => l.aiSummary).length, color: 'text-[#F36A2D]' },
+            ].map(stat => (
+              <div key={stat.label} className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl px-6 py-4 shadow-sm">
+                <p className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">{stat.label}</p>
+                <p className={`text-3xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="animate-spin text-purple-500" size={32} />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
-            <Users size={40} className="mb-3 opacity-30" />
-            <p className="text-sm font-medium">{search ? 'Sin resultados para esa búsqueda' : 'Aún no hay leads registrados'}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
-                  <th className="text-left px-5 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">Contacto</th>
-                  {columns.map(col => (
-                    <th
-                      key={col.key}
-                      className="text-left px-4 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-purple-600 transition-colors select-none"
-                      onClick={() => handleSort(col.key)}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {col.label}
-                        <SortIcon active={sortKey === col.key} dir={sortDir} />
-                      </div>
-                    </th>
-                  ))}
-                  <th className="text-left px-4 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">
-                    <div className="flex items-center gap-1.5">
-                      <Sparkles size={12} />
-                      Resumen IA
-                    </div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {filtered.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
-                  >
-                    {/* Contact */}
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-sm shrink-0">
-                          {lead.name ? lead.name.charAt(0).toUpperCase() : '#'}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-zinc-900 dark:text-zinc-100">
-                            {lead.name || 'Sin nombre'}
-                          </p>
-                          <div className="flex flex-col gap-1 mt-0.5">
-                            <p className="text-xs text-zinc-400 font-mono">{lead.phone}</p>
-                            {lead.latestCampaignName && (
-                              <span className="text-[10px] items-center flex w-max bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-medium">
-                                Campaña: {lead.latestCampaignName}
-                              </span>
-                            )}
+          {/* Table */}
+          <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-80 gap-4">
+                <Loader2 className="animate-spin text-[#F36A2D]" size={32} />
+                <p className="text-sm text-[#6F6F6F] font-medium">Cargando base de datos...</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-80 text-[#6F6F6F]">
+                <Users size={40} className="mb-4 opacity-20" />
+                <p className="text-sm font-bold uppercase tracking-widest">{search ? 'Sin resultados' : 'Aún no hay leads'}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[#DEDAD0] dark:border-zinc-800 bg-[#E9E4D8]/30 dark:bg-black/20">
+                      <th className="text-left px-6 py-4 text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">Contacto</th>
+                      {columns.map(col => (
+                        <th
+                          key={col.key}
+                          className="text-left px-4 py-4 text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest cursor-pointer hover:text-[#F36A2D] transition-colors select-none"
+                          onClick={() => handleSort(col.key)}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {col.label}
+                            <SortIcon active={sortKey === col.key} dir={sortDir} />
                           </div>
+                        </th>
+                      ))}
+                      <th className="text-left px-6 py-4 text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles size={12} className="text-[#F36A2D]" />
+                          Resumen IA
                         </div>
-                      </div>
-                    </td>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#DEDAD0] dark:divide-zinc-800/60">
+                    {filtered.map((lead) => (
+                      <tr
+                        key={lead.id}
+                        className="hover:bg-white dark:hover:bg-black/10 transition-colors group"
+                      >
+                        {/* Contact */}
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-2xl bg-[#F36A2D]/10 flex items-center justify-center text-[#F36A2D] font-bold text-sm shrink-0 border border-[#F36A2D]/20 shadow-sm">
+                              {lead.name ? lead.name.charAt(0).toUpperCase() : '#'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-[#111111] dark:text-[#EDE9E0]">
+                                {lead.name || 'Sin nombre'}
+                              </p>
+                              <div className="flex flex-col gap-1 mt-0.5">
+                                <p className="text-xs text-[#6F6F6F] font-mono">{lead.phone}</p>
+                                {lead.latestCampaignName && (
+                                  <span className="text-[9px] font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-[#6F6F6F] px-1.5 py-0.5 rounded-sm w-max">
+                                    {lead.latestCampaignName}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
 
-                    {/* Created At */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                        <Calendar size={13} className="shrink-0" />
-                        <span className="text-xs">{formatRelative(lead.createdAt)}</span>
-                      </div>
-                    </td>
+                        {/* Created At */}
+                        <td className="px-4 py-5">
+                          <div className="flex items-center gap-2 text-[#6F6F6F]">
+                            <Calendar size={13} className="shrink-0" />
+                            <span className="text-xs font-medium">{formatRelative(lead.createdAt)}</span>
+                          </div>
+                        </td>
 
-                    {/* Last Message */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                        <Clock size={13} className="shrink-0" />
-                        <span className="text-xs">{formatRelative(lead.lastMessageAt)}</span>
-                      </div>
-                    </td>
+                        {/* Last Message */}
+                        <td className="px-4 py-5">
+                          <div className="flex items-center gap-2 text-[#6F6F6F]">
+                            <Clock size={13} className="shrink-0" />
+                            <span className="text-xs font-medium">{formatRelative(lead.lastMessageAt)}</span>
+                          </div>
+                        </td>
 
-                    {/* Heat */}
-                    <td className="px-4 py-4">
-                      <HeatBadge heat={lead.heat} score={lead.score} />
-                    </td>
+                        {/* Heat */}
+                        <td className="px-4 py-5">
+                          <HeatBadge heat={lead.heat} score={lead.score} />
+                        </td>
 
-                    {/* Message Count */}
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                        <MessageSquare size={13} className="shrink-0" />
-                        <span className="font-medium text-zinc-800 dark:text-zinc-200">{lead.userMessageCount}</span>
-                      </div>
-                    </td>
+                        {/* Message Count */}
+                        <td className="px-4 py-5">
+                          <div className="flex items-center gap-2 text-[#6F6F6F]">
+                            <MessageSquare size={13} className="text-[#F36A2D]/40" />
+                            <span className="font-bold text-[#111111] dark:text-[#EDE9E0]">{lead.userMessageCount}</span>
+                          </div>
+                        </td>
 
-                    {/* AI Summary */}
-                    <td className="px-4 py-4 max-w-xs">
-                      {lead.aiSummary ? (
-                        <div>
-                          <p className={`text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed ${expandedSummary === lead.id ? '' : 'line-clamp-2'}`}>
-                            {lead.aiSummary}
-                          </p>
-                          {lead.aiSummary.length > 100 && (
-                            <button
-                              onClick={() => setExpandedSummary(expandedSummary === lead.id ? null : lead.id)}
-                              className="text-xs text-purple-500 hover:text-purple-700 font-medium mt-0.5"
-                            >
-                              {expandedSummary === lead.id ? 'Ver menos' : 'Ver más'}
-                            </button>
+                        {/* AI Summary */}
+                        <td className="px-6 py-5 max-w-xs">
+                          {lead.aiSummary ? (
+                            <div className="bg-black/[0.02] dark:bg-white/[0.02] p-3 rounded-2xl border border-[#DEDAD0]/40 dark:border-zinc-800/40">
+                              <p className={`text-xs text-[#6F6F6F] leading-relaxed italic ${expandedSummary === lead.id ? '' : 'line-clamp-2'}`}>
+                                "{lead.aiSummary}"
+                              </p>
+                              {lead.aiSummary.length > 100 && (
+                                <button
+                                  onClick={() => setExpandedSummary(expandedSummary === lead.id ? null : lead.id)}
+                                  className="text-[10px] font-bold text-[#F36A2D] hover:underline mt-2 uppercase tracking-widest"
+                                >
+                                  {expandedSummary === lead.id ? 'Ver menos' : 'Ver más'}
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[#6F6F6F]/40 italic">
+                              {lead.userMessageCount < 3 ? 'Menos de 3 mensajes' : 'Generando...'}
+                            </span>
                           )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-zinc-400 italic">
-                          {lead.userMessageCount < 3 ? 'Menos de 3 mensajes' : 'Generando...'}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-        {/* Footer */}
-        {!isLoading && filtered.length > 0 && (
-          <div className="px-5 py-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-            <p className="text-xs text-zinc-400">
-              Mostrando <span className="font-semibold text-zinc-600 dark:text-zinc-300">{filtered.length}</span> de <span className="font-semibold text-zinc-600 dark:text-zinc-300">{leads.length}</span> leads
-            </p>
-            <p className="text-xs text-zinc-400 flex items-center gap-1.5">
-              <Sparkles size={11} className="text-purple-400" />
-              Resúmenes generados automáticamente por IA
-            </p>
+            {/* Footer */}
+            {!isLoading && filtered.length > 0 && (
+              <div className="px-6 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between bg-[#E9E4D8]/20 dark:bg-black/10">
+                <p className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">
+                  Mostrando <span className="text-[#111111] dark:text-[#EDE9E0]">{filtered.length}</span> de <span className="text-[#111111] dark:text-[#EDE9E0]">{leads.length}</span> leads
+                </p>
+                <p className="text-[10px] text-[#6F6F6F] flex items-center gap-2 font-bold uppercase tracking-widest">
+                  <Sparkles size={11} className="text-[#F36A2D]" />
+                  Resúmenes IA Autogenerados
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

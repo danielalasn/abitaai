@@ -109,6 +109,7 @@ model UnansweredQuestion {
   id        String   @id @default(cuid())
   projectId String
   question  String
+  botAnswer String?
   resolved  Boolean  @default(false)
   createdAt DateTime @default(now())
 

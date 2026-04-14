@@ -5,10 +5,13 @@ import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, BarChart3, LogOut, UserCheck } from 'lucide-react'
 import ThemeSwitch from '@/components/ui/theme-switch'
+import { ProfileModal } from '@/components/ProfileModal'
+import { useState } from 'react'
 
 export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
 
@@ -76,7 +79,10 @@ export function Sidebar() {
 
       {/* User */}
       <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 pt-4 mt-auto">
-        <div className="flex items-center gap-3 px-2 py-2 w-full rounded-xl">
+        <button 
+          onClick={() => setIsProfileOpen(true)}
+          className="flex items-center gap-3 px-2 py-2 w-full rounded-xl hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left"
+        >
           <div className="h-8 w-8 rounded-full bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-xs font-bold shadow-sm shrink-0">
             {userInitial}
           </div>
@@ -88,8 +94,13 @@ export function Sidebar() {
               {session?.user?.email || 'email@ejemplo.com'}
             </span>
           </div>
-        </div>
+        </button>
       </div>
+
+      <ProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+      />
     </aside>
   )
 }
