@@ -54,7 +54,7 @@ export default function TestChatPage() {
       );
 
       const replyText = typeof botData === 'string' ? botData : botData.reply;
-      const agentName = typeof botData !== 'string' ? botData.agentName : undefined;
+      const agentName = typeof botData !== 'string' ? (botData as any).agentName : undefined;
       
       setMessages(prev => [...prev, { 
         role: 'assistant', 
