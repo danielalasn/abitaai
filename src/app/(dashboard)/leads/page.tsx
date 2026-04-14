@@ -79,10 +79,6 @@ export default function LeadsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login');
-  }, [status, router]);
-
   const load = useCallback(async () => {
     setIsLoading(true);
     const data = await getLeads();

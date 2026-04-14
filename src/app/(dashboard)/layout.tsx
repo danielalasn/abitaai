@@ -1,10 +1,24 @@
 import { Sidebar } from '@/components/Sidebar'
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect('/login');
+  }
+
+  // Si el usuario es el administrador principal, no tiene proyectos de cliente comunes, lo enviamos a su panel
+  if (session.user?.email === 'info@abitaai.com') {
+    redirect('/admin');
+  }
+
   return (
     <div className="flex h-dvh w-full bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans">
       <Sidebar />

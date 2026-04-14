@@ -97,15 +97,6 @@ export default function InboxPage() {
   // Cache de chats abiertos para cambio instantáneo
   const [chatsCache, setChatsCache] = useState<Record<string, any>>({});
 
-  // Redirigir si no hay sesión (en lugar de hacerlo en el Middleware)
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    } else if (status === 'authenticated' && session?.user?.email === 'info@abitaai.com') {
-      router.push('/admin');
-    }
-  }, [status, session, router]);
-
   // States para los dos inputs mockeados
   const [clientInput, setClientInput] = useState('');
   const [agentInput, setAgentInput] = useState('');
