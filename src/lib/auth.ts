@@ -11,7 +11,9 @@ export const authOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
+        console.log('[AUTH DEBUG] Intento de login para:', credentials?.email)
         if (!credentials?.email || !credentials?.password) {
+          console.log('[AUTH DEBUG] Faltan credenciales')
           return null
         }
 
@@ -21,19 +23,23 @@ export const authOptions = {
           }) as any
 
           if (!client) {
+            console.log('[AUTH DEBUG] Cliente no encontrado en DB:', credentials.email)
             return null
           }
 
           if (!client.password) {
+            console.log('[AUTH DEBUG] El cliente no tiene contraseña configurada')
             return null
           }
 
           const passwordValid = await bcrypt.compare(credentials.password, client.password)
           
           if (!passwordValid) {
+            console.log('[AUTH DEBUG] Contraseña INVALIDA para:', credentials.email)
             return null
           }
 
+          console.log('[AUTH DEBUG] Login exitoso:', credentials.email)
           return {
             id:    client.id,
             name:  client.name,
@@ -41,7 +47,7 @@ export const authOptions = {
             theme: client.theme,
           }
         } catch (error: any) {
-          console.error('DATABASE ERROR during login:', error)
+          console.error('[AUTH DEBUG] ERROR CRÍTICO DE BASE DE DATOS:', error)
           return null
         }
       },
