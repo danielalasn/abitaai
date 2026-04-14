@@ -70,11 +70,11 @@ export async function compileKnowledgeWithAI(text: string) {
   });
 
   const response = await anthropic.messages.create({
-    model: "claude-3-haiku-20240307", // We can use haiku for this structural generation to save cost, since it's just formatting
-    max_tokens: 4000,
+    model: "claude-3-5-sonnet-latest", 
+    max_tokens: 8192,
     system: `You are an expert Data Engineer. 
 Your ONLY job is to take the unstructured text provided by the user and convert it into a clean, highly structured JSON object. 
-Identify the main categories and their attributes. 
+RETAIN ALL IMPORTANT DETAILS. Do not summarize unless explicitly asked. If there are prices, specific schedules, or nested details, INCLUDE THEM.
 
 CRITICAL CATEGORIES:
 - "proyectos": Array of project objects.
@@ -83,15 +83,19 @@ CRITICAL CATEGORIES:
 - "modelos": Pricing and specs of units.
 
 CRITICAL RULE: You MUST use Spanish keys for the JSON (e.g., "proyectos", "modelos", "baños", "precio", "reglas").
-Output ONLY a valid JSON string without any markdown wrappers or explanations.
+Output ONLY a valid JSON string. Do not include markdown wrappers or explanations.
 `,
     messages: [
       { role: "user", content: text }
     ]
   });
 
-  const rawJson = response.content[0].type === 'text' ? response.content[0].text : "{}";
-  return rawJson.trim();
+  let rawJson = response.content[0].type === 'text' ? response.content[0].text : "{}";
+  
+  // Clean up potential markdown wrappers
+  rawJson = rawJson.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+
+  return rawJson;
 }
 
 export async function verifyWhatsappConnection(

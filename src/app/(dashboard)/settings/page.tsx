@@ -111,7 +111,9 @@ export default function SettingsPage() {
           className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm disabled:opacity-70 ${
             saveStatus === 'success' 
               ? "bg-emerald-600 text-white" 
-              : "bg-[#111111] hover:bg-[#333] dark:bg-[#E9E4D8] dark:hover:bg-white text-white dark:text-[#111111]"
+              : compileStatus === 'success'
+                ? "bg-[#F36A2D] text-white animate-pulse scale-105"
+                : "bg-[#111111] hover:bg-[#333] dark:bg-[#E9E4D8] dark:hover:bg-white text-white dark:text-[#111111]"
           }`}
         >
           {isSaving ? (
@@ -287,8 +289,8 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   {compileStatus === 'success' && (
-                    <p className="mt-2 text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 animate-in fade-in slide-in-from-left-2">
-                       <CheckCircle2 size={12} /> El lenguaje natural ha sido procesado. Ahora el bot tiene una estructura JSON optimizada.
+                    <p className="mt-4 text-sm text-[#F36A2D] dark:text-[#F36A2D] font-bold flex items-center gap-2 animate-bounce">
+                       <Save size={16} /> ¡Estructurado con éxito! Haz clic en "Guardar Cambios" arriba para que el Bot aprenda esto.
                     </p>
                   )}
                 </>
