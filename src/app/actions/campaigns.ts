@@ -37,7 +37,8 @@ export async function createCampaign(
   languageCode: string,
   variableMapping: Record<string, string>, // { "1": "colCSV", "2": "colCSV2" }
   leadsData: any[],
-  headerUrl?: string // Nuevo: URL de imagen o nombre de columna CSV
+  headerUrl?: string, // Nuevo: URL de imagen o nombre de columna CSV
+  botActive: boolean = true
 ) {
   const project = await getProjectWithCredentials();
 
@@ -68,7 +69,8 @@ export async function createCampaign(
     leadsData,
     project.whatsappPhoneId,
     project.whatsappToken,
-    headerUrl
+    headerUrl,
+    botActive
   ).catch(console.error);
 
   revalidatePath('/campaigns');
@@ -96,7 +98,8 @@ async function processCampaign(
   leadsData: any[],
   phoneNumberId: string,
   accessToken: string,
-  headerUrl?: string
+  headerUrl?: string,
+  botActive: boolean = true
 ) {
   for (const leadData of leadsData) {
     const rawPhone = leadData['#'];
@@ -161,7 +164,8 @@ async function processCampaign(
           projectId,
           name: nameKey ? leadData[nameKey] : `Lead ${cleanPhone.slice(-4)}`,
           latestCampaignId: campaignId,
-          metadata: metadataToSave
+          metadata: metadataToSave,
+          botActive: botActive
         }
       });
     } else {
@@ -171,7 +175,8 @@ async function processCampaign(
         where: { id: lead.id },
         data: { 
           latestCampaignId: campaignId,
-          metadata: { ...existingMetadata, ...metadataToSave }
+          metadata: { ...existingMetadata, ...metadataToSave },
+          botActive: botActive
         }
       });
     }
