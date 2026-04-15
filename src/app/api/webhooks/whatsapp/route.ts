@@ -95,7 +95,16 @@ export async function POST(req: NextRequest) {
             }
 
             console.log(`[DEBUG Webhook] BEFORE saveAssistantReply: inputTokens=${botData.inputTokens} outputTokens=${botData.outputTokens} waCategory=${waCategory} scoreBump=${botData.scoreBump}`);
-            await saveAssistantReply(chatId, botData.reply, botData.scoreBump, botData.inputTokens, botData.outputTokens, waCategory);
+            await saveAssistantReply(
+                chatId, 
+                botData.reply, 
+                botData.scoreBump, 
+                botData.inputTokens, 
+                botData.outputTokens, 
+                waCategory,
+                botData.agentName,
+                botData.scoreReason
+            );
 
             // 6. Si hubo un Handoff, desactivar el bot
             if (botData.isHandoff) {

@@ -30,7 +30,15 @@ export async function sendTestMessage(
   }
 
   if (!project) {
-    return "No se encontró el proyecto. Verifica tu sesión.";
+    return { 
+      reply: "No se encontró el proyecto. Verifica tu sesión.", 
+      isHandoff: false, 
+      scoreBump: 0, 
+      scoreReason: "",
+      inputTokens: 0, 
+      outputTokens: 0,
+      agentName: "Error"
+    };
   }
 
   // Find the right agent
@@ -43,7 +51,15 @@ export async function sendTestMessage(
   }
 
   if (!config) {
-    return "No se ha configurado ningun agente. Por favor entra a Settings y crea un agente primero.";
+    return { 
+      reply: "No se ha configurado ningun agente. Por favor entra a Settings y crea un agente primero.", 
+      isHandoff: false, 
+      scoreBump: 0, 
+      scoreReason: "",
+      inputTokens: 0, 
+      outputTokens: 0,
+      agentName: "Error"
+    };
   }
 
   let scoringText = "No hay reglas de calificación definidas.";
@@ -239,6 +255,7 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
       reply: `Error conectando con la IA: ${error.message}`, 
       isHandoff: false, 
       scoreBump: 0, 
+      scoreReason: "",
       inputTokens: 0, 
       outputTokens: 0,
       agentName: "Error"
