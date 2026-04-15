@@ -5,6 +5,7 @@ import { sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { getApprovedTemplates } from '@/lib/whatsapp';
 import { revalidatePath } from 'next/cache';
 import { getCurrentProject } from '@/lib/auth-server';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // Helper: get project + credentials
 async function getProjectWithCredentials() {
@@ -210,4 +211,46 @@ async function processCampaign(
     where: { id: campaignId },
     data: { status: 'COMPLETED' }
   });
+}
+
+/**
+ * Upload an image to Supabase Storage and return the public URL.
+ */
+export async function uploadCampaignImage(formData: FormData) {
+  const file = formData.get('file') as File;
+  if (!file) throw new Error('No se proporcionó ningún archivo.');
+
+  // 1. Ensure bucket exists
+  const bucketName = 'campaign-media';
+  const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+  const exists = buckets?.find(b => b.name === bucketName);
+  
+  if (!exists) {
+    await supabaseAdmin.storage.createBucket(bucketName, {
+      public: true,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    });
+  }
+
+  // 2. Upload file
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const filePath = `campaigns/${fileName}`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const { error: uploadError } = await supabaseAdmin.storage
+    .from(bucketName)
+    .upload(filePath, Buffer.from(arrayBuffer), {
+      contentType: file.type,
+      cacheControl: '3600',
+    });
+
+  if (uploadError) throw uploadError;
+
+  // 3. Get public URL
+  const { data: { publicUrl } } = supabaseAdmin.storage
+    .from(bucketName)
+    .getPublicUrl(filePath);
+
+  return publicUrl;
 }

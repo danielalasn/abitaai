@@ -6,7 +6,7 @@ import {
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
   Sparkles
 } from 'lucide-react';
-import { createCampaign, getCampaigns, fetchMetaTemplates } from '@/app/actions/campaigns';
+import { createCampaign, getCampaigns, fetchMetaTemplates, uploadCampaignImage } from '@/app/actions/campaigns';
 
 // ──────────────────────────────────────────────
 // Types
@@ -65,6 +65,7 @@ export default function CampaignsPage() {
 
   // Launch
   const [headerUrl, setHeaderUrl] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [successStatus, setSuccessStatus] = useState<string | null>(null);
 
@@ -120,7 +121,8 @@ export default function CampaignsPage() {
 
   const handleSelectTemplate = (t: MetaTemplate) => {
     setSelectedTemplate(t);
-    setHeaderUrl('');
+    setHeaderUrl(''); // Limpiar cualquier URL previa
+
     const vars = extractBodyVars(t);
     const initial: Record<string, string> = {};
     vars.forEach(v => { initial[v] = ''; });
@@ -162,6 +164,23 @@ export default function CampaignsPage() {
       alert('Error: ' + err.message);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const url = await uploadCampaignImage(formData);
+      setHeaderUrl(url);
+    } catch (err: any) {
+      alert('Error subiendo imagen: ' + err.message);
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
     }
   };
 
@@ -269,13 +288,19 @@ export default function CampaignsPage() {
                           {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={`{{${c}}}`}>CSV: {c}</option>)}
                         </select>
                         {!headerUrl.startsWith('{{') && (
-                          <input 
-                            type="text" 
-                            placeholder="https://ejemplo.com/imagen.jpg" 
-                            value={headerUrl} 
-                            onChange={e => setHeaderUrl(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0]"
-                          />
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              placeholder="https://ejemplo.com/imagen.jpg" 
+                              value={headerUrl} 
+                              onChange={e => setHeaderUrl(e.target.value)}
+                              className="flex-1 p-2.5 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0]"
+                            />
+                            <label className="cursor-pointer flex items-center justify-center p-2.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl hover:opacity-80 transition-all min-w-[42px]">
+                              {isUploadingImage ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+                              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploadingImage} />
+                            </label>
+                          </div>
                         )}
                       </div>
                     </div>
