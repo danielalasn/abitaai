@@ -76,8 +76,7 @@ export async function createCampaign(
 }
 
 export async function getCampaigns() {
-  const project = await prisma.project.findFirst();
-  if (!project) return [];
+  const project = await getProjectWithCredentials();
   return await prisma.campaign.findMany({
     where: { projectId: project.id },
     orderBy: { createdAt: 'desc' }

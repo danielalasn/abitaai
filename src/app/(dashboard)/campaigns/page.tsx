@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Megaphone, UploadCloud, Users, FileText, Send, Loader2,
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
-  Sparkles
+  Sparkles, Download, Clock
 } from 'lucide-react';
 import { createCampaign, getCampaigns, fetchMetaTemplates, uploadCampaignImage } from '@/app/actions/campaigns';
 
@@ -164,6 +164,29 @@ export default function CampaignsPage() {
       alert('Error: ' + err.message);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDownloadCsv = (campaign: any) => {
+    if (!campaign.csvData) return;
+    try {
+      const data = JSON.parse(campaign.csvData);
+      const headers = Object.keys(data[0]);
+      const csvRows = [
+        headers.join(','),
+        ...data.map((row: any) => headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${campaign.name.replace(/\s+/g, '_')}_leads.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      alert('Error generando CSV');
     }
   };
 
@@ -336,10 +359,35 @@ export default function CampaignsPage() {
               <FileText size={20} /> Historial
             </h3>
             <div className="space-y-3">
+              {campaigns.length === 0 && (
+                <div className="p-8 text-center border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-3xl opacity-50">
+                  <Clock size={32} className="mx-auto mb-2 text-[#6F6F6F]" />
+                  <p className="text-sm font-medium text-[#6F6F6F]">No hay campañas lanzadas aún</p>
+                </div>
+              )}
               {campaigns.map(c => (
-                <div key={c.id} className="p-4 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl">
-                  <h4 className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{c.name}</h4>
-                  <p className="text-[10px] text-[#6F6F6F]">{new Date(c.createdAt).toLocaleDateString()}</p>
+                <div key={c.id} className="p-4 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{c.name}</h4>
+                    <div className="flex items-center gap-3">
+                      <p className="text-[10px] text-[#6F6F6F]">{new Date(c.createdAt).toLocaleDateString()}</p>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                        c.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {c.status === 'COMPLETED' ? 'Completado' : 'Ejecutando'}
+                      </span>
+                      <span className="text-[10px] text-[#6F6F6F] font-bold">{c.leadCount} leads</span>
+                    </div>
+                  </div>
+                  {c.csvData && (
+                    <button 
+                      onClick={() => handleDownloadCsv(c)}
+                      title="Descargar Leads CSV"
+                      className="p-2.5 bg-[#F36A2D]/10 text-[#F36A2D] rounded-xl hover:bg-[#F36A2D] hover:text-white transition-all shadow-sm"
+                    >
+                      <Download size={16} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
