@@ -35,7 +35,8 @@ export async function createCampaign(
   templateText: string, // Nuevo: texto base de la plantilla
   languageCode: string,
   variableMapping: Record<string, string>, // { "1": "colCSV", "2": "colCSV2" }
-  leadsData: any[]
+  leadsData: any[],
+  headerUrl?: string // Nuevo: URL de imagen o nombre de columna CSV
 ) {
   const project = await getProjectWithCredentials();
 
@@ -65,7 +66,8 @@ export async function createCampaign(
     variableMapping,
     leadsData,
     project.whatsappPhoneId,
-    project.whatsappToken
+    project.whatsappToken,
+    headerUrl
   ).catch(console.error);
 
   revalidatePath('/campaigns');
@@ -93,7 +95,8 @@ async function processCampaign(
   variableMapping: Record<string, string>,
   leadsData: any[],
   phoneNumberId: string,
-  accessToken: string
+  accessToken: string,
+  headerUrl?: string
 ) {
   for (const leadData of leadsData) {
     const rawPhone = leadData['#'];
@@ -109,9 +112,27 @@ async function processCampaign(
       text: String(leadData[colName] ?? ''),
     }));
 
-    const components = bodyParams.length > 0
-      ? [{ type: 'body' as const, parameters: bodyParams }]
+    const components: any[] = bodyParams.length > 0
+      ? [{ type: 'body', parameters: bodyParams }]
       : [];
+    
+    // Add image header if present
+    if (headerUrl) {
+      // Determine if headerUrl is a column mapping or a static URL
+      const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
+      const realUrl = isMapping 
+        ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '')
+        : headerUrl;
+
+      if (realUrl && realUrl.startsWith('http')) {
+        components.unshift({
+          type: 'header',
+          parameters: [
+            { type: 'image', image: { link: realUrl } }
+          ]
+        });
+      }
+    }
 
     // Build a readable preview by replacing {{1}}, {{2}} with actual values
     let previewText = templateText;

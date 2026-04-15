@@ -64,6 +64,7 @@ export default function CampaignsPage() {
   const [variableMapping, setVariableMapping] = useState<Record<string, string>>({});
 
   // Launch
+  const [headerUrl, setHeaderUrl] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [successStatus, setSuccessStatus] = useState<string | null>(null);
 
@@ -119,6 +120,7 @@ export default function CampaignsPage() {
 
   const handleSelectTemplate = (t: MetaTemplate) => {
     setSelectedTemplate(t);
+    setHeaderUrl('');
     const vars = extractBodyVars(t);
     const initial: Record<string, string> = {};
     vars.forEach(v => { initial[v] = ''; });
@@ -127,6 +129,7 @@ export default function CampaignsPage() {
 
   const bodyVars = selectedTemplate ? extractBodyVars(selectedTemplate) : [];
   const bodyText = selectedTemplate?.components.find(c => c.type === 'BODY')?.text ?? '';
+  const needsImageHeader = selectedTemplate?.components.find(c => c.type === 'HEADER' && (c as any).format === 'IMAGE');
 
   const handleLaunch = async () => {
     if (!campaignName.trim() || !selectedTemplate) return;
@@ -145,7 +148,8 @@ export default function CampaignsPage() {
         bodyText,
         selectedTemplate.language,
         variableMapping,
-        parsedLeads
+        parsedLeads,
+        headerUrl
       );
       setSuccessStatus(`¡Campaña lanzada con éxito!`);
       setStep(1);
@@ -248,6 +252,34 @@ export default function CampaignsPage() {
                     onChange={e => setCampaignName(e.target.value)}
                     className="w-full p-3 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/50"
                   />
+
+                  {needsImageHeader && (
+                    <div className="space-y-2 p-4 bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 rounded-2xl border border-[#F36A2D]/20">
+                      <div className="flex items-center gap-2 text-[#F36A2D] mb-1">
+                        <Sparkles size={14} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Cabecera de Imagen Requerida</span>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <select 
+                          value={headerUrl.startsWith('{{') ? headerUrl : ''} 
+                          onChange={e => setHeaderUrl(e.target.value)}
+                          className="w-full p-2.5 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0]"
+                        >
+                          <option value="">— URL Fija —</option>
+                          {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={`{{${c}}}`}>CSV: {c}</option>)}
+                        </select>
+                        {!headerUrl.startsWith('{{') && (
+                          <input 
+                            type="text" 
+                            placeholder="https://ejemplo.com/imagen.jpg" 
+                            value={headerUrl} 
+                            onChange={e => setHeaderUrl(e.target.value)}
+                            className="w-full p-2.5 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0]"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-3">
                     {bodyVars.map(v => (
                       <div key={v} className="flex items-center gap-3">

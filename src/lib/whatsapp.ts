@@ -76,7 +76,10 @@ export interface TemplateComponent {
   type: 'body' | 'header' | 'button'
   sub_type?: string
   index?: number
-  parameters: { type: 'text'; text: string }[]
+  parameters: (
+    | { type: 'text'; text: string }
+    | { type: 'image'; image: { link: string } }
+  )[]
 }
 
 export async function sendWhatsAppTemplate(
