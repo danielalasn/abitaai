@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Megaphone, UploadCloud, Users, FileText, Send, Loader2,
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
-  Sparkles, Download, Clock
+  Sparkles, Download, Clock, Search
 } from 'lucide-react';
 import { createCampaign, getCampaigns, fetchMetaTemplates, uploadCampaignImage } from '@/app/actions/campaigns';
 
@@ -68,6 +68,8 @@ export default function CampaignsPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [successStatus, setSuccessStatus] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
   useEffect(() => { loadCampaigns(); }, []);
 
@@ -206,6 +208,12 @@ export default function CampaignsPage() {
       e.target.value = '';
     }
   };
+
+  const filteredCampaigns = campaigns.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDate = !dateFilter || new Date(c.createdAt).toISOString().split('T')[0] === dateFilter;
+    return matchesSearch && matchesDate;
+  });
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
@@ -355,17 +363,40 @@ export default function CampaignsPage() {
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-lg font-medium flex items-center gap-2 text-[#111111] dark:text-[#EDE9E0]">
-              <FileText size={20} /> Historial
-            </h3>
-            <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto p-4 border border-[#DEDAD0] dark:border-zinc-800 rounded-[2rem] bg-[#DEDAD0]/20 dark:bg-black/10 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
-              {campaigns.length === 0 && (
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium flex items-center gap-2 text-[#111111] dark:text-[#EDE9E0]">
+                <FileText size={20} /> Historial
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6F6F6F]" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar..." 
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-[#111111] dark:text-[#EDE9E0] w-32 focus:w-48 transition-all outline-none"
+                  />
+                </div>
+                <input 
+                  type="date" 
+                  value={dateFilter}
+                  onChange={e => setDateFilter(e.target.value)}
+                  className="px-2 py-1.5 text-xs rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-[#111111] dark:text-[#EDE9E0] outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3 max-h-[calc(100vh-320px)] overflow-y-auto p-4 border border-[#DEDAD0] dark:border-zinc-800 rounded-[2rem] bg-[#DEDAD0]/20 dark:bg-black/10 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
+              {filteredCampaigns.length === 0 && (
                 <div className="p-8 text-center border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-3xl opacity-50">
                   <Clock size={32} className="mx-auto mb-2 text-[#6F6F6F]" />
-                  <p className="text-sm font-medium text-[#6F6F6F]">No hay campañas lanzadas aún</p>
+                  <p className="text-sm font-medium text-[#6F6F6F]">
+                    {searchQuery || dateFilter ? 'No se encontraron resultados' : 'No hay campañas lanzadas aún'}
+                  </p>
                 </div>
               )}
-              {campaigns.map(c => (
+              {filteredCampaigns.map(c => (
                 <div key={c.id} className="p-4 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl flex items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow">
                   <div className="space-y-1">
                     <h4 className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{c.name}</h4>
