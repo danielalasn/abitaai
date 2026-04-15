@@ -83,15 +83,30 @@ export default function CampaignsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
+    
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
     const reader = new FileReader();
+    
     reader.onload = async (event) => {
       try {
-        const text = event.target?.result as string;
-        const { parse } = await import('csv-parse/sync');
-        const records = parse(text, {
-          columns: true, skip_empty_lines: true, trim: true,
-          delimiter: [',', ';'], bom: true
-        });
+        let records: any[] = [];
+        
+        if (isExcel) {
+          const { read, utils } = await import('xlsx');
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          records = utils.sheet_to_json(firstSheet, { defval: '' });
+        } else {
+          // CSV processing
+          const text = new TextDecoder('utf-8').decode(event.target?.result as ArrayBuffer);
+          const { parse } = await import('csv-parse/sync');
+          records = parse(text, {
+            columns: true, skip_empty_lines: true, trim: true,
+            delimiter: [',', ';'], bom: true
+          });
+        }
+
         if (records.length === 0) { alert('El archivo está vacío.'); return; }
         const headers = Object.keys(records[0] as object);
         if (!headers.includes('#')) {
@@ -101,13 +116,18 @@ export default function CampaignsPage() {
         setCsvColumns(headers);
         setParsedLeads(records);
       } catch (err: any) {
-        alert('Error leyendo el CSV: ' + err.message);
+        alert('Error leyendo el archivo: ' + err.message);
       } finally {
         setIsUploading(false);
         e.target.value = '';
       }
     };
-    reader.readAsText(file, 'UTF-8');
+
+    if (isExcel) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsArrayBuffer(file); // TextDecoder will handle CSV
+    }
   };
 
   const loadTemplates = async () => {
@@ -253,10 +273,16 @@ export default function CampaignsPage() {
                       </div>
                     ) : (
                       <>
-                        <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-up" />
+                        <input 
+                          type="file" 
+                          id="file-up" 
+                          className="hidden" 
+                          accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+                          onChange={handleFileUpload} 
+                        />
                         <label htmlFor="file-up" className="cursor-pointer flex flex-col items-center gap-2">
                           <UploadCloud size={32} className="text-[#6F6F6F]" />
-                          <p className="text-sm font-medium text-[#6F6F6F]">Haz clic para subir CSV</p>
+                          <p className="text-sm font-medium text-[#6F6F6F]">Haz clic para subir CSV o Excel</p>
                         </label>
                       </>
                     )}
