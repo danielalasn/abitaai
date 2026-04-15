@@ -14,7 +14,8 @@ export async function sendTestMessage(
   history: { role: string, content: string }[],
   clientName?: string,
   projectId?: string,
-  agentId?: string
+  agentId?: string,
+  metadata?: any
 ) {
   // Get project
   let project = null;
@@ -70,6 +71,13 @@ ${config.identity || "Eres un asistente virtual"}
 Nombre: ${finalName}
 Proyecto Interesado: ${project?.name || "Demo Test"}
 </client_context>
+
+<crm_metadata>
+Aquí tienes información previa que ya conocemos del cliente (datos de campañas o CRM):
+${metadata ? JSON.stringify(metadata, null, 2) : "No hay información previa."}
+
+REGLA DE CONTEXTO: Usa esta información para personalizar tu respuesta y evitar preguntar datos que ya aparecen aquí. Por ejemplo, si el cliente ya indicó su interés o presupuesto, hazle saber que ya lo sabes (ej: "He visto que te interesan x habitaciones...").
+</crm_metadata>
 
 <critical_rules_mentioning_names>
 - Si el Nombre es "Desconocido", NO intentes adivinarlo ni uses el número de teléfono para saludar. Limítate a decir "Hola" o "Hola, bienvenido".
@@ -336,7 +344,8 @@ export async function sendSimulatorMessage(
     history.map(m => ({ role: m.role, content: m.content })),
     "Usuario de Prueba",
     projectId,
-    agentId
+    agentId,
+    lead.metadata // Pasamos la info previa (habitaciones, presupuesto, etc.)
   );
 
   // 5. Guardar respuesta de la IA (incluyendo el nombre del agente)

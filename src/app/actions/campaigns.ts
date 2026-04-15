@@ -127,6 +127,11 @@ async function processCampaign(
 
     // Upsert Lead
     let lead = await prisma.lead.findFirst({ where: { phone: cleanPhone, projectId } });
+    
+    // Preparar metadata (limpiar columnas técnicas)
+    const metadataToSave = { ...leadData };
+    delete metadataToSave['#'];
+
     if (!lead) {
       const nameKey = Object.keys(leadData).find(k => k.toLowerCase() === 'nombre');
       lead = await prisma.lead.create({
@@ -135,13 +140,18 @@ async function processCampaign(
           projectId,
           name: nameKey ? leadData[nameKey] : `Lead ${cleanPhone.slice(-4)}`,
           latestCampaignId: campaignId,
+          metadata: metadataToSave
         }
       });
     } else {
-      // Si el lead ya existe, actualizamos a la campaña más reciente
+      // Si el lead ya existe, actualizamos a la campaña más reciente y MERGE de metadata
+      const existingMetadata = (lead.metadata as Record<string, any>) || {};
       lead = await prisma.lead.update({
         where: { id: lead.id },
-        data: { latestCampaignId: campaignId }
+        data: { 
+          latestCampaignId: campaignId,
+          metadata: { ...existingMetadata, ...metadataToSave }
+        }
       });
     }
 

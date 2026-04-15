@@ -434,7 +434,14 @@ export default function InboxPage() {
         // para no duplicarlo en la lógica de sendTestMessage.
         const history = chatDetails.messages.slice(0, -1);
 
-        const botData = await sendTestMessage(msg, history, chatDetails.lead.name || undefined);
+        const botData = await sendTestMessage(
+          msg, 
+          history, 
+          chatDetails.lead.name || undefined,
+          undefined,
+          undefined,
+          chatDetails.lead.metadata // Info del CRM
+        );
         if (botData && typeof botData !== 'string') {
           await saveAssistantReply(
             chatId, 

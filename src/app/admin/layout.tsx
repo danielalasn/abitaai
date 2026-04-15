@@ -2,12 +2,25 @@
 
 import React from 'react';
 import { signOut, useSession } from 'next-auth/react';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { updateUserTheme } from '@/app/actions/user';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
+  const { theme, setTheme } = useTheme();
   
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A';
+
+  const toggleTheme = async () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    try {
+      await updateUserTheme(newTheme);
+    } catch (error) {
+      console.error('Error saving theme:', error);
+    }
+  };
 
   return (
     <div className="min-h-dvh bg-zinc-50 dark:bg-[#09090b] font-sans selection:bg-purple-500/20">
@@ -23,6 +36,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <div className="flex items-center gap-6">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-700"
+            title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           {/* User Profile */}
           <div className="flex items-center gap-3 pr-6 border-r border-zinc-200 dark:border-zinc-800">
             <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold shadow-sm">

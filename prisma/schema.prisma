@@ -66,6 +66,7 @@ model Lead {
   score     Int      @default(0) // Puntuación de interés del cliente
   heat      String   @default("FRIO") // FRIO, TIBIO, CALIENTE
   aiSummary String?  // Resumen IA de la conversación, se actualiza automáticamente
+  metadata  Json?    @default("{}") // Información extra del CRM / Campañas
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   latestCampaignId String?
