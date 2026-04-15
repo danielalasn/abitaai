@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import {
   Save, Bot, BookOpen, Fingerprint, Loader2, HelpCircle, Code, Sparkles,
   CheckCircle2, Flame, Plus, Trash2, MessageSquare, ShieldCheck, ShieldX,
-  Wifi, ChevronRight, Power, X, FileText, PanelLeftClose, PanelLeftOpen
+  Wifi, ChevronRight, Power, X, FileText, PanelLeftClose, PanelLeftOpen,
+  Eye, EyeOff
 } from 'lucide-react'
 import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const [whatsappToken, setWhatsappToken] = useState("")
   const [whatsappPhoneId, setWhatsappPhoneId] = useState("")
   const [whatsappBusinessId, setWhatsappBusinessId] = useState("")
+  const [showToken, setShowToken] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null)
 
@@ -241,7 +243,22 @@ export default function SettingsPage() {
             </h3>
             <input type="text" placeholder="Phone Number ID" value={whatsappPhoneId} onChange={e => setWhatsappPhoneId(e.target.value)} className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono text-zinc-900 dark:text-zinc-100" />
             <input type="text" placeholder="Business ID" value={whatsappBusinessId} onChange={e => setWhatsappBusinessId(e.target.value)} className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono text-zinc-900 dark:text-zinc-100" />
-            <input type="text" placeholder="Access Token" value={whatsappToken} onChange={e => setWhatsappToken(e.target.value)} className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono text-zinc-900 dark:text-zinc-100" />
+            <div className="relative group/token">
+              <input 
+                type={showToken ? "text" : "password"} 
+                placeholder="Access Token" 
+                value={whatsappToken} 
+                onChange={e => setWhatsappToken(e.target.value)} 
+                className="w-full p-2 pr-9 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono text-zinc-900 dark:text-zinc-100" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-[#F36A2D] transition-colors"
+              >
+                {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
             <div className="flex gap-2">
               <button onClick={handleSaveWhatsApp} disabled={isSavingWA} className="flex-1 py-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg text-xs font-bold disabled:opacity-50">
                 {isSavingWA ? 'Guardando...' : 'Guardar'}
@@ -271,23 +288,38 @@ export default function SettingsPage() {
           <div className="flex-1 overflow-auto">
             {/* Agent Header */}
             <div className="sticky top-0 z-10 bg-[#E9E4D8]/90 dark:bg-[#1A1714]/90 backdrop-blur-md border-b border-[#DEDAD0] dark:border-zinc-800/60 px-8 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
+              <div className="flex-1">
                   <input
                     type="text" value={agentName} onChange={e => setAgentName(e.target.value)}
-                    className="text-lg font-bold bg-transparent border-none outline-none text-[#111111] dark:text-[#EDE9E0] w-64"
+                    className="text-2xl font-bold bg-transparent border-none outline-none text-[#111111] dark:text-[#EDE9E0] w-full max-w-xl"
                   />
-                  <button onClick={() => toggleAgent(selectedAgentId!, !selectedAgent.isActive).then(loadProject)} className={`p-1.5 rounded-lg transition-colors ${selectedAgent.isActive ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title={selectedAgent.isActive ? 'Activo' : 'Inactivo'}>
-                    <Power size={16} />
-                  </button>
-                </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 {agents.length > 1 && (
                   <button onClick={() => handleDeleteAgent(selectedAgentId!)} className="text-xs text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
                     <Trash2 size={13} /> Eliminar
                   </button>
                 )}
+                
+                <div className="h-8 w-[1px] bg-[#DEDAD0] dark:bg-zinc-800 mx-2" />
+                
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedAgent.isActive ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                    {selectedAgent.isActive ? 'Encendido' : 'Apagado'}
+                  </span>
+                  <button 
+                    onClick={() => toggleAgent(selectedAgentId!, !selectedAgent.isActive).then(loadProject)} 
+                    className={`p-2 rounded-xl transition-all shadow-sm ${
+                      selectedAgent.isActive 
+                        ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 ring-1 ring-emerald-500/30' 
+                        : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-500 ring-1 ring-zinc-300 dark:ring-zinc-700'
+                    }`} 
+                    title={selectedAgent.isActive ? 'Desactivar Agente' : 'Activar Agente'}
+                  >
+                    <Power size={18} />
+                  </button>
+                </div>
+
                 <button onClick={handleSaveAgent} disabled={isSaving} className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm disabled:opacity-70 ${
                   saveStatus === 'success' ? "bg-emerald-600 text-white"
                   : compileStatus === 'success' ? "bg-[#F36A2D] text-white animate-pulse scale-105"

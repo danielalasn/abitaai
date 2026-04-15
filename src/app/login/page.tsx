@@ -3,13 +3,14 @@
 import { useEffect, useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, ArrowRight } from 'lucide-react'
+import { Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react'
 
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -107,19 +108,29 @@ function LoginContent() {
               />
             </div>
 
-            <div className="space-y-2 group">
+            <div className="space-y-2 group relative">
               <label className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest ml-1 transition-colors group-focus-within:text-[#F36A2D]">
                 Password
               </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                placeholder="••••••••••••"
-                className="w-full bg-transparent border-b-2 border-[#DEDAD0] py-3 text-[#111111] placeholder-[#9A9A9A] focus:outline-none focus:border-[#F36A2D] transition-all text-sm"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••••••"
+                  className="w-full bg-transparent border-b-2 border-[#DEDAD0] py-3 text-[#111111] placeholder-[#9A9A9A] focus:outline-none focus:border-[#F36A2D] transition-all text-sm pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-0 bottom-3 text-[#9A9A9A] hover:text-[#F36A2D] transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {error && (

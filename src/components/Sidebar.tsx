@@ -45,7 +45,7 @@ export function Sidebar() {
         </button>
       </div>
       
-      <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar">
+      <nav className="flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden no-scrollbar">
         {[
           { icon: Inbox,             label: 'Bandeja',          href: '/' },
           { icon: BarChart3,         label: 'Dashboard',        href: '/analytics' },

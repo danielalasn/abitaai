@@ -10,15 +10,15 @@ const anthropic = new Anthropic({
 });
 
 export async function sendTestMessage(
-  message: string, 
-  history: { role: string, content: string }[], 
+  message: string,
+  history: { role: string, content: string }[],
   clientName?: string,
   projectId?: string,
   agentId?: string
 ) {
   // Get project
   let project = null;
-  
+
   if (projectId) {
     project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -124,9 +124,12 @@ Tu trabajo en segundo plano también es calificar el interés del cliente ("Heat
 REGLAS DE EVENTOS (Suma 100 en total):
 ${scoringText}
 
-Si en el ÚLTIMO mensaje del cliente has detectado que acaba de cumplir una de estas condiciones POR PRIMERA VEZ, agrega esta etiqueta exacta al final de tu respuesta (reemplazando X por el número indicado en la regla):
-Ejemplo: [ACTION: SCORE_BUMP +20]
-(Importante: NO premies dos veces por la misma cosa. Solo envía la etiqueta si el hito de interés se acaba de cumplir en este exacto turno).
+INSTRUCCIONES DE MARCADO:
+- En CADA respuesta, analiza si el cliente ha cumplido alguna de estas condiciones (revisa el historial para ver si ya se premió o no).
+- Si detectas que se ha cumplido una condición que AÚN NO ha sido premiada en el chat, agrega esta etiqueta exacta al final de tu respuesta:
+  [ACTION: SCORE_BUMP +X REASON: "Escribe aquí la razón corta"]
+- Puedes agregar MÚLTIPLES etiquetas si se cumplen varias condiciones simultáneamente.
+- Importante: Solo premia cada regla UNA VEZ en toda la conversación. Si ya viste un tag de esa regla en el historial, no lo repitas. 
 
 SISTEMA DE APRENDIZAJE:
 Si el cliente te hace una pregunta que NO está contestada en las FAQs ni en la Knowledge Base, DEBES ser honesto, decirle amablemente que no tienes esa información a la mano, y agregar EXACTAMENTE esta etiqueta al final de tu mensaje:
@@ -158,18 +161,18 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
     console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Total: ${inputTokens + outputTokens}`);
 
     const rawReply = response.content[0].type === 'text' ? response.content[0].text : "No hubo respuesta de texto";
-    
+
     // Clean up reply from tags early so we can store it
     const reply = rawReply.replace(/\[ACTION: .+?\]/g, "").trim();
 
     // Check if the AI generated the handoff tag
     const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
-    
+
     // Check for Unanswered Questions
     const unansweredMatch = rawReply.match(/\[ACTION: UNANSWERED_QUESTION "(.*?)"\]/);
     if (unansweredMatch && unansweredMatch[1]) {
       const question = unansweredMatch[1].trim();
-      
+
       // Deduplicación: Revisar si la misma pregunta ya se guardó hace poco
       const existing = await prisma.unansweredQuestion.findFirst({
         where: {
@@ -195,18 +198,180 @@ Esto nos ayudará a aprender y entrenarte para el futuro.
       }
     }
 
-    // Check for Score Bumps
+    // Check for Score Bumps (Multiplex y con razones)
     let scoreBump = 0;
-    const scoreMatch = rawReply.match(/\[ACTION: SCORE_BUMP ([+-]?\d+)\]/);
-    if (scoreMatch && scoreMatch[1]) {
-      scoreBump = parseInt(scoreMatch[1]);
-      console.log(`Heatmap Score Detectado: ${scoreBump}`);
+    let scoreReason = "";
+    
+    // Regex para capturar [ACTION: SCORE_BUMP +10 REASON: "Razón"]
+    const scoreMatches = Array.from(rawReply.matchAll(/\[ACTION: SCORE_BUMP ([+-]?\d+)(?:\s+REASON:\s*"([^"]+)")?\]/gi));
+    
+    if (scoreMatches.length > 0) {
+      const reasons: string[] = [];
+      scoreMatches.forEach(match => {
+        scoreBump += parseInt(match[1]);
+        if (match[2]) reasons.push(match[2]);
+      });
+      scoreReason = reasons.join("; ");
+      console.log(`Heatmap Score Detectado: +${scoreBump} (${scoreReason})`);
     }
 
-    return { reply, isHandoff, scoreBump, inputTokens, outputTokens };
+    return { 
+      reply, 
+      isHandoff, 
+      scoreBump, 
+      scoreReason, // Devolvemos la razón
+      inputTokens, 
+      outputTokens,
+      agentName: config.name
+    };
 
   } catch (error: any) {
     console.error("AI Error:", error);
-    return { reply: `Error conectando con la IA: ${error.message}`, isHandoff: false, scoreBump: 0, inputTokens: 0, outputTokens: 0 };
+    return { 
+      reply: `Error conectando con la IA: ${error.message}`, 
+      isHandoff: false, 
+      scoreBump: 0, 
+      inputTokens: 0, 
+      outputTokens: 0,
+      agentName: "Error"
+    };
   }
+}
+
+/**
+ * SIMULADOR PERSISTENTE
+ * Estas funciones manejan un "Lead" especial de prueba por proyecto
+ */
+
+const SIMULATOR_PHONE = "SIMULADOR_TEST";
+
+export async function getSimulatorChat(projectId: string) {
+  const lead = await prisma.lead.findFirst({
+    where: { projectId, phone: SIMULATOR_PHONE },
+    include: {
+      chat: {
+        include: {
+          messages: {
+            orderBy: { createdAt: 'asc' }
+          }
+        }
+      }
+    }
+  });
+
+  if (!lead) return { messages: [], score: 0, heat: 'FRIO' };
+
+  return {
+    messages: (lead.chat?.messages || []).map(m => ({
+      ...m,
+      agentName: m.agentName,
+      scoreBump: m.scoreBump,
+      scoreReason: m.scoreReason
+    })),
+    score: lead.score,
+    heat: lead.heat
+  };
+}
+
+export async function resetSimulatorChat(projectId: string) {
+  const lead = await prisma.lead.findFirst({
+    where: { projectId, phone: SIMULATOR_PHONE },
+    include: { chat: true }
+  });
+
+  if (lead && lead.chat) {
+    // Borrar mensajes y resetear score
+    await prisma.message.deleteMany({ where: { chatId: lead.chat.id } });
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: { score: 0, heat: 'FRIO', status: 'PENDING' }
+    });
+  }
+}
+
+export async function sendSimulatorMessage(
+  message: string,
+  projectId: string,
+  agentId?: string
+) {
+  // 1. Obtener o crear el Lead del Simulador
+  let lead = await prisma.lead.findFirst({
+    where: { projectId, phone: SIMULATOR_PHONE },
+    include: { chat: true }
+  });
+
+  if (!lead) {
+    lead = await prisma.lead.create({
+      data: {
+        projectId,
+        phone: SIMULATOR_PHONE,
+        name: "Usuario de Prueba",
+        chat: { create: {} }
+      },
+      include: { chat: true }
+    });
+  }
+
+  const chatId = lead.chat!.id;
+
+  // 2. Guardar mensaje del usuario
+  await prisma.message.create({
+    data: {
+      chatId,
+      role: 'user',
+      content: message
+    }
+  });
+
+  // 3. Obtener historial para la IA
+  const history = await prisma.message.findMany({
+    where: { chatId },
+    orderBy: { createdAt: 'asc' },
+    take: 20 // últimos 20 para contexto
+  });
+
+  // 4. Llamar a la lógica de IA existente
+  const result = await sendTestMessage(
+    message,
+    history.map(m => ({ role: m.role, content: m.content })),
+    "Usuario de Prueba",
+    projectId,
+    agentId
+  );
+
+  // 5. Guardar respuesta de la IA (incluyendo el nombre del agente)
+  await prisma.message.create({
+    data: {
+      chatId,
+      role: 'assistant',
+      content: result.reply,
+      agentName: result.agentName, // Guardamos quién respondió
+      scoreBump: result.scoreBump > 0 ? result.scoreBump : null, // Solo guardamos si sumó
+      scoreReason: result.scoreReason || null,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens
+    }
+  });
+
+  // 6. Actualizar Score si hubo bump
+  let updatedScore = lead.score;
+  let updatedHeat = lead.heat;
+
+  if (result.scoreBump !== 0) {
+    updatedScore = Math.min(100, Math.max(0, lead.score + result.scoreBump));
+    updatedHeat = "FRIO";
+    if (updatedScore >= 70) updatedHeat = "CALIENTE";
+    else if (updatedScore >= 30) updatedHeat = "TIBIO";
+
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: { score: updatedScore, heat: updatedHeat }
+    });
+  }
+
+  return {
+    ...result,
+    newScore: updatedScore,
+    newHeat: updatedHeat
+  };
 }

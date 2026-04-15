@@ -131,14 +131,27 @@ export default function InboxPage() {
   }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastMessageCount = useRef(0);
+  const lastActiveChatId = useRef<string | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (force = false) => {
+    const currentMessages = activeChat?.messages || [];
+    const currentId = activeChat?.id || null;
+
+    // Scroll if: 
+    // 1. Forced 
+    // 2. Switched chat 
+    // 3. New message arrived
+    if (force || currentId !== lastActiveChatId.current || currentMessages.length > lastMessageCount.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      lastMessageCount.current = currentMessages.length;
+      lastActiveChatId.current = currentId;
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [activeChat?.messages]);
+  }, [activeChat?.messages, activeChat?.id]);
 
   // Cargar chats
   // Aplica datos del servidor pero preservando cualquier estado optimista pendiente en botActive
@@ -423,7 +436,16 @@ export default function InboxPage() {
 
         const botData = await sendTestMessage(msg, history, chatDetails.lead.name || undefined);
         if (botData && typeof botData !== 'string') {
-          await saveAssistantReply(chatId, botData.reply, botData.scoreBump, botData.inputTokens, botData.outputTokens, 'SERVICE');
+          await saveAssistantReply(
+            chatId, 
+            botData.reply, 
+            botData.scoreBump, 
+            botData.inputTokens, 
+            botData.outputTokens, 
+            'SERVICE',
+            botData.agentName,
+            botData.scoreReason
+          );
 
           if (botData.isHandoff) {
             await requestHandoff(chatId);
@@ -832,6 +854,23 @@ export default function InboxPage() {
                           ? 'bg-[#F36A2D] text-white rounded-tr-sm shadow-md'
                           : 'bg-[#1A1714] text-white dark:bg-[#EDE9E0] dark:text-[#111111] rounded-tr-sm shadow-md'
                         } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${msg.status === 'failed' ? 'ring-2 ring-red-500/50' : ''}`}>
+                        
+                        {(isBot || isAgent) && msg.agentName && (
+                          <div className={`absolute -top-5 ${isBot ? 'right-1' : 'left-1'} flex items-center gap-1`}>
+                             <span className={`text-[9px] font-bold uppercase tracking-widest ${isBot ? 'text-white/70' : 'text-zinc-500'}`}>{msg.agentName}</span>
+                          </div>
+                        )}
+                        
+                        {msg.scoreBump && (
+                          <div className="absolute -top-10 right-0 flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900 border border-emerald-200 dark:border-emerald-700 px-3 py-1 rounded-full shadow-lg animate-in fade-in zoom-in duration-300 z-10">
+                            <div className="px-2 py-0.5 bg-emerald-500 rounded-full text-[10px] text-white font-black">
+                              +{msg.scoreBump}
+                            </div>
+                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider whitespace-nowrap">
+                              {msg.scoreReason || 'Mejora de Score'}
+                            </span>
+                          </div>
+                        )}
                         <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                         <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
                           }`}>

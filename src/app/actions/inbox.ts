@@ -165,13 +165,22 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
 }
 
 // Guarda la respuesta generada por la IA en la BD
-export async function saveAssistantReply(chatId: string, text: string, scoreBump: number = 0, inputTokens: number = 0, outputTokens: number = 0, waCategory: string = 'SERVICE') {
+export async function saveAssistantReply(
+  chatId: string, 
+  text: string, 
+  scoreBump: number = 0, 
+  inputTokens: number = 0, 
+  outputTokens: number = 0, 
+  waCategory: string = 'SERVICE',
+  agentName?: string,
+  scoreReason?: string
+) {
   // Forzar valores explícitos para evitar undefined/null que Prisma convierte a NULL
   const safeInputTokens = inputTokens ?? 0;
   const safeOutputTokens = outputTokens ?? 0;
   const safeWaCategory = waCategory || 'SERVICE';
   
-  console.log(`[saveAssistantReply] chatId=${chatId} inputTokens=${safeInputTokens} outputTokens=${safeOutputTokens} waCategory=${safeWaCategory} (raw: ${inputTokens}/${outputTokens}/${waCategory})`);
+  console.log(`[saveAssistantReply] chatId=${chatId} inputTokens=${safeInputTokens} outputTokens=${safeOutputTokens} waCategory=${safeWaCategory} (agent: ${agentName})`);
   
   await prisma.message.create({
     data: {
@@ -181,6 +190,9 @@ export async function saveAssistantReply(chatId: string, text: string, scoreBump
       inputTokens: safeInputTokens,
       outputTokens: safeOutputTokens,
       waCategory: safeWaCategory,
+      agentName: agentName || null,
+      scoreBump: scoreBump > 0 ? scoreBump : null,
+      scoreReason: scoreReason || null
     }
   });
   

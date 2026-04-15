@@ -22,15 +22,20 @@ export async function getClients() {
     orderBy: { createdAt: 'desc' }
   }) as any[];
   
-  // Agregar conteos de mensajes
+  // Agregar conteos de mensajes (EXCLUYENDO SIMULADOR)
   for (const client of clients) {
     if (client.projects) {
       for (const project of client.projects) {
-        // Mensajes del BOT (Auto-respuestas)
+        // Mensajes del BOT (Auto-respuestas) - Filtramos el teléfono del simulador
         project.botMessagesCount = await prisma.message.count({
           where: {
             role: 'assistant',
-            chat: { lead: { projectId: project.id } }
+            chat: { 
+              lead: { 
+                projectId: project.id,
+                phone: { not: 'SIMULADOR_TEST' }
+              } 
+            }
           }
         });
 
@@ -38,15 +43,25 @@ export async function getClients() {
         project.agentMessagesCount = await prisma.message.count({
           where: {
             role: 'agent',
-            chat: { lead: { projectId: project.id } }
+            chat: { 
+              lead: { 
+                projectId: project.id,
+                phone: { not: 'SIMULADOR_TEST' }
+              } 
+            }
           }
         });
 
-        // Fecha de ÚLTIMO USO (último mensaje nuestro)
+        // Fecha de ÚLTIMO USO (último mensaje nuestro real)
         const lastMsg = await prisma.message.findFirst({
           where: {
             role: { in: ['assistant', 'agent'] },
-            chat: { lead: { projectId: project.id } }
+            chat: { 
+              lead: { 
+                projectId: project.id,
+                phone: { not: 'SIMULADOR_TEST' }
+              } 
+            }
           },
           orderBy: { createdAt: 'desc' },
           select: { createdAt: true }
@@ -165,11 +180,14 @@ export interface ProjectUsageStats {
 }
 
 export async function getUsageStats(projectId: string): Promise<ProjectUsageStats> {
+  // Common where clause to exclude simulator
+  const notSimulator = { phone: { not: 'SIMULADOR_TEST' } };
+
   // AI Token aggregation — sum all assistant messages' inputTokens & outputTokens
   const tokenAgg = await prisma.message.aggregate({
     where: {
       role: 'assistant',
-      chat: { lead: { projectId } }
+      chat: { lead: { projectId, ...notSimulator } }
     },
     _sum: {
       inputTokens: true,
@@ -184,12 +202,11 @@ export async function getUsageStats(projectId: string): Promise<ProjectUsageStat
     (totalOutputTokens / 1_000_000) * AI_PRICING.outputPerMillion;
 
   // WhatsApp message counts by category
-  // Nota: mensajes con waCategory = null se cuentan como SERVICE (respuestas del bot antes del fix de tracking)
   const waServiceExplicit = await prisma.message.count({
     where: {
       waCategory: 'SERVICE',
       role: { in: ['assistant', 'agent'] },
-      chat: { lead: { projectId } }
+      chat: { lead: { projectId, ...notSimulator } }
     }
   });
 
@@ -197,7 +214,7 @@ export async function getUsageStats(projectId: string): Promise<ProjectUsageStat
     where: {
       waCategory: null,
       role: { in: ['assistant', 'agent'] },
-      chat: { lead: { projectId } }
+      chat: { lead: { projectId, ...notSimulator } }
     }
   });
 
@@ -207,7 +224,7 @@ export async function getUsageStats(projectId: string): Promise<ProjectUsageStat
     where: {
       waCategory: 'MARKETING',
       role: { in: ['assistant', 'agent'] },
-      chat: { lead: { projectId } }
+      chat: { lead: { projectId, ...notSimulator } }
     }
   });
 
@@ -215,7 +232,7 @@ export async function getUsageStats(projectId: string): Promise<ProjectUsageStat
     where: {
       waCategory: 'UTILITY',
       role: { in: ['assistant', 'agent'] },
-      chat: { lead: { projectId } }
+      chat: { lead: { projectId, ...notSimulator } }
     }
   });
 
