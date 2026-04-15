@@ -164,8 +164,7 @@ async function processCampaign(
           projectId,
           name: nameKey ? leadData[nameKey] : `Lead ${cleanPhone.slice(-4)}`,
           latestCampaignId: campaignId,
-          metadata: metadataToSave,
-          botActive: botActive
+          metadata: metadataToSave
         }
       });
     } else {
@@ -175,8 +174,7 @@ async function processCampaign(
         where: { id: lead.id },
         data: { 
           latestCampaignId: campaignId,
-          metadata: { ...existingMetadata, ...metadataToSave },
-          botActive: botActive
+          metadata: { ...existingMetadata, ...metadataToSave }
         }
       });
     }
@@ -184,7 +182,17 @@ async function processCampaign(
     // Upsert Chat
     let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
     if (!chat) {
-      chat = await prisma.chat.create({ data: { leadId: lead.id } });
+      chat = await prisma.chat.create({ 
+        data: { 
+          leadId: lead.id,
+          botActive: botActive
+        } 
+      });
+    } else {
+      chat = await prisma.chat.update({
+        where: { id: chat.id },
+        data: { botActive: botActive }
+      });
     }
 
     // Send via WhatsApp Cloud API
