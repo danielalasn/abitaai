@@ -6,7 +6,13 @@ import { getProjectConfig } from '@/app/actions/settings';
 import { Send, Bot, User, Sparkles, ChevronDown, RotateCcw, Flame, Loader2 } from 'lucide-react';
 
 export default function TestChatPage() {
-  const [messages, setMessages] = useState<{role: string, content: string, agentName?: string}[]>([]);
+  const [messages, setMessages] = useState<{
+    role: string, 
+    content: string, 
+    agentName?: string | null,
+    scoreBump?: number | null,
+    scoreReason?: string | null
+  }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
