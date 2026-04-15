@@ -214,8 +214,8 @@ export default function CampaignsPage() {
               {step === 2 && (
                 <div className="p-6 space-y-5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-medium">2. Plantilla de Meta</h2>
-                    <button onClick={loadTemplates} className="text-xs text-[#F36A2D] font-bold">Cargar</button>
+                    <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">2. Plantilla de Meta</h2>
+                    <button onClick={loadTemplates} className="text-xs text-[#F36A2D] font-bold hover:opacity-70 transition-opacity">Cargar</button>
                   </div>
                   <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                     {templates.map(t => (
@@ -224,13 +224,13 @@ export default function CampaignsPage() {
                         onClick={() => handleSelectTemplate(t)}
                         className={`w-full text-left p-4 rounded-2xl border transition-all ${selectedTemplate?.name === t.name ? 'border-[#F36A2D] bg-[#F36A2D]/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
                       >
-                        <p className="font-bold text-sm">{t.name}</p>
+                        <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{t.name}</p>
                         <p className="text-xs text-[#6F6F6F] line-clamp-1">{t.components.find(c => c.type === 'BODY')?.text}</p>
                       </button>
                     ))}
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setStep(1)} className="px-4 py-2 text-sm font-bold">Volver</button>
+                    <button onClick={() => setStep(1)} className="px-4 py-2 text-sm font-bold text-[#6F6F6F] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">Volver</button>
                     <button onClick={() => setStep(3)} disabled={!selectedTemplate} className="flex-1 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl font-bold disabled:opacity-30">
                       Configurar
                     </button>
@@ -240,13 +240,13 @@ export default function CampaignsPage() {
 
               {step === 3 && selectedTemplate && (
                 <div className="p-6 space-y-5">
-                  <h2 className="text-lg font-medium">3. Mapear Variables</h2>
+                  <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">3. Mapear Variables</h2>
                   <input 
                     type="text" 
                     placeholder="Nombre de campaña" 
                     value={campaignName} 
                     onChange={e => setCampaignName(e.target.value)}
-                    className="w-full p-3 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent"
+                    className="w-full p-3 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/50"
                   />
                   <div className="space-y-3">
                     {bodyVars.map(v => (
@@ -255,7 +255,7 @@ export default function CampaignsPage() {
                         <select 
                           value={variableMapping[v]} 
                           onChange={e => setVariableMapping(p => ({ ...p, [v]: e.target.value }))}
-                          className="flex-1 p-2 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm"
+                          className="flex-1 p-2 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
                         >
                           <option value="">— Seleccionar columna —</option>
                           {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={c}>{c}</option>)}
@@ -264,7 +264,7 @@ export default function CampaignsPage() {
                     ))}
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setStep(2)} className="px-4 py-2 text-sm font-bold">Volver</button>
+                    <button onClick={() => setStep(2)} className="px-4 py-2 text-sm font-bold text-[#6F6F6F] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">Volver</button>
                     <button onClick={handleLaunch} disabled={isSending || !campaignName} className="flex-1 py-3 bg-[#F36A2D] text-white rounded-2xl font-bold disabled:opacity-30">
                       {isSending ? 'Enviando...' : `Lanzar (${parsedLeads.length} leads)`}
                     </button>
@@ -275,13 +275,13 @@ export default function CampaignsPage() {
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-lg font-medium flex items-center gap-2">
+            <h3 className="text-lg font-medium flex items-center gap-2 text-[#111111] dark:text-[#EDE9E0]">
               <FileText size={20} /> Historial
             </h3>
             <div className="space-y-3">
               {campaigns.map(c => (
                 <div key={c.id} className="p-4 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl">
-                  <h4 className="font-bold text-sm">{c.name}</h4>
+                  <h4 className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{c.name}</h4>
                   <p className="text-[10px] text-[#6F6F6F]">{new Date(c.createdAt).toLocaleDateString()}</p>
                 </div>
               ))}
