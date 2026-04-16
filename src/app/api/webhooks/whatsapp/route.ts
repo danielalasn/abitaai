@@ -35,9 +35,7 @@ export async function POST(req: NextRequest) {
     if (status) {
         if (status.status === 'failed') {
             const error = status.errors?.[0];
-            console.error(`❌ [WA STATUS] Falló el mensaje a ${status.recipient_id}.`);
-            console.error(`   Error Code: ${error?.code} - ${error?.title}`);
-            console.error(`   Detalle: ${error?.message}`);
+            console.error(`❌ [WA STATUS] Falló a ${status.recipient_id}. Código: ${error?.code} | Título: ${error?.title} | Detalle: ${error?.message}`);
         } else {
             console.log(`✅ [WA STATUS] Mensaje ${status.id} a ${status.recipient_id} está: ${status.status}`);
         }

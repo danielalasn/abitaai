@@ -1,11 +1,12 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { sendWhatsAppTemplate } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { getApprovedTemplates } from '@/lib/whatsapp';
 import { revalidatePath } from 'next/cache';
 import { getCurrentProject } from '@/lib/auth-server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { unstable_after as after } from 'next/server';
 
 // Helper: get project + credentials
 async function getProjectWithCredentials() {
@@ -58,20 +59,25 @@ export async function launchCampaignAction(
     }
   });
 
-  // Fire-and-forget background worker
-  processCampaign(
-    campaign.id,
-    project.id,
-    templateName,
-    templateText,
-    languageCode,
-    variableMapping,
-    leadsData,
-    project.whatsappPhoneId,
-    project.whatsappToken,
-    headerUrl,
-    botActive
-  ).catch(console.error);
+  // BACKGROUND TASK: Using after() to ensure Vercel doesn't kill the process
+  after(async () => {
+    console.log(`[Campaign] Iniciando procesamiento en segundo plano para campaña: ${campaign.id}`);
+    await processCampaign(
+      campaign.id,
+      project.id,
+      templateName,
+      templateText,
+      languageCode,
+      variableMapping,
+      leadsData,
+      project.whatsappPhoneId!,
+      project.whatsappToken!,
+      headerUrl,
+      botActive
+    ).catch(err => {
+      console.error(`[Campaign] Error en procesamiento background:`, err);
+    });
+  });
 
   revalidatePath('/campaigns');
   return campaign;
@@ -101,144 +107,80 @@ async function processCampaign(
   headerUrl?: string,
   botActive: boolean = true
 ) {
-  for (let i = 0; i < leadsData.length; i++) {
-    const leadData = leadsData[i];
-    const rawPhone = leadData['#'];
-    if (!rawPhone) continue;
+  const batchSize = 10; // Procesar 10 mensajes en paralelo
+  for (let i = 0; i < leadsData.length; i += batchSize) {
+    const batch = leadsData.slice(i, i + batchSize);
+    console.log(`[Campaign] Procesando batch de ${batch.length} leads... (${i + 1}/${leadsData.length})`);
 
-    const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
-    if (cleanPhone.length < 8) continue;
+    await Promise.all(batch.map(async (leadData) => {
+      try {
+        const rawPhone = leadData['#'];
+        if (!rawPhone) return;
 
-    // Build template body components
-    const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
-    const bodyParams = paramEntries.map(([, colName]) => ({
-      type: 'text' as const,
-      text: String(leadData[colName] ?? ''),
-    }));
+        const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
+        if (cleanPhone.length < 8) return;
 
-    const components: any[] = bodyParams.length > 0
-      ? [{ type: 'body', parameters: bodyParams }]
-      : [];
-    
-    // Add image header if present
-    let realUrl: string | undefined = undefined;
-    if (headerUrl) {
-      // Determine if headerUrl is a column mapping or a static URL
-      const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
-      realUrl = isMapping 
-        ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '')
-        : headerUrl;
+        // 1. Build components y preview
+        const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
+        const bodyParams = paramEntries.map(([, colName]) => ({
+          type: 'text' as const,
+          text: String(leadData[colName] ?? ''),
+        }));
 
-      if (realUrl && realUrl.startsWith('http')) {
-        components.unshift({
-          type: 'header',
-          parameters: [
-            { type: 'image', image: { link: realUrl } }
-          ]
+        const components: any[] = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
+        let realUrl: string | undefined = undefined;
+        if (headerUrl) {
+          const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
+          realUrl = isMapping ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '') : headerUrl;
+          if (realUrl && realUrl.startsWith('http')) {
+            components.unshift({ type: 'header', parameters: [{ type: 'image', image: { link: realUrl } }] });
+          }
+        }
+
+        let previewText = templateText;
+        paramEntries.forEach(([k, col]) => {
+            const val = leadData[col] ?? '';
+            previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
         });
+        if (!previewText) previewText = `Plantilla: ${templateName}`;
+
+        // 2. Transacción de DB: Upsert Lead + Chat + Message en menos viajes
+        const metadataToSave = { ...leadData };
+        delete metadataToSave['#'];
+        const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
+        const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
+
+        const lead = await prisma.lead.upsert({
+          where: { phone_projectId: { phone: cleanPhone, projectId } },
+          update: { 
+            latestCampaignId: campaignId,
+            metadata: metadataToSave,
+            name: (leadName && leadName !== cleanPhone) ? leadName : undefined 
+          },
+          create: { phone: cleanPhone, projectId, name: leadName, latestCampaignId: campaignId, metadata: metadataToSave }
+        });
+
+        const chat = await prisma.chat.upsert({
+          where: { leadId: lead.id },
+          update: { botActive: botActive, lastActiveAt: new Date() },
+          create: { leadId: lead.id, botActive: botActive }
+        });
+
+        // 3. Envío Meta
+        const waResult = await sendWhatsAppTemplate(cleanPhone, templateName, languageCode, components, phoneNumberId, accessToken);
+
+        // 4. Guardar mensaje
+        await prisma.message.create({
+          data: { 
+            chatId: chat.id, role: 'agent', content: previewText, 
+            waCategory: waResult.category || 'MARKETING', imageUrl: realUrl 
+          }
+        });
+
+      } catch (err) {
+        console.error(`[Campaign] Error procesando lead individual:`, err);
       }
-    }
-
-    // Build a readable preview by replacing {{1}}, {{2}} with actual values
-    let previewText = templateText;
-    paramEntries.forEach(([k, col]) => {
-        const val = leadData[col] ?? '';
-        previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
-    });
-    
-    // Si no hay variables o el texto está vacío, fallback al formato anterior
-    if (!previewText) {
-        previewText = `Plantilla: ${templateName} → ${paramEntries.map(([k, col]) => `{{${k}}}=${leadData[col] ?? ''}`).join(', ')}`;
-    }
-
-    // Upsert Lead
-    let lead = await prisma.lead.findFirst({ where: { phone: cleanPhone, projectId } });
-    
-    // Preparar metadata (limpiar columnas técnicas)
-    const metadataToSave = { ...leadData };
-    delete metadataToSave['#'];
-
-    if (!lead) {
-      // Intentar encontrar el nombre en columnas comunes
-      const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
-      const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
-
-      lead = await prisma.lead.create({
-        data: {
-          phone: cleanPhone,
-          projectId,
-          name: leadName,
-          latestCampaignId: campaignId,
-          metadata: metadataToSave
-        }
-      });
-    } else {
-      // Si el lead ya existe, actualizamos metadata y nombre si no tenía uno decente
-      const existingMetadata = (lead.metadata as Record<string, any>) || {};
-      const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
-      const newName = nameKey ? String(leadData[nameKey]).trim() : null;
-
-      lead = await prisma.lead.update({
-        where: { id: lead.id },
-        data: { 
-          latestCampaignId: campaignId,
-          name: (newName && (lead.name?.includes('Lead') || lead.name === lead.phone)) ? newName : lead.name,
-          metadata: { ...existingMetadata, ...metadataToSave }
-        }
-      });
-    }
-
-    // Upsert Chat
-    let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
-    if (!chat) {
-      chat = await prisma.chat.create({ 
-        data: { 
-          leadId: lead.id,
-          botActive: botActive
-        } 
-      });
-    } else {
-      chat = await prisma.chat.update({
-        where: { id: chat.id },
-        data: { botActive: botActive }
-      });
-    }
-
-    // Send via WhatsApp Cloud API
-    const waResult = await sendWhatsAppTemplate(
-      cleanPhone,
-      templateName,
-      languageCode,
-      components,
-      phoneNumberId,
-      accessToken
-    );
-
-    // Store message in DB for Inbox (with WA billing category and optional image)
-    await prisma.message.create({
-      data: { 
-        chatId: chat.id, 
-        role: 'agent', 
-        content: previewText, 
-        waCategory: waResult.category || 'MARKETING',
-        imageUrl: realUrl
-      }
-    });
-
-    await prisma.chat.update({
-      where: { id: chat.id },
-      data: { lastActiveAt: new Date() }
-    });
-
-    // LÓGICA DE BATCHES: Cada 25 mensajes, esperar 5 segundos (si no es el último)
-    const processedCount = i + 1;
-    if (processedCount % 25 === 0 && processedCount < leadsData.length) {
-      console.log(`[Campaign] Batch de 25 alcanzado (${processedCount}/${leadsData.length}). Esperando 5 segundos...`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    } else {
-      // Pequeño delay de 500ms entre mensajes individuales para estabilidad
-      await new Promise(r => setTimeout(r, 500));
-    }
+    }));
   }
 
   await prisma.campaign.update({
