@@ -110,6 +110,8 @@ export default function InboxPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [isInboxSidebarOpen, setIsInboxSidebarOpen] = useState(true);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Refs para control de estado optimista y polling
   const pendingOptimistic = useRef<Set<string>>(new Set());
@@ -207,6 +209,12 @@ export default function InboxPage() {
     initialLoad();
   }, []);
 
+  // Inicializar audio de notificación
+  useEffect(() => {
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+    audioRef.current.volume = 0.5;
+  }, []);
+
   // Polling inteligente: usa setTimeout recursivo para evitar solapamiento
   useEffect(() => {
     let cancelled = false;
@@ -219,20 +227,41 @@ export default function InboxPage() {
         const latestChats = await getActiveChats();
         if (cancelled) return;
         
-        setChats(prev => mergeChats(latestChats, prev, 'polling'));
-
-        // Sincronizar chat activo si existe y no hay operaciones optimistas
-        const currentId = activeChatIdRef.current;
-        const hasOptimistic = pendingOptimistic.current.size > 0;
-        
         if (currentId && !hasOptimistic) {
           const refreshed = await getChatMessages(currentId);
           if (cancelled) return;
-          
-          // Actualizar tanto el activo como el cache silenciosamente
           setActiveChat(refreshed);
           setChatsCache(prev => ({ ...prev, [currentId]: refreshed }));
         }
+
+        // DETECTAR NUEVOS MENSAJES PARA NOTIFICACIONES
+        setChats(prev => {
+          latestChats.forEach(newChat => {
+            const oldChat = prev.find(p => p.id === newChat.id);
+            const lastMsg = newChat.messages?.[0];
+            
+            // Si el bot está apagado Y el mensaje es nuevo Y es del usuario
+            if (oldChat && !newChat.botActive && lastMsg && lastMsg.id !== oldChat.messages?.[0]?.id && lastMsg.role === 'user') {
+              // No notificar si es el chat que ya tenemos abierto (opcional, pero mejor para evitar spam mientras chateas)
+              if (newChat.id !== activeChatIdRef.current) {
+                const toast = {
+                  id: Date.now() + Math.random(),
+                  name: newChat.lead?.name || 'Cliente',
+                  text: lastMsg.content,
+                  chatId: newChat.id
+                };
+                setNotifications(n => [...n, toast]);
+                audioRef.current?.play().catch(() => {});
+                
+                // Auto-eliminar notificación después de 10 segundos
+                setTimeout(() => {
+                  setNotifications(n => n.filter(item => item.id !== toast.id));
+                }, 10000);
+              }
+            }
+          });
+          return mergeChats(latestChats, prev, 'polling');
+        });
       } catch (e) {
         // Silenciar errores de polling para no romper la app
       }
@@ -981,6 +1010,27 @@ export default function InboxPage() {
           // Opcional: mostrar un toast o mensaje de éxito
         }}
       />
+
+      {/* Notificaciones Flotantes */}
+      <div className="fixed top-20 right-8 z-[60] flex flex-col gap-3 pointer-events-none">
+        {notifications.map(n => (
+          <div 
+            key={n.id} 
+            className="pointer-events-auto bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 shadow-2xl rounded-2xl p-4 w-72 animate-in slide-in-from-right-8 fade-in duration-500 cursor-pointer hover:scale-[1.02] transition-transform"
+            onClick={() => {
+              loadChatDetails(n.chatId);
+              setNotifications(prev => prev.filter(item => item.id !== n.id));
+            }}
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-xs font-bold text-[#F36A2D]">NUEVO MENSAJE MANUAL</span>
+            </div>
+            <p className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0] line-clamp-1">{n.name}</p>
+            <p className="text-xs text-[#6F6F6F] line-clamp-2 mt-1 italic">"{n.text}"</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
