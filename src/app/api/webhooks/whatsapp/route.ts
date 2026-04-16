@@ -33,6 +33,12 @@ export async function POST(req: NextRequest) {
 
     // Caso A: Notificación de ESTADO (sent, delivered, failed, read)
     if (status) {
+        console.log(`[DEBUG-WEBHOOK] Recibido status ${status.status} para WAMID: ${status.id}`);
+        // Verificación extra para debug local
+        const { prisma } = await import('@/lib/prisma');
+        const logCount = await prisma.campaignLog.count({ where: { wamid: status.id } });
+        console.log(`[DEBUG-WEBHOOK] Registros encontrados en CampaignLog para este ID: ${logCount}`);
+
         if (status.status === 'failed') {
             const error = status.errors?.[0];
             const recipientId = status.recipient_id;

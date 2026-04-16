@@ -185,6 +185,7 @@ async function processCampaign(
             status: 'SENT'
           }
         });
+        console.log(`[DEBUG-SEND] CampaignLog guardado para ${cleanPhone}. WAMID: ${waResult.id}`);
 
       } catch (err: any) {
         console.error(`[Campaign] Error procesando lead individual:`, err);
