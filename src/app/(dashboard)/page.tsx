@@ -242,22 +242,19 @@ export default function InboxPage() {
             
             // Si el bot está apagado Y el mensaje es nuevo Y es del usuario
             if (oldChat && !newChat.botActive && lastMsg && lastMsg.id !== oldChat.messages?.[0]?.id && lastMsg.role === 'user') {
-              // No notificar si es el chat que ya tenemos abierto (opcional, pero mejor para evitar spam mientras chateas)
-              if (newChat.id !== activeChatIdRef.current) {
-                const toast = {
-                  id: Date.now() + Math.random(),
-                  name: newChat.lead?.name || 'Cliente',
-                  text: lastMsg.content,
-                  chatId: newChat.id
-                };
-                setNotifications(n => [...n, toast]);
-                audioRef.current?.play().catch(() => {});
-                
-                // Auto-eliminar notificación después de 10 segundos
-                setTimeout(() => {
-                  setNotifications(n => n.filter(item => item.id !== toast.id));
-                }, 10000);
-              }
+              const toast = {
+                id: Date.now() + Math.random(),
+                name: newChat.lead?.name || 'Cliente',
+                text: lastMsg.content,
+                chatId: newChat.id
+              };
+              setNotifications(n => [...n, toast]);
+              audioRef.current?.play().catch(() => {});
+              
+              // Auto-eliminar notificación después de 10 segundos
+              setTimeout(() => {
+                setNotifications(n => n.filter(item => item.id !== toast.id));
+              }, 10000);
             }
           });
           return mergeChats(latestChats, prev, 'polling');
@@ -708,11 +705,12 @@ export default function InboxPage() {
             </div>
           ) : (
             filteredChats.map((chat: any) => {
-              const isSelected = activeChat?.id === chat.id;
+              const isActive = activeChat?.id === chat.id;
               const isMultiSelected = selectedIds.has(chat.id);
               const isHandoff = chat.lead.status === 'NEEDS_AGENT';
               const isBot = chat.botActive;
-              const isHuman = !chat.botActive && !isHandoff;
+              const lastMsg = chat.messages?.[0];
+              const isUnread = !isBot && lastMsg?.role === 'user';
 
               return (
                 <div key={chat.id} className="relative group">
@@ -733,15 +731,13 @@ export default function InboxPage() {
                   className={`w-full text-left p-4 pl-8 rounded-2xl transition-all duration-200 flex flex-col gap-1 border-1 shadow-sm ${
                     isMultiSelected
                       ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600 ring-2 ring-purple-400/20'
-                      : isSelected
-                    ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 ring-2 ring-blue-400/20'
-                    : isHandoff
-                      ? 'bg-red-50 dark:bg-red-950/30 border-red-400 dark:border-red-800'
-                      : isBot
-                        ? 'bg-white dark:bg-zinc-900/60 border-[#F36A2D] dark:border-[#F36A2D]/80'
-                        : isHuman
-                          ? 'bg-white dark:bg-zinc-900/60 border-emerald-500 dark:border-emerald-600'
-                          : 'bg-white/50 dark:bg-zinc-900/20 border-transparent'
+                      : isActive
+                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 ring-2 ring-blue-400/20'
+                        : isHandoff
+                          ? 'bg-red-50 dark:bg-red-950/30 border-red-400 dark:border-red-800'
+                          : isBot
+                            ? 'bg-white dark:bg-zinc-900/60 border-[#DEDAD0] dark:border-zinc-800'
+                            : 'bg-white/50 dark:bg-zinc-900/20 border-transparent'
                     }`}
                 >
                   <div className="flex justify-between items-center w-full gap-2">
@@ -750,7 +746,7 @@ export default function InboxPage() {
                       {chat.lead.heat === 'TIBIO' && <span className="text-[10px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={10} /> {chat.lead.score}</span>}
                       {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
 
-                      <span className="font-semibold text-sm text-[#111111] dark:text-[#EDE9E0] truncate">
+                      <span className={`text-sm truncate ${isUnread ? 'font-bold text-[#111111] dark:text-[#EDE9E0]' : 'font-semibold text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}>
                         {chat.lead.name || chat.lead.phone}
                       </span>
                     </div>
@@ -776,8 +772,14 @@ export default function InboxPage() {
                       <WaitTimer startTime={chat.lastActiveAt} />
                     </div>
                   )}
-                  <div className="text-xs text-[#6F6F6F] truncate pr-4 opacity-80 italic">
-                    {chat.messages?.[0]?.content || "Sin mensajes"}
+                  {/* Ultimo Mensaje */}
+                  <div className="flex items-start justify-between gap-1">
+                    <p className={`text-[11px] line-clamp-1 flex-1 ${isUnread ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
+                      {lastMsg ? lastMsg.content : <span className="italic opacity-50">Sin mensajes</span>}
+                    </p>
+                    {isUnread && (
+                      <div className="h-2 w-2 rounded-full bg-[#F36A2D] shadow-sm shadow-[#F36A2D]/40 mt-1 shrink-0 animate-pulse" />
+                    )}
                   </div>
                 </button>
                 </div>
