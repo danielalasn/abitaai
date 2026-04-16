@@ -169,7 +169,7 @@ async function processCampaign(
         // 3. Envío Meta
         const waResult = await sendWhatsAppTemplate(cleanPhone, templateName, languageCode, components, phoneNumberId, accessToken);
 
-        // 4. Guardar mensaje
+        // 4. Guardar mensaje y LOG de campaña
         await prisma.message.create({
           data: { 
             chatId: chat.id, role: 'agent', content: previewText, 
@@ -177,8 +177,30 @@ async function processCampaign(
           }
         });
 
-      } catch (err) {
+        await prisma.campaignLog.create({
+          data: {
+            campaignId,
+            phone: cleanPhone,
+            status: 'SENT'
+          }
+        });
+
+      } catch (err: any) {
         console.error(`[Campaign] Error procesando lead individual:`, err);
+        // Registrar fallo en los logs de la campaña
+        try {
+          const rawPhone = leadData['#'];
+          await prisma.campaignLog.create({
+            data: {
+              campaignId,
+              phone: rawPhone ? String(rawPhone) : 'Unknown',
+              status: 'FAILED',
+              error: err?.message || 'Error desconocido'
+            }
+          });
+        } catch (logErr) {
+          console.error("No se pudo guardar el log de error:", logErr);
+        }
       }
     }));
 
@@ -234,4 +256,11 @@ export async function uploadCampaignImage(formData: FormData) {
     .getPublicUrl(filePath);
 
   return publicUrl;
+}
+
+export async function fetchCampaignLogs(campaignId: string) {
+  return await prisma.campaignLog.findMany({
+    where: { campaignId },
+    orderBy: { createdAt: 'desc' }
+  });
 }

@@ -6,7 +6,7 @@ import {
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
   Sparkles, Download, Clock, Search, X, AlertCircle
 } from 'lucide-react';
-import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction } from '@/app/actions/campaigns';
+import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs } from '@/app/actions/campaigns';
 import { uploadImageAction } from '@/app/actions/storage';
 
 // ──────────────────────────────────────────────
@@ -78,6 +78,11 @@ export default function CampaignsPage() {
   const [successStatus, setSuccessStatus] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  
+  // Logs Report
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [activeLogs, setActiveLogs] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   useEffect(() => { loadCampaigns(); }, []);
 
@@ -572,21 +577,95 @@ export default function CampaignsPage() {
                       <span className="text-[10px] text-[#6F6F6F] font-bold">{c.leadCount} leads</span>
                     </div>
                   </div>
-                  {c.csvData && (
+                  <div className="flex items-center gap-2 shrink-0">
                     <button 
-                      onClick={() => handleDownloadCsv(c)}
-                      title="Descargar Leads CSV"
-                      className="p-2.5 bg-[#F36A2D]/10 text-[#F36A2D] rounded-xl hover:bg-[#F36A2D] hover:text-white transition-all shadow-sm"
+                      onClick={async () => {
+                        setIsLoadingLogs(true);
+                        setShowLogsModal(true);
+                        const logs = await fetchCampaignLogs(c.id);
+                        setActiveLogs(logs);
+                        setIsLoadingLogs(false);
+                      }}
+                      className="px-3 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all"
                     >
-                      <Download size={16} />
+                      Reporte
                     </button>
-                  )}
+                    {c.csvData && (
+                      <button 
+                        onClick={() => handleDownloadCsv(c)}
+                        title="Descargar Leads CSV"
+                        className="p-1.5 bg-[#F36A2D]/10 text-[#F36A2D] rounded-xl hover:bg-[#F36A2D] hover:text-white transition-all shadow-sm"
+                      >
+                        <Download size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      {/* MODAL DE REPORTES */}
+      {showLogsModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogsModal(false)} />
+          <div className="bg-white dark:bg-[#111111] w-full max-w-xl rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 animate-in zoom-in-95 duration-200">
+             <div className="p-8 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                   <h3 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Reporte de Entrega</h3>
+                   <p className="text-xs text-[#6F6F6F]">Estado detallado por contacto</p>
+                </div>
+                <button 
+                   onClick={() => setShowLogsModal(false)}
+                   className="h-10 w-10 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center hover:bg-zinc-200 transition-colors"
+                >
+                   <X size={20} className="text-[#6F6F6F]" />
+                </button>
+             </div>
+
+             <div className="max-h-[60vh] overflow-y-auto p-6 space-y-3">
+                {isLoadingLogs ? (
+                    <div className="flex flex-col items-center py-12 gap-3">
+                       <Loader2 size={32} className="animate-spin text-emerald-500" />
+                       <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Generando Reporte...</p>
+                    </div>
+                ) : activeLogs.length === 0 ? (
+                    <div className="text-center py-12 opacity-50">
+                       <p className="text-sm">No hay registros disponibles para esta campaña.</p>
+                    </div>
+                ) : (
+                    activeLogs.map((log: any) => (
+                       <div key={log.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-black/20 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                          <div className="flex items-center gap-3">
+                             <div className={`h-8 w-8 rounded-full flex items-center justify-center ${log.status === 'SENT' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
+                                {log.status === 'SENT' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                             </div>
+                             <div>
+                                <p className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0]">{log.phone}</p>
+                                {log.error && <p className="text-[10px] text-red-500 font-medium">{log.error}</p>}
+                             </div>
+                          </div>
+                          <div className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${log.status === 'SENT' ? 'text-emerald-600' : 'text-red-600'}`}>
+                             {log.status === 'SENT' ? 'Enviado' : 'Fallido'}
+                          </div>
+                       </div>
+                    ))
+                )}
+             </div>
+             
+             <div className="p-8 bg-zinc-50 dark:bg-black/10 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-end">
+                <button 
+                   onClick={() => setShowLogsModal(false)}
+                   className="px-8 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all"
+                >
+                   Cerrar
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
