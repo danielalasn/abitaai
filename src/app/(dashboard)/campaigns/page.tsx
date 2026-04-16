@@ -82,6 +82,7 @@ export default function CampaignsPage() {
   // Logs Report
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [activeLogs, setActiveLogs] = useState<any[]>([]);
+  const [activeCampaign, setActiveCampaign] = useState<any | null>(null);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   useEffect(() => { loadCampaigns(); }, []);
@@ -582,6 +583,7 @@ export default function CampaignsPage() {
                       onClick={async () => {
                         setIsLoadingLogs(true);
                         setShowLogsModal(true);
+                        setActiveCampaign(c);
                         const logs = await fetchCampaignLogs(c.id);
                         setActiveLogs(logs);
                         setIsLoadingLogs(false);
@@ -696,23 +698,43 @@ export default function CampaignsPage() {
              <div className="p-8 bg-zinc-50 dark:bg-black/10 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
                  <button 
                     onClick={() => {
-                        const headers = ["Telefono", "Estado", "Error", "Fecha"];
-                        const rows = activeLogs.map((l: any) => [
-                            l.phone,
-                            l.status,
-                            l.error || "",
-                            new Date(l.createdAt).toLocaleString()
-                        ]);
-                        
-                        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.setAttribute("href", url);
-                        link.setAttribute("download", `Reporte_Campaña_${activeLogs[0]?.campaignId || 'logs'}.csv`);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        if (!activeCampaign?.csvData) return;
+                        try {
+                           const originalData = JSON.parse(activeCampaign.csvData);
+                           if (!Array.isArray(originalData)) return;
+
+                           // Mapear logs por telefono para busqueda rapida
+                           const logsMap: Record<string, any> = {};
+                           activeLogs.forEach(l => {
+                             logsMap[l.phone] = l;
+                           });
+
+                           const originalHeaders = Object.keys(originalData[0] || {});
+                           const headers = [...originalHeaders, "WhatsApp_Status", "WhatsApp_Error"];
+                           
+                           const rows = originalData.map((row: any) => {
+                               const phone = row['#'];
+                               const log = logsMap[phone];
+                               return [
+                                   ...originalHeaders.map(h => row[h]),
+                                   log?.status || "NO_INTENTADO",
+                                   log?.error || ""
+                               ];
+                           });
+                           
+                           const csvContent = [headers, ...rows].map(e => e.map(val => `"${val}"`).join(",")).join("\n");
+                           const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                           const url = URL.createObjectURL(blob);
+                           const link = document.createElement("a");
+                           link.setAttribute("href", url);
+                           link.setAttribute("download", `Reporte_Completo_${activeCampaign.name}.csv`);
+                           document.body.appendChild(link);
+                           link.click();
+                           document.body.removeChild(link);
+                        } catch (e) {
+                           console.error("Error generando CSV completo:", e);
+                           alert("Error al generar el CSV completo");
+                        }
                     }}
                     className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-xl transition-all"
                  >
