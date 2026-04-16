@@ -180,12 +180,12 @@ async function processCampaign(
         await prisma.campaignLog.create({
           data: {
             campaignId,
-            wamid: waResult.id,
+            wamid: waResult.messageId,
             phone: cleanPhone,
             status: 'SENT'
           }
         });
-        console.log(`[DEBUG-SEND] CampaignLog guardado para ${cleanPhone}. WAMID: ${waResult.id}`);
+        console.log(`[DEBUG-SEND] CampaignLog guardado para ${cleanPhone}. WAMID: ${waResult.messageId}`);
 
       } catch (err: any) {
         console.error(`[Campaign] Error procesando lead individual:`, err);
