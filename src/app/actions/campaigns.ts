@@ -6,7 +6,7 @@ import { getApprovedTemplates } from '@/lib/whatsapp';
 import { revalidatePath } from 'next/cache';
 import { getCurrentProject } from '@/lib/auth-server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { unstable_after as after } from 'next/server';
+import { after } from 'next/server';
 
 // Helper: get project + credentials
 async function getProjectWithCredentials() {
