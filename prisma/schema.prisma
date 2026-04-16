@@ -75,6 +75,8 @@ model Lead {
   agent          Agent?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
   latestCampaign Campaign? @relation(fields: [latestCampaignId], references: [id], onDelete: SetNull)
   chat           Chat?
+
+  @@unique([phone, projectId])
 }
 
 model Chat {
