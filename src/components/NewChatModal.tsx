@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Send, Loader2, Phone, Sparkles, AlertTriangle, Bot, CheckCircle2 } from 'lucide-react';
+import { X, Send, Loader2, Phone, Sparkles, AlertTriangle, Bot, CheckCircle2, User, UploadCloud, ChevronRight, Users } from 'lucide-react';
 import { fetchMetaTemplates } from '@/app/actions/campaigns';
 import { startIndividualChatAction } from '@/app/actions/inbox';
 import { uploadImageAction } from '@/app/actions/storage';
