@@ -615,7 +615,26 @@ export default function CampaignsPage() {
              <div className="p-8 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between">
                 <div>
                    <h3 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Reporte de Entrega</h3>
-                   <p className="text-xs text-[#6F6F6F]">Estado detallado por contacto</p>
+                   <div className="flex items-center gap-2">
+                      <p className="text-xs text-[#6F6F6F]">Estado detallado por contacto</p>
+                      <button 
+                        onClick={async () => {
+                          setIsLoadingLogs(true);
+                          // Encontrando la campaña activa de alguna forma si no la tenemos a mano
+                          // pero por ahora activeLogs viene de una campaña específica.
+                          // Reusando el ID que ya tenemos en los logs previos.
+                          if (activeLogs.length > 0) {
+                            const logs = await fetchCampaignLogs(activeLogs[0].campaignId);
+                            setActiveLogs(logs);
+                          }
+                          setIsLoadingLogs(false);
+                        }}
+                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-emerald-600"
+                        title="Actualizar estados"
+                      >
+                        <RefreshCw size={12} className={isLoadingLogs ? 'animate-spin' : ''} />
+                      </button>
+                   </div>
                 </div>
                 <button 
                    onClick={() => setShowLogsModal(false)}
