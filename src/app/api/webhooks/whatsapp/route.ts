@@ -41,25 +41,29 @@ export async function POST(req: NextRequest) {
             // Actualizar LOG de campaña si existe
             try {
                 const { prisma } = await import('@/lib/prisma');
-                await prisma.campaignLog.updateMany({
+                const updated = await prisma.campaignLog.updateMany({
                     where: { wamid: status.id },
                     data: { 
                         status: 'FAILED',
                         error: `${error?.title}: ${error?.message}`
                     }
                 });
+                if (updated.count > 0) console.log(`[Webhook] CampaignLog ${status.id} actualizado a FAILED`);
             } catch (dbErr) {
                 console.error("Error actualizando log de campaña (fallo):", dbErr);
             }
         } else {
+            const currentStatus = status.status.toUpperCase();
             console.log(`✅ [WA STATUS] Mensaje ${status.id} a ${status.recipient_id} está: ${status.status}`);
+            
             // Actualizar LOG de campaña a DELIVERED o READ
             try {
                 const { prisma } = await import('@/lib/prisma');
-                await prisma.campaignLog.updateMany({
+                const updated = await prisma.campaignLog.updateMany({
                     where: { wamid: status.id },
-                    data: { status: status.status.toUpperCase() }
+                    data: { status: currentStatus }
                 });
+                if (updated.count > 0) console.log(`[Webhook] CampaignLog ${status.id} actualizado a ${currentStatus}`);
             } catch (dbErr) {
                 console.error("Error actualizando log de campaña (éxito):", dbErr);
             }
