@@ -107,108 +107,113 @@ async function processCampaign(
   headerUrl?: string,
   botActive: boolean = true
 ) {
-  const batchSize = 5; // Batches de 5 para seguridad
-  for (let i = 0; i < leadsData.length; i += batchSize) {
-    const batch = leadsData.slice(i, i + batchSize);
-    console.log(`[Campaign] Procesando batch de ${batch.length} leads... (${i + 1}/${leadsData.length})`);
+  console.log(`[Campaign] Procesando ${leadsData.length} contactos con cadencia de seguridad...`);
 
-    await Promise.all(batch.map(async (leadData) => {
+  for (let i = 0; i < leadsData.length; i++) {
+    const leadData = leadsData[i];
+    try {
+      const rawPhone = leadData['#'];
+      if (!rawPhone) continue;
+
+      const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
+      if (cleanPhone.length < 8) continue;
+
+      // 1. Build components y preview
+      const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
+      const bodyParams = paramEntries.map(([, colName]) => ({
+        type: 'text' as const,
+        text: String(leadData[colName] ?? ''),
+      }));
+
+      const components: any[] = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
+      let realUrl: string | undefined = undefined;
+      if (headerUrl) {
+        const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
+        realUrl = isMapping ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '') : headerUrl;
+        if (realUrl && realUrl.startsWith('http')) {
+          components.unshift({ type: 'header', parameters: [{ type: 'image', image: { link: realUrl } }] });
+        }
+      }
+
+      let previewText = templateText;
+      paramEntries.forEach(([k, col]) => {
+          const val = leadData[col] ?? '';
+          previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
+      });
+      if (!previewText) previewText = `Plantilla: ${templateName}`;
+
+      // 2. Transacción de DB: Upsert Lead + Chat + Message
+      const metadataToSave = { ...leadData };
+      delete metadataToSave['#'];
+      const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
+      const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
+
+      const lead = await prisma.lead.upsert({
+        where: { phone_projectId: { phone: cleanPhone, projectId } },
+        update: { 
+          latestCampaignId: campaignId,
+          metadata: metadataToSave,
+          name: (leadName && leadName !== cleanPhone) ? leadName : undefined 
+        },
+        create: { phone: cleanPhone, projectId, name: leadName, latestCampaignId: campaignId, metadata: metadataToSave }
+      });
+
+      const chat = await prisma.chat.upsert({
+        where: { leadId: lead.id },
+        update: { botActive: botActive, lastActiveAt: new Date() },
+        create: { leadId: lead.id, botActive: botActive }
+      });
+
+      // 3. Envío Meta
+      const waResult = await sendWhatsAppTemplate(cleanPhone, templateName, languageCode, components, phoneNumberId, accessToken);
+
+      // 4. Guardar mensaje y LOG de campaña
+      await prisma.message.create({
+        data: { 
+          chatId: chat.id, role: 'agent', content: previewText, 
+          waCategory: waResult.category || 'MARKETING', imageUrl: realUrl,
+          wamid: waResult.messageId // Rastreo de estado para el inbox
+        }
+      });
+
+      await prisma.campaignLog.create({
+        data: {
+          campaignId,
+          wamid: waResult.messageId,
+          phone: cleanPhone,
+          status: 'SENT'
+        }
+      });
+      console.log(`[Campaign] (${i+1}/${leadsData.length}) Enviado a ${cleanPhone}. WAMID: ${waResult.messageId}`);
+
+    } catch (err: any) {
+      console.error(`[Campaign] Error procesando lead individual #${i}:`, err);
       try {
         const rawPhone = leadData['#'];
-        if (!rawPhone) return;
-
-        const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
-        if (cleanPhone.length < 8) return;
-
-        // 1. Build components y preview
-        const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
-        const bodyParams = paramEntries.map(([, colName]) => ({
-          type: 'text' as const,
-          text: String(leadData[colName] ?? ''),
-        }));
-
-        const components: any[] = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
-        let realUrl: string | undefined = undefined;
-        if (headerUrl) {
-          const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
-          realUrl = isMapping ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '') : headerUrl;
-          if (realUrl && realUrl.startsWith('http')) {
-            components.unshift({ type: 'header', parameters: [{ type: 'image', image: { link: realUrl } }] });
-          }
-        }
-
-        let previewText = templateText;
-        paramEntries.forEach(([k, col]) => {
-            const val = leadData[col] ?? '';
-            previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
-        });
-        if (!previewText) previewText = `Plantilla: ${templateName}`;
-
-        // 2. Transacción de DB: Upsert Lead + Chat + Message en menos viajes
-        const metadataToSave = { ...leadData };
-        delete metadataToSave['#'];
-        const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
-        const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
-
-        const lead = await prisma.lead.upsert({
-          where: { phone_projectId: { phone: cleanPhone, projectId } },
-          update: { 
-            latestCampaignId: campaignId,
-            metadata: metadataToSave,
-            name: (leadName && leadName !== cleanPhone) ? leadName : undefined 
-          },
-          create: { phone: cleanPhone, projectId, name: leadName, latestCampaignId: campaignId, metadata: metadataToSave }
-        });
-
-        const chat = await prisma.chat.upsert({
-          where: { leadId: lead.id },
-          update: { botActive: botActive, lastActiveAt: new Date() },
-          create: { leadId: lead.id, botActive: botActive }
-        });
-
-        // 3. Envío Meta
-        const waResult = await sendWhatsAppTemplate(cleanPhone, templateName, languageCode, components, phoneNumberId, accessToken);
-
-        // 4. Guardar mensaje y LOG de campaña
-        await prisma.message.create({
-          data: { 
-            chatId: chat.id, role: 'agent', content: previewText, 
-            waCategory: waResult.category || 'MARKETING', imageUrl: realUrl 
-          }
-        });
-
         await prisma.campaignLog.create({
           data: {
             campaignId,
-            wamid: waResult.messageId,
-            phone: cleanPhone,
-            status: 'SENT'
+            phone: rawPhone ? String(rawPhone) : 'Unknown',
+            status: 'FAILED',
+            error: err?.message || 'Error desconocido'
           }
         });
-        console.log(`[DEBUG-SEND] CampaignLog guardado para ${cleanPhone}. WAMID: ${waResult.messageId}`);
-
-      } catch (err: any) {
-        console.error(`[Campaign] Error procesando lead individual:`, err);
-        // Registrar fallo en los logs de la campaña
-        try {
-          const rawPhone = leadData['#'];
-          await prisma.campaignLog.create({
-            data: {
-              campaignId,
-              phone: rawPhone ? String(rawPhone) : 'Unknown',
-              status: 'FAILED',
-              error: err?.message || 'Error desconocido'
-            }
-          });
-        } catch (logErr) {
-          console.error("No se pudo guardar el log de error:", logErr);
-        }
+      } catch (logErr) {
+        console.error("No se pudo guardar el log de error:", logErr);
       }
-    }));
+    }
 
-    // Delay de seguridad de 1 segundo entre batches
-    if (i + batchSize < leadsData.length) {
-      await new Promise(r => setTimeout(r, 1000));
+    // 5. CADENCIA DE SEGURIDAD (Delays)
+    if (i < leadsData.length - 1) {
+      let delayTime = 500; // Base: 500ms
+      if ((i + 1) % 21 === 0) {
+        delayTime = 3000; // Cada 21: 3000ms
+        console.log(`[Campaign] Pausa larga de 3s (limite de 21 mensajes)`);
+      } else if ((i + 1) % 3 === 0) {
+        delayTime = 1000; // Cada 3: 1000ms
+        console.log(`[Campaign] Pausa corta de 1s (bloque de 3)`);
+      }
+      await new Promise(r => setTimeout(r, delayTime));
     }
   }
 
