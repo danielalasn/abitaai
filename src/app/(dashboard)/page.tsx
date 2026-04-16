@@ -999,19 +999,19 @@ export default function InboxPage() {
                             })}
                           </span>
                           {(isAgent || isBot) && msg.status === 'failed' && (
-                            <AlertCircle size={10} className="text-red-400" title="Falló el envío" />
+                            <AlertCircle size={10} className="text-red-400" />
                           )}
                           {(isAgent || isBot) && msg.status === 'pending' && (
-                            <Clock size={10} className="opacity-60" title="Enviando..." />
+                            <Clock size={10} className="opacity-60" />
                           )}
                           {(isAgent || isBot) && (msg.status === 'SENT' || msg.status === 'sent') && (
-                            <Check size={10} className="opacity-60 text-zinc-500" title="Enviado" />
+                            <Check size={10} className="opacity-60 text-zinc-500" />
                           )}
                           {(isAgent || isBot) && msg.status === 'DELIVERED' && (
-                            <CheckCheck size={10} className="opacity-60 text-zinc-500" title="Entregado" />
+                            <CheckCheck size={10} className="opacity-60 text-zinc-500" />
                           )}
                           {(isAgent || isBot) && msg.status === 'READ' && (
-                            <CheckCheck size={10} className="text-blue-400 opacity-100 dark:text-blue-400" title="Leído" />
+                            <CheckCheck size={10} className="text-blue-400 opacity-100 dark:text-blue-400" />
                           )}
                           {(isAgent || isBot) && !['failed', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
                             <Check size={10} className="opacity-60" />
