@@ -30,8 +30,9 @@ export async function POST(req: NextRequest) {
     const value = changes?.value;
     const message = value?.messages?.[0];
     const status = value?.statuses?.[0];
+    const metadataPhoneId = value?.metadata?.phone_number_id;
 
-    if (message) console.log(`[Webhook] Tipo: MENSAJE de ${message.from}`);
+    if (message) console.log(`[Webhook] Tipo: MENSAJE de ${message.from} hacia PhoneID: ${metadataPhoneId}`);
     if (status) console.log(`[Webhook] Tipo: ESTATUS ${status.status} para ${status.id}`);
 
     // Caso A: Notificación de ESTADO (sent, delivered, failed, read)
