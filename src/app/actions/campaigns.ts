@@ -30,7 +30,7 @@ export async function fetchMetaTemplates() {
  * Launch a campaign using a Meta-approved template.
  * variableMapping: { "1": "nombre", "2": "empresa" }  (template {{1}} → CSV col "nombre")
  */
-export async function createCampaign(
+export async function launchCampaignAction(
   name: string,
   templateName: string,
   templateText: string, // Nuevo: texto base de la plantilla
@@ -77,7 +77,7 @@ export async function createCampaign(
   return campaign;
 }
 
-export async function getCampaigns() {
+export async function fetchCampaigns() {
   const project = await getProjectWithCredentials();
   return await prisma.campaign.findMany({
     where: { projectId: project.id },
@@ -159,23 +159,30 @@ async function processCampaign(
     delete metadataToSave['#'];
 
     if (!lead) {
-      const nameKey = Object.keys(leadData).find(k => k.toLowerCase() === 'nombre');
+      // Intentar encontrar el nombre en columnas comunes
+      const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
+      const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
+
       lead = await prisma.lead.create({
         data: {
           phone: cleanPhone,
           projectId,
-          name: nameKey ? leadData[nameKey] : `Lead ${cleanPhone.slice(-4)}`,
+          name: leadName,
           latestCampaignId: campaignId,
           metadata: metadataToSave
         }
       });
     } else {
-      // Si el lead ya existe, actualizamos a la campaña más reciente y MERGE de metadata
+      // Si el lead ya existe, actualizamos metadata y nombre si no tenía uno decente
       const existingMetadata = (lead.metadata as Record<string, any>) || {};
+      const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
+      const newName = nameKey ? String(leadData[nameKey]).trim() : null;
+
       lead = await prisma.lead.update({
         where: { id: lead.id },
         data: { 
           latestCampaignId: campaignId,
+          name: (newName && (lead.name?.includes('Lead') || lead.name === lead.phone)) ? newName : lead.name,
           metadata: { ...existingMetadata, ...metadataToSave }
         }
       });

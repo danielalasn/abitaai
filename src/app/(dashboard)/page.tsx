@@ -3,7 +3,11 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { 
+  Bot, User, Send, Loader2, Phone, Hash, AlertCircle, TrendingUp, Clock, 
+  PanelLeftClose, PanelLeftOpen, Search, Filter, Mail, Trash2, Archive, 
+  CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check
+} from "lucide-react";
 import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
 import { useSession } from "next-auth/react";
@@ -104,8 +108,9 @@ export default function InboxPage() {
   const [agentInput, setAgentInput] = useState('');
 
   // States para filtros de inbox
-  const [filterHeat, setFilterHeat] = useState<string>('ALL');
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [filterHeat, setFilterHeat] = useState<'ALL' | 'FRIO' | 'TIBIO' | 'CALIENTE'>('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'BOT' | 'NEEDS_AGENT' | 'AGENT' | 'UNANSWERED'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
 
   // Multi-select state
@@ -131,8 +136,8 @@ export default function InboxPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('heat')) setFilterHeat(params.get('heat') as string);
-      if (params.get('status')) setFilterStatus(params.get('status') as string);
+      if (params.get('heat')) setFilterHeat(params.get('heat') as any);
+      if (params.get('status')) setFilterStatus(params.get('status') as any);
     }
   }, []);
 
@@ -602,7 +607,22 @@ export default function InboxPage() {
       if (filterStatus === 'BOT' && !chat.botActive) return false;
       if (filterStatus === 'NEEDS_AGENT' && (chat.botActive || chat.lead.status !== 'NEEDS_AGENT')) return false;
       if (filterStatus === 'AGENT' && (chat.botActive || chat.lead.status === 'NEEDS_AGENT')) return false;
+      
+      if (filterStatus === 'UNANSWERED') {
+         const lastMsg = chat.messages[chat.messages.length - 1];
+         const isUnanswered = !chat.botActive && lastMsg?.role === 'user';
+         if (!isUnanswered) return false;
+      }
     }
+
+    // Búsqueda por nombre o teléfono
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const nameMatch = chat.lead.name?.toLowerCase().includes(q);
+      const phoneMatch = chat.lead.phone.includes(q);
+      if (!nameMatch && !phoneMatch) return false;
+    }
+
     return true;
   });
 
@@ -696,7 +716,7 @@ export default function InboxPage() {
         <div className="px-4 py-3 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col gap-2 bg-[#E9E4D8]/60 dark:bg-[#1A1714]">
           <select
             value={filterHeat}
-            onChange={(e) => setFilterHeat(e.target.value)}
+            onChange={(e) => setFilterHeat(e.target.value as any)}
             className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
           >
             <option value="ALL">Todas las temperaturas</option>
@@ -707,14 +727,26 @@ export default function InboxPage() {
 
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
             className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
           >
             <option value="ALL">Todos los estados</option>
             <option value="BOT">IA Gestionando</option>
             <option value="NEEDS_AGENT">Necesita Humano</option>
             <option value="AGENT">En Atención Humana</option>
+            <option value="UNANSWERED">No Contestados</option>
           </select>
+
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6F6F6F]" />
+            <input
+              type="text"
+              placeholder="Buscar nombre o tel..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg pl-9 pr-3 py-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 shadow-sm"
+            />
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto w-full p-2 space-y-1 relative">

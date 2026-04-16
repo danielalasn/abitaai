@@ -375,7 +375,9 @@ export async function startIndividualChatAction(
   languageCode: string,
   variables: Record<string, string>,
   templateText: string,
-  headerImageUrl?: string
+  headerImageUrl?: string,
+  botActive: boolean = true,
+  leadName?: string
 ) {
   const project = await getCurrentProject();
   if (!project) throw new Error('No se encontró el proyecto base.');
@@ -416,13 +418,21 @@ export async function startIndividualChatAction(
 
   // 1. Upsert Lead
   let lead = await prisma.lead.findFirst({ where: { phone: cleanPhone, projectId: project.id } });
+  const finalName = leadName?.trim() || cleanPhone;
+
   if (!lead) {
     lead = await prisma.lead.create({
       data: {
         phone: cleanPhone,
         projectId: project.id,
-        name: `Lead ${cleanPhone.slice(-4)}`,
+        name: finalName,
       }
+    });
+  } else if (leadName?.trim() && (lead.name?.includes('Lead') || lead.name === lead.phone)) {
+    // Actualizar nombre si era genérico
+    lead = await prisma.lead.update({
+      where: { id: lead.id },
+      data: { name: leadName.trim() }
     });
   }
 
@@ -460,12 +470,12 @@ export async function startIndividualChatAction(
     }
   });
 
-  // 5. Actualizar última actividad y desactivar bot para que el humano siga la conversación
+  // 5. Actualizar última actividad y estado del bot
   await prisma.chat.update({
     where: { id: chat.id },
     data: { 
       lastActiveAt: new Date(),
-      botActive: false // Desactivamos el bot para atención manual tras el primer contacto
+      botActive: botActive 
     }
   });
 

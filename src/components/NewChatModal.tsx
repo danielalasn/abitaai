@@ -21,6 +21,7 @@ type MetaTemplate = {
 export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [phone, setPhone] = useState('');
+  const [leadName, setLeadName] = useState('');
   const [templates, setTemplates] = useState<MetaTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<MetaTemplate | null>(null);
@@ -36,6 +37,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
       loadTemplates();
       setStep(1);
       setPhone('');
+      setLeadName('');
       setSelectedTemplate(null);
       setVariables({});
       setHeaderImageUrl('');
@@ -106,7 +108,8 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
         variables,
         bodyText,
         headerImageUrl,
-        botActive
+        botActive,
+        leadName
       );
       onSuccess(chatId);
       onClose();
@@ -159,6 +162,20 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
                     className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl pl-14 pr-5 py-5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all text-base font-medium text-[#111111] dark:text-[#EDE9E0] placeholder:text-zinc-400"
                   />
                 </div>
+
+                <div className="relative group">
+                  <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+                    <User size={20} />
+                  </div>
+                  <input
+                    type="text"
+                    value={leadName}
+                    onChange={e => setLeadName(e.target.value)}
+                    placeholder="Nombre del contacto (Opcional)"
+                    className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl pl-14 pr-5 py-4 outline-none focus:border-emerald-500 transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0] placeholder:text-zinc-400"
+                  />
+                </div>
+
                 <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-5 flex gap-4">
                   <Sparkles size={20} className="text-emerald-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-emerald-800/80 dark:text-emerald-300/60 leading-relaxed font-medium">
