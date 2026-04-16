@@ -259,7 +259,10 @@ export async function uploadCampaignImage(formData: FormData) {
   return publicUrl;
 }
 
+import { unstable_noStore as noStore } from 'next/cache';
+
 export async function fetchCampaignLogs(campaignId: string) {
+  noStore();
   return await prisma.campaignLog.findMany({
     where: { campaignId },
     orderBy: { createdAt: 'desc' }
