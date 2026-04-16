@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect, useRef } from "react";
 import { MessageSquare, Bot, User, Phone, Loader2, Send, Check, Trash2, AlertCircle, TrendingUp, Clock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
@@ -111,7 +113,9 @@ export default function InboxPage() {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [isInboxSidebarOpen, setIsInboxSidebarOpen] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [readMessageIds, setReadMessageIds] = useState<Record<string, string>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const notifiedMessageIds = useRef<Set<string>>(new Set());
 
   // Refs para control de estado optimista y polling
   const pendingOptimistic = useRef<Set<string>>(new Set());
@@ -199,7 +203,7 @@ export default function InboxPage() {
   // Efecto inicial y selección automática por primera vez
   useEffect(() => {
     const initialLoad = async () => {
-      const data = await getActiveChats();
+      const data = await getActiveChats(Date.now());
       setChats(data);
       if (data.length > 0) {
         loadChatDetails(data[0].id);
@@ -223,10 +227,13 @@ export default function InboxPage() {
       if (cancelled) return;
 
       try {
-        // Sincronizar lista lateral (Fusionando con estados optimistas pendientes)
-        const latestChats = await getActiveChats();
+        // Sincronizar lista lateral (Bypass cache con timestamp)
+        const latestChats = await getActiveChats(Date.now());
         if (cancelled) return;
         
+        const currentId = activeChatIdRef.current;
+        const hasOptimistic = pendingOptimistic.current.size > 0;
+
         if (currentId && !hasOptimistic) {
           const refreshed = await getChatMessages(currentId);
           if (cancelled) return;
@@ -240,8 +247,11 @@ export default function InboxPage() {
             const oldChat = prev.find(p => p.id === newChat.id);
             const lastMsg = newChat.messages?.[0];
             
-            // Si el bot está apagado Y el mensaje es nuevo Y es del usuario
-            if (oldChat && !newChat.botActive && lastMsg && lastMsg.id !== oldChat.messages?.[0]?.id && lastMsg.role === 'user') {
+            // Si el bot está apagado Y el mensaje es nuevo Y es del usuario Y NO ha sido notificado
+            if (oldChat && !newChat.botActive && lastMsg && lastMsg.id !== oldChat.messages?.[0]?.id && lastMsg.role === 'user' && !notifiedMessageIds.current.has(lastMsg.id)) {
+              
+              notifiedMessageIds.current.add(lastMsg.id); // Marcar como notificado
+              
               const toast = {
                 id: Date.now() + Math.random(),
                 name: newChat.lead?.name || 'Cliente',
@@ -257,20 +267,25 @@ export default function InboxPage() {
               }, 10000);
             }
           });
+          
+          // FORZAMOS LOS DATOS DEL SERVIDOR SI NO HAY OPTIMISMO PENDIENTE
+          if (pendingOptimistic.current.size === 0) {
+            return latestChats;
+          }
           return mergeChats(latestChats, prev, 'polling');
         });
       } catch (e) {
         // Silenciar errores de polling para no romper la app
       }
 
-      // Programar el siguiente ciclo DESPUÉS de que termine este
+      // Programar el siguiente ciclo DESPUÉS de que termine este (3 segundos para más velocidad)
       if (!cancelled) {
-        setTimeout(syncData, 8000);
+        setTimeout(syncData, 3000);
       }
     };
 
-    // Iniciar el primer ciclo después de 8 segundos
-    const initialTimeout = setTimeout(syncData, 8000);
+    // Iniciar el primer ciclo después de 3 segundos
+    const initialTimeout = setTimeout(syncData, 3000);
 
     return () => {
       cancelled = true;
@@ -300,6 +315,12 @@ export default function InboxPage() {
       if (lastRequestedId.current === chatId) {
         setChatsCache(prev => ({ ...prev, [chatId]: data }));
         setActiveChat(data);
+        
+        // Marcar el último mensaje como leído al entrar
+        const lastId = data?.messages?.[data.messages.length - 1]?.id;
+        if (lastId) {
+          setReadMessageIds(prev => ({ ...prev, [chatId]: lastId }));
+        }
       }
     } catch (error) {
       console.error("Error al cargar chat:", error);
@@ -551,9 +572,12 @@ export default function InboxPage() {
           });
         }
 
-        // Desbloquear el polling DESPUÉS de confirmar el estado
-        pendingOptimistic.current.delete(temporaryId);
-        syncChatsList();
+        // Damos 5 segundos de margen para que el polling de 3s encuentre el mensaje real en la DB
+        setTimeout(() => {
+          pendingOptimistic.current.delete(temporaryId);
+          syncChatsList();
+        }, 5000);
+
       } catch (error) {
         console.error(error);
         pendingOptimistic.current.delete(temporaryId);
@@ -710,7 +734,17 @@ export default function InboxPage() {
               const isHandoff = chat.lead.status === 'NEEDS_AGENT';
               const isBot = chat.botActive;
               const lastMsg = chat.messages?.[0];
-              const isUnread = !isBot && lastMsg?.role === 'user';
+              
+              // Lógica de estados
+              const lastReadId = readMessageIds[chat.id];
+              const isNewMessage = !isBot && lastMsg && lastMsg.id !== lastReadId && lastMsg.role === 'user';
+              const isUnanswered = !isBot && lastMsg?.role === 'user' && !isNewMessage;
+              const isAnsweredHuman = !isBot && lastMsg?.role === 'agent' && !isHandoff;
+              
+              // Si está activo, lo marcamos como leído en cada render (simplificación)
+              if (isActive && lastMsg?.id && lastReadId !== lastMsg.id) {
+                setTimeout(() => setReadMessageIds(prev => ({ ...prev, [chat.id]: lastMsg.id })), 0);
+              }
 
               return (
                 <div key={chat.id} className="relative group">
@@ -728,25 +762,27 @@ export default function InboxPage() {
 
                 <button
                   onClick={() => { if (selectedIds.size > 0) toggleSelect(chat.id, { stopPropagation: () => {} } as any); else loadChatDetails(chat.id); }}
-                  className={`w-full text-left p-4 pl-8 rounded-2xl transition-all duration-200 flex flex-col gap-1 border-1 shadow-sm ${
+                  className={`w-full text-left p-4 pl-8 rounded-2xl transition-all duration-200 flex flex-col gap-1 border shadow-sm ${
                     isMultiSelected
-                      ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600 ring-2 ring-purple-400/20'
+                      ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600'
                       : isActive
-                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 ring-2 ring-blue-400/20'
+                        ? 'bg-blue-50 dark:bg-blue-900/40 border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/20 z-10'
                         : isHandoff
-                          ? 'bg-red-50 dark:bg-red-950/30 border-red-400 dark:border-red-800'
-                          : isBot
-                            ? 'bg-white dark:bg-zinc-900/60 border-[#DEDAD0] dark:border-zinc-800'
-                            : 'bg-white/50 dark:bg-zinc-900/20 border-transparent'
+                          ? 'bg-red-50 dark:bg-red-900/40 border-red-500 dark:border-red-400 shadow-red-100'
+                          : isNewMessage
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 dark:border-emerald-400 ring-1 ring-emerald-500/20'
+                            : isUnanswered
+                              ? 'bg-white dark:bg-zinc-900 border-emerald-500 dark:border-emerald-400/50'
+                              : 'bg-white/50 dark:bg-black/10 border-[#DEDAD0] dark:border-zinc-800' // Bot o Humano Contestado
                     }`}
                 >
-                  <div className="flex justify-between items-center w-full gap-2">
+                  <div className="flex justify-between items-center w-full gap-2 text-sm">
                     <div className="flex items-center gap-2 truncate flex-1">
                       {chat.lead.heat === 'CALIENTE' && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
                       {chat.lead.heat === 'TIBIO' && <span className="text-[10px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={10} /> {chat.lead.score}</span>}
                       {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
 
-                      <span className={`text-sm truncate ${isUnread ? 'font-bold text-[#111111] dark:text-[#EDE9E0]' : 'font-semibold text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}>
+                      <span className={`truncate ${isNewMessage || isUnanswered || isHandoff ? 'font-black text-[#111111] dark:text-[#EDE9E0]' : 'font-medium text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}>
                         {chat.lead.name || chat.lead.phone}
                       </span>
                     </div>
@@ -768,17 +804,17 @@ export default function InboxPage() {
                   </div>
 
                   {isHandoff && (
-                    <div className="flex justify-end -mt-1 mb-1">
+                    <div className="flex justify-start ml-1 mb-1">
                       <WaitTimer startTime={chat.lastActiveAt} />
                     </div>
                   )}
                   {/* Ultimo Mensaje */}
-                  <div className="flex items-start justify-between gap-1">
-                    <p className={`text-[11px] line-clamp-1 flex-1 ${isUnread ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
+                  <div className="flex items-start justify-between gap-1 mt-0.5">
+                    <p className={`text-[11px] line-clamp-1 flex-1 ${isNewMessage || isUnanswered || isHandoff ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
                       {lastMsg ? lastMsg.content : <span className="italic opacity-50">Sin mensajes</span>}
                     </p>
-                    {isUnread && (
-                      <div className="h-2 w-2 rounded-full bg-[#F36A2D] shadow-sm shadow-[#F36A2D]/40 mt-1 shrink-0 animate-pulse" />
+                    {isNewMessage && (
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 mt-1 shrink-0 animate-pulse" />
                     )}
                   </div>
                 </button>
@@ -909,6 +945,17 @@ export default function InboxPage() {
                             </span>
                           </div>
                         )}
+                        
+                        {msg.imageUrl && (
+                          <div className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0]">
+                            <img 
+                              src={msg.imageUrl} 
+                              alt="Adjunto" 
+                              className="w-full h-auto max-h-[300px] object-cover hover:scale-105 transition-transform duration-500"
+                            />
+                          </div>
+                        )}
+
                         <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                         <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
                           }`}>
@@ -1025,8 +1072,8 @@ export default function InboxPage() {
             }}
           >
             <div className="flex items-center gap-3 mb-1">
-              <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-xs font-bold text-[#F36A2D]">NUEVO MENSAJE MANUAL</span>
+              <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-xs font-bold text-emerald-600">NUEVO MENSAJE MANUAL</span>
             </div>
             <p className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0] line-clamp-1">{n.name}</p>
             <p className="text-xs text-[#6F6F6F] line-clamp-2 mt-1 italic">"{n.text}"</p>

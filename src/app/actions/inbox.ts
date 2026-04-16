@@ -5,50 +5,70 @@ import { revalidatePath } from 'next/cache';
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { getCurrentProject } from '@/lib/auth-server';
 import { updateLeadAISummary } from '@/app/actions/leads';
+import { unstable_noStore as noStore } from 'next/cache';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
-export async function getActiveChats() {
+export async function getActiveChats(_timestamp?: number) {
+  noStore();
   const project = await getCurrentProject();
   if (!project) return [];
 
+  // 1. Obtener los chats activos
   const chats = await prisma.chat.findMany({
     where: {
       isArchived: false,
-      lead: {
-        projectId: project.id
-      }
+      lead: { projectId: project.id }
     },
-    include: {
-      lead: true,
-      messages: {
-        orderBy: { createdAt: 'desc' },
-        take: 1
-      }
-    },
-    orderBy: {
-      lastActiveAt: 'desc'
-    }
+    include: { lead: true },
+    orderBy: { lastActiveAt: 'desc' }
   });
 
-  return chats;
+  if (chats.length === 0) return [];
+
+  // 2. Obtener los mensajes de estos chats en UNA SOLA consulta (Eficiente)
+  const chatIds = chats.map(c => c.id);
+  const allMessages = await prisma.message.findMany({
+    where: { chatId: { in: chatIds } },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
+  });
+
+  // 3. Mapear el último mensaje a cada chat en memoria
+  const chatsWithMessages = chats.map(chat => {
+    // El primer mensaje que coincida con el chatId será el más reciente por el orderBy
+    const lastMessage = allMessages.find(m => m.chatId === chat.id);
+    return {
+      ...chat,
+      messages: lastMessage ? [lastMessage] : []
+    };
+  });
+
+  return chatsWithMessages;
 }
 
-// Obtiene todo el historial de un chat en particular
 export async function getChatMessages(chatId: string) {
+  noStore();
+  // 1. Obtener el chat base
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
     include: {
       lead: {
-        include: {
-          project: true
-        }
-      },
-      messages: {
-        orderBy: { createdAt: 'asc' }
+        include: { project: true }
       }
     }
   });
-  return chat;
+
+  if (!chat) return null;
+
+  // 2. Obtener TODAS las conversaciones de este chat (Bypass de cache de include)
+  const messages = await prisma.message.findMany({
+    where: { chatId },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  return {
+    ...chat,
+    messages
+  };
 }
 
 // Apaga o enciende la IA (Handover manual)
@@ -354,7 +374,8 @@ export async function startIndividualChatAction(
   templateName: string,
   languageCode: string,
   variables: Record<string, string>,
-  templateText: string
+  templateText: string,
+  headerImageUrl?: string
 ) {
   const project = await getCurrentProject();
   if (!project) throw new Error('No se encontró el proyecto base.');
@@ -373,9 +394,19 @@ export async function startIndividualChatAction(
     text: val,
   }));
 
-  const components = bodyParams.length > 0
+  const components: any[] = bodyParams.length > 0
     ? [{ type: 'body' as const, parameters: bodyParams }]
     : [];
+
+  // Añadir imagen si se proporcionó
+  if (headerImageUrl && headerImageUrl.startsWith('http')) {
+    components.unshift({
+      type: 'header',
+      parameters: [
+        { type: 'image', image: { link: headerImageUrl } }
+      ]
+    });
+  }
 
   // Texto amigable para el historial del chat
   let previewText = templateText;
@@ -424,7 +455,8 @@ export async function startIndividualChatAction(
       chatId: chat.id, 
       role: 'agent', 
       content: previewText,
-      waCategory: waResult.category || 'MARKETING'
+      waCategory: waResult.category || 'MARKETING',
+      imageUrl: headerImageUrl
     }
   });
 

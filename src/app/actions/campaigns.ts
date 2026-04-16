@@ -101,7 +101,8 @@ async function processCampaign(
   headerUrl?: string,
   botActive: boolean = true
 ) {
-  for (const leadData of leadsData) {
+  for (let i = 0; i < leadsData.length; i++) {
+    const leadData = leadsData[i];
     const rawPhone = leadData['#'];
     if (!rawPhone) continue;
 
@@ -120,10 +121,11 @@ async function processCampaign(
       : [];
     
     // Add image header if present
+    let realUrl: string | undefined = undefined;
     if (headerUrl) {
       // Determine if headerUrl is a column mapping or a static URL
       const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
-      const realUrl = isMapping 
+      realUrl = isMapping 
         ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '')
         : headerUrl;
 
@@ -205,9 +207,15 @@ async function processCampaign(
       accessToken
     );
 
-    // Store message in DB for Inbox (with WA billing category)
+    // Store message in DB for Inbox (with WA billing category and optional image)
     await prisma.message.create({
-      data: { chatId: chat.id, role: 'agent', content: previewText, waCategory: waResult.category || 'MARKETING' }
+      data: { 
+        chatId: chat.id, 
+        role: 'agent', 
+        content: previewText, 
+        waCategory: waResult.category || 'MARKETING',
+        imageUrl: realUrl
+      }
     });
 
     await prisma.chat.update({
@@ -215,8 +223,15 @@ async function processCampaign(
       data: { lastActiveAt: new Date() }
     });
 
-    // Respect Meta's rate limits (~80 msg/min on Cloud API tier 1)
-    await new Promise(r => setTimeout(r, 800));
+    // LÓGICA DE BATCHES: Cada 25 mensajes, esperar 5 segundos (si no es el último)
+    const processedCount = i + 1;
+    if (processedCount % 25 === 0 && processedCount < leadsData.length) {
+      console.log(`[Campaign] Batch de 25 alcanzado (${processedCount}/${leadsData.length}). Esperando 5 segundos...`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    } else {
+      // Pequeño delay de 500ms entre mensajes individuales para estabilidad
+      await new Promise(r => setTimeout(r, 500));
+    }
   }
 
   await prisma.campaign.update({

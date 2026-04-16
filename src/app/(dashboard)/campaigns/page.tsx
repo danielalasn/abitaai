@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import {
   Megaphone, UploadCloud, Users, FileText, Send, Loader2,
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
-  Sparkles, Download, Clock, Search
+  Sparkles, Download, Clock, Search, X
 } from 'lucide-react';
-import { createCampaign, getCampaigns, fetchMetaTemplates, uploadCampaignImage } from '@/app/actions/campaigns';
+import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction } from '@/app/actions/campaigns';
+import { uploadImageAction } from '@/app/actions/storage';
 
 // ──────────────────────────────────────────────
 // Types
@@ -30,7 +31,7 @@ function StepBadge({ n, label, active, done }: { n: number; label: string; activ
   return (
     <div className={`flex items-center gap-2 ${active ? 'opacity-100' : 'opacity-40'}`}>
       <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-        done ? 'bg-emerald-500 text-white' : active ? 'bg-[#F36A2D] text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'
+        done ? 'bg-emerald-500 text-white' : active ? 'bg-emerald-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'
       }`}>
         {done ? <CheckCircle2 size={14} /> : n}
       </div>
@@ -75,7 +76,7 @@ export default function CampaignsPage() {
   useEffect(() => { loadCampaigns(); }, []);
 
   const loadCampaigns = async () => {
-    const data = await getCampaigns();
+    const data = await fetchCampaigns();
     setCampaigns(data);
   };
 
@@ -167,7 +168,7 @@ export default function CampaignsPage() {
     setIsSending(true);
     setSuccessStatus(null);
     try {
-      await createCampaign(
+      await launchCampaignAction(
         campaignName,
         selectedTemplate.name,
         bodyText,
@@ -217,18 +218,19 @@ export default function CampaignsPage() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setIsUploadingImage(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const url = await uploadCampaignImage(formData);
-      setHeaderUrl(url);
-    } catch (err: any) {
-      alert('Error subiendo imagen: ' + err.message);
-    } finally {
-      setIsUploadingImage(false);
-      e.target.value = '';
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const result = await uploadImageAction(formData);
+    if (result.success && result.url) {
+      setHeaderUrl(result.url);
+    } else {
+      alert(result.error || 'Error al subir imagen');
     }
+    setIsUploadingImage(false);
+    e.target.value = '';
   };
 
   const filteredCampaigns = campaigns.filter(c => {
@@ -241,7 +243,7 @@ export default function CampaignsPage() {
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
       <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-emerald-500/10 text-emerald-600 rounded-lg flex items-center justify-center">
             <Megaphone size={18} />
           </div>
           <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Difusión</h1>
@@ -276,10 +278,10 @@ export default function CampaignsPage() {
               {step === 1 && (
                 <div className="p-6 space-y-5">
                   <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">1. Subir contactos</h2>
-                  <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${parsedLeads.length > 0 ? 'border-[#F36A2D]/40 bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10' : 'border-[#DEDAD0] dark:border-zinc-800'}`}>
+                  <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${parsedLeads.length > 0 ? 'border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10' : 'border-[#DEDAD0] dark:border-zinc-800'}`}>
                     {parsedLeads.length > 0 ? (
                       <div className="flex flex-col items-center gap-2">
-                        <Users size={24} className="text-[#F36A2D]" />
+                        <Users size={24} className="text-emerald-500" />
                         <p className="text-[#111111] dark:text-[#EDE9E0] font-bold">{parsedLeads.length} contactos</p>
                         <button onClick={() => setParsedLeads([])} className="text-xs text-red-500 hover:underline">Eliminar</button>
                       </div>
@@ -309,14 +311,14 @@ export default function CampaignsPage() {
                 <div className="p-6 space-y-5">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">2. Plantilla de Meta</h2>
-                    <button onClick={loadTemplates} className="text-xs text-[#F36A2D] font-bold hover:opacity-70 transition-opacity">Cargar</button>
+                    <button onClick={loadTemplates} className="text-xs text-emerald-500 font-bold hover:opacity-70 transition-opacity">Cargar</button>
                   </div>
                   <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                     {templates.map(t => (
                       <button 
                         key={t.name} 
                         onClick={() => handleSelectTemplate(t)}
-                        className={`w-full text-left p-4 rounded-2xl border transition-all ${selectedTemplate?.name === t.name ? 'border-[#F36A2D] bg-[#F36A2D]/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
+                        className={`w-full text-left p-4 rounded-2xl border transition-all ${selectedTemplate?.name === t.name ? 'border-emerald-500 bg-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
                       >
                         <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{t.name}</p>
                         <p className="text-xs text-[#6F6F6F] line-clamp-1">{t.components.find(c => c.type === 'BODY')?.text}</p>
@@ -344,42 +346,81 @@ export default function CampaignsPage() {
                   />
 
                   {needsImageHeader && (
-                    <div className="space-y-2 p-4 bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 rounded-2xl border border-[#F36A2D]/20">
-                      <div className="flex items-center gap-2 text-[#F36A2D] mb-1">
+                    <div className="space-y-4 p-5 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-3xl border border-emerald-500/20">
+                      <div className="flex items-center gap-2 text-emerald-500 mb-1">
                         <Sparkles size={14} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Cabecera de Imagen Requerida</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Cabecera de Imagen Requerida</span>
                       </div>
-                      <div className="flex flex-col gap-2">
-                        <select 
-                          value={headerUrl.startsWith('{{') ? headerUrl : ''} 
-                          onChange={e => setHeaderUrl(e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0]"
-                        >
-                          <option value="">— URL Fija —</option>
-                          {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={`{{${c}}}`}>CSV: {c}</option>)}
-                        </select>
-                        {!headerUrl.startsWith('{{') && (
-                          <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              placeholder="https://ejemplo.com/imagen.jpg" 
-                              value={headerUrl} 
-                              onChange={e => setHeaderUrl(e.target.value)}
-                              className="flex-1 p-2.5 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0]"
-                            />
-                            <label className="cursor-pointer flex items-center justify-center p-2.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl hover:opacity-80 transition-all min-w-[42px]">
-                              {isUploadingImage ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
-                              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={isUploadingImage} />
-                            </label>
-                          </div>
-                        )}
+                      
+                      <div className="flex flex-col gap-4">
+                        <div className="space-y-2">
+                           <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter ml-1">Origen de la imagen</p>
+                           <select 
+                            value={headerUrl.startsWith('{{') ? headerUrl : ''} 
+                            onChange={e => setHeaderUrl(e.target.value)}
+                            className="w-full p-3 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-xs font-bold text-[#111111] dark:text-[#EDE9E0]"
+                          >
+                            <option value="">— Seleccionar —</option>
+                            <option value="UPLOAD">Subir nuevo archivo (Local)</option>
+                            {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={`{{${c}}}`}>Columna CSV: {c}</option>)}
+                          </select>
+                        </div>
+
+                        {headerUrl === 'UPLOAD' || (headerUrl && !headerUrl.startsWith('{{')) ? (
+                           <div className="space-y-3">
+                              {headerUrl && headerUrl !== 'UPLOAD' ? (
+                                 <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-lg group aspect-video animate-in zoom-in-95 duration-300">
+                                    <img src={headerUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
+                                       <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2">
+                                          <CheckCircle2 size={16} className="text-emerald-500" />
+                                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">¡Subida Exitosa!</span>
+                                       </div>
+                                    </div>
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                       <button 
+                                          onClick={() => setHeaderUrl('')}
+                                          className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
+                                       >
+                                          <X size={20} />
+                                       </button>
+                                    </div>
+                                 </div>
+                              ) : (
+                                 <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                                    isUploadingImage ? 'bg-zinc-50 border-zinc-200' : 'bg-white dark:bg-zinc-900/40 border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500 hover:bg-emerald-500/5'
+                                 }`}>
+                                    {isUploadingImage ? (
+                                       <>
+                                          <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
+                                          <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
+                                       </>
+                                    ) : (
+                                       <>
+                                          <UploadCloud size={24} className="text-emerald-500/50 mb-2" />
+                                          <span className="text-xs font-black text-[#111111] dark:text-[#EDE9E0]">SUBIR ARCHIVO</span>
+                                          <span className="text-[10px] text-zinc-400 font-medium">PNG, JPG hasta 5MB</span>
+                                       </>
+                                    )}
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploadingImage} />
+                                 </label>
+                              )}
+                              <input 
+                                type="text" 
+                                placeholder="O pega una URL directa..." 
+                                value={headerUrl === 'UPLOAD' ? '' : headerUrl} 
+                                onChange={e => setHeaderUrl(e.target.value)}
+                                className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/50 dark:bg-[#1A1714] text-[10px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-emerald-500"
+                              />
+                           </div>
+                        ) : null}
                       </div>
                     </div>
                   )}
                   <div className="space-y-3">
                     {bodyVars.map(v => (
                       <div key={v} className="flex items-center gap-3">
-                        <span className="text-xs font-mono font-bold w-12 text-[#F36A2D]">{'{{'}{v}{'}}'}</span>
+                        <span className="text-xs font-mono font-bold w-12 text-emerald-500">{'{{'}{v}{'}}'}</span>
                         <select 
                           value={variableMapping[v]} 
                           onChange={e => setVariableMapping(p => ({ ...p, [v]: e.target.value }))}
@@ -391,9 +432,9 @@ export default function CampaignsPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 rounded-2xl border border-[#F36A2D]/20">
+                  <div className="flex items-center justify-between p-4 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
                     <div className="space-y-0.5">
-                      <div className="text-[10px] font-bold text-[#F36A2D] uppercase tracking-wide flex items-center gap-1.5">
+                      <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide flex items-center gap-1.5">
                         <RefreshCw size={12} className={isBotActive ? 'animate-spin-slow' : ''} />
                         Respuesta Automática
                       </div>
@@ -402,7 +443,7 @@ export default function CampaignsPage() {
                     <button
                       type="button"
                       onClick={() => setIsBotActive(!isBotActive)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isBotActive ? 'bg-[#F36A2D]' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isBotActive ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                     >
                       <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isBotActive ? 'translate-x-5' : 'translate-x-0'}`} />
                     </button>
@@ -413,7 +454,7 @@ export default function CampaignsPage() {
                     <button 
                       onClick={handleLaunch} 
                       disabled={isSending || !campaignName || bodyVars.some(v => !variableMapping[v])} 
-                      className="flex-1 py-3 bg-[#F36A2D] text-white rounded-2xl font-bold disabled:opacity-30 flex items-center justify-center gap-2"
+                      className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold disabled:opacity-30 flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all"
                     >
                       {isSending ? <Loader2 size={16} className="animate-spin" /> : null}
                       {isSending ? 'Lanzando...' : `Lanzar (${parsedLeads.length} leads)`}

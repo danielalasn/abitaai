@@ -100,6 +100,7 @@ model Message {
   agentName    String?  // Nombre del agente que respondió (para auditoría/simulador)
   scoreBump    Int?     // Puntos sumados/restados en este mensaje
   scoreReason  String?  // Razón de la calificación (ej: "Preguntó por precios")
+  imageUrl     String?  // URL de imagen adjunta (ej: de una campaña)
   createdAt    DateTime @default(now())
 
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
