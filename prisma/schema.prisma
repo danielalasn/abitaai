@@ -129,8 +129,9 @@ model Campaign {
 model CampaignLog {
   id         String   @id @default(cuid())
   campaignId String
+  wamid      String?  @unique // ID devuelto por Meta para rastreo
   phone      String
-  status     String   @default("SENT") // SENT, FAILED
+  status     String   @default("SENT") // SENT, FAILED, DELIVERED, READ
   error      String?
   createdAt  DateTime @default(now())
 

@@ -180,6 +180,7 @@ async function processCampaign(
         await prisma.campaignLog.create({
           data: {
             campaignId,
+            wamid: waResult.id,
             phone: cleanPhone,
             status: 'SENT'
           }

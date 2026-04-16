@@ -35,9 +35,34 @@ export async function POST(req: NextRequest) {
     if (status) {
         if (status.status === 'failed') {
             const error = status.errors?.[0];
-            console.error(`❌ [WA STATUS] Falló a ${status.recipient_id}. Código: ${error?.code} | Título: ${error?.title} | Detalle: ${error?.message}`);
+            const recipientId = status.recipient_id;
+            console.error(`❌ [WA STATUS] Falló a ${recipientId}. Código: ${error?.code} | Título: ${error?.title} | Detalle: ${error?.message}`);
+            
+            // Actualizar LOG de campaña si existe
+            try {
+                const { prisma } = await import('@/lib/prisma');
+                await prisma.campaignLog.updateMany({
+                    where: { wamid: status.id },
+                    data: { 
+                        status: 'FAILED',
+                        error: `${error?.title}: ${error?.message}`
+                    }
+                });
+            } catch (dbErr) {
+                console.error("Error actualizando log de campaña (fallo):", dbErr);
+            }
         } else {
             console.log(`✅ [WA STATUS] Mensaje ${status.id} a ${status.recipient_id} está: ${status.status}`);
+            // Actualizar LOG de campaña a DELIVERED o READ
+            try {
+                const { prisma } = await import('@/lib/prisma');
+                await prisma.campaignLog.updateMany({
+                    where: { wamid: status.id },
+                    data: { status: status.status.toUpperCase() }
+                });
+            } catch (dbErr) {
+                console.error("Error actualizando log de campaña (éxito):", dbErr);
+            }
         }
         return NextResponse.json({ status: 'ok' });
     }
