@@ -22,14 +22,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log('--- [WEBHOOK INCOMING] ---', JSON.stringify(body));
 
-    // Validar que sea un mensaje de WhatsApp
+    // Validar qué tipo de notificación es
     const entry = body.entry?.[0];
     const changes = entry?.changes?.[0];
     const value = changes?.value;
     const message = value?.messages?.[0];
     const status = value?.statuses?.[0];
-    const metadataPhoneId = value?.metadata?.phone_number_id;
+
+    if (message) console.log(`[Webhook] Tipo: MENSAJE de ${message.from}`);
+    if (status) console.log(`[Webhook] Tipo: ESTATUS ${status.status} para ${status.id}`);
 
     // Caso A: Notificación de ESTADO (sent, delivered, failed, read)
     if (status) {
