@@ -355,7 +355,7 @@ export default function CampaignsPage() {
                       <button 
                         key={t.name} 
                         onClick={() => handleSelectTemplate(t)}
-                        className={`w-full text-left p-4 rounded-2xl border transition-all ${selectedTemplate?.name === t.name ? 'border-emerald-500 bg-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
+                        className={`w-full text-left p-4 rounded-2xl border transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5 ${selectedTemplate?.name === t.name ? 'border-emerald-500 bg-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
                       >
                         <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{t.name}</p>
                         <p className="text-xs text-[#6F6F6F] line-clamp-1">{t.components.find(c => c.type === 'BODY')?.text}</p>
@@ -384,73 +384,95 @@ export default function CampaignsPage() {
 
                   {needsImageHeader && (
                     <div className="space-y-4 p-5 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-3xl border border-emerald-500/20">
-                      <div className="flex items-center gap-2 text-emerald-500 mb-1">
-                        <Sparkles size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Cabecera de Imagen Requerida</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2 text-emerald-500">
+                          <Sparkles size={14} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">Cabecera Multimedia</span>
+                        </div>
+                        
+                        {/* Selector de modo: Fijo o Variables de CSV */}
+                        <select 
+                          value={headerUrl.startsWith('{{') ? 'CSV' : 'FIXED'} 
+                          onChange={e => {
+                            if (e.target.value === 'FIXED') setHeaderUrl('');
+                            else setHeaderUrl(`{{${csvColumns.find(c => c !== '#') || ''}}}`);
+                          }}
+                          className="bg-transparent text-[9px] font-bold text-emerald-600 focus:outline-none uppercase tracking-tighter cursor-pointer"
+                        >
+                          <option value="FIXED">Imagen Fija</option>
+                          <option value="CSV">Desde CSV</option>
+                        </select>
                       </div>
                       
-                      <div className="flex flex-col gap-4">
-                        <div className="space-y-2">
-                           <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter ml-1">Origen de la imagen</p>
-                           <select 
-                            value={headerUrl.startsWith('{{') ? headerUrl : ''} 
-                            onChange={e => setHeaderUrl(e.target.value)}
-                            className="w-full p-3 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-xs font-bold text-[#111111] dark:text-[#EDE9E0]"
-                          >
-                            <option value="">— Seleccionar —</option>
-                            <option value="UPLOAD">Subir nuevo archivo (Local)</option>
-                            {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={`{{${c}}}`}>Columna CSV: {c}</option>)}
-                          </select>
-                        </div>
+                      <div className="flex flex-col gap-3">
+                        {headerUrl.startsWith('{{') ? (
+                          <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Columna del CSV con URLs:</p>
+                            <select 
+                              value={headerUrl} 
+                              onChange={e => setHeaderUrl(e.target.value)}
+                              className="w-full p-4 rounded-2xl border border-emerald-500/30 bg-white dark:bg-[#1A1714] text-xs font-bold text-[#111111] dark:text-[#EDE9E0] focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                            >
+                              {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={`{{${c}}}`}>Columna: {c}</option>)}
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
+                            {headerUrl && headerUrl.startsWith('http') ? (
+                               <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-xl group aspect-video">
+                                  <img src={headerUrl} alt="Preview" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
+                                     <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2">
+                                        <CheckCircle2 size={16} className="text-emerald-500" />
+                                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Imagen Lista</span>
+                                     </div>
+                                  </div>
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                     <button 
+                                        onClick={() => setHeaderUrl('')}
+                                        className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
+                                     >
+                                        <X size={20} />
+                                     </button>
+                                  </div>
+                               </div>
+                            ) : (
+                               <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                                  isUploadingImage ? 'bg-zinc-50 border-zinc-200' : 'border-emerald-500/30 bg-white dark:bg-zinc-900/40 hover:border-emerald-500 hover:bg-emerald-500/5'
+                               }`}>
+                                  {isUploadingImage ? (
+                                     <>
+                                        <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
+                                        <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
+                                     </>
+                                  ) : (
+                                     <>
+                                        <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-2">
+                                           <UploadCloud size={20} />
+                                        </div>
+                                        <span className="text-[10px] font-black text-[#111111] dark:text-[#EDE9E0] tracking-widest uppercase">Subir Imagen</span>
+                                        <span className="text-[8px] text-zinc-400 font-bold">PDF, JPG o PNG</span>
+                                     </>
+                                  )}
+                                  <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploadingImage} />
+                               </label>
+                            )}
 
-                        {headerUrl === 'UPLOAD' || (headerUrl && !headerUrl.startsWith('{{')) ? (
-                           <div className="space-y-3">
-                              {headerUrl && headerUrl !== 'UPLOAD' ? (
-                                 <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-lg group aspect-video animate-in zoom-in-95 duration-300">
-                                    <img src={headerUrl} alt="Preview" className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
-                                       <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2">
-                                          <CheckCircle2 size={16} className="text-emerald-500" />
-                                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">¡Subida Exitosa!</span>
-                                       </div>
-                                    </div>
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                       <button 
-                                          onClick={() => setHeaderUrl('')}
-                                          className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
-                                       >
-                                          <X size={20} />
-                                       </button>
-                                    </div>
-                                 </div>
-                              ) : (
-                                 <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-                                    isUploadingImage ? 'bg-zinc-50 border-zinc-200' : 'bg-white dark:bg-zinc-900/40 border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500 hover:bg-emerald-500/5'
-                                 }`}>
-                                    {isUploadingImage ? (
-                                       <>
-                                          <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
-                                          <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
-                                       </>
-                                    ) : (
-                                       <>
-                                          <UploadCloud size={24} className="text-emerald-500/50 mb-2" />
-                                          <span className="text-xs font-black text-[#111111] dark:text-[#EDE9E0]">SUBIR ARCHIVO</span>
-                                          <span className="text-[10px] text-zinc-400 font-medium">PNG, JPG hasta 5MB</span>
-                                       </>
-                                    )}
-                                    <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploadingImage} />
-                                 </label>
-                              )}
+                            {/* URL como secundario */}
+                            <div className="relative group">
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+                                <Link2 size={14} />
+                              </div>
                               <input 
                                 type="text" 
                                 placeholder="O pega una URL directa..." 
-                                value={headerUrl === 'UPLOAD' ? '' : headerUrl} 
+                                value={headerUrl && headerUrl.startsWith('http') ? headerUrl : ''} 
                                 onChange={e => setHeaderUrl(e.target.value)}
-                                className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/50 dark:bg-[#1A1714] text-[10px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-emerald-500"
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-[10px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-400 font-medium"
                               />
-                           </div>
-                        ) : null}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
