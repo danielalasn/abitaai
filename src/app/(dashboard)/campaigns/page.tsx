@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   Megaphone, UploadCloud, Users, FileText, Send, Loader2,
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
-  Sparkles, Download, Clock, Search, X
+  Sparkles, Download, Clock, Search, X, AlertCircle
 } from 'lucide-react';
 import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction } from '@/app/actions/campaigns';
 import { uploadImageAction } from '@/app/actions/storage';
@@ -27,16 +27,22 @@ function extractBodyVars(template: MetaTemplate): string[] {
 // ──────────────────────────────────────────────
 // Step badges
 // ──────────────────────────────────────────────
-function StepBadge({ n, label, active, done }: { n: number; label: string; active: boolean; done: boolean }) {
+function StepBadge({ n, label, active, done, onClick }: { n: number, label: string, active: boolean, done: boolean, onClick?: () => void }) {
   return (
-    <div className={`flex items-center gap-2 ${active ? 'opacity-100' : 'opacity-40'}`}>
+    <button 
+      onClick={onClick}
+      disabled={!done && !active}
+      className={`flex items-center gap-2 transition-all ${active ? 'opacity-100' : done ? 'opacity-100 cursor-pointer hover:translate-y-[-1px]' : 'opacity-40 cursor-not-allowed'}`}
+    >
       <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-        done ? 'bg-emerald-500 text-white' : active ? 'bg-emerald-500 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'
+        done ? 'bg-emerald-500 text-white' : active ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'
       }`}>
         {done ? <CheckCircle2 size={14} /> : n}
       </div>
-      <span className={`text-sm font-medium ${active ? 'text-[#111111] dark:text-[#EDE9E0]' : 'text-[#6F6F6F]'}`}>{label}</span>
-    </div>
+      <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-emerald-600' : 'text-[#6F6F6F]'}`}>
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -267,26 +273,33 @@ export default function CampaignsPage() {
           
           <div className="space-y-6">
             <div className="flex items-center gap-4 px-1">
-              <StepBadge n={1} label="CSV" active={step === 1} done={step > 1} />
-              <ChevronRight size={14} className="text-[#6F6F6F]" />
-              <StepBadge n={2} label="Plantilla" active={step === 2} done={step > 2} />
-              <ChevronRight size={14} className="text-[#6F6F6F]" />
-              <StepBadge n={3} label="Map" active={step === 3} done={false} />
+              <StepBadge n={1} label="CSV" active={step === 1} done={step > 1} onClick={() => setStep(1)} />
+              <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-800" />
+              <StepBadge n={2} label="Plantilla" active={step === 2} done={step > 2} onClick={() => (step > 2) ? setStep(2) : undefined} />
+              <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-800" />
+              <StepBadge n={3} label="Mapeo" active={step === 3} done={false} />
             </div>
 
             <div className="bg-white dark:bg-[#111111]/40 rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-sm overflow-hidden">
               {step === 1 && (
                 <div className="p-6 space-y-5">
                   <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">1. Subir contactos</h2>
-                  <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${parsedLeads.length > 0 ? 'border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10' : 'border-[#DEDAD0] dark:border-zinc-800'}`}>
+                  <div className={`border-2 border-dashed rounded-3xl p-10 text-center transition-all ${parsedLeads.length > 0 ? 'border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10' : 'border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5'}`}>
                     {parsedLeads.length > 0 ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <Users size={24} className="text-emerald-500" />
-                        <p className="text-[#111111] dark:text-[#EDE9E0] font-bold">{parsedLeads.length} contactos</p>
-                        <button onClick={() => setParsedLeads([])} className="text-xs text-red-500 hover:underline">Eliminar</button>
+                      <div className="flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300">
+                        <div className="h-12 w-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                           <Users size={24} />
+                        </div>
+                        <p className="text-lg text-[#111111] dark:text-[#EDE9E0] font-black">{parsedLeads.length} Contactos Listos</p>
+                        <button onClick={() => setParsedLeads([])} className="text-xs text-red-500 font-bold hover:bg-red-500/10 px-4 py-2 rounded-full transition-colors uppercase tracking-widest">Eliminar y cambiar archivo</button>
                       </div>
                     ) : (
-                      <>
+                      <div className="space-y-4">
+                        <div className="flex flex-col items-center gap-2">
+                          <UploadCloud size={40} className="text-emerald-500/50" />
+                          <p className="font-bold text-[#111111] dark:text-[#EDE9E0]">Selecciona tu archivo</p>
+                          <p className="text-xs text-[#6F6F6F]">Sube un archivo CSV o Excel para comenzar</p>
+                        </div>
                         <input 
                           type="file" 
                           id="file-up" 
@@ -294,12 +307,36 @@ export default function CampaignsPage() {
                           accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
                           onChange={handleFileUpload} 
                         />
-                        <label htmlFor="file-up" className="cursor-pointer flex flex-col items-center gap-2">
-                          <UploadCloud size={32} className="text-[#6F6F6F]" />
-                          <p className="text-sm font-medium text-[#6F6F6F]">Haz clic para subir CSV o Excel</p>
+                        <label htmlFor="file-up" className="inline-block px-10 py-3 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] cursor-pointer hover:bg-emerald-600 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20">
+                          ELEGIR ARCHIVO
                         </label>
-                      </>
+                      </div>
                     )}
+                  </div>
+
+                  {/* Instrucciones del CSV Compactas */}
+                  <div className="bg-white/50 dark:bg-zinc-900/30 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-600/80">
+                      <AlertCircle size={14} />
+                      <span className="text-[9px] font-black uppercase tracking-[0.15em]">Guía Rápida</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="flex gap-2">
+                          <div className="h-4 w-4 bg-emerald-500 text-white text-[9px] font-black rounded flex items-center justify-center shrink-0">#</div>
+                          <div className="space-y-0.5">
+                             <p className="text-[9px] font-bold text-[#111111] dark:text-[#EDE9E0] uppercase tracking-tighter">Celular</p>
+                             <p className="text-[8px] text-[#6F6F6F] leading-none">Columna # obligatoria</p>
+                          </div>
+                       </div>
+                       <div className="flex gap-2 border-l border-[#DEDAD0] dark:border-zinc-800 pl-4">
+                          <div className="h-4 w-4 bg-zinc-200 dark:bg-zinc-800 text-zinc-500 text-[9px] font-black rounded flex items-center justify-center shrink-0">N</div>
+                          <div className="space-y-0.5">
+                             <p className="text-[9px] font-bold text-[#111111] dark:text-[#EDE9E0] uppercase tracking-tighter">Nombre</p>
+                             <p className="text-[8px] text-[#6F6F6F] leading-none">Opcional: Nombre o Name</p>
+                          </div>
+                       </div>
+                    </div>
                   </div>
                   <button onClick={() => setStep(2)} disabled={parsedLeads.length === 0} className="w-full py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl font-bold disabled:opacity-30">
                     Continuar
