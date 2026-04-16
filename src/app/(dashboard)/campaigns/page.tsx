@@ -693,14 +693,39 @@ export default function CampaignsPage() {
                 )}
              </div>
              
-             <div className="p-8 bg-zinc-50 dark:bg-black/10 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-end">
-                <button 
-                   onClick={() => setShowLogsModal(false)}
-                   className="px-8 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all"
-                >
-                   Cerrar
-                </button>
-             </div>
+             <div className="p-8 bg-zinc-50 dark:bg-black/10 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
+                 <button 
+                    onClick={() => {
+                        const headers = ["Telefono", "Estado", "Error", "Fecha"];
+                        const rows = activeLogs.map((l: any) => [
+                            l.phone,
+                            l.status,
+                            l.error || "",
+                            new Date(l.createdAt).toLocaleString()
+                        ]);
+                        
+                        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.setAttribute("href", url);
+                        link.setAttribute("download", `Reporte_Campaña_${activeLogs[0]?.campaignId || 'logs'}.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }}
+                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-xl transition-all"
+                 >
+                    <Download size={14} />
+                    Descargar Log CSV
+                 </button>
+                 <button 
+                    onClick={() => setShowLogsModal(false)}
+                    className="px-8 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
+                 >
+                    CERRAR
+                 </button>
+              </div>
           </div>
         </div>
       )}
