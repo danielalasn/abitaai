@@ -193,7 +193,8 @@ export async function saveAssistantReply(
   outputTokens: number = 0, 
   waCategory: string = 'SERVICE',
   agentName?: string,
-  scoreReason?: string
+  scoreReason?: string,
+  wamid?: string
 ) {
   // Forzar valores explícitos para evitar undefined/null que Prisma convierte a NULL
   const safeInputTokens = inputTokens ?? 0;
@@ -212,7 +213,8 @@ export async function saveAssistantReply(
       waCategory: safeWaCategory,
       agentName: agentName || null,
       scoreBump: scoreBump > 0 ? scoreBump : null,
-      scoreReason: scoreReason || null
+      scoreReason: scoreReason || null,
+      wamid: wamid || null
     }
   });
   
@@ -277,6 +279,7 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
   let waCategory: string | null = null;
   let waSendSuccess = true;
   let waSendError: string | undefined;
+  let wamid: string | null = null;
 
   if (chat?.leadId) {
     // Si un agente habla, ya no es "NEEDS_AGENT", pasa a "IN_PROGRESS"
@@ -294,6 +297,7 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
         const result = await sendWhatsAppMessage(phone, text, phoneId, token);
         waSendSuccess = result.success;
         waCategory = result.category;
+        wamid = result.messageId;
 
         if (!result.success) {
           const errMsg = result.raw?.error?.message || 'Error desconocido al enviar mensaje';
@@ -312,7 +316,7 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
 
   // Guardar en BD local — el mensaje se guarda siempre para que quede en el historial
   await prisma.message.create({
-    data: { chatId, role: 'agent', content: text, waCategory }
+    data: { chatId, role: 'agent', content: text, waCategory, wamid }
   });
 
   revalidatePath('/');

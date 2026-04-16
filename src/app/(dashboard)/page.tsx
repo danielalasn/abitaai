@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { 
   Bot, User, Send, Loader2, Phone, Hash, AlertCircle, TrendingUp, Clock, 
   PanelLeftClose, PanelLeftOpen, Search, Filter, Mail, Trash2, Archive, 
-  CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check
+  CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck
 } from "lucide-react";
 import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
@@ -999,10 +999,22 @@ export default function InboxPage() {
                             })}
                           </span>
                           {(isAgent || isBot) && msg.status === 'failed' && (
-                            <AlertCircle size={10} className="text-red-400" />
+                            <AlertCircle size={10} className="text-red-400" title="Falló el envío" />
                           )}
-                          {(isAgent || isBot) && msg.status !== 'pending' && msg.status !== 'failed' && (
-                            <Check size={10} className="opacity-100" />
+                          {(isAgent || isBot) && msg.status === 'pending' && (
+                            <Clock size={10} className="opacity-60" title="Enviando..." />
+                          )}
+                          {(isAgent || isBot) && (msg.status === 'SENT' || msg.status === 'sent') && (
+                            <Check size={10} className="opacity-60 text-zinc-500" title="Enviado" />
+                          )}
+                          {(isAgent || isBot) && msg.status === 'DELIVERED' && (
+                            <CheckCheck size={10} className="opacity-60 text-zinc-500" title="Entregado" />
+                          )}
+                          {(isAgent || isBot) && msg.status === 'READ' && (
+                            <CheckCheck size={10} className="text-blue-400 opacity-100 dark:text-blue-400" title="Leído" />
+                          )}
+                          {(isAgent || isBot) && !['failed', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
+                            <Check size={10} className="opacity-60" />
                           )}
                         </div>
                       </div>

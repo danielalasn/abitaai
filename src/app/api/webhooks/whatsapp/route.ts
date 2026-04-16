@@ -70,13 +70,23 @@ export async function POST(req: NextRequest) {
             if (currentStatus !== 'SENT') {
                 try {
                     const { prisma } = await import('@/lib/prisma');
-                    const updated = await prisma.campaignLog.updateMany({
+                    
+                    // Actualizar Logs de Campaña
+                    const updatedCamp = await prisma.campaignLog.updateMany({
                         where: { wamid: status.id },
                         data: { status: currentStatus }
                     });
-                    if (updated.count > 0) console.log(`[Webhook] CampaignLog ${status.id} actualizado a ${currentStatus}`);
+                    if (updatedCamp.count > 0) console.log(`[Webhook] CampaignLog ${status.id} actualizado a ${currentStatus}`);
+
+                    // Actualizar Mensajes de Chat (Inbox)
+                    const updatedMsg = await prisma.message.updateMany({
+                        where: { wamid: status.id },
+                        data: { status: currentStatus }
+                    });
+                    if (updatedMsg.count > 0) console.log(`[Webhook] Message chat ${status.id} actualizado a ${currentStatus}`);
+
                 } catch (dbErr) {
-                    console.error("Error actualizando log de campaña (éxito):", dbErr);
+                    console.error("Error actualizando status en BD:", dbErr);
                 }
             }
         }
@@ -125,10 +135,13 @@ export async function POST(req: NextRequest) {
             const phoneId = (chatDetails as any)?.lead?.project?.whatsappPhoneId;
             const token = (chatDetails as any)?.lead?.project?.whatsappToken;
 
+            let waMessageId: string | undefined;
+
             if (phoneId && token) {
                 const waResult = await sendWhatsAppMessage(from, botData.reply, phoneId, token);
                 waCategory = waResult.category || 'SERVICE';
-                console.log(`Respuesta enviada a ${from} vía WhatsApp Cloud API (categoría: ${waCategory})`);
+                waMessageId = waResult.messageId || undefined;
+                console.log(`Respuesta enviada a ${from} vía WhatsApp Cloud API (categoría: ${waCategory}, wamid: ${waMessageId})`);
             } else {
                 console.error(`[Webhook] No hay credenciales configuradas para el proyecto del chat ${chatId}`);
             }
@@ -142,7 +155,8 @@ export async function POST(req: NextRequest) {
                 botData.outputTokens, 
                 waCategory,
                 botData.agentName,
-                botData.scoreReason
+                botData.scoreReason,
+                waMessageId
             );
 
             // 6. Si hubo un Handoff, desactivar el bot

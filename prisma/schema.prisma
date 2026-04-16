@@ -99,6 +99,8 @@ model Message {
   inputTokens  Int?     // Tokens de entrada (prompt + historia)
   outputTokens Int?     // Tokens de salida (la respuesta generada)
   waCategory   String?  // Categoría de WhatsApp: MARKETING, UTILITY, SERVICE, etc.
+  wamid        String?  @unique // ID devuelto por Meta para rastreo de estado
+  status       String   @default("SENT") // SENT, DELIVERED, READ, FAILED
   agentName    String?  // Nombre del agente que respondió (para auditoría/simulador)
   scoreBump    Int?     // Puntos sumados/restados en este mensaje
   scoreReason  String?  // Razón de la calificación (ej: "Preguntó por precios")
