@@ -636,22 +636,41 @@ export default function CampaignsPage() {
                        <p className="text-sm">No hay registros disponibles para esta campaña.</p>
                     </div>
                 ) : (
-                    activeLogs.map((log: any) => (
+                    activeLogs.map((log: any) => {
+                       let badgeColor = 'bg-red-500/10 text-red-600';
+                       let badgeText = 'Fallido';
+                       let Icon = AlertCircle;
+                       if (log.status === 'SENT') {
+                         badgeColor = 'bg-amber-500/10 text-amber-600';
+                         badgeText = 'Enviado';
+                         Icon = CheckCircle2;
+                       } else if (log.status === 'DELIVERED') {
+                         badgeColor = 'bg-emerald-500/10 text-emerald-600';
+                         badgeText = 'Recibido';
+                         Icon = CheckCircle2;
+                       } else if (log.status === 'READ') {
+                         badgeColor = 'bg-blue-500/10 text-blue-600';
+                         badgeText = 'Leído';
+                         Icon = CheckCircle2;
+                       }
+
+                       return (
                        <div key={log.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-black/20 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
                           <div className="flex items-center gap-3">
-                             <div className={`h-8 w-8 rounded-full flex items-center justify-center ${log.status === 'SENT' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>
-                                {log.status === 'SENT' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                             <div className={`h-8 w-8 rounded-full flex items-center justify-center ${badgeColor}`}>
+                                <Icon size={16} />
                              </div>
                              <div>
                                 <p className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0]">{log.phone}</p>
                                 {log.error && <p className="text-[10px] text-red-500 font-medium">{log.error}</p>}
                              </div>
                           </div>
-                          <div className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${log.status === 'SENT' ? 'text-emerald-600' : 'text-red-600'}`}>
-                             {log.status === 'SENT' ? 'Enviado' : 'Fallido'}
+                          <div className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${badgeColor}`}>
+                             {badgeText}
                           </div>
                        </div>
-                    ))
+                       );
+                    })
                 )}
              </div>
              
