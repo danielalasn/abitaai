@@ -107,7 +107,7 @@ async function processCampaign(
   headerUrl?: string,
   botActive: boolean = true
 ) {
-  const batchSize = 10; // Procesar 10 mensajes en paralelo
+  const batchSize = 5; // Batches de 5 para seguridad
   for (let i = 0; i < leadsData.length; i += batchSize) {
     const batch = leadsData.slice(i, i + batchSize);
     console.log(`[Campaign] Procesando batch de ${batch.length} leads... (${i + 1}/${leadsData.length})`);
@@ -181,6 +181,11 @@ async function processCampaign(
         console.error(`[Campaign] Error procesando lead individual:`, err);
       }
     }));
+
+    // Delay de seguridad de 1 segundo entre batches
+    if (i + batchSize < leadsData.length) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
   }
 
   await prisma.campaign.update({
