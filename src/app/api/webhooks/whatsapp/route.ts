@@ -66,16 +66,18 @@ export async function POST(req: NextRequest) {
             const currentStatus = status.status.toUpperCase();
             console.log(`✅ [WA STATUS] Mensaje ${status.id} a ${status.recipient_id} está: ${status.status}`);
             
-            // Actualizar LOG de campaña a DELIVERED o READ
-            try {
-                const { prisma } = await import('@/lib/prisma');
-                const updated = await prisma.campaignLog.updateMany({
-                    where: { wamid: status.id },
-                    data: { status: currentStatus }
-                });
-                if (updated.count > 0) console.log(`[Webhook] CampaignLog ${status.id} actualizado a ${currentStatus}`);
-            } catch (dbErr) {
-                console.error("Error actualizando log de campaña (éxito):", dbErr);
+            // Ignorar el status 'SENT' para no sobreescribir un DELIVERED o READ si Meta manda webhooks desordenados
+            if (currentStatus !== 'SENT') {
+                try {
+                    const { prisma } = await import('@/lib/prisma');
+                    const updated = await prisma.campaignLog.updateMany({
+                        where: { wamid: status.id },
+                        data: { status: currentStatus }
+                    });
+                    if (updated.count > 0) console.log(`[Webhook] CampaignLog ${status.id} actualizado a ${currentStatus}`);
+                } catch (dbErr) {
+                    console.error("Error actualizando log de campaña (éxito):", dbErr);
+                }
             }
         }
         return NextResponse.json({ status: 'ok' });
