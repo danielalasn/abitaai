@@ -45,6 +45,7 @@ export const authOptions = {
             name:  client.name,
             email: client.email,
             theme: client.theme,
+            role:  client.role,
           }
         } catch (error: any) {
           console.error('[AUTH DEBUG] ERROR CRÍTICO DE BASE DE DATOS:', error)
@@ -59,11 +60,17 @@ export const authOptions = {
   },
   callbacks: {
     async jwt({ token, user }: any) {
-      if (user) (token as any).id = (user as any).id
+      if (user) {
+        token.id = user.id
+        token.role = user.role
+      }
       return token
     },
     async session({ session, token }: any) {
-      if (session.user) (session.user as any).id = (token as any).id
+      if (session.user) {
+        session.user.id = token.id
+        session.user.role = token.role
+      }
       return session
     },
   },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { signIn } from 'next-auth/react'
+import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react'
 
@@ -37,7 +37,10 @@ function LoginContent() {
       setError('Credenciales no válidas')
       setIsLoading(false)
     } else {
-      if (email.toLowerCase() === 'info@abitaai.com') {
+      // Obtener la sesión actualizada para revisar el Rol
+      const session = await getSession()
+      
+      if ((session?.user as any)?.role === 'ADMIN') {
         router.push('/admin')
       } else {
         router.push('/')

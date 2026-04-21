@@ -14,6 +14,7 @@ model Client {
   email     String   @unique
   password  String?
   theme     String   @default("light")
+  role      String   @default("CLIENT") // Enum: ADMIN o CLIENT
   createdAt DateTime @default(now())
   
   projects  Project[]
