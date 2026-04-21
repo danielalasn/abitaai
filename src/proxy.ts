@@ -9,10 +9,11 @@ export const config = {
     /*
      * Protege todas las rutas EXCEPTO:
      * - /login
+     * - /terms, /privacy (Documentos Legales)
      * - /api/auth/* (NextAuth callbacks)
      * - /api/webhooks/* (webhooks externos de WhatsApp)
      * - Archivos estáticos (_next, favicon, etc.)
      */
-    '/((?!login|api/auth|api/webhooks|api/seed|_next/static|_next/image|favicon.ico|api/auth|$).*)',
+    '/((?!login|terms|privacy|api/auth|api/webhooks|api/seed|_next/static|_next/image|favicon.ico|$).*)',
   ],
 }

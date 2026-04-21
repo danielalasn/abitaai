@@ -156,7 +156,10 @@ function LoginContent() {
           </form>
 
           <p className="text-center text-[10px] text-[#6F6F6F] leading-relaxed">
-            Al ingresar, aceptas nuestros términos de servicio y políticas de privacidad.<br />
+            Al ingresar, aceptas nuestros{' '}
+            <a href="/terms" className="underline hover:text-[#111111] transition-colors">términos de servicio</a>{' '}
+            y{' '}
+            <a href="/privacy" className="underline hover:text-[#111111] transition-colors">políticas de privacidad</a>.<br />
             © 2026 abita.ai
           </p>
         </div>

@@ -130,11 +130,21 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
     select: { id: true }
   });
 
+  // Prevent Duplicate Leads: Check for both '5037xxxxxxx' and '7xxxxxxx' formats
+  const possiblePhones = [phone];
+  if (phone.startsWith('503') && phone.length === 11) {
+    possiblePhones.push(phone.substring(3)); // Add the 8-digit version without generic 503 prefix
+  }
+
   // Buscar o crear Lead
   let currentLead = await prisma.lead.findFirst({
-    where: { phone, projectId: project.id },
+    where: { 
+        projectId: project.id,
+        phone: { in: possiblePhones }
+    },
     include: { chat: true }
   });
+
 
   if (!currentLead) {
     currentLead = await prisma.lead.create({

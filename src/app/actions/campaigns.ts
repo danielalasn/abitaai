@@ -59,28 +59,11 @@ export async function launchCampaignAction(
     }
   });
 
-  // BACKGROUND TASK: Using after() to ensure Vercel doesn't kill the process
-  after(async () => {
-    console.log(`[Campaign] Iniciando procesamiento en segundo plano para campaña: ${campaign.id}`);
-    await processCampaign(
-      campaign.id,
-      project.id,
-      templateName,
-      templateText,
-      languageCode,
-      variableMapping,
-      leadsData,
-      project.whatsappPhoneId!,
-      project.whatsappToken!,
-      headerUrl,
-      botActive
-    ).catch(err => {
-      console.error(`[Campaign] Error en procesamiento background:`, err);
-    });
-  });
-
   revalidatePath('/campaigns');
-  return campaign;
+  return { 
+    id: campaign.id,
+    leadsCount: leadsData.length
+  };
 }
 
 export async function fetchCampaigns() {
@@ -92,135 +75,158 @@ export async function fetchCampaigns() {
 }
 
 // ──────────────────────────────────────────────
-// Background worker — sends one message per lead
+// Client-driven worker — sends one message per call to avoid timeouts
 // ──────────────────────────────────────────────
-async function processCampaign(
+export async function processCampaignLead(
   campaignId: string,
-  projectId: string,
-  templateName: string,
-  templateText: string,
-  languageCode: string,
-  variableMapping: Record<string, string>,
-  leadsData: any[],
-  phoneNumberId: string,
-  accessToken: string,
-  headerUrl?: string,
-  botActive: boolean = true
+  leadIndex: number,
+  botActive: boolean = false,
+  customTemplateText?: string,
+  customHeaderUrl?: string,
+  isDryRun: boolean = false
 ) {
-  console.log(`[Campaign] Procesando ${leadsData.length} contactos con cadencia de seguridad...`);
+  const project = await getProjectWithCredentials();
+  
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId }
+  });
 
-  for (let i = 0; i < leadsData.length; i++) {
-    const leadData = leadsData[i];
+  if (!campaign || !campaign.csvData) throw new Error("Campaña no encontrada o sin datos");
+  if (!project.whatsappPhoneId || !project.whatsappToken) throw new Error("Credenciales de WhatsApp faltantes");
+
+  const leadsData = JSON.parse(campaign.csvData);
+  const leadData = leadsData[leadIndex];
+  if (!leadData) throw new Error("Lead no encontrado en el índice proporcionado");
+
+  // Recurso: extraer variables en un formato seguro si ya no las pasan directo del form
+  const templateName = campaign.templateName;
+  const templateText = customTemplateText || "Plantilla WhatsApp";
+  const languageCode = "es";
+  const variableMapping: Record<string, string> = JSON.parse(campaign.variableMapping || '{}');
+  const headerUrl = customHeaderUrl;
+
+  try {
+    const rawPhone = leadData['#'];
+    if (!rawPhone) return { success: false, log: 'Sin número' };
+
+    let cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 8) return { success: false, log: 'Número inválido' };
+
+    // NORMALIZACIÓN DE TELÉFONO: Forzar prefijo 503 si el número tiene 8 dígitos y no lo incluyeron en el CSV
+    if (cleanPhone.length === 8) {
+       cleanPhone = '503' + cleanPhone;
+    }
+
+    // 1. Build components y preview
+    const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
+    const bodyParams = paramEntries.map(([, colName]) => ({
+      type: 'text' as const,
+      text: String(leadData[colName] ?? ''),
+    }));
+
+    const components: any[] = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
+    let realUrl: string | undefined = undefined;
+    if (headerUrl) {
+      const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
+      realUrl = isMapping ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '') : headerUrl;
+      if (realUrl && realUrl.startsWith('http')) {
+        components.unshift({ type: 'header', parameters: [{ type: 'image', image: { link: realUrl } }] });
+      }
+    }
+
+    let previewText = templateText;
+    paramEntries.forEach(([k, col]) => {
+        const val = leadData[col] ?? '';
+        previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
+    });
+    if (!previewText) previewText = `Plantilla: ${templateName}`;
+
+    // 2. Transacción de DB: Upsert Lead + Chat + Message
+    const metadataToSave = { ...leadData };
+    delete metadataToSave['#'];
+    const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
+    const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
+
+    const lead = await prisma.lead.upsert({
+      where: { phone_projectId: { phone: cleanPhone, projectId: project.id } },
+      update: { 
+        latestCampaignId: campaignId,
+        metadata: metadataToSave,
+        name: (leadName && leadName !== cleanPhone) ? leadName : undefined 
+      },
+      create: { phone: cleanPhone, projectId: project.id, name: leadName, latestCampaignId: campaignId, metadata: metadataToSave }
+    });
+
+    const chat = await prisma.chat.upsert({
+      where: { leadId: lead.id },
+      update: { botActive: botActive, lastActiveAt: new Date() },
+      create: { leadId: lead.id, botActive: botActive }
+    });
+
+    // 3. Envío Meta o Simulacro
+    let waResult;
+    if (isDryRun) {
+      console.log(`[DRY-RUN] Simulando envío a ${cleanPhone}`);
+      waResult = { 
+        success: true, 
+        messageId: `dry_run_${Math.random().toString(36).substring(7)}`, 
+        category: 'MARKETING' as const 
+      };
+      // Pequeño delay extra para simular latencia de red
+      await new Promise(r => setTimeout(r, 100));
+    } else {
+      waResult = await sendWhatsAppTemplate(cleanPhone, templateName!, languageCode, components, project.whatsappPhoneId, project.whatsappToken);
+    }
+
+    if (!waResult.success) {
+        throw new Error((waResult as any).raw?.error?.message || 'Error en Meta Cloud API');
+    }
+
+    // 4. Guardar mensaje y LOG de campaña
+    await prisma.message.create({
+      data: { 
+        chatId: chat.id, role: 'agent', content: previewText, 
+        waCategory: waResult.category || 'MARKETING', imageUrl: realUrl,
+        wamid: waResult.messageId // Rastreo de estado para el inbox
+      }
+    });
+
+    await prisma.campaignLog.create({
+      data: {
+        campaignId,
+        wamid: waResult.messageId,
+        phone: cleanPhone,
+        status: 'SENT'
+      }
+    });
+
+    return { success: true, phone: cleanPhone, wamid: waResult.messageId };
+
+  } catch (err: any) {
+    console.error(`[Campaign] Error procesando lead individual #${leadIndex}:`, err);
     try {
       const rawPhone = leadData['#'];
-      if (!rawPhone) continue;
-
-      const cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
-      if (cleanPhone.length < 8) continue;
-
-      // 1. Build components y preview
-      const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
-      const bodyParams = paramEntries.map(([, colName]) => ({
-        type: 'text' as const,
-        text: String(leadData[colName] ?? ''),
-      }));
-
-      const components: any[] = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
-      let realUrl: string | undefined = undefined;
-      if (headerUrl) {
-        const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
-        realUrl = isMapping ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '') : headerUrl;
-        if (realUrl && realUrl.startsWith('http')) {
-          components.unshift({ type: 'header', parameters: [{ type: 'image', image: { link: realUrl } }] });
-        }
-      }
-
-      let previewText = templateText;
-      paramEntries.forEach(([k, col]) => {
-          const val = leadData[col] ?? '';
-          previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
-      });
-      if (!previewText) previewText = `Plantilla: ${templateName}`;
-
-      // 2. Transacción de DB: Upsert Lead + Chat + Message
-      const metadataToSave = { ...leadData };
-      delete metadataToSave['#'];
-      const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
-      const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
-
-      const lead = await prisma.lead.upsert({
-        where: { phone_projectId: { phone: cleanPhone, projectId } },
-        update: { 
-          latestCampaignId: campaignId,
-          metadata: metadataToSave,
-          name: (leadName && leadName !== cleanPhone) ? leadName : undefined 
-        },
-        create: { phone: cleanPhone, projectId, name: leadName, latestCampaignId: campaignId, metadata: metadataToSave }
-      });
-
-      const chat = await prisma.chat.upsert({
-        where: { leadId: lead.id },
-        update: { botActive: botActive, lastActiveAt: new Date() },
-        create: { leadId: lead.id, botActive: botActive }
-      });
-
-      // 3. Envío Meta
-      const waResult = await sendWhatsAppTemplate(cleanPhone, templateName, languageCode, components, phoneNumberId, accessToken);
-
-      // 4. Guardar mensaje y LOG de campaña
-      await prisma.message.create({
-        data: { 
-          chatId: chat.id, role: 'agent', content: previewText, 
-          waCategory: waResult.category || 'MARKETING', imageUrl: realUrl,
-          wamid: waResult.messageId // Rastreo de estado para el inbox
-        }
-      });
-
       await prisma.campaignLog.create({
         data: {
           campaignId,
-          wamid: waResult.messageId,
-          phone: cleanPhone,
-          status: 'SENT'
+          phone: rawPhone ? String(rawPhone) : 'Unknown',
+          status: 'FAILED',
+          error: err?.message || 'Error desconocido'
         }
       });
-      console.log(`[Campaign] (${i+1}/${leadsData.length}) Enviado a ${cleanPhone}. WAMID: ${waResult.messageId}`);
-
-    } catch (err: any) {
-      console.error(`[Campaign] Error procesando lead individual #${i}:`, err);
-      try {
-        const rawPhone = leadData['#'];
-        await prisma.campaignLog.create({
-          data: {
-            campaignId,
-            phone: rawPhone ? String(rawPhone) : 'Unknown',
-            status: 'FAILED',
-            error: err?.message || 'Error desconocido'
-          }
-        });
-      } catch (logErr) {
-        console.error("No se pudo guardar el log de error:", logErr);
-      }
+    } catch (logErr) {
+      console.error("No se pudo guardar el log de error:", logErr);
     }
-
-    // 5. CADENCIA DE SEGURIDAD (Delays)
-    if (i < leadsData.length - 1) {
-      let delayTime = 500; // Base: 500ms
-      if ((i + 1) % 21 === 0) {
-        delayTime = 3000; // Cada 21: 3000ms
-        console.log(`[Campaign] Pausa larga de 3s (limite de 21 mensajes)`);
-      } else if ((i + 1) % 3 === 0) {
-        delayTime = 1000; // Cada 3: 1000ms
-        console.log(`[Campaign] Pausa corta de 1s (bloque de 3)`);
-      }
-      await new Promise(r => setTimeout(r, delayTime));
-    }
+    return { success: false, error: err?.message };
   }
+}
 
+export async function finalizeCampaign(campaignId: string) {
   await prisma.campaign.update({
     where: { id: campaignId },
     data: { status: 'COMPLETED' }
   });
+  revalidatePath('/campaigns');
 }
 
 /**

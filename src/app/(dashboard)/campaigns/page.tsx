@@ -6,7 +6,7 @@ import {
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
   Sparkles, Download, Clock, Search, X, AlertCircle
 } from 'lucide-react';
-import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs } from '@/app/actions/campaigns';
+import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign } from '@/app/actions/campaigns';
 import { uploadImageAction } from '@/app/actions/storage';
 
 // ──────────────────────────────────────────────
@@ -72,10 +72,12 @@ export default function CampaignsPage() {
 
   // Launch
   const [headerUrl, setHeaderUrl] = useState('');
-  const [isBotActive, setIsBotActive] = useState(true);
+  const [isBotActive, setIsBotActive] = useState(false);
+  const [isDryRun, setIsDryRun] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [successStatus, setSuccessStatus] = useState<string | null>(null);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   
@@ -179,8 +181,10 @@ export default function CampaignsPage() {
 
     setIsSending(true);
     setSuccessStatus(null);
+    setProgress({ current: 0, total: parsedLeads.length });
+
     try {
-      await launchCampaignAction(
+      const campaignData = await launchCampaignAction(
         campaignName,
         selectedTemplate.name,
         bodyText,
@@ -190,6 +194,23 @@ export default function CampaignsPage() {
         headerUrl,
         isBotActive
       );
+
+      // Orchestrate the loop from the client-side to bypass Vercel timeouts
+      for (let i = 0; i < parsedLeads.length; i++) {
+        await processCampaignLead(campaignData.id, i, isBotActive, bodyText, headerUrl, isDryRun);
+        setProgress({ current: i + 1, total: parsedLeads.length });
+        
+        // Security Cadence (Delays) - Keep delays even in dry run to test actual loop timing
+        if (i < parsedLeads.length - 1) {
+          let delayTime = isDryRun ? 50 : 500; // MUCH faster in dry run, but keep 50ms for basic flow test
+          if ((i + 1) % 21 === 0) delayTime = isDryRun ? 200 : 3000;
+          else if ((i + 1) % 3 === 0) delayTime = isDryRun ? 100 : 1000;
+          await new Promise(r => setTimeout(r, delayTime));
+        }
+      }
+
+      await finalizeCampaign(campaignData.id);
+
       setSuccessStatus(`¡Campaña lanzada con éxito!`);
       setStep(1);
       setCampaignName('');
@@ -201,6 +222,7 @@ export default function CampaignsPage() {
       alert('Error: ' + err.message);
     } finally {
       setIsSending(false);
+      setProgress({ current: 0, total: 0 });
     }
   };
 
@@ -487,7 +509,6 @@ export default function CampaignsPage() {
                       <div key={v} className="flex items-center gap-3">
                         <span className="text-xs font-mono font-bold w-12 text-emerald-500">{'{{'}{v}{'}}'}</span>
                         <select 
-                          value={variableMapping[v]} 
                           onChange={e => setVariableMapping(p => ({ ...p, [v]: e.target.value }))}
                           className="flex-1 p-2 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
                         >
@@ -497,21 +518,41 @@ export default function CampaignsPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between p-4 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                    <div className="space-y-0.5">
-                      <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide flex items-center gap-1.5">
-                        <RefreshCw size={12} className={isBotActive ? 'animate-spin-slow' : ''} />
-                        Respuesta Automática
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-4 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide flex items-center gap-1.5">
+                          <RefreshCw size={12} className={isBotActive ? 'animate-spin-slow' : ''} />
+                          Respuesta IA
+                        </div>
+                        <p className="text-[9px] text-[#6F6F6F]">Bot encendido</p>
                       </div>
-                      <p className="text-[10px] text-[#6F6F6F]">El bot responderá a los mensajes</p>
+                      <button
+                        type="button"
+                        onClick={() => setIsBotActive(!isBotActive)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isBotActive ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isBotActive ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsBotActive(!isBotActive)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isBotActive ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                    >
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isBotActive ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
+
+                    <div className="flex items-center justify-between p-4 bg-amber-500/5 dark:bg-amber-500/10 rounded-2xl border border-amber-500/20">
+                      <div className="space-y-0.5">
+                        <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wide flex items-center gap-1.5">
+                          <AlertCircle size={12} />
+                          Simulacro
+                        </div>
+                        <p className="text-[9px] text-[#6F6F6F]">Sin envío real</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsDryRun(!isDryRun)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isDryRun ? 'bg-amber-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isDryRun ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex gap-3">
@@ -519,10 +560,19 @@ export default function CampaignsPage() {
                     <button 
                       onClick={handleLaunch} 
                       disabled={isSending || !campaignName || bodyVars.some(v => !variableMapping[v])} 
-                      className="flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold disabled:opacity-30 flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all"
+                      className="relative overflow-hidden flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all group"
                     >
-                      {isSending ? <Loader2 size={16} className="animate-spin" /> : null}
-                      {isSending ? 'Lanzando...' : `Lanzar (${parsedLeads.length} leads)`}
+                      {isSending && progress.total > 0 && (
+                        <div 
+                          className="absolute left-0 top-0 bottom-0 bg-black/20 transition-all duration-300"
+                          style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                        />
+                      )}
+                      
+                      <div className="relative z-10 flex items-center gap-2">
+                         {isSending ? <Loader2 size={16} className="animate-spin" /> : null}
+                         {isSending ? `Enviando ${progress.current} de ${progress.total}...` : `Lanzar (${parsedLeads.length} leads)`}
+                      </div>
                     </button>
                   </div>
                 </div>
