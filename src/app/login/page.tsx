@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react'
 
 function LoginContent() {
@@ -39,7 +40,7 @@ function LoginContent() {
     } else {
       // Obtener la sesión actualizada para revisar el Rol
       const session = await getSession()
-      
+
       if ((session?.user as any)?.role === 'ADMIN') {
         router.push('/admin')
       } else {
@@ -57,7 +58,17 @@ function LoginContent() {
         {/* Decorative elements */}
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F36A2D]/5 rounded-full blur-[120px]" />
 
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col gap-8">
+          <Link
+            href="/"
+            className="group flex items-center gap-2 text-xs font-bold text-[#6F6F6F] hover:text-[#F36A2D] transition-all w-fit"
+          >
+            <div className="w-6 h-6 rounded-full border border-[#DEDAD0] flex items-center justify-center group-hover:border-[#F36A2D] transition-all">
+              <ArrowRight size={12} className="rotate-180" />
+            </div>
+            Regresar
+          </Link>
+
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-[#111111] rounded-xl flex items-center justify-center">
               <span className="text-[#F36A2D] font-bold text-xl">a</span>
@@ -66,17 +77,20 @@ function LoginContent() {
           </div>
         </div>
 
-        <div className="relative z-10 max-w-md">
-          <h1 className="text-6xl lg:text-7xl font-display text-[#111111] leading-[1.1] mb-8">
-            El futuro de <br />
-            <span className="italic">tus ventas</span> <br />
-            es inteligente
+        <div className="relative z-10 max-w-md my-auto">
+          <h1 className="text-5xl lg:text-6xl font-display text-[#111111] leading-[1.1] mb-8">
+            El futuro de la <br />
+            <span className="italic">comunicación</span> <br />
+            es <span className="text-[#F36A2D]">inteligente</span>
           </h1>
           <p className="text-[#6F6F6F] text-lg leading-relaxed font-light">
-            Automatiza la atención al cliente con una identidad sofisticada y resultados reales.
+            Escala tu capacidad de respuesta con IA. Automatización perfecta, interacciones precisas y resultados que impulsan tu crecimiento.
           </p>
         </div>
 
+        <div className="relative z-10 text-[10px] text-[#9A9A9A] font-bold uppercase tracking-[0.2em] opacity-40">
+          AI Powered Platform
+        </div>
       </div>
 
       {/* Columna Derecha: Formulario */}

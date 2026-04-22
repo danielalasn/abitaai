@@ -80,14 +80,14 @@ export function HeroChatDemo() {
 
   return (
     <section className="w-full bg-[#E9E4D8] py-16 px-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-10">
             <span className="inline-block w-12 h-1 bg-[#F36A2D] mb-4 rounded-full"></span>
             <h2 className="text-3xl md:text-4xl font-display text-[#111111] mb-3">La experiencia en tiempo real</h2>
             <p className="text-[#6F6F6F]">Así de natural fluirá la conversación con tus futuros clientes.</p>
         </div>
 
-        <div className="w-full bg-[#f4f2ee] rounded-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-[#DEDAD0] overflow-hidden flex flex-col h-[600px] relative">
+        <div className="w-full bg-[#f4f2ee] rounded-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-[#DEDAD0] overflow-hidden flex flex-col h-[520px] relative">
           {/* Header */}
           <div className="bg-[#111111] px-6 py-4 flex items-center justify-between z-10">
             <div className="flex flex-row items-center gap-4">
