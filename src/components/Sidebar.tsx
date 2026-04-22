@@ -47,7 +47,7 @@ export function Sidebar() {
       
       <nav className="flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden no-scrollbar">
         {[
-          { icon: Inbox,             label: 'Bandeja',          href: '/' },
+          { icon: Inbox,             label: 'Bandeja',          href: '/inbox' },
           { icon: BarChart3,         label: 'Dashboard',        href: '/analytics' },
           { icon: UserCheck,         label: 'Leads',            href: '/leads' },
           { icon: Megaphone,         label: 'Campañas',         href: '/campaigns' },

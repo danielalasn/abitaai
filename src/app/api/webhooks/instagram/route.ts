@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { simulateIncomingMessage } from '@/app/actions/inbox'
 
 /** Webhook verification (Meta sends a GET to verify the endpoint) */
 export async function GET(req: NextRequest) {
@@ -54,6 +55,14 @@ export async function POST(req: NextRequest) {
       console.log(
         `[Instagram Webhook] DM from ${senderId} → tenant: ${integration.client.name} | msg: "${text}"`
       )
+
+      // Guardar el mensaje en el inbox (reutilizamos la lógica de inbox)
+      const fallbackProjectId = integration.client.projects?.[0]?.id;
+      if (fallbackProjectId) {
+        await simulateIncomingMessage(senderId, text, `@${senderId}`, undefined, 'instagram', fallbackProjectId);
+      } else {
+        console.warn('[Instagram Webhook] No project found for tenant:', integration.client.name)
+      }
 
       // TODO: pipe to AI agent and reply back via instagram_replies API using integration.accessToken
       // Example reply:

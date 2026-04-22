@@ -106,12 +106,16 @@ export async function requestHandoff(chatId: string) {
   revalidatePath('/');
 }
 
-// Simula la entrada de un mensaje por WhatsApp
-export async function simulateIncomingWhatsApp(phone: string, text: string, name?: string, phoneId?: string) {
+// Simula la entrada de un mensaje
+export async function simulateIncomingMessage(phone: string, text: string, name?: string, phoneId?: string, channel: string = 'whatsapp', fallbackProjectId?: string) {
   let project: any = null;
 
   if (phoneId) {
     project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
+  }
+
+  if (!project && fallbackProjectId) {
+    project = await prisma.project.findUnique({ where: { id: fallbackProjectId } });
   }
 
   if (!project) {
@@ -151,7 +155,8 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
       data: {
         phone,
         projectId: project.id,
-        name: name || `+503 ${phone}`
+        name: name || (channel === 'instagram' ? `@${phone}` : `+503 ${phone}`),
+        channel
       },
       include: { chat: true }
     });
@@ -171,7 +176,7 @@ export async function simulateIncomingWhatsApp(phone: string, text: string, name
   let chat = currentLead.chat;
   if (!chat) {
     chat = await prisma.chat.create({
-      data: { leadId: currentLead.id }
+      data: { leadId: currentLead.id, channel }
     });
   }
 

@@ -8,7 +8,15 @@ import {
   PanelLeftClose, PanelLeftOpen, Search, Filter, Mail, Trash2, Archive, 
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck
 } from "lucide-react";
-import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingWhatsApp, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
+
+const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <circle cx="12" cy="12" r="4" />
+    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingMessage, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
 import { sendTestMessage } from "@/app/actions/chat";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -476,7 +484,7 @@ export default function InboxPage() {
       setClientInput('');
 
       // Guardar el mensaje del cliente en BD
-      const chatId = await simulateIncomingWhatsApp(phone, msg);
+      const chatId = await simulateIncomingMessage(phone, msg);
 
       const chatDetails = await getChatMessages(chatId);
 
@@ -891,8 +899,9 @@ export default function InboxPage() {
                 <div>
                   <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
                     {activeChat.lead.name}
-                    <span className="text-[10px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded-md font-mono border border-[#DEDAD0] dark:border-zinc-700">
-                      WhatsApp
+                    <span className="text-[10px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded-md font-mono border border-[#DEDAD0] dark:border-zinc-700 flex items-center gap-1 shrink-0">
+                      {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : <MessageSquare size={10} />}
+                      {activeChat.lead.channel === 'instagram' ? 'Instagram' : 'WhatsApp'}
                     </span>
                   </h2>
                   <p className="text-xs text-[#6F6F6F]">{activeChat.lead.phone}</p>

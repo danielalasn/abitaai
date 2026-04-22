@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { simulateIncomingWhatsApp, saveAssistantReply, getChatMessages } from '@/app/actions/inbox';
+import { simulateIncomingMessage, saveAssistantReply, getChatMessages } from '@/app/actions/inbox';
 import { sendTestMessage } from '@/app/actions/chat';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { prisma } from '@/lib/prisma';
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Procesar mensaje entrante (Lo guarda en BD y crea Chat/Lead si no existen)
     // Pasamos el profileName si es un lead nuevo y el metadataPhoneId para saber a qué proyecto pertenece
-    const chatId = await simulateIncomingWhatsApp(from, text, profileName, metadataPhoneId);
+    const chatId = await simulateIncomingMessage(from, text, profileName, metadataPhoneId, 'whatsapp');
     
     // 2. Obtener estado del chat (¿Bot activo?)
     const chatDetails = await getChatMessages(chatId);

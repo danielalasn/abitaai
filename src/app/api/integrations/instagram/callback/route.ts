@@ -6,6 +6,7 @@ export async function GET(req: NextRequest) {
   const code  = searchParams.get('code')
   const state = searchParams.get('state')
   const error = searchParams.get('error')
+  const errorDescription = searchParams.get('error_description')
 
   const BASE_URL    = process.env.NEXTAUTH_URL!
   const APP_ID      = process.env.META_APP_ID!
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   // ── User denied / error ──────────────────────────────────────────────────
   if (error) {
-    console.error('[Instagram OAuth] Error from Meta:', error)
+    console.error('[Instagram OAuth] Error from Meta:', error, errorDescription)
     return NextResponse.redirect(`${BASE_URL}/settings?tab=connections&error=instagram_denied`)
   }
 
@@ -33,8 +34,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // ── Exchange code → short-lived token ────────────────────────────────
-    const tokenUrl = new URL('https://graph.facebook.com/v19.0/oauth/access_token')
+    // ── Exchange code → short-lived user token ────────────────────────────
+    const tokenUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token')
     tokenUrl.searchParams.set('client_id', APP_ID)
     tokenUrl.searchParams.set('client_secret', APP_SECRET)
     tokenUrl.searchParams.set('redirect_uri', REDIRECT_URI)
@@ -43,66 +44,94 @@ export async function GET(req: NextRequest) {
     const tokenRes  = await fetch(tokenUrl.toString())
     const tokenData = await tokenRes.json()
 
+    console.log('[Instagram OAuth] Short-lived token response:', JSON.stringify(tokenData))
+
     if (!tokenData.access_token) {
       throw new Error(`Token exchange failed: ${JSON.stringify(tokenData)}`)
     }
 
-    // ── Exchange short-lived → long-lived token (60 days) ────────────────
-    const llUrl = new URL('https://graph.facebook.com/v19.0/oauth/access_token')
+    const shortLivedToken = tokenData.access_token
+
+    // ── Exchange short-lived → long-lived user token (60 days) ───────────
+    const llUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token')
     llUrl.searchParams.set('grant_type', 'fb_exchange_token')
     llUrl.searchParams.set('client_id', APP_ID)
     llUrl.searchParams.set('client_secret', APP_SECRET)
-    llUrl.searchParams.set('fb_exchange_token', tokenData.access_token)
+    llUrl.searchParams.set('fb_exchange_token', shortLivedToken)
 
     const llRes  = await fetch(llUrl.toString())
     const llData = await llRes.json()
 
-    const longLivedToken  = llData.access_token || tokenData.access_token
+    console.log('[Instagram OAuth] Long-lived token response:', JSON.stringify(llData))
+
+    const longLivedToken  = llData.access_token || shortLivedToken
     const expiresInSec    = llData.expires_in || 5183944 // ~60 days
     const tokenExpiresAt  = new Date(Date.now() + expiresInSec * 1000)
 
-    // ── Fetch connected pages ─────────────────────────────────────────────
+    // ── Fetch connected Facebook Pages ────────────────────────────────────
     const pagesRes  = await fetch(
-      `https://graph.facebook.com/v19.0/me/accounts?access_token=${longLivedToken}`
+      `https://graph.facebook.com/v21.0/me/accounts?access_token=${longLivedToken}`
     )
     const pagesData = await pagesRes.json()
-    const page      = pagesData.data?.[0]
+
+    console.log('[Instagram OAuth] Pages response:', JSON.stringify(pagesData))
+
+    if (pagesData.error) {
+      throw new Error(`Pages fetch failed: ${JSON.stringify(pagesData.error)}`)
+    }
+
+    const page = pagesData.data?.[0]
 
     if (!page) {
-      throw new Error('No Facebook Pages found for this account. Make sure the page is connected to Instagram.')
+      throw new Error(
+        'No Facebook Pages found for this account. ' +
+        'Make sure: 1) You have a Facebook Page, 2) The Page has an Instagram Business/Creator account linked.'
+      )
     }
 
     const pageAccessToken = page.access_token
     const pageId          = page.id
 
-    // ── Fetch Instagram Business Account linked to the page ───────────────
+    console.log(`[Instagram OAuth] Using page: ${page.name} (${pageId})`)
+
+    // ── Fetch Instagram Business/Creator Account linked to the page ───────
     const igRes  = await fetch(
-      `https://graph.facebook.com/v19.0/${pageId}?fields=instagram_business_account&access_token=${pageAccessToken}`
+      `https://graph.facebook.com/v21.0/${pageId}?fields=instagram_business_account&access_token=${pageAccessToken}`
     )
     const igData = await igRes.json()
+
+    console.log('[Instagram OAuth] IG account response:', JSON.stringify(igData))
+
     const instagramAccountId = igData.instagram_business_account?.id || null
 
-    // ── Subscribe page to our app's webhooks ─────────────────────────────
-    if (instagramAccountId && process.env.META_APP_ID) {
-      await fetch(
-        `https://graph.facebook.com/v19.0/${pageId}/subscribed_apps`,
-        {
-          method: 'POST',
-          body: new URLSearchParams({
-            subscribed_fields: 'messages,messaging_postbacks',
-            access_token: pageAccessToken,
-          }),
-        }
+    if (!instagramAccountId) {
+      console.warn(
+        '[Instagram OAuth] No instagram_business_account found on page. ' +
+        'The Instagram account must be a Business or Creator account linked to the Facebook Page.'
       )
     }
+
+    // ── Subscribe page to our app webhooks ────────────────────────────────
+    const subRes = await fetch(
+      `https://graph.facebook.com/v21.0/${pageId}/subscribed_apps`,
+      {
+        method: 'POST',
+        body: new URLSearchParams({
+          subscribed_fields: 'messages,messaging_postbacks,feed',
+          access_token: pageAccessToken,
+        }),
+      }
+    )
+    const subData = await subRes.json()
+    console.log('[Instagram OAuth] Subscription response:', JSON.stringify(subData))
 
     // ── Save integration ──────────────────────────────────────────────────
     await prisma.integration.update({
       where: { id: integration.id },
       data: {
         status:            'active',
-        oauthState:        null, // clear state after use
-        accessToken:       pageAccessToken, // use page token, never user token
+        oauthState:        null,
+        accessToken:       pageAccessToken,
         tokenExpiresAt,
         pageId,
         instagramAccountId,

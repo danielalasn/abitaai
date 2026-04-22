@@ -43,7 +43,7 @@ function LoginContent() {
       if ((session?.user as any)?.role === 'ADMIN') {
         router.push('/admin')
       } else {
-        router.push('/')
+        router.push('/inbox')
       }
       router.refresh()
     }

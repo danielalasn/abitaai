@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  const APP_ID     = process.env.META_APP_ID
+  const APP_ID      = process.env.META_APP_ID
+  const CONFIG_ID   = process.env.META_CONFIG_ID || '845192391252310'
   const REDIRECT_URI = `${process.env.NEXTAUTH_URL}/api/integrations/instagram/callback`
 
   if (!APP_ID) {
@@ -29,16 +30,12 @@ export async function GET(req: NextRequest) {
     update: { status: 'pending', oauthState: state },
   })
 
-  // Permissions needed for Instagram Messaging
-  const scopes = [
-    'public_profile',
-    'email',
-  ].join(',')
-
+  // Use config_id — Meta controls all scopes, pages, and Instagram accounts
+  // No manual 'scope' param needed when using a Business Login Configuration
   const authUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth')
   authUrl.searchParams.set('client_id', APP_ID)
   authUrl.searchParams.set('redirect_uri', REDIRECT_URI)
-  authUrl.searchParams.set('scope', scopes)
+  authUrl.searchParams.set('config_id', CONFIG_ID)
   authUrl.searchParams.set('state', state)
   authUrl.searchParams.set('response_type', 'code')
 
