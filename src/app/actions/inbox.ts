@@ -310,9 +310,7 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
         wamid = result.messageId;
 
         if (!result.success) {
-          const errMsg = result.raw?.error?.message || 'Error desconocido al enviar mensaje';
-          const errCode = result.raw?.error?.code || '';
-          waSendError = `WhatsApp Error${errCode ? ` (${errCode})` : ''}: ${errMsg}`;
+          waSendError = result.friendlyError || 'Error desconocido al enviar mensaje';
           console.error(`[Manual Agent] FALLO al enviar a ${phone}: ${waSendError}`);
         } else {
           console.log(`[Manual Agent] Mensaje enviado a ${phone} (categoría: ${waCategory})`);
@@ -466,11 +464,9 @@ export async function startIndividualChatAction(
     project.whatsappToken!
   );
 
-  // Si el envío falló, lanzar error para que el UI lo muestre al usuario
+  // Si el envío falló, lanzar error amigable para que el UI lo muestre al usuario
   if (!waResult.success) {
-    const errMsg = waResult.raw?.error?.message || 'Error desconocido al enviar plantilla';
-    const errCode = waResult.raw?.error?.code || '';
-    throw new Error(`WhatsApp Error${errCode ? ` (${errCode})` : ''}: ${errMsg}`);
+    throw new Error(waResult.friendlyError || 'Error desconocido al enviar plantilla');
   }
 
   // 4. Guardar mensaje en el historial (como agente ya que es una acción proactiva nuestra)

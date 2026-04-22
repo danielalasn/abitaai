@@ -4,21 +4,30 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw } from 'lucide-react';
-import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, type ProjectUsageStats } from '@/app/actions/admin';
+import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats } from '@/app/actions/admin';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
   const [clients, setClients] = useState<any[]>([]);
+  const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
   
   // Create User state
   const [showCreate, setShowCreate] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserTemplateGroup, setNewUserTemplateGroup] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Global Config state
+  const [showGlobalConfig, setShowGlobalConfig] = useState(false);
+  const [masterWabaId, setMasterWabaId] = useState('');
+  const [masterToken, setMasterToken] = useState('');
+  const [isSavingGlobal, setIsSavingGlobal] = useState(false);
 
   // Modal / Tab state
   const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -60,6 +69,7 @@ export default function AdminPage() {
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPassword, setEditPassword] = useState('');
+  const [editTemplateGroup, setEditTemplateGroup] = useState('');
   const [isSavingUser, setIsSavingUser] = useState(false);
   
   // Delete User state
@@ -72,17 +82,52 @@ export default function AdminPage() {
     } else if (status === 'authenticated') {
       if (session?.user?.email !== 'info@abitaai.com') {
         router.push('/'); 
-      } else {
+      } else if (!hasLoadedInitially) {
+        setHasLoadedInitially(true);
         loadClients();
+        loadMasterConfig();
       }
     }
   }, [status, session, router]);
 
   const loadClients = async () => {
     setIsLoading(true);
-    const data = await getClients();
-    setClients(data);
+    try {
+      const data = await getClients();
+      setClients(data);
+      const groups = await fetchAvailableTemplateGroups();
+      setAvailableGroups(groups);
+    } catch(err) { console.error('Error fetching clients or groups', err) }
     setIsLoading(false);
+  };
+
+  const loadMasterConfig = async () => {
+    try {
+      const config = await getMasterConfig();
+      setMasterWabaId(config.whatsappBusinessId);
+      setMasterToken(config.whatsappToken);
+    } catch (err) {
+      console.error("Error loading master config:", err);
+    }
+  };
+
+  const handleSaveGlobalConfig = async () => {
+    setIsSavingGlobal(true);
+    try {
+      await updateMasterConfig({
+        whatsappBusinessId: masterWabaId,
+        whatsappToken: masterToken
+      });
+      alert('Configuración maestra guardada con éxito.');
+      setShowGlobalConfig(false);
+      // Refresh groups after updating credentials
+      const groups = await fetchAvailableTemplateGroups();
+      setAvailableGroups(groups);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsSavingGlobal(false);
+    }
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -94,11 +139,13 @@ export default function AdminPage() {
       await createClient({
         name: newUserName,
         email: newUserEmail,
-        password: newUserPassword
+        password: newUserPassword,
+        templateGroup: newUserTemplateGroup
       });
       setNewUserName('');
       setNewUserEmail('');
       setNewUserPassword('');
+      setNewUserTemplateGroup('');
       setShowCreate(false);
       loadClients();
       alert('Usuario creado con éxito');
@@ -116,7 +163,8 @@ export default function AdminPage() {
     // Init Edit tab
     setEditName(client.name);
     setEditEmail(client.email);
-    setEditPassword(''); // Leave blank unless they want to change it
+    setEditPassword(''); 
+    setEditTemplateGroup(client.templateGroup || '');
     setDeleteConfirmText('');
 
     // Init Bot Config tab
@@ -129,9 +177,9 @@ export default function AdminPage() {
       knowledgeRaw: initialConfig.knowledgeRaw || '',
       faq: initialConfig.faq || '',
       leadScoringRules: initialConfig.leadScoringRules || '',
-      whatsappToken: initialConfig.whatsappToken || '',
-      whatsappPhoneId: initialConfig.whatsappPhoneId || '',
-      whatsappBusinessId: initialConfig.whatsappBusinessId || '',
+      whatsappToken: project?.whatsappToken || '',
+      whatsappPhoneId: project?.whatsappPhoneId || '',
+      whatsappBusinessId: project?.whatsappBusinessId || '',
     });
 
     // Preload usage stats
@@ -172,7 +220,8 @@ export default function AdminPage() {
       await updateClient(selectedClient.id, {
         name: editName,
         email: editEmail,
-        password: editPassword || undefined
+        password: editPassword || undefined,
+        templateGroup: editTemplateGroup
       });
       alert('Usuario actualizado');
       const updatedList = await getClients();
@@ -245,6 +294,12 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
+      <datalist id="template-groups">
+        {availableGroups.map((g) => (
+          <option key={g} value={g} />
+        ))}
+      </datalist>
+
       {/* HEADER & Create Button */}
       <div className="flex items-center justify-between">
         <div>
@@ -257,6 +312,13 @@ export default function AdminPage() {
         </div>
         <div className="flex items-center gap-3">
           <button 
+            onClick={() => setShowGlobalConfig(true)}
+            className="p-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-700 shadow-sm"
+            title="Configuración Global Abita"
+          >
+            <Settings size={20} />
+          </button>
+          <button 
             onClick={() => setShowCreate(true)}
             className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium tracking-wide shadow-md transition-all flex items-center gap-2"
           >
@@ -264,6 +326,67 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
+
+      {/* GLOBAL CONFIG MODAL */}
+      {showGlobalConfig && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                <Settings size={20} className="text-purple-600" />
+                <h3 className="font-semibold">Configuración Maestra (Abita.ai)</h3>
+              </div>
+              <button onClick={() => setShowGlobalConfig(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 rounded-2xl p-4">
+                <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed font-medium">
+                  Estas credenciales se utilizan para sincronizar los grupos de plantillas de Facebook. Asegúrate de que correspondan al Business Account donde viven los templates.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Master WABA ID</label>
+                  <input 
+                    value={masterWabaId} 
+                    onChange={e => setMasterWabaId(e.target.value)} 
+                    placeholder="WhatsApp Business Account ID" 
+                    className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono" 
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Master System User Token</label>
+                  <textarea 
+                    rows={4}
+                    value={masterToken} 
+                    onChange={e => setMasterToken(e.target.value)} 
+                    placeholder="Permanent Access Token" 
+                    className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono resize-none" 
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={() => setShowGlobalConfig(false)} 
+                  className="flex-1 py-3 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleSaveGlobalConfig}
+                  disabled={isSavingGlobal}
+                  className="flex-[2] py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
+                >
+                  {isSavingGlobal ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  Guardar Cambios Maestros
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CREATE MODAL */}
       {showCreate && (
@@ -288,6 +411,28 @@ export default function AdminPage() {
                 <div>
                   <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Contraseña Temporal</label>
                   <input required type="text" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} placeholder="Escribe una contraseña segura" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
+                  <div className="flex gap-2">
+                    <select 
+                      value={availableGroups.includes(newUserTemplateGroup) ? newUserTemplateGroup : ""} 
+                      onChange={e => setNewUserTemplateGroup(e.target.value)}
+                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100"
+                    >
+                      <option value="">Seleccionar existente...</option>
+                      {availableGroups.map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                    <input 
+                      value={newUserTemplateGroup} 
+                      onChange={e => setNewUserTemplateGroup(e.target.value)}
+                      placeholder="O escribe uno nuevo..." 
+                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" 
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1 pl-1">Selecciona del dropdown (extraído de Meta) o escribe el prefijo manualmente.</p>
                 </div>
                 <button disabled={isCreating} type="submit" className="w-full py-3 h-12 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold tracking-wide shadow-sm flex items-center justify-center gap-2 mt-4 transition-all">
                   {isCreating ? <Loader2 size={18} className="animate-spin" /> : 'Registrar Cliente'}
@@ -516,6 +661,28 @@ export default function AdminPage() {
                           <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Restablecer Contraseña (Opcional)</label>
                           <input type="text" placeholder="Dejar en blanco si no se desea cambiar" value={editPassword} onChange={e => setEditPassword(e.target.value)} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 transition-colors text-zinc-900 dark:text-zinc-100" />
                         </div>
+                        <div>
+                          <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
+                          <div className="flex gap-2">
+                            <select 
+                              value={availableGroups.includes(editTemplateGroup) ? editTemplateGroup : ""} 
+                              onChange={e => setEditTemplateGroup(e.target.value)}
+                              className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100"
+                            >
+                              <option value="">Seleccionar existente...</option>
+                              {availableGroups.map(g => (
+                                <option key={g} value={g}>{g}</option>
+                              ))}
+                            </select>
+                            <input 
+                              value={editTemplateGroup} 
+                              onChange={e => setEditTemplateGroup(e.target.value)}
+                              placeholder="Editar o nuevo..." 
+                              className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" 
+                            />
+                          </div>
+                          <p className="text-[10px] text-zinc-500 mt-1 pl-1">Filtrar plantillas de Meta para este usuario por este prefijo.</p>
+                        </div>
                         <div className="pt-2 flex justify-end">
                           <button 
                             onClick={handleSaveUser}
@@ -594,12 +761,12 @@ export default function AdminPage() {
                             <input value={configData.whatsappPhoneId} onChange={e => setConfigData({...configData, whatsappPhoneId: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400" />
                           </div>
                           <div>
-                            <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Business Account ID</label>
-                            <input value={configData.whatsappBusinessId} onChange={e => setConfigData({...configData, whatsappBusinessId: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400" />
+                            <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Business Account ID (Opcional)</label>
+                            <input placeholder="Dejar vacío para usar Abita" value={configData.whatsappBusinessId} onChange={e => setConfigData({...configData, whatsappBusinessId: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400" />
                           </div>
                           <div className="md:col-span-2">
-                            <label className="text-xs font-bold text-zinc-500 mb-1.5 block">System User Token (Permanent)</label>
-                            <input type="password" value={configData.whatsappToken} onChange={e => setConfigData({...configData, whatsappToken: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono" />
+                            <label className="text-xs font-bold text-zinc-500 mb-1.5 block">System User Token (Permanente - Opcional)</label>
+                            <input type="password" placeholder="Dejar vacío para usar Abita" value={configData.whatsappToken} onChange={e => setConfigData({...configData, whatsappToken: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono" />
                           </div>
                         </div>
                       </div>

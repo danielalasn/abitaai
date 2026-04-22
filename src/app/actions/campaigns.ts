@@ -19,12 +19,24 @@ async function getProjectWithCredentials() {
  * Fetch all Meta-approved templates for the project's WABID.
  */
 export async function fetchMetaTemplates() {
-  const project = await getProjectWithCredentials();
-  if (!project.whatsappBusinessId || !project.whatsappToken) {
-    return { error: 'Configura el WhatsApp Business ID y el Access Token en Configuración.', templates: [] };
+  try {
+    const project = await getProjectWithCredentials() as any;
+    if (!project.whatsappBusinessId || !project.whatsappToken) {
+      return { error: 'Configura el WhatsApp Business ID y el Access Token en Configuración.', templates: [] };
+    }
+    let templates = await getApprovedTemplates(project.whatsappBusinessId, project.whatsappToken);
+    
+    // Filtro por Grupo de Plantillas (Prefijo)
+    const prefix = project.client?.templateGroup;
+    if (prefix) {
+      console.log(`[Templates] Filtrando plantillas para grupo: ${prefix}`);
+      templates = templates.filter((t: any) => t.name.startsWith(prefix));
+    }
+
+    return { templates, prefix, error: null };
+  } catch (err: any) {
+    return { error: err.message || 'Error al cargar plantillas', templates: [] };
   }
-  const templates = await getApprovedTemplates(project.whatsappBusinessId, project.whatsappToken);
-  return { templates, error: null };
 }
 
 /**

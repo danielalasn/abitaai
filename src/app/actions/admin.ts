@@ -74,7 +74,7 @@ export async function getClients() {
   return clients;
 }
 
-export async function createClient(data: { name: string, email: string, password?: string }) {
+export async function createClient(data: { name: string, email: string, password?: string, templateGroup?: string }) {
   const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : null;
   
   const client = await prisma.client.create({
@@ -82,6 +82,7 @@ export async function createClient(data: { name: string, email: string, password
       name: data.name,
       email: data.email,
       password: hashedPassword,
+      templateGroup: data.templateGroup || null,
       projects: {
         create: {
           name: 'Proyecto Principal',
@@ -102,29 +103,52 @@ export async function createClient(data: { name: string, email: string, password
 }
 
 export async function updateBotConfig(projectId: string, configData: any) {
-  // Find the first agent for this project
+  // Separar datos para Agente y Proyecto
+  const { 
+    whatsappToken, whatsappPhoneId, whatsappBusinessId, 
+    ...agentData 
+  } = configData;
+
+  // 1. Actualizar el Proyecto (WhatsApp Config)
+  if (whatsappToken !== undefined || whatsappPhoneId !== undefined || whatsappBusinessId !== undefined) {
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        whatsappToken,
+        whatsappPhoneId,
+        whatsappBusinessId
+      }
+    });
+  }
+
+  // 2. Actualizar o Crear el Agente (Bot Config)
   let agent = await prisma.agent.findFirst({ where: { projectId } });
   
   if (agent) {
     const updated = await prisma.agent.update({
       where: { id: agent.id },
-      data: configData
+      data: agentData
     });
     revalidatePath('/admin');
     return updated;
   } else {
     const created = await prisma.agent.create({
-      data: { projectId, ...configData }
+      data: { 
+        projectId, 
+        name: 'Agente Principal', 
+        ...agentData 
+      }
     });
     revalidatePath('/admin');
     return created;
   }
 }
 
-export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string }) {
+export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string, templateGroup?: string }) {
   const updateData: any = {};
   if (data.name) updateData.name = data.name;
   if (data.email) updateData.email = data.email;
+  if (data.templateGroup !== undefined) updateData.templateGroup = data.templateGroup;
   if (data.password) {
     updateData.password = await bcrypt.hash(data.password, 10);
   }
@@ -253,4 +277,115 @@ export async function getUsageStats(projectId: string): Promise<ProjectUsageStat
     estimatedWaCostUsd,
     totalEstimatedCostUsd,
   };
+}
+
+// ──────────────────────────────────────────────
+// Template Groups Configurator
+// ──────────────────────────────────────────────
+import { getApprovedTemplates } from '@/lib/whatsapp';
+
+export async function fetchAvailableTemplateGroups() {
+  console.log("--------------------------------------------------");
+  console.log("[Groups] INICIANDO ESCANEO DE PLANTILLAS...");
+  
+  const adminClient = await prisma.client.findFirst({
+    where: { email: 'info@abitaai.com' },
+    include: { projects: { include: { agents: true } } }
+  });
+
+  if (!adminClient) {
+    console.error("[Groups] ERROR: No se encontró el usuario info@abitaai.com");
+    return [];
+  }
+
+  const project = adminClient?.projects?.[0];
+  const config = project; // Ahora las credenciales están en el Proyecto
+
+  if (!config?.whatsappBusinessId || !config?.whatsappToken) {
+    console.warn("[Groups] ADVERTENCIA: Faltan credenciales en la Configuración Global.");
+    console.log("[Groups] WABA ID:", config?.whatsappBusinessId ? "PRESENT" : "MISSING");
+    console.log("[Groups] Token:", config?.whatsappToken ? "PRESENT" : "MISSING");
+    return [];
+  }
+
+  console.log("[Groups] Usando WABA ID:", config.whatsappBusinessId);
+
+  try {
+    const templates = await getApprovedTemplates(config.whatsappBusinessId, config.whatsappToken);
+    
+    console.log(`[Groups] Meta devolvió ${templates.length} plantillas.`);
+    if (templates.length > 0) {
+      console.log(`[Groups] Listado de nombres:`, templates.map((t: any) => t.name));
+    } else {
+      console.log("[Groups] No se encontraron plantillas aprobadas en esta cuenta.");
+    }
+
+    const groups = new Set<string>();
+    for (const t of templates) {
+      if (t.name.includes('_')) {
+        const parts = t.name.split('_');
+        groups.add(parts[0] + '_');
+      }
+    }
+
+    const result = Array.from(groups).sort();
+    console.log("[Groups] Grupos detectados finales:", result);
+    console.log("--------------------------------------------------");
+    return result;
+  } catch (err: any) {
+    console.error("[Groups] ERROR FATAL:", err.message);
+    return [];
+  }
+}
+
+export async function getMasterConfig() {
+  const adminClient = await prisma.client.findFirst({
+    where: { email: 'info@abitaai.com' },
+    include: { projects: true }
+  });
+
+  const project = adminClient?.projects?.[0];
+  return {
+    whatsappBusinessId: project?.whatsappBusinessId || '',
+    whatsappToken: project?.whatsappToken || '',
+    projectId: project?.id || null
+  };
+}
+
+export async function updateMasterConfig(data: { whatsappBusinessId: string, whatsappToken: string }) {
+  let adminClient = await prisma.client.findFirst({
+    where: { email: 'info@abitaai.com' },
+    include: { projects: true }
+  });
+
+  if (!adminClient) throw new Error("No se encontró el usuario administrador info@abitaai.com");
+
+  let project = adminClient.projects?.[0];
+  
+  // Si el admin no tiene proyecto, crearlo ahora
+  if (!project) {
+    console.log("[Admin] Creando proyecto faltante para el administrador...");
+    project = await prisma.project.create({
+      data: {
+        name: 'Admin Master Project',
+        client: { connect: { id: adminClient.id } },
+        agents: {
+          create: {
+            name: 'Master Agent',
+            identity: 'Master Admin Agent',
+            instructions: 'System configuration agent'
+          }
+        }
+      },
+      include: { agents: true }
+    });
+  }
+
+  const projectId = project.id;
+  
+  // Reusar la función existente para actualizar la config del bot
+  return updateBotConfig(projectId, {
+    whatsappBusinessId: data.whatsappBusinessId,
+    whatsappToken: data.whatsappToken
+  });
 }

@@ -26,7 +26,7 @@ export function Sidebar() {
     <aside className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col pt-6 pb-4 px-4 shrink-0 transition-[width] duration-300 ease-in-out relative overflow-hidden`}>
       
       {/* Header Container */}
-      <div className="flex flex-col mb-10 overflow-hidden shrink-0">
+      <div className="flex flex-col mb-8 overflow-hidden shrink-0">
         <div className="flex items-center gap-4 px-2.5">
           <div className="h-9 w-9 bg-[#111111] dark:bg-[#E9E4D8] rounded-xl flex items-center justify-center shadow-md shrink-0 transition-transform hover:rotate-12">
             <span className="text-[#F36A2D] font-bold text-base tracking-tight">a</span>
@@ -60,7 +60,7 @@ export function Sidebar() {
             <Link
               key={item.label}
               href={item.href}
-              className={`flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative ${
+              className={`flex items-center gap-4 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 group relative ${
                 isActive 
                   ? 'bg-white dark:bg-[#111111]/60 text-[#111111] dark:text-[#EDE9E0] shadow-sm' 
                   : 'text-[#6F6F6F] hover:bg-white/60 dark:hover:bg-white/5 hover:text-[#111111] dark:hover:text-[#EDE9E0]'

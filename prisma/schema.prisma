@@ -14,10 +14,31 @@ model Client {
   email     String   @unique
   password  String?
   theme     String   @default("light")
-  role      String   @default("CLIENT") // Enum: ADMIN o CLIENT
-  createdAt DateTime @default(now())
+  role          String   @default("CLIENT") // Enum: ADMIN o CLIENT
+  templateGroup String?           // Prefijo para filtrar plantillas de Meta
+  createdAt     DateTime @default(now())
   
-  projects  Project[]
+  projects     Project[]
+  integrations Integration[]
+}
+
+model Integration {
+  id                 String    @id @default(cuid())
+  clientId           String
+  provider           String    // "meta_instagram"
+  status             String    @default("pending") // pending | active | error | disconnected
+  oauthState         String?   // CSRF token temporal
+  accessToken        String?
+  tokenExpiresAt     DateTime?
+  pageId             String?
+  instagramAccountId String?
+  businessId         String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, provider])
 }
 
 model Project {

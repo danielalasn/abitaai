@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { simulateIncomingWhatsApp, saveAssistantReply, getChatMessages } from '@/app/actions/inbox';
 import { sendTestMessage } from '@/app/actions/chat';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -131,9 +132,16 @@ export async function POST(req: NextRequest) {
             let waCategory = 'SERVICE';
             
             // 5. Enviar mensaje REAL a WhatsApp vía Meta API
-            // Credenciales ahora vienen del Project directamente
+            // Buscar credenciales globales si el proyecto no tiene
+            const adminClient = await prisma.client.findFirst({
+                where: { email: 'info@abitaai.com' },
+                include: { projects: true }
+            });
+            const masterToken = adminClient?.projects?.[0]?.whatsappToken;
+
             const phoneId = (chatDetails as any)?.lead?.project?.whatsappPhoneId;
-            const token = (chatDetails as any)?.lead?.project?.whatsappToken;
+            const projectToken = (chatDetails as any)?.lead?.project?.whatsappToken;
+            const token = projectToken || masterToken;
 
             let waMessageId: string | undefined;
 

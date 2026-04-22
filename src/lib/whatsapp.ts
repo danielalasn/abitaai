@@ -12,7 +12,29 @@ export interface WaSendResult {
   messageId: string | null
   /** WhatsApp billing category: SERVICE (free within 24h), MARKETING, UTILITY */
   category: 'SERVICE' | 'MARKETING' | 'UTILITY' | null
+  friendlyError?: string
   raw: any
+}
+
+export function translateWaError(error: any): string {
+  if (!error) return 'Error desconocido de conexión';
+  
+  const code = error.code;
+  const subcode = error.error_subcode;
+  const message = error.message || '';
+
+  // Diccionario de errores comunes de Meta
+  const errorMap: Record<number, string> = {
+    133010: "El número de teléfono no está registrado o verificado en Meta. Ve a Facebook Developers y asegúrate de que el estado sea 'Registrado'.",
+    131030: "Ventana de 24 horas cerrada. No puedes enviar un mensaje libre, debes usar una Plantilla para iniciar la conversación.",
+    132000: "El método de pago de tu cuenta de WhatsApp no es válido o no tiene fondos.",
+    130429: "Has superado el límite de mensajes permitidos para este número (Rate limit).",
+    131026: "El mensaje no fue entregado porque el número de destino es inválido o no existe en WhatsApp.",
+    190: "Tu Access Token ha expirado o es inválido. Ve a Configuración y actualiza el Token.",
+    100: "Error en los datos enviados. Verifica que el número de teléfono tenga el formato internacional (ej: 50377770000).",
+  };
+
+  return errorMap[code] || `WhatsApp Error (${code}): ${message}`;
 }
 
 // ──────────────────────────────────────────────
@@ -55,7 +77,13 @@ export async function sendWhatsAppMessage(
         code: data.error?.code,
         subcode: data.error?.error_subcode
       })
-      return { success: false, messageId: null, category: null, raw: data }
+      return { 
+        success: false, 
+        messageId: null, 
+        category: null, 
+        friendlyError: translateWaError(data.error),
+        raw: data 
+      }
     } else {
       const msgId = data.messages?.[0]?.id || null
       console.log('[WA] Mensaje enviado correctamente. ID:', msgId)
@@ -128,7 +156,13 @@ export async function sendWhatsAppTemplate(
         code: data.error?.code,
         subcode: data.error?.error_subcode
       })
-      return { success: false, messageId: null, category: null, raw: data }
+      return { 
+        success: false, 
+        messageId: null, 
+        category: null, 
+        friendlyError: translateWaError(data.error),
+        raw: data 
+      }
     } else {
       const msgId = data.messages?.[0]?.id || null
       console.log('[WA] Plantilla enviada con éxito. ID:', msgId)

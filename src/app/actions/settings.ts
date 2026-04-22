@@ -19,6 +19,7 @@ export async function getProjectConfig() {
     whatsappPhoneId: project.whatsappPhoneId || '',
     whatsappBusinessId: project.whatsappBusinessId || '',
     agents: project.agents || [],
+    client: project.client,
   };
 }
 
@@ -281,6 +282,35 @@ export async function updateUserTheme(userId: string, theme: 'light' | 'dark') {
   await prisma.client.update({
     where: { id: userId },
     data: { theme }
+  });
+  return { success: true };
+}
+
+export async function updateUserProfile(userId: string, name: string, email: string) {
+  // Check if email already exists for another user
+  const existing = await prisma.client.findFirst({
+    where: { 
+      email,
+      id: { not: userId }
+    }
+  });
+  if (existing) throw new Error('El correo electrónico ya está en uso.');
+
+  await prisma.client.update({
+    where: { id: userId },
+    data: { name, email }
+  });
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function updateUserPassword(userId: string, newPassword: string) {
+  const bcrypt = await import('bcryptjs');
+  const hashedPassword = await bcrypt.default.hash(newPassword, 10);
+  
+  await prisma.client.update({
+    where: { id: userId },
+    data: { password: hashedPassword }
   });
   return { success: true };
 }

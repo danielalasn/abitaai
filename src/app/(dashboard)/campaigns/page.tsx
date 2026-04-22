@@ -62,6 +62,7 @@ export default function CampaignsPage() {
 
   // Step 2: Template
   const [templates, setTemplates] = useState<MetaTemplate[]>([]);
+  const [templatePrefix, setTemplatePrefix] = useState<string | null>(null);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<MetaTemplate | null>(null);
@@ -153,6 +154,7 @@ export default function CampaignsPage() {
       setTemplatesError(result.error);
     } else {
       setTemplates(result.templates as MetaTemplate[]);
+      setTemplatePrefix(result.prefix || null);
     }
     setTemplatesLoading(false);
   };
@@ -385,7 +387,11 @@ export default function CampaignsPage() {
                         onClick={() => handleSelectTemplate(t)}
                         className={`w-full text-left p-4 rounded-2xl border transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5 ${selectedTemplate?.name === t.name ? 'border-emerald-500 bg-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
                       >
-                        <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{t.name}</p>
+                        <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">
+                          {templatePrefix && t.name.startsWith(templatePrefix) 
+                            ? t.name.replace(templatePrefix, '') 
+                            : t.name}
+                        </p>
                         <p className="text-xs text-[#6F6F6F] line-clamp-1">{t.components.find(c => c.type === 'BODY')?.text}</p>
                       </button>
                     ))}

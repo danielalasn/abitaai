@@ -27,6 +27,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
   const [selectedTemplate, setSelectedTemplate] = useState<MetaTemplate | null>(null);
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [headerImageUrl, setHeaderImageUrl] = useState('');
+  const [templatePrefix, setTemplatePrefix] = useState<string | null>(null);
   const [botActive, setBotActive] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -53,6 +54,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
       setError(result.error);
     } else {
       setTemplates(result.templates as MetaTemplate[]);
+      setTemplatePrefix(result.prefix || null);
     }
     setIsLoadingTemplates(false);
   };
@@ -215,7 +217,11 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
                          <div className="bg-emerald-500 text-white p-1 rounded-full"><Send size={10} /></div>
                       </div>
                       <div className="flex justify-between items-start mb-3">
-                        <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0] group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{t.name}</span>
+                        <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0] group-hover:text-emerald-600 transition-colors uppercase tracking-tight">
+                          {templatePrefix && t.name.startsWith(templatePrefix) 
+                            ? t.name.replace(templatePrefix, '') 
+                            : t.name}
+                        </span>
                         <span className="text-[9px] font-black bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded tracking-widest uppercase">{t.language}</span>
                       </div>
                       <p className="text-xs text-[#6F6F6F] line-clamp-3 leading-relaxed opacity-80 group-hover:opacity-100">
