@@ -78,7 +78,9 @@ export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'connections'>(isAdmin ? 'agent' : 'profile')
   const [userName, setUserName] = useState("")
   const [userEmail, setUserEmail] = useState("")
+  const [oldPassword, setOldPassword] = useState("")
   const [userPassword, setUserPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [profileStatus, setProfileStatus] = useState<'success' | 'error' | null>(null)
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
@@ -203,14 +205,27 @@ export default function SettingsPage() {
 
   const handleUpdatePassword = async () => {
     const user = session?.user as any
-    if (!user?.id || !userPassword) return
+    if (!user?.id || !oldPassword || !userPassword || !confirmPassword) {
+      alert("Por favor completa todos los campos de contraseña.")
+      return
+    }
+    if (userPassword !== confirmPassword) {
+      alert("La nueva contraseña y su confirmación no coinciden.")
+      return
+    }
+
     setIsUpdatingPassword(true); setPasswordStatus(null)
     try {
-      await updateUserPassword(user.id, userPassword)
+      await updateUserPassword(user.id, oldPassword, userPassword)
+      setOldPassword("")
       setUserPassword("")
+      setConfirmPassword("")
       setPasswordStatus('success')
       setTimeout(() => setPasswordStatus(null), 3000)
-    } catch { setPasswordStatus('error') }
+    } catch (e: any) {
+      alert(e.message || "Error al actualizar la contraseña")
+      setPasswordStatus('error')
+    }
     setIsUpdatingPassword(false)
   }
 
@@ -433,102 +448,128 @@ export default function SettingsPage() {
           
           {/* PROFILE SECTION */}
           {activeSection === 'profile' && (
-            <div className="h-full flex flex-col p-8 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 overflow-hidden">
-              <header className="mb-8">
-                <h2 className="text-3xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Configuración de Cuenta</h2>
-                <p className="text-zinc-500 dark:text-zinc-400 mt-1">Gestiona tu identidad y seguridad de acceso.</p>
+            <div className="h-full flex flex-col p-6 lg:p-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <header className="mb-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
+                  <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Ajustes de Usuario</span>
+                </div>
+                <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Mi Perfil</h2>
               </header>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 {/* Visual Identity Card */}
-                <div className="lg:col-span-1">
-                  <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl p-8 flex flex-col items-center text-center shadow-sm">
-                    <div className="w-24 h-24 bg-[#F36A2D]/10 text-[#F36A2D] rounded-full flex items-center justify-center mb-4 ring-4 ring-[#F36A2D]/5">
-                      <User size={48} />
-                    </div>
-                    <h3 className="text-xl font-bold text-zinc-900 dark:text-[#EDE9E0] truncate w-full">{userName || 'Usuario'}</h3>
-                    <p className="text-xs text-zinc-500 uppercase tracking-widest font-bold mt-1">{isAdmin ? 'Administrador' : 'Cliente'}</p>
-                    <div className="mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800 w-full">
-                      <div className="flex items-center justify-between text-xs mb-2">
-                        <span className="text-zinc-400">Estado</span>
-                        <span className="text-emerald-500 font-bold flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> Activo
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-400">Email</span>
-                        <span className="text-zinc-900 dark:text-zinc-300 truncate ml-2">{userEmail}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Edit Form */}
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl p-8 shadow-sm">
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
-                        <ShieldCheck className="text-[#F36A2D]" size={20} />
-                      </div>
-                      <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0]">Detalles del Perfil</h3>
+                <div className="group h-full">
+                  <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500 h-full">
+                    <div className="relative mb-6">
+                       <div className="absolute inset-0 bg-gradient-to-tr from-[#F36A2D] to-[#FF9E7A] rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                       <div className="relative w-20 h-20 bg-[#F36A2D]/10 text-[#F36A2D] rounded-full flex items-center justify-center ring-4 ring-[#F36A2D]/5 transition-transform duration-500 group-hover:scale-105">
+                         <User size={40} strokeWidth={1.5} />
+                       </div>
+                       <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 border-2 border-white dark:border-[#111111] w-5 h-5 rounded-full shadow-md" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Nombre Completo</label>
+                    <div className="space-y-1 mb-6">
+                      <h3 className="text-xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">{userName || 'Usuario'}</h3>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-full">
+                        <ShieldCheck size={10} className="text-[#F36A2D]" />
+                        <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest font-black">{isAdmin ? 'Administrador' : 'Cliente'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full space-y-3 pt-6 border-t border-zinc-100 dark:border-zinc-800/60 flex-1">
+                      <div className="flex flex-col items-start gap-1">
+                        <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Correo Electrónico</label>
+                        <div className="w-full text-left px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-300 text-xs font-medium">
+                          {userEmail}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-start gap-1">
+                        <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Nombre Público</label>
                         <input 
                           type="text" 
                           value={userName} 
                           onChange={e => setUserName(e.target.value)}
                           placeholder="Tu nombre"
-                          className="w-full text-sm px-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-[#F36A2D]/50 outline-none transition-all dark:text-zinc-100"
+                          className="w-full text-xs px-4 py-2.5 bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Correo Electrónico</label>
-                        <input 
-                          type="email" 
-                          value={userEmail} 
-                          disabled
-                          className="w-full text-sm px-4 py-3 bg-zinc-100 dark:bg-zinc-800/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-500 cursor-not-allowed opacity-70"
-                        />
+                    </div>
+
+                    <button 
+                      onClick={handleUpdateProfile}
+                      disabled={isUpdatingProfile}
+                      className="w-full mt-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isUpdatingProfile ? <Loader2 size={16} className="animate-spin" /> : profileStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Hecho!</> : 'Guardar Perfil'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Password Form */}
+                <div className="h-full">
+                  <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none h-full flex flex-col hover:border-[#F36A2D]/30 transition-all duration-500">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
+                        <Lock className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
                       </div>
-                      <div className="space-y-2 md:col-span-2 pt-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-1">Nueva Contraseña</label>
-                          <span className="text-[10px] text-zinc-400 italic">Opcional</span>
-                        </div>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                      <div>
+                        <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Seguridad</h3>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 flex-1">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Contraseña Actual</label>
+                        <div className="relative group/input">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#F36A2D] transition-colors" size={14} />
                           <input 
                             type="password" 
-                            placeholder="Introduce tu nueva contraseña"
+                            placeholder="••••••••••••"
+                            value={oldPassword} 
+                            onChange={e => setOldPassword(e.target.value)}
+                            className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
+                        <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Nueva Contraseña</label>
+                        <div className="relative group/input">
+                          <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#F36A2D] transition-colors" size={14} />
+                          <input 
+                            type="password" 
+                            placeholder="Mínimo 8 caracteres"
                             value={userPassword} 
                             onChange={e => setUserPassword(e.target.value)}
-                            className="w-full text-sm pl-12 pr-4 py-3 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-[#F36A2D]/50 outline-none transition-all dark:text-zinc-100"
+                            className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Confirmar Nueva</label>
+                        <div className="relative group/input">
+                          <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-emerald-500 transition-colors" size={14} />
+                          <input 
+                            type="password" 
+                            placeholder="Repita la contraseña"
+                            value={confirmPassword} 
+                            onChange={e => setConfirmPassword(e.target.value)}
+                            className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-10 flex gap-4">
-                      <button 
-                        onClick={handleUpdateProfile}
-                        disabled={isUpdatingProfile}
-                        className="flex-1 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3.5 rounded-2xl text-sm font-bold shadow-lg shadow-black/10 dark:shadow-white/5 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {isUpdatingProfile ? <Loader2 size={18} className="animate-spin" /> : profileStatus === 'success' ? <CheckCircle2 size={18} /> : 'Guardar Datos'}
-                      </button>
-                      {userPassword && (
-                        <button 
-                          onClick={handleUpdatePassword}
-                          disabled={isUpdatingPassword}
-                          className="flex-1 border-2 border-zinc-900 dark:border-[#EDE9E0] text-zinc-900 dark:text-[#EDE9E0] py-3.5 rounded-2xl text-sm font-bold hover:bg-zinc-900 hover:text-white dark:hover:bg-[#EDE9E0] dark:hover:text-[#111111] transition-all flex items-center justify-center gap-2"
-                        >
-                          {isUpdatingPassword ? <Loader2 size={18} className="animate-spin" /> : passwordStatus === 'success' ? <CheckCircle2 size={18} /> : 'Actualizar Pass'}
-                        </button>
-                      )}
-                    </div>
+                    <button 
+                      onClick={handleUpdatePassword}
+                      disabled={isUpdatingPassword || !userPassword || !oldPassword || !confirmPassword}
+                      className="w-full mt-6 bg-[#111111] dark:bg-zinc-800 text-white py-3 rounded-xl text-xs font-black tracking-tight shadow-lg hover:bg-[#F36A2D] transition-all active:scale-[0.98] disabled:opacity-30 flex items-center justify-center gap-2"
+                    >
+                      {isUpdatingPassword ? <Loader2 size={16} className="animate-spin" /> : passwordStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Listo!</> : 'Actualizar Pass'}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -537,106 +578,104 @@ export default function SettingsPage() {
 
           {/* CONNECTIONS SECTION */}
           {activeSection === 'connections' && (
-            <div className="p-8 max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-              <header>
-                <h2 className="text-3xl font-bold text-zinc-900 dark:text-[#EDE9E0]">Conexiones</h2>
-                <p className="text-zinc-500 dark:text-zinc-400 mt-1">Conecta Abita.ai con tus canales de comunicación y herramientas.</p>
+            <div className="h-full flex flex-col p-6 lg:p-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <header className="mb-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
+                  <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Canales</span>
+                </div>
+                <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Conexiones</h2>
               </header>
 
-              {/* Feedback banner */}
-              {igFeedback === 'success' && (
-                <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-emerald-700 dark:text-emerald-400 text-sm font-medium">
-                  <CheckCircle2 size={18} /> Instagram conectado correctamente.
-                </div>
-              )}
-              {(igFeedback === 'error' || igFeedback === 'denied') && (
-                <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl text-red-600 dark:text-red-400 text-sm font-medium">
-                  <AlertCircle size={18} /> {igFeedback === 'denied' ? 'Cancelaste la autorización de Instagram.' : 'Hubo un error al conectar Instagram. Intenta de nuevo.'}
+              {igFeedback && (
+                <div className="mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 animate-in slide-in-from-top-2">
+                  <CheckCircle2 size={14} /> {igFeedback === 'success' ? 'Éxito' : 'Error'} al conectar Instagram
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* ─── Instagram Card ─── */}
-                <div className={`p-6 bg-white dark:bg-[#111111]/40 border rounded-3xl shadow-sm transition-all ${
-                  igIntegration?.status === 'active'
-                    ? 'border-pink-300 dark:border-pink-700/50 ring-1 ring-pink-200 dark:ring-pink-800/40'
-                    : 'border-[#DEDAD0] dark:border-zinc-800'
+                <div className={`p-5 bg-white dark:bg-[#111111]/60 border rounded-[2rem] shadow-sm flex flex-col group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-none hover:border-[#F36A2D]/40 ${
+                  igIntegration?.status === 'active' ? 'border-[#F36A2D]/30 border-2' : 'border-[#DEDAD0] dark:border-zinc-800'
                 }`}>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="h-14 w-14 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 shadow-md">
-                      <IgIcon size={28} />
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 shadow-md">
+                        <IgIcon size={20} />
+                      </div>
+                      <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">Instagram DMs</h3>
                     </div>
                     {igIntegration?.status === 'active' && (
-                      <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-full flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Conectado
-                      </span>
-                    )}
-                    {igIntegration?.status === 'error' && (
-                      <span className="text-[10px] font-black uppercase tracking-widest text-red-500 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 px-2.5 py-1 rounded-full">
-                        Error
-                      </span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Activo</span>
+                      </div>
                     )}
                   </div>
-
-                  <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-lg">Instagram</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                    Recibe y responde DMs de Instagram automáticamente con tu agente de IA.
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+                    Automatiza respuestas a DMs y menciones con tus agentes de IA personalizados.
                   </p>
-
-                  {igIntegration?.status === 'active' && igIntegration.instagramAccountId && (
-                    <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-zinc-400">Instagram ID</span>
-                        <span className="font-mono text-zinc-700 dark:text-zinc-300 text-[10px]">{igIntegration.instagramAccountId}</span>
-                      </div>
-                      {igIntegration.pageId && (
-                        <div className="flex justify-between text-xs">
-                          <span className="text-zinc-400">Page ID</span>
-                          <span className="font-mono text-zinc-700 dark:text-zinc-300 text-[10px]">{igIntegration.pageId}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-6 flex gap-3">
+                  <div className="mt-auto">
                     {igIntegration?.status === 'active' ? (
-                      <button
-                        onClick={handleDisconnectIg}
-                        disabled={igLoading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 border-2 border-red-200 dark:border-red-800 text-red-500 rounded-2xl text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all disabled:opacity-50"
-                      >
+                      <button onClick={handleDisconnectIg} disabled={igLoading} className="w-full py-2.5 border border-red-100 dark:border-red-900/50 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-900/10 transition-all">
                         {igLoading ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />}
-                        Desconectar
+                        Desconectar Cuenta
                       </button>
                     ) : (
-                      <a
-                        href="/api/integrations/instagram/connect"
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white rounded-2xl text-xs font-bold shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
-                      >
+                      <a href="/api/integrations/instagram/connect" className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-pink-500/10 hover:opacity-90 active:scale-[0.98] transition-all">
                         <IgIcon size={14} /> Conectar Instagram
                       </a>
                     )}
                   </div>
                 </div>
 
-                {/* ─── Placeholders ─── */}
-                {[
-                  { name: 'Facebook Messenger', icon: <Globe size={24} />, desc: 'Responde mensajes de Messenger.' },
-                  { name: 'HubSpot', icon: <Link size={24} />, desc: 'Sincroniza contactos y deals.' },
-                  { name: 'AirBnB', icon: <Globe size={24} />, desc: 'Gestión de huéspedes automática.' },
-                ].map(cx => (
-                  <div key={cx.name} className="p-6 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl opacity-50 select-none">
-                    <div className="h-14 w-14 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400 mb-4">
-                      {cx.icon}
+                {/* ─── WhatsApp ─── */}
+                <div className="p-5 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[2rem] opacity-60 flex flex-col group transition-all duration-300 hover:scale-[1.02]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center">
+                      <MessageSquare size={20} />
                     </div>
-                    <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0]">{cx.name}</h3>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{cx.desc}</p>
-                    <button disabled className="mt-6 w-full py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-400 rounded-2xl text-xs font-bold cursor-not-allowed">
-                      Próximamente
-                    </button>
+                    <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">WhatsApp Business</h3>
                   </div>
-                ))}
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+                    Gestión inteligente de chats mediante la API oficial de Meta y flujos de ventas.
+                  </p>
+                  <div className="mt-auto py-2 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest text-center border border-zinc-100 dark:border-zinc-800">
+                    Próximamente
+                  </div>
+                </div>
+
+                {/* ─── Facebook ─── */}
+                <div className="p-5 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[2rem] opacity-60 flex flex-col group transition-all duration-300 hover:scale-[1.02]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 bg-blue-500/10 text-blue-500 rounded-xl flex items-center justify-center">
+                      <Globe size={20} />
+                    </div>
+                    <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">Messenger</h3>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+                    Extiende tus agentes a tus páginas de Facebook para respuestas inmediatas.
+                  </p>
+                  <div className="mt-auto py-2 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest text-center border border-zinc-100 dark:border-zinc-800">
+                    Próximamente
+                  </div>
+                </div>
+
+                {/* ─── HubSpot ─── */}
+                <div className="p-5 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[2rem] opacity-60 flex flex-col group transition-all duration-300 hover:scale-[1.02]">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 bg-orange-500/10 text-orange-500 rounded-xl flex items-center justify-center">
+                      <Link size={20} />
+                    </div>
+                    <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">CRM HubSpot</h3>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+                    Sincronización automática de leads y conversaciones directamente en tu CRM.
+                  </p>
+                  <div className="mt-auto py-2 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest text-center border border-zinc-100 dark:border-zinc-800">
+                    Próximamente
+                  </div>
+                </div>
               </div>
             </div>
           )}

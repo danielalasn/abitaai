@@ -304,8 +304,15 @@ export async function updateUserProfile(userId: string, name: string, email: str
   return { success: true };
 }
 
-export async function updateUserPassword(userId: string, newPassword: string) {
+export async function updateUserPassword(userId: string, oldPassword: string, newPassword: string) {
   const bcrypt = await import('bcryptjs');
+  
+  const user = await prisma.client.findUnique({ where: { id: userId } });
+  if (!user || !user.password) throw new Error('Usuario no encontrado o sin contraseña configurada.');
+
+  const isOldPasswordCorrect = await bcrypt.default.compare(oldPassword, user.password);
+  if (!isOldPasswordCorrect) throw new Error('La contraseña anterior es incorrecta.');
+
   const hashedPassword = await bcrypt.default.hash(newPassword, 10);
   
   await prisma.client.update({
