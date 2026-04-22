@@ -31,11 +31,8 @@ export async function GET(req: NextRequest) {
 
   // Permissions needed for Instagram Messaging
   const scopes = [
-    'instagram_basic',
-    'instagram_manage_messages',
-    'pages_show_list',
-    'pages_messaging',
-    'pages_manage_metadata',
+    'public_profile',
+    'email',
   ].join(',')
 
   const authUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth')
