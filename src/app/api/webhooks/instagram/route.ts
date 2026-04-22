@@ -12,9 +12,12 @@ export async function GET(req: NextRequest) {
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     console.log('[Instagram Webhook] Verified')
-    return new NextResponse(challenge, { status: 200 })
+    return new Response(challenge, { 
+      status: 200,
+      headers: { 'Content-Type': 'text/plain' }
+    })
   }
-  return new NextResponse('Forbidden', { status: 403 })
+  return new Response('Forbidden', { status: 403 })
 }
 
 /** Incoming events (DMs, story mentions, etc.) */
