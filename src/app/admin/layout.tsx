@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="min-h-dvh bg-zinc-50 dark:bg-[#09090b] font-sans selection:bg-purple-500/20">
+    <div className="min-h-dvh bg-zinc-50 dark:bg-[#09090b] font-sans selection:bg-orange-500/20">
       <header className="h-20 flex items-center justify-between px-8 bg-white dark:bg-[#121214] border-b border-zinc-200 dark:border-zinc-800 shadow-sm sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 bg-zinc-900 dark:bg-white rounded-xl flex items-center justify-center">
@@ -31,7 +31,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <div>
             <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-zinc-100 block">abita.ai</span>
-            <span className="text-xs text-purple-600 font-medium uppercase tracking-wider">Panel de Administración</span>
+            <span className="text-xs text-orange-600 font-medium uppercase tracking-wider">Panel de Administración</span>
           </div>
         </div>
 
@@ -47,7 +47,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* User Profile */}
           <div className="flex items-center gap-3 pr-6 border-r border-zinc-200 dark:border-zinc-800">
-            <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold shadow-sm">
+            <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 dark:text-orange-400 font-bold shadow-sm">
               {userInitial}
             </div>
             <div className="flex flex-col">

@@ -793,7 +793,7 @@ export default function InboxPage() {
                     onClick={(e) => toggleSelect(chat.id, e)}
                     className={`absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all ${
                       isMultiSelected
-                        ? 'bg-purple-600 border-purple-600'
+                        ? 'bg-orange-600 border-orange-600'
                         : 'border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 opacity-0 group-hover:opacity-100'
                     }`}
                   >
@@ -804,7 +804,7 @@ export default function InboxPage() {
                   onClick={() => { if (selectedIds.size > 0) toggleSelect(chat.id, { stopPropagation: () => {} } as any); else loadChatDetails(chat.id); }}
                   className={`w-full text-left p-4 pl-8 rounded-2xl transition-all duration-200 flex flex-col gap-1 border shadow-sm ${
                     isMultiSelected
-                      ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-400 dark:border-purple-600'
+                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-400 dark:border-orange-600'
                       : isActive
                         ? 'bg-blue-50 dark:bg-blue-900/40 border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/20 z-10'
                         : isHandoff

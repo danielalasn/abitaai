@@ -8,15 +8,23 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String?
-  theme     String   @default("light")
-  role          String   @default("CLIENT") // Enum: ADMIN o CLIENT
-  templateGroup String?           // Prefijo para filtrar plantillas de Meta
-  createdAt     DateTime @default(now())
+  id                 String             @id @default(cuid())
+  name               String
+  email              String             @unique
+  password           String?
+  theme              String             @default("light")
+  role               String             @default("CLIENT") // Enum: ADMIN o CLIENT
+  templateGroup      String?            // Prefijo para filtrar plantillas de Meta
+  subscriptionStatus SubscriptionStatus @default(ACTIVE)
+  subscriptionEndsAt DateTime?          // null means lifetime/unlimited for now, or you can set a date
+  createdAt          DateTime           @default(now())
   
   projects     Project[]
   integrations Integration[]
@@ -195,4 +203,17 @@ model Agent {
   leads               Lead[]
   campaigns           Campaign[]
   unansweredQuestions UnansweredQuestion[]
+}
+
+model SystemConfig {
+  id               String   @id @default("default")
+  globalGuardrails String?  
+  namingRules      String?
+  businessRules    String?
+  pricingRules     String?
+  handoffRules     String?
+  visualRules      String?
+  learningRules    String?
+  scoringBaseRules String?
+  updatedAt        DateTime @updatedAt
 }

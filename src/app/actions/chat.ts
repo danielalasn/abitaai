@@ -77,6 +77,21 @@ export async function sendTestMessage(
   const isRealName = clientName && !clientName.startsWith('+');
   const finalName = isRealName ? clientName : "Desconocido";
 
+  const systemConfig = await prisma.systemConfig.findUnique({
+    where: { id: "default" }
+  });
+
+  // Si systemConfig existe, usamos sus valores (aunque estén vacíos).
+  // Si no existe el registro en DB, usamos los mínimos necesarios.
+  const guardrails = systemConfig?.globalGuardrails ?? GLOBAL_SYSTEM_GUARDRAILS;
+  const naming = systemConfig?.namingRules ?? "";
+  const business = systemConfig?.businessRules ?? "";
+  const pricing = systemConfig?.pricingRules ?? "";
+  const handoff = systemConfig?.handoffRules ?? "";
+  const visual = systemConfig?.visualRules ?? "";
+  const learning = systemConfig?.learningRules ?? "";
+  const scoringBase = systemConfig?.scoringBaseRules ?? "";
+
   // Create the system prompt
   const systemPrompt = `
 <identity>
@@ -96,8 +111,7 @@ REGLA DE CONTEXTO: Usa esta información para personalizar tu respuesta y evitar
 </crm_metadata>
 
 <critical_rules_mentioning_names>
-- Si el Nombre es "Desconocido", NO intentes adivinarlo ni uses el número de teléfono para saludar. Limítate a decir "Hola" o "Hola, bienvenido".
-- Si el Nombre es un nombre real, puedes usarlo para personalizar el saludo.
+${naming}
 </critical_rules_mentioning_names>
 
 <knowledge_base>
@@ -109,56 +123,41 @@ SI EL CLIENTE PREGUNTA ALGO RELACIONADO A ESTAS PREGUNTAS FRECUENTES, CÓPIALES 
 ${config.faq || "No hay preguntas frecuentes."}
 </frequently_asked_questions>
 
-${GLOBAL_SYSTEM_GUARDRAILS}
+<global_system_guardrails>
+${guardrails}
+</global_system_guardrails>
 
 <critical_instructions_and_rules>
 ESTAS REGLAS DEL NEGOCIO DEBEN SEGUIRSE AL PIE DE LA LETRA BAJO CUALQUIER CIRCUNSTANCIA:
 ${config.instructions || ""}
 
-REGLA DE ORO DE NEGOCIO: Si la información no está en la KNOWLEDGE BASE, di que es un detalle técnico y ofrece pasarle el chat a un asesor. NUNCA inventes precios ni datos.
-¡VERIFICA LAS REGLAS DE NEGOCIO ANTES DE MOSTRAR PRECIOS O DATOS AL CLIENTE!
+<master_business_rules>
+${business}
+</master_business_rules>
 
-REGLA DE PROHIBICIÓN DE OFERTAS (CRÍTICA): TIENES PROHIBIDO ofrecer explicar procesos, opciones de crédito, o cualquier detalle (como el "proceso de compra", "cronograma de pagos", etc.) si NO están explícitamente detallados en la KNOWLEDGE BASE. Solo ofrece lo que puedes cumplir con datos reales en el siguiente paso.
+<strict_pricing_rules>
+${pricing}
+</strict_pricing_rules>
 
-REGLA ESTRICTA DE PRECIOS Y MODELOS (¡IMPORTANTE!):
-A menos que el cliente haya preguntado EXPRESAMENTE por "precios", "costos", "cuánto vale", o "modelos":
-1. TIENES PROHIBIDO listar todos los modelos de habitaciones y sus precios de golpe en tu primera respuesta.
-2. Si piden "más información", limítate a mencionar la ubicación y las amenidades principales, y pregunta qué tipo de espacio buscan (estudio, suite, etc) ANTES de dar cualquier número.
+<handoff_instructions>
+${handoff}
+</handoff_instructions>
 
-INSTRUCCIÓN ESPECIAL DE TRANSFERENCIA A HUMANO:
-1. DETECCIÓN DE INTENCIÓN: Si el cliente solicita hablar con una persona, asesor, agente, o humano por PRIMERA vez:
-   - NO actives la transferencia de inmediato.
-   - PREGUNTA obligatoriamente: "¿Te gustaría que te transfiera con un asesor humano para que te ayude personalmente?"
-2. DETECCIÓN DE CONFIRMACIÓN (¡CRÍTICO — LEE ESTO CON MÁXIMA PRIORIDAD!):
-   Revisa TODO el historial de conversación. Si en CUALQUIER turno anterior TÚ (assistant) ya hiciste la pregunta de transferencia (mencionaste "asesor", "transferir", "humano", "persona real"):
-   - Y el cliente responde CUALQUIER cosa afirmativa (ej: "Sí", "Dale", "Por favor", "Ok", "Bueno", "Quiero", "Claro", "Ya", "Pues sí", incluso un simple "sí"):
-   - DEBES activar la transferencia DE INMEDIATO incluyendo la etiqueta [ACTION: HANDOFF] al final de tu respuesta.
-   - Di algo como: "Perfecto, te estoy transfiriendo ahora mismo con un asesor especialista. Un momento por favor."
-   - TIENES PROHIBIDO volver a preguntar "¿quieres que te transfiera?" si ya lo preguntaste antes. Eso irrita al cliente.
-3. ANTI-REPETICIÓN (¡IMPORTANTÍSIMO!): Revisa el historial. Si ya ofreciste la transferencia en algún mensaje previo, NO vuelvas a ofrecer la transferencia. Si el cliente continúa chateando sin confirmar, simplemente sigue ayudándole normalmente.
-4. CIERRE NATURAL: Si el flujo llega a un punto donde prometes contacto humano (ej: "Un asesor te contactará"), DEBES incluir [ACTION: HANDOFF] al final.
-REGLA DE ORO: Si prometes que alguien lo atenderá o confirmas la transferencia, la etiqueta [ACTION: HANDOFF] es OBLIGATORIA. NUNCA preguntes dos veces si quiere la transferencia.
+<visual_format_rules>
+${visual}
+</visual_format_rules>
 
-REGLA DE FORMATO VISUAL (¡MANDATORIA!): 
-- NUNCA uses doble asteriscos (**texto**) para negritas. WhatsApp NO los reconoce.
-- USA SIEMPRE un solo asterisco (*texto*) para poner palabras en negrita.
-
-SISTEMA DE CALIFICACIÓN (HEATMAP SCORE):
+<heatmap_scoring_system>
 Tu trabajo en segundo plano también es calificar el interés del cliente ("Heatmap"). Revisa estas reglas dadas por el dueño:
 REGLAS DE EVENTOS (Suma 100 en total):
 ${scoringText}
 
-INSTRUCCIONES DE MARCADO:
-- En CADA respuesta, analiza si el cliente ha cumplido alguna de estas condiciones (revisa el historial para ver si ya se premió o no).
-- Si detectas que se ha cumplido una condición que AÚN NO ha sido premiada en el chat, agrega esta etiqueta exacta al final de tu respuesta:
-  [ACTION: SCORE_BUMP +X REASON: "Escribe aquí la razón corta"]
-- Puedes agregar MÚLTIPLES etiquetas si se cumplen varias condiciones simultáneamente.
-- Importante: Solo premia cada regla UNA VEZ en toda la conversación. Si ya viste un tag de esa regla en el historial, no lo repitas. 
+${scoringBase}
+</heatmap_scoring_system>
 
-SISTEMA DE APRENDIZAJE:
-Si el cliente te hace una pregunta que NO está contestada en las FAQs ni en la Knowledge Base, DEBES ser honesto, decirle amablemente que no tienes esa información a la mano, y agregar EXACTAMENTE esta etiqueta al final de tu mensaje:
-[ACTION: UNANSWERED_QUESTION "Aquí pones la pregunta exacta que hizo el cliente"]
-Esto nos ayudará a aprender y entrenarte para el futuro.
+<learning_system>
+${learning}
+</learning_system>
 </critical_instructions_and_rules>
   `;
 

@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw } from 'lucide-react';
-import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats } from '@/app/actions/admin';
+import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen } from 'lucide-react';
+import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getSystemConfig, updateSystemConfig } from '@/app/actions/admin';
+import { compileKnowledgeWithAI } from '@/app/actions/settings';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -14,7 +15,7 @@ export default function AdminPage() {
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
-  
+
   // Create User state
   const [showCreate, setShowCreate] = useState(false);
   const [newUserName, setNewUserName] = useState('');
@@ -22,16 +23,28 @@ export default function AdminPage() {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserTemplateGroup, setNewUserTemplateGroup] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  
+
   // Global Config state
   const [showGlobalConfig, setShowGlobalConfig] = useState(false);
   const [masterWabaId, setMasterWabaId] = useState('');
   const [masterToken, setMasterToken] = useState('');
+  const [globalGuardrails, setGlobalGuardrails] = useState('');
+  const [namingRules, setNamingRules] = useState('');
+  const [businessRules, setBusinessRules] = useState('');
+  const [pricingRules, setPricingRules] = useState('');
+  const [handoffRules, setHandoffRules] = useState('');
+  const [visualRules, setVisualRules] = useState('');
+  const [learningRules, setLearningRules] = useState('');
+  const [scoringBaseRules, setScoringBaseRules] = useState('');
   const [isSavingGlobal, setIsSavingGlobal] = useState(false);
+  const [globalConfigTab, setGlobalConfigTab] = useState<'api' | 'rules'>('api');
+  const [activeRuleSubTab, setActiveRuleSubTab] = useState<'guardrails' | 'naming' | 'business' | 'pricing' | 'handoff' | 'visual' | 'scoring' | 'learning'>('guardrails');
+  const [activeBotSubTab, setActiveBotSubTab] = useState<'api' | 'identity' | 'instructions' | 'knowledge' | 'faq' | 'scoring'>('identity');
 
   // Modal / Tab state
   const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot' | 'usage'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot' | 'usage' | 'subscription'>('dashboard');
+  const [activeEditSubTab, setActiveEditSubTab] = useState<'info' | 'subscription' | 'danger'>('info');
   const [isRefreshingClient, setIsRefreshingClient] = useState(false);
 
   const handleRefreshClient = async () => {
@@ -64,14 +77,19 @@ export default function AdminPage() {
   // Edit Config state
   const [configData, setConfigData] = useState<any>({});
   const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
+  const [isCompiling, setIsCompiling] = useState(false);
+  const [compileStatus, setCompileStatus] = useState<'success' | 'error' | null>(null);
 
   // Edit User state
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editTemplateGroup, setEditTemplateGroup] = useState('');
+  const [editSubscriptionStatus, setEditSubscriptionStatus] = useState('ACTIVE');
+  const [editSubscriptionEndsAt, setEditSubscriptionEndsAt] = useState<string | undefined>('');
   const [isSavingUser, setIsSavingUser] = useState(false);
-  
+
   // Delete User state
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -81,7 +99,7 @@ export default function AdminPage() {
       router.push('/login');
     } else if (status === 'authenticated') {
       if (session?.user?.email !== 'info@abitaai.com') {
-        router.push('/'); 
+        router.push('/');
       } else if (!hasLoadedInitially) {
         setHasLoadedInitially(true);
         loadClients();
@@ -97,7 +115,7 @@ export default function AdminPage() {
       setClients(data);
       const groups = await fetchAvailableTemplateGroups();
       setAvailableGroups(groups);
-    } catch(err) { console.error('Error fetching clients or groups', err) }
+    } catch (err) { console.error('Error fetching clients or groups', err) }
     setIsLoading(false);
   };
 
@@ -106,6 +124,16 @@ export default function AdminPage() {
       const config = await getMasterConfig();
       setMasterWabaId(config.whatsappBusinessId);
       setMasterToken(config.whatsappToken);
+
+      const sysConfig = await getSystemConfig();
+      setGlobalGuardrails(sysConfig.globalGuardrails || '');
+      setNamingRules(sysConfig.namingRules || '');
+      setBusinessRules(sysConfig.businessRules || '');
+      setPricingRules(sysConfig.pricingRules || '');
+      setHandoffRules(sysConfig.handoffRules || '');
+      setVisualRules(sysConfig.visualRules || '');
+      setLearningRules(sysConfig.learningRules || '');
+      setScoringBaseRules(sysConfig.scoringBaseRules || '');
     } catch (err) {
       console.error("Error loading master config:", err);
     }
@@ -117,6 +145,16 @@ export default function AdminPage() {
       await updateMasterConfig({
         whatsappBusinessId: masterWabaId,
         whatsappToken: masterToken
+      });
+      await updateSystemConfig({
+        globalGuardrails,
+        namingRules,
+        businessRules,
+        pricingRules,
+        handoffRules,
+        visualRules,
+        learningRules,
+        scoringBaseRules
       });
       alert('Configuración maestra guardada con éxito.');
       setShowGlobalConfig(false);
@@ -133,7 +171,7 @@ export default function AdminPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName || !newUserEmail || !newUserPassword) return;
-    
+
     setIsCreating(true);
     try {
       await createClient({
@@ -159,12 +197,14 @@ export default function AdminPage() {
   const handleSelectClient = (client: any) => {
     setSelectedClient(client);
     setActiveTab('dashboard');
-    
+
     // Init Edit tab
     setEditName(client.name);
     setEditEmail(client.email);
-    setEditPassword(''); 
+    setEditPassword('');
     setEditTemplateGroup(client.templateGroup || '');
+    setEditSubscriptionStatus(client.subscriptionStatus || 'ACTIVE');
+    setEditSubscriptionEndsAt(client.subscriptionEndsAt ? new Date(client.subscriptionEndsAt).toISOString().split('T')[0] : '');
     setDeleteConfirmText('');
 
     // Init Bot Config tab
@@ -221,7 +261,9 @@ export default function AdminPage() {
         name: editName,
         email: editEmail,
         password: editPassword || undefined,
-        templateGroup: editTemplateGroup
+        templateGroup: editTemplateGroup,
+        subscriptionStatus: editSubscriptionStatus,
+        subscriptionEndsAt: editSubscriptionEndsAt ? new Date(editSubscriptionEndsAt) : null
       });
       alert('Usuario actualizado');
       const updatedList = await getClients();
@@ -230,7 +272,7 @@ export default function AdminPage() {
       const updatedClient = updatedList.find(c => c.id === selectedClient.id);
       setSelectedClient(updatedClient);
       setEditPassword('');
-    } catch(err: any) {
+    } catch (err: any) {
       alert('Error al actualizar usuario: ' + err.message);
     } finally {
       setIsSavingUser(false);
@@ -243,7 +285,7 @@ export default function AdminPage() {
       alert('El texto de confirmación no coincide.');
       return;
     }
-    
+
     setIsDeleting(true);
     try {
       await deleteClient(selectedClient.id);
@@ -261,7 +303,7 @@ export default function AdminPage() {
     if (!dateString) return 'Sin actividad';
     const date = new Date(dateString);
     const now = new Date();
-    
+
     // Reset hours to compare days only
     const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const d2 = new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -276,20 +318,20 @@ export default function AdminPage() {
       const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       return `${days[date.getDay()]} ${timeStr}`;
     }
-    
+
     return `${date.toLocaleDateString('es-ES')} ${timeStr}`;
   };
 
   if (status === 'loading' || isLoading) {
     return (
       <div className="flex h-64 w-full items-center justify-center">
-        <Loader2 className="animate-spin text-purple-600" size={40} />
+        <Loader2 className="animate-spin text-orange-600" size={40} />
       </div>
     );
   }
 
   if (session?.user?.email !== 'info@abitaai.com') {
-    return null; 
+    return null;
   }
 
   return (
@@ -304,23 +346,23 @@ export default function AdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-            <Users size={24} className="text-purple-600" /> Gestionar Clientes
+            <Users size={24} className="text-orange-600" /> Gestionar Clientes
           </h1>
           <p className="text-zinc-500 text-sm mt-1">
             Visualiza y administra todas las cuentas de la plataforma.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setShowGlobalConfig(true)}
             className="p-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-700 shadow-sm"
             title="Configuración Global Abita"
           >
             <Settings size={20} />
           </button>
-          <button 
+          <button
             onClick={() => setShowCreate(true)}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium tracking-wide shadow-md transition-all flex items-center gap-2"
+            className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-medium tracking-wide shadow-md transition-all flex items-center gap-2"
           >
             <Plus size={18} /> Nuevo Cliente
           </button>
@@ -330,59 +372,184 @@ export default function AdminPage() {
       {/* GLOBAL CONFIG MODAL */}
       {showGlobalConfig && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
-            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl h-[80vh] rounded-[2rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
-                <Settings size={20} className="text-purple-600" />
+                <Settings size={20} className="text-orange-600" />
                 <h3 className="font-semibold">Configuración Maestra (Abita.ai)</h3>
               </div>
               <button onClick={() => setShowGlobalConfig(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-6">
-              <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 rounded-2xl p-4">
-                <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed font-medium">
-                  Estas credenciales se utilizan para sincronizar los grupos de plantillas de Facebook. Asegúrate de que correspondan al Business Account donde viven los templates.
-                </p>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Master WABA ID</label>
-                  <input 
-                    value={masterWabaId} 
-                    onChange={e => setMasterWabaId(e.target.value)} 
-                    placeholder="WhatsApp Business Account ID" 
-                    className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono" 
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Master System User Token</label>
-                  <textarea 
-                    rows={4}
-                    value={masterToken} 
-                    onChange={e => setMasterToken(e.target.value)} 
-                    placeholder="Permanent Access Token" 
-                    className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono resize-none" 
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button 
-                  onClick={() => setShowGlobalConfig(false)} 
-                  className="flex-1 py-3 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+
+            <div className="flex-1 flex overflow-hidden">
+              <div className="w-56 shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-[#121214]/50 p-4 space-y-2 overflow-y-auto">
+                <button
+                  onClick={() => setGlobalConfigTab('api')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${globalConfigTab === 'api' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
-                  Cancelar
+                  <Key size={18} /> API & Tokens
                 </button>
-                <button 
-                  onClick={handleSaveGlobalConfig}
-                  disabled={isSavingGlobal}
-                  className="flex-[2] py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
+                <button
+                  onClick={() => setGlobalConfigTab('rules')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${globalConfigTab === 'rules' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
-                  {isSavingGlobal ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                  Guardar Cambios Maestros
+                  <Bot size={18} /> Reglas Base Bot
                 </button>
               </div>
+
+              <div className="flex-1 p-4 overflow-y-auto">
+                {globalConfigTab === 'api' && (
+                  <div className="space-y-6">
+                    <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 rounded-2xl p-4">
+                      <p className="text-xs text-orange-700 dark:text-orange-300 leading-relaxed font-medium">
+                        Estas credenciales se utilizan para sincronizar los grupos de plantillas de Facebook. Asegúrate de que correspondan al Business Account donde viven los templates.
+                      </p>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Master WABA ID</label>
+                        <input
+                          value={masterWabaId}
+                          onChange={e => setMasterWabaId(e.target.value)}
+                          placeholder="WhatsApp Business Account ID"
+                          className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Master System User Token</label>
+                        <textarea
+                          rows={4}
+                          value={masterToken}
+                          onChange={e => setMasterToken(e.target.value)}
+                          placeholder="Permanent Access Token"
+                          className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {globalConfigTab === 'rules' && (
+                  <div className="flex flex-col h-full gap-6">
+                    <div className="shrink-0 flex items-center justify-between">
+                      <p className="text-sm text-zinc-500">
+                        Gestiona las reglas maestras que rigen a todos los agentes de la plataforma.
+                      </p>
+                    </div>
+
+                    <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-[1.5rem] overflow-hidden">
+                      {/* Sub-tabs horizontal scrollable for rules */}
+                      <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/50 shrink-0 overflow-x-auto no-scrollbar">
+                        {[
+                          { id: 'guardrails', label: 'Guardrails' },
+                          { id: 'naming', label: 'Nombres' },
+                          { id: 'business', label: 'Negocio' },
+                          { id: 'pricing', label: 'Precios' },
+                          { id: 'handoff', label: 'Handoff' },
+                          { id: 'visual', label: 'Visual' },
+                          { id: 'scoring', label: 'Scoring' },
+                          { id: 'learning', label: 'Learning' },
+                        ].map((tab) => (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveRuleSubTab(tab.id as any)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${activeRuleSubTab === tab.id ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="h-[320px] p-2 relative">
+                        {activeRuleSubTab === 'guardrails' && (
+                          <textarea
+                            value={globalGuardrails}
+                            onChange={e => setGlobalGuardrails(e.target.value)}
+                            placeholder="REGLAS GLOBALES DEL SISTEMA..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                        {activeRuleSubTab === 'naming' && (
+                          <textarea
+                            value={namingRules}
+                            onChange={e => setNamingRules(e.target.value)}
+                            placeholder="Reglas de contacto y nombres..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                        {activeRuleSubTab === 'business' && (
+                          <textarea
+                            value={businessRules}
+                            onChange={e => setBusinessRules(e.target.value)}
+                            placeholder="Reglas de oro del negocio..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                        {activeRuleSubTab === 'pricing' && (
+                          <textarea
+                            value={pricingRules}
+                            onChange={e => setPricingRules(e.target.value)}
+                            placeholder="Reglas de precios y modelos..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                        {activeRuleSubTab === 'handoff' && (
+                          <textarea
+                            value={handoffRules}
+                            onChange={e => setHandoffRules(e.target.value)}
+                            placeholder="Reglas de transferencia a humano..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                        {activeRuleSubTab === 'visual' && (
+                          <textarea
+                            value={visualRules}
+                            onChange={e => setVisualRules(e.target.value)}
+                            placeholder="Formato visual (WhatsApp)..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                        {activeRuleSubTab === 'scoring' && (
+                          <textarea
+                            value={scoringBaseRules}
+                            onChange={e => setScoringBaseRules(e.target.value)}
+                            placeholder="Instrucciones de calificación base..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                        {activeRuleSubTab === 'learning' && (
+                          <textarea
+                            value={learningRules}
+                            onChange={e => setLearningRules(e.target.value)}
+                            placeholder="Sistema de aprendizaje (Preguntas sin respuesta)..."
+                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-3 shrink-0">
+              <button
+                onClick={() => setShowGlobalConfig(false)}
+                className="px-6 py-2 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveGlobalConfig}
+                disabled={isSavingGlobal}
+                className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
+              >
+                {isSavingGlobal ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                Guardar Configuración
+              </button>
             </div>
           </div>
         </div>
@@ -402,39 +569,39 @@ export default function AdminPage() {
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Nombre Completo</label>
-                  <input required value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Ej: Automotriz S.A." className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100" />
+                  <input required value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Ej: Automotriz S.A." className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 text-zinc-900 dark:text-zinc-100" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Correo Electrónico</label>
-                  <input required type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} placeholder="contacto@empresa.com" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100" />
+                  <input required type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} placeholder="contacto@empresa.com" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 text-zinc-900 dark:text-zinc-100" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Contraseña Temporal</label>
-                  <input required type="text" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} placeholder="Escribe una contraseña segura" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 text-zinc-900 dark:text-zinc-100" />
+                  <input required type="text" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} placeholder="Escribe una contraseña segura" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 text-zinc-900 dark:text-zinc-100" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
                   <div className="flex gap-2">
-                    <select 
-                      value={availableGroups.includes(newUserTemplateGroup) ? newUserTemplateGroup : ""} 
+                    <select
+                      value={availableGroups.includes(newUserTemplateGroup) ? newUserTemplateGroup : ""}
                       onChange={e => setNewUserTemplateGroup(e.target.value)}
-                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100"
+                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
                     >
                       <option value="">Seleccionar existente...</option>
                       {availableGroups.map(g => (
                         <option key={g} value={g}>{g}</option>
                       ))}
                     </select>
-                    <input 
-                      value={newUserTemplateGroup} 
+                    <input
+                      value={newUserTemplateGroup}
                       onChange={e => setNewUserTemplateGroup(e.target.value)}
-                      placeholder="O escribe uno nuevo..." 
-                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" 
+                      placeholder="O escribe uno nuevo..."
+                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
                     />
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1 pl-1">Selecciona del dropdown (extraído de Meta) o escribe el prefijo manualmente.</p>
                 </div>
-                <button disabled={isCreating} type="submit" className="w-full py-3 h-12 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold tracking-wide shadow-sm flex items-center justify-center gap-2 mt-4 transition-all">
+                <button disabled={isCreating} type="submit" className="w-full py-3 h-12 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-bold tracking-wide shadow-sm flex items-center justify-center gap-2 mt-4 transition-all">
                   {isCreating ? <Loader2 size={18} className="animate-spin" /> : 'Registrar Cliente'}
                 </button>
               </form>
@@ -449,19 +616,19 @@ export default function AdminPage() {
           const project = client.projects?.[0];
           const leadsCount = project?._count?.leads || 0;
           const campCount = project?._count?.campaigns || 0;
-          
+
           return (
             <button
               key={client.id}
               onClick={() => handleSelectClient(client)}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-left hover:border-purple-400 dark:hover:border-purple-500 hover:shadow-lg hover:-translate-y-1 transition-all group relative overflow-hidden"
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-left hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-lg hover:-translate-y-1 transition-all group relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                 <Users size={80} />
               </div>
-              
+
               <div className="relative z-10 flex flex-col h-full">
-                <div className="h-10 w-10 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center font-bold text-xl mb-4">
+                <div className="h-10 w-10 bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-xl flex items-center justify-center font-bold text-xl mb-4">
                   {client.name.charAt(0).toUpperCase()}
                 </div>
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white line-clamp-1">{client.name}</h3>
@@ -472,24 +639,24 @@ export default function AdminPage() {
                     Último uso: {formatRelativeDate(project?.lastUseAt)}
                   </span>
                 </div>
-                
+
                 <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3 border-t border-zinc-100 dark:border-zinc-800/60 pt-4">
-                   <div className="flex flex-col">
-                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Leads Totales</span>
-                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{leadsCount}</span>
-                   </div>
-                   <div className="flex flex-col">
-                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Campañas</span>
-                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{campCount}</span>
-                   </div>
-                   <div className="flex flex-col">
-                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Respuestas Bot</span>
-                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.botMessagesCount || 0}</span>
-                   </div>
-                   <div className="flex flex-col">
-                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Contactos Nosotros</span>
-                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.agentMessagesCount || 0}</span>
-                   </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Leads Totales</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{leadsCount}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Campañas</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{campCount}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Respuestas Bot</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.botMessagesCount || 0}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Contactos Nosotros</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.agentMessagesCount || 0}</span>
+                  </div>
                 </div>
               </div>
             </button>
@@ -497,22 +664,22 @@ export default function AdminPage() {
         })}
         {clients.length === 0 && !showCreate && (
           <div className="col-span-full py-16 flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl">
-             <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4">
-               <Users size={32} />
-             </div>
-             <h3 className="font-semibold text-zinc-900 dark:text-white">Sin clientes registrados</h3>
-             <p className="text-sm text-zinc-500 mt-1 max-w-sm text-center">Todavía no has creado ninguna cuenta para tus clientes. Comienza añadiendo uno nuevo.</p>
+            <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4">
+              <Users size={32} />
+            </div>
+            <h3 className="font-semibold text-zinc-900 dark:text-white">Sin clientes registrados</h3>
+            <p className="text-sm text-zinc-500 mt-1 max-w-sm text-center">Todavía no has creado ninguna cuenta para tus clientes. Comienza añadiendo uno nuevo.</p>
           </div>
         )}
       </div>
 
-      {/* SELECTED CLIENT MODAL */}
+{/* SELECTED CLIENT MODAL */}
       {selectedClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-zinc-50 dark:bg-[#09090b] w-full max-w-5xl h-[85vh] rounded-[2rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
-            
+          <div className="bg-zinc-50 dark:bg-[#09090b] w-full max-w-5xl h-[650px] rounded-[2rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
+
             {/* Modal Header */}
-            <div className="px-8 py-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121214] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+            <div className="px-8 py-5 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121214] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
               <div>
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
                   {selectedClient.name}
@@ -524,20 +691,20 @@ export default function AdminPage() {
                     <Calendar size={14} /> Creado: {new Date(selectedClient.createdAt).toLocaleDateString()}
                   </span>
                   <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                  <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                  <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
                     <Clock size={14} /> Último uso: {formatRelativeDate(selectedClient.projects?.[0]?.lastUseAt)}
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={handleRefreshClient} 
+                <button
+                  onClick={handleRefreshClient}
                   disabled={isRefreshingClient}
                   className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors disabled:opacity-50"
                   title="Refrescar datos"
                 >
-                  <RefreshCw size={20} className={isRefreshingClient ? "animate-spin text-purple-600" : ""} />
+                  <RefreshCw size={20} className={isRefreshingClient ? "animate-spin text-orange-600" : ""} />
                 </button>
                 <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
                 <button onClick={() => setSelectedClient(null)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors">
@@ -550,48 +717,51 @@ export default function AdminPage() {
             <div className="flex-1 flex overflow-hidden">
               {/* Sidebar Tabs */}
               <div className="w-56 shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-[#121214]/50 p-4 space-y-2 overflow-y-auto">
-                <button 
+                <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'dashboard' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'dashboard' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
                   <LayoutDashboard size={18} />
                   Dashboard
                 </button>
-                <button 
-                  onClick={() => setActiveTab('edit')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'edit' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
-                >
-                  <Edit3 size={18} />
-                  Editar Usuario
-                </button>
-                <button 
+                <button
                   onClick={() => setActiveTab('bot')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'bot' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'bot' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
                   <Settings size={18} />
                   Bot Config
                 </button>
-                <button 
+                <button
                   onClick={() => setActiveTab('usage')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === 'usage' ? 'bg-purple-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'usage' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
                   <CreditCard size={18} />
                   Consumo
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('edit');
+                    setActiveEditSubTab('info');
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'edit' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                >
+                  <Edit3 size={18} />
+                  Editar Usuario
+                </button>
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-                
+              <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+
                 {/* --- TAB: DASHBOARD --- */}
                 {activeTab === 'dashboard' && (
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                     <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Métricas Generales</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       {/* Fila 1: Leads y Campañas */}
-                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
                         <div className="h-14 w-14 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center">
-                           <MessageSquare size={28} />
+                          <MessageSquare size={28} />
                         </div>
                         <div>
                           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total Leads</p>
@@ -600,9 +770,9 @@ export default function AdminPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
                         <div className="h-14 w-14 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center">
-                           <Megaphone size={28} />
+                          <Megaphone size={28} />
                         </div>
                         <div>
                           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total Campañas</p>
@@ -611,11 +781,11 @@ export default function AdminPage() {
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Fila 2: Mensajes Bot y Contactos Nosotros */}
-                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex items-center gap-4">
-                        <div className="h-14 w-14 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center">
-                           <Bot size={28} />
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                        <div className="h-14 w-14 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center">
+                          <Bot size={28} />
                         </div>
                         <div>
                           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mensajes Bot</p>
@@ -624,17 +794,17 @@ export default function AdminPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex items-center gap-4">
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
                         <div className="h-14 w-14 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-2xl flex items-center justify-center">
-                           <User size={28} />
+                          <User size={28} />
                         </div>
                         <div>
                           <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Contactos Nosotros</p>
                           <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
                             {selectedClient.projects?.[0]?.agentMessagesCount || 0}
                           </p>
-                        </div>
                       </div>
+                    </div>
                     </div>
                   </div>
                 )}
@@ -642,157 +812,342 @@ export default function AdminPage() {
 
                 {/* --- TAB: EDIT USER --- */}
                 {activeTab === 'edit' && (
-                  <div className="max-w-2xl space-y-10 animate-in fade-in slide-in-from-bottom-4">
-                    
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                      <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800">
-                        <h3 className="font-semibold text-zinc-900 dark:text-white">Información de la Cuenta</h3>
+                  <div className="max-w-4xl space-y-4 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Perfil del Usuario</h3>
+                        <p className="text-sm text-zinc-500 mt-1">Gestiona la identidad, suscripción y seguridad de la cuenta.</p>
                       </div>
-                      <div className="p-6 space-y-4">
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Nombre Completo</label>
-                          <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 transition-colors text-zinc-900 dark:text-zinc-100" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Correo Electrónico</label>
-                          <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 transition-colors text-zinc-900 dark:text-zinc-100" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Restablecer Contraseña (Opcional)</label>
-                          <input type="text" placeholder="Dejar en blanco si no se desea cambiar" value={editPassword} onChange={e => setEditPassword(e.target.value)} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 transition-colors text-zinc-900 dark:text-zinc-100" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
-                          <div className="flex gap-2">
-                            <select 
-                              value={availableGroups.includes(editTemplateGroup) ? editTemplateGroup : ""} 
-                              onChange={e => setEditTemplateGroup(e.target.value)}
-                              className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100"
-                            >
-                              <option value="">Seleccionar existente...</option>
-                              {availableGroups.map(g => (
-                                <option key={g} value={g}>{g}</option>
-                              ))}
-                            </select>
-                            <input 
-                              value={editTemplateGroup} 
-                              onChange={e => setEditTemplateGroup(e.target.value)}
-                              placeholder="Editar o nuevo..." 
-                              className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" 
-                            />
+                    </div>
+
+                    <div className="flex gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl w-fit">
+                      <button
+                        onClick={() => setActiveEditSubTab('info')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeEditSubTab === 'info' ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                      >
+                        Información
+                      </button>
+                      <button
+                        onClick={() => setActiveEditSubTab('subscription')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeEditSubTab === 'subscription' ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                      >
+                        Suscripción
+                      </button>
+                      <button
+                        onClick={() => setActiveEditSubTab('danger')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeEditSubTab === 'danger' ? 'bg-white dark:bg-zinc-900 text-red-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                      >
+                        Zona de Riesgo
+                      </button>
+                    </div>
+
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-5 shadow-sm">
+                      {activeEditSubTab === 'info' && (
+                        <div className="space-y-4 animate-in fade-in duration-200">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Nombre Completo</label>
+                              <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Correo Electrónico</label>
+                              <input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Restablecer Contraseña (Opcional)</label>
+                              <input type="text" placeholder="Dejar en blanco para no cambiar" value={editPassword} onChange={e => setEditPassword(e.target.value)} className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Grupo de Plantillas (WABA)</label>
+                              <div className="flex gap-2">
+                                <select
+                                  value={availableGroups.includes(editTemplateGroup) ? editTemplateGroup : ""}
+                                  onChange={e => setEditTemplateGroup(e.target.value)}
+                                  className="flex-1 text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                                >
+                                  <option value="">Existentes...</option>
+                                  {availableGroups.map(g => (
+                                    <option key={g} value={g}>{g}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  value={editTemplateGroup}
+                                  onChange={e => setEditTemplateGroup(e.target.value)}
+                                  placeholder="Nuevo..."
+                                  className="flex-1 text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-[10px] text-zinc-500 mt-1 pl-1">Filtrar plantillas de Meta para este usuario por este prefijo.</p>
+                          <div className="pt-4 flex justify-end gap-3">
+                            <button
+                              onClick={handleSaveUser}
+                              disabled={isSavingUser}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-2xl text-[13px] font-bold flex items-center gap-2 transition shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                            >
+                              {isSavingUser ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                              Guardar Cambios
+                            </button>
+                          </div>
                         </div>
-                        <div className="pt-2 flex justify-end">
-                          <button 
-                            onClick={handleSaveUser}
-                            disabled={isSavingUser}
-                            className="bg-black dark:bg-white text-white dark:text-black hover:bg-zinc-800 dark:hover:bg-zinc-200 px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition"
-                          >
-                            {isSavingUser ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                            Guardar Cambios
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                      )}
 
-                    <div className="border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-500/5 rounded-2xl p-6">
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="h-10 w-10 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-xl flex items-center justify-center shrink-0">
-                          <AlertTriangle size={20} />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-red-700 dark:text-red-400">Eliminar Cliente</h3>
-                          <p className="text-sm text-red-600/80 dark:text-red-400/80 mt-1">Esta acción es irreversible. Se eliminará el proyecto, historial de chats, configuraciones y todos los datos asociados.</p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4 pt-2">
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                          Escribe <strong className="font-mono bg-white dark:bg-black px-2 py-0.5 rounded text-red-600 border border-red-200 dark:border-red-900">eliminar {selectedClient.name}</strong> para confirmar:
-                        </p>
-                        <input 
-                          type="text" 
-                          value={deleteConfirmText}
-                          onChange={e => setDeleteConfirmText(e.target.value)}
-                          placeholder={`eliminar ${selectedClient.name}`}
-                          className="w-full text-sm px-4 py-3 border border-red-300 dark:border-red-900/80 rounded-xl bg-white dark:bg-[#121214] outline-none focus:ring-2 focus:ring-red-500/50 text-zinc-900 dark:text-zinc-100" 
-                        />
-                        <button 
-                          onClick={handleDeleteUser}
-                          disabled={deleteConfirmText !== `eliminar ${selectedClient.name}` || isDeleting}
-                          className="px-6 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition"
-                        >
-                          {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                          Eliminar Cuentas de este Usuario
-                        </button>
-                      </div>
-                    </div>
+                      {activeEditSubTab === 'subscription' && (
+                        <div className="space-y-6 animate-in fade-in duration-200">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Estado de la Cuenta</label>
+                              <select 
+                                value={editSubscriptionStatus} 
+                                onChange={e => setEditSubscriptionStatus(e.target.value)}
+                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                              >
+                                <option value="ACTIVE">✅ Activo</option>
+                                <option value="INACTIVE">⏸️ Inactivo (Pausa)</option>
+                                <option value="BLOCKED">🚫 Bloqueado</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Fecha de Vencimiento</label>
+                              <input 
+                                type="date" 
+                                value={editSubscriptionEndsAt} 
+                                onChange={e => setEditSubscriptionEndsAt(e.target.value)} 
+                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100" 
+                              />
+                            </div>
+                          </div>
 
+                          <div>
+                            <label className="text-[10px] font-bold text-zinc-500 mb-4 block uppercase tracking-widest leading-none">Acciones de Extensión Rápida</label>
+                            <div className="flex flex-wrap gap-3">
+                              {[
+                                { label: '+1 Mes', months: 1 },
+                                { label: '+6 Meses', months: 6 },
+                                { label: '+1 Año', years: 1 }
+                              ].map((opt, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => {
+                                    const d = new Date();
+                                    if (opt.months) d.setMonth(d.getMonth() + opt.months);
+                                    if (opt.years) d.setFullYear(d.getFullYear() + opt.years);
+                                    setEditSubscriptionEndsAt(d.toISOString().split('T')[0]);
+                                    setEditSubscriptionStatus('ACTIVE');
+                                  }}
+                                  className="px-4 py-2.5 text-[13px] font-bold rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-orange-50 dark:hover:bg-orange-950/20 hover:border-orange-200 transition-all text-zinc-700 dark:text-zinc-300"
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                               <button
+                                onClick={() => {
+                                  setEditSubscriptionEndsAt('');
+                                  setEditSubscriptionStatus('ACTIVE');
+                                }}
+                                className="px-4 py-2.5 text-[13px] font-bold rounded-2xl border border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 transition-all text-orange-700 dark:text-orange-400"
+                              >
+                                Acceso Permanente
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="pt-4 flex justify-end gap-3">
+                            <button 
+                              onClick={handleSaveUser}
+                              disabled={isSavingUser}
+                              className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-2xl text-[13px] font-bold flex items-center gap-2 transition shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                            >
+                              {isSavingUser ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                              Guardar Suscripción
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeEditSubTab === 'danger' && (
+                        <div className="space-y-6 animate-in fade-in duration-200">
+                          <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-[1.5rem] p-6">
+                            <div className="flex items-start gap-4">
+                              <div className="h-12 w-12 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center shrink-0">
+                                <AlertTriangle size={24} />
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-red-800 dark:text-red-400">Eliminación Definitiva</h3>
+                                <p className="text-sm text-red-700/80 dark:text-red-400/80 mt-1 leading-relaxed">
+                                  Esta acción borrará permanentemente el proyecto, sus agentes, historial de chats y configuraciones. No se puede deshacer.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 pl-1">
+                              Escribe <strong className="font-mono bg-white dark:bg-black px-2 py-0.5 rounded text-red-600 border border-red-200 dark:border-red-900">eliminar {selectedClient.name}</strong> para confirmar:
+                            </p>
+                            <input
+                              type="text"
+                              value={deleteConfirmText}
+                              onChange={e => setDeleteConfirmText(e.target.value)}
+                              placeholder={`eliminar ${selectedClient.name}`}
+                              className="w-full text-[13px] px-5 py-4 border border-red-200 dark:border-red-900/50 rounded-2xl bg-white dark:bg-[#121214] outline-none focus:ring-2 focus:ring-red-500/30 text-zinc-900 dark:text-zinc-100 transition-all font-mono"
+                            />
+                            <button
+                              onClick={handleDeleteUser}
+                              disabled={deleteConfirmText !== `eliminar ${selectedClient.name}` || isDeleting}
+                              className="w-full py-4 bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-2xl text-[13px] font-bold shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 transition-all"
+                            >
+                              {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                              Confirmar Eliminación Total
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
 
                 {/* --- TAB: BOT CONFIG --- */}
                 {activeTab === 'bot' && (
-                  <div className="max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                  <div className="max-w-4xl space-y-4 animate-in fade-in slide-in-from-bottom-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Configuración del Agente</h3>
                         <p className="text-sm text-zinc-500">Credenciales Meta y reglas de inteligencia artificial.</p>
                       </div>
-                      <button 
+                      <button
                         onClick={handleSaveConfig}
                         disabled={isSavingConfig}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition"
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition"
                       >
                         {isSavingConfig ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         Guardar Configuración
                       </button>
                     </div>
 
-                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 md:p-8 shadow-sm space-y-10">
-                      
-                      <div className="space-y-4">
-                        <h4 className="font-bold text-zinc-900 dark:text-white uppercase text-[10px] tracking-widest text-zinc-400 pb-2 border-b border-zinc-100 dark:border-zinc-800">Credenciales Meta (WhatsApp API)</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Phone Number ID</label>
-                            <input value={configData.whatsappPhoneId} onChange={e => setConfigData({...configData, whatsappPhoneId: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400" />
-                          </div>
-                          <div>
-                            <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Business Account ID (Opcional)</label>
-                            <input placeholder="Dejar vacío para usar Abita" value={configData.whatsappBusinessId} onChange={e => setConfigData({...configData, whatsappBusinessId: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400" />
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="text-xs font-bold text-zinc-500 mb-1.5 block">System User Token (Permanente - Opcional)</label>
-                            <input type="password" placeholder="Dejar vacío para usar Abita" value={configData.whatsappToken} onChange={e => setConfigData({...configData, whatsappToken: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono" />
-                          </div>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center justify-between overflow-x-auto no-scrollbar bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-2xl shrink-0">
+                        <div className="flex items-center gap-1">
+                          {[
+                            { id: 'api', label: 'Keys', icon: <Key size={14} /> },
+                            { id: 'identity', label: 'Identidad', icon: <User size={14} /> },
+                            { id: 'instructions', label: 'Instrucciones', icon: <Edit3 size={14} /> },
+                            { id: 'knowledge', label: 'Knowledge Base', icon: <Database size={14} /> },
+                            { id: 'faq', label: 'FAQs', icon: <HelpCircle size={14} /> },
+                            { id: 'scoring', label: 'Scoring', icon: <Cpu size={14} /> },
+                          ].map((sub) => (
+                            <button
+                              key={sub.id}
+                              onClick={() => setActiveBotSubTab(sub.id as any)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeBotSubTab === sub.id ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                            >
+                              {sub.icon} {sub.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="space-y-5">
-                        <h4 className="font-bold text-zinc-900 dark:text-white uppercase text-[10px] tracking-widest text-zinc-400 pb-2 border-b border-zinc-100 dark:border-zinc-800">Cerebro del Agente</h4>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Identidad (Rol, Tono, Nombre)</label>
-                          <textarea rows={3} value={configData.identity} onChange={e => setConfigData({...configData, identity: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Instrucciones Estrictas</label>
-                          <textarea rows={4} value={configData.instructions} onChange={e => setConfigData({...configData, instructions: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Data Base (Precios, Info, etc.)</label>
-                          <textarea rows={6} value={configData.knowledgeData} onChange={e => setConfigData({...configData, knowledgeData: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1.5 block">FAQs (Preguntas Frecuentes)</label>
-                          <textarea rows={4} value={configData.faq} onChange={e => setConfigData({...configData, faq: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-zinc-500 mb-1.5 block">Reglas de Calificación (Scoring)</label>
-                          <textarea rows={3} value={configData.leadScoringRules} onChange={e => setConfigData({...configData, leadScoringRules: e.target.value})} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-purple-500 text-zinc-900 dark:text-zinc-100" placeholder="Ej: +10 si pregunta precio, -5 si es estudiante" />
-                        </div>
+                      <div className="bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm h-[320px] flex flex-col overflow-hidden">
+                        {activeBotSubTab === 'api' && (
+                          <div className="space-y-6 animate-in fade-in duration-200 overflow-y-auto pr-2">
+                            <div>
+                              <h4 className="font-bold text-zinc-900 dark:text-white uppercase text-[10px] tracking-widest text-zinc-400 mb-4 flex items-center gap-2">
+                                <Key size={14} /> Credenciales Meta (WhatsApp API)
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-[10px] font-bold text-zinc-500 mb-1 block uppercase tracking-widest leading-none">Phone Number ID</label>
+                                  <input value={configData.whatsappPhoneId} onChange={e => setConfigData({ ...configData, whatsappPhoneId: e.target.value })} className="w-full text-[13px] px-3 py-2 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono" />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold text-zinc-500 mb-1 block uppercase tracking-widest leading-none">Business Account ID</label>
+                                  <input placeholder="Opcional" value={configData.whatsappBusinessId} onChange={e => setConfigData({ ...configData, whatsappBusinessId: e.target.value })} className="w-full text-[13px] px-3 py-2 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono" />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <label className="text-[10px] font-bold text-zinc-500 mb-1 block uppercase tracking-widest leading-none">System User Token</label>
+                                  <textarea rows={3} placeholder="Opcional" value={configData.whatsappToken} onChange={e => setConfigData({ ...configData, whatsappToken: e.target.value })} className="w-full text-[12px] px-3 py-2 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 font-mono resize-none" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {activeBotSubTab === 'identity' && (
+                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
+                            <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Identidad (Rol, Tono, Nombre)</label>
+                            <textarea value={configData.identity} onChange={e => setConfigData({ ...configData, identity: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" placeholder="Ej: Eres un asistente experto en ventas..." />
+                          </div>
+                        )}
+
+                        {activeBotSubTab === 'instructions' && (
+                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
+                            <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Instrucciones Estrictas (System Prompt)</label>
+                            <textarea value={configData.instructions} onChange={e => setConfigData({ ...configData, instructions: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" placeholder="Instrucciones específicas para este bot..." />
+                          </div>
+                        )}
+
+                        {activeBotSubTab === 'knowledge' && (
+                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2 shrink-0">
+                              <label className="text-[10px] font-bold text-zinc-500 block uppercase tracking-widest leading-none">Data Base (Precios, Info, etc.)</label>
+                              <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/50 rounded-lg p-1">
+                                <button onClick={() => setIsDevMode(false)} className={`px-4 py-1 flex items-center gap-1.5 text-xs font-medium rounded-md transition-all ${!isDevMode ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5" : "text-zinc-500"}`}><BookOpen size={12} /> Natural</button>
+                                <button onClick={() => setIsDevMode(true)} className={`px-4 py-1 flex items-center gap-1.5 text-xs font-medium rounded-md transition-all ${isDevMode ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5" : "text-zinc-500"}`}><Code size={12} /> JSON</button>
+                              </div>
+                            </div>
+                            {!isDevMode ? (
+                              <>
+                                <textarea value={configData.knowledgeRaw || ''} onChange={e => setConfigData({ ...configData, knowledgeRaw: e.target.value })} placeholder="Ej: Tenemos un restaurante llamado 'Bella Italia'..." className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" />
+                                <div className="mt-3 flex flex-col md:flex-row items-center justify-between gap-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900/30 p-3 rounded-2xl shrink-0">
+                                  <p className="text-[11px] text-zinc-700 dark:text-zinc-300 flex items-center gap-2"><Sparkles size={14} className="text-orange-600 dark:text-orange-400" /> Procesador inteligente a JSON.</p>
+                                  <div className="flex items-center gap-3">
+                                    {compileStatus === 'success' && (
+                                      <p className="text-[11px] text-orange-600 dark:text-orange-400 font-bold flex items-center gap-1 animate-bounce">
+                                        <CheckCircle2 size={14} /> ¡Estructurado!
+                                      </p>
+                                    )}
+                                    <button 
+                                      onClick={async () => {
+                                        setIsCompiling(true); setCompileStatus(null);
+                                        try { 
+                                          const json = await compileKnowledgeWithAI(configData.knowledgeRaw || ''); 
+                                          setConfigData({ ...configData, knowledgeData: json }); 
+                                          setCompileStatus("success"); 
+                                          setTimeout(() => setCompileStatus(null), 4000);
+                                        } catch { 
+                                          setCompileStatus("error"); 
+                                        }
+                                        setIsCompiling(false);
+                                      }} 
+                                      disabled={isCompiling || !configData.knowledgeRaw?.trim()} 
+                                      className="px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 border border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-orange-700 dark:text-orange-400"
+                                    >
+                                      {isCompiling ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                                      {isCompiling ? "Analizando..." : "Sincronizar"}
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                                <textarea value={configData.knowledgeData || ''} onChange={e => setConfigData({ ...configData, knowledgeData: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-green-600 dark:text-green-500 resize-none font-mono leading-relaxed whitespace-pre shadow-inner" placeholder="Aquí va toda la información técnica..." />
+                            )}
+                          </div>
+                        )}
+
+                        {activeBotSubTab === 'faq' && (
+                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
+                            <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">FAQs (Preguntas Frecuentes)</label>
+                            <textarea value={configData.faq} onChange={e => setConfigData({ ...configData, faq: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" placeholder="Preguntas y respuestas textuales..." />
+                          </div>
+                        )}
+
+                        {activeBotSubTab === 'scoring' && (
+                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
+                            <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Reglas de Calificación (Scoring)</label>
+                            <textarea value={configData.leadScoringRules} onChange={e => setConfigData({ ...configData, leadScoringRules: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" placeholder="Ej: +10 si pregunta precio, -5 si es estudiante..." />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -808,19 +1163,19 @@ export default function AdminPage() {
 
                     {isLoadingUsage ? (
                       <div className="flex items-center justify-center py-16">
-                        <Loader2 size={32} className="animate-spin text-purple-600" />
+                        <Loader2 size={32} className="animate-spin text-orange-600" />
                       </div>
                     ) : usageStats ? (
                       <>
                         {/* Costo Total Estimado */}
-                        <div className="bg-gradient-to-br from-purple-600 to-indigo-700 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                        <div className="bg-gradient-to-br from-orange-600 to-orange-700 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
                           <div className="absolute top-0 right-0 p-4 opacity-10">
                             <DollarSign size={100} />
                           </div>
                           <div className="relative z-10">
-                            <p className="text-purple-200 text-xs font-bold uppercase tracking-widest">Costo Total Estimado</p>
+                            <p className="text-orange-200 text-xs font-bold uppercase tracking-widest">Costo Total Estimado</p>
                             <p className="text-4xl font-bold mt-2">${usageStats.totalEstimatedCostUsd.toFixed(4)}</p>
-                            <p className="text-purple-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.5 y Meta WA API (LATAM).</p>
+                            <p className="text-orange-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.5 y Meta WA API (LATAM).</p>
                           </div>
                         </div>
 
