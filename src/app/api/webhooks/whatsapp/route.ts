@@ -120,11 +120,7 @@ export async function POST(req: NextRequest) {
         let token = project?.whatsappToken;
 
         if (!token) {
-          const adminClient = await prisma.client.findFirst({
-              where: { email: 'info@abitaai.com' },
-              include: { projects: true }
-          });
-          token = adminClient?.projects?.[0]?.whatsappToken || undefined;
+           console.error(`[Media Error] No hay token configurado para el proyecto o admin fallback removido por seguridad para PhoneID: ${metadataPhoneId}`);
         }
 
         if (token) {
@@ -166,18 +162,23 @@ export async function POST(req: NextRequest) {
 
     console.log(`Mensaje recibido de ${from} (${profileName || 'Unknown'}): ${safeText}`);
 
-    // 1. Procesar mensaje entrante (Lo guarda en BD y crea Chat/Lead si no existen)
-    const chatId = await simulateIncomingMessage(
-      from, 
-      safeText, 
-      profileName, 
-      metadataPhoneId, 
-      'whatsapp',
-      undefined,
-      finalMediaUrl,
-      finalMediaFilename,
-      finalMediaType
-    );
+    let chatId;
+    try {
+      chatId = await simulateIncomingMessage(
+        from, 
+        safeText, 
+        profileName, 
+        metadataPhoneId, 
+        'whatsapp',
+        undefined,
+        finalMediaUrl,
+        finalMediaFilename,
+        finalMediaType
+      );
+    } catch (simError: any) {
+      console.error('[Webhook] Error en simulateIncomingMessage (probablemente proyecto no encontrado/inactivo). Ignorando mensaje para evitar fugas:', simError);
+      return NextResponse.json({ status: 'success', detail: 'Ignorado por seguridad o falta de proyecto' });
+    }
 
     
     // 2. Obtener estado del chat (¿Bot activo?)
@@ -200,16 +201,9 @@ export async function POST(req: NextRequest) {
             let waCategory = 'SERVICE';
             
             // 5. Enviar mensaje REAL a WhatsApp vía Meta API
-            // Buscar credenciales globales si el proyecto no tiene
-            const adminClient = await prisma.client.findFirst({
-                where: { email: 'info@abitaai.com' },
-                include: { projects: true }
-            });
-            const masterToken = adminClient?.projects?.[0]?.whatsappToken;
-
             const phoneId = (chatDetails as any)?.lead?.project?.whatsappPhoneId;
             const projectToken = (chatDetails as any)?.lead?.project?.whatsappToken;
-            const token = projectToken || masterToken;
+            const token = projectToken;
 
             let waMessageId: string | undefined;
 

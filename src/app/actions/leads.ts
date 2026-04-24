@@ -48,6 +48,9 @@ export async function getLeads() {
 }
 
 export async function updateLeadAISummary(chatId: string, force: boolean = false) {
+  const project = await getCurrentProject();
+  if (!project) return null;
+
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
     include: {
@@ -56,7 +59,7 @@ export async function updateLeadAISummary(chatId: string, force: boolean = false
     },
   });
 
-  if (!chat || !chat.lead) return null;
+  if (!chat || !chat.lead || chat.lead.projectId !== project.id) return null;
 
   const userMessages = chat.messages.filter((m) => m.role === 'user');
   const count = userMessages.length;

@@ -106,6 +106,7 @@ export async function processCampaignLead(
   });
 
   if (!campaign || !campaign.csvData) throw new Error("Campaña no encontrada o sin datos");
+  if (campaign.projectId !== project.id) throw new Error("Acceso denegado");
   if (!project.whatsappPhoneId || !project.whatsappToken) throw new Error("Credenciales de WhatsApp faltantes");
 
   const leadsData = JSON.parse(campaign.csvData);
@@ -244,6 +245,12 @@ export async function processCampaignLead(
 }
 
 export async function finalizeCampaign(campaignId: string) {
+  const project = await getCurrentProject();
+  if (!project) throw new Error("Unauthenticated");
+  
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign || campaign.projectId !== project.id) throw new Error("Acceso denegado");
+
   await prisma.campaign.update({
     where: { id: campaignId },
     data: { status: 'COMPLETED' }
@@ -297,6 +304,12 @@ import { unstable_noStore as noStore } from 'next/cache';
 
 export async function fetchCampaignLogs(campaignId: string) {
   noStore();
+  const project = await getCurrentProject();
+  if (!project) return [];
+  
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign || campaign.projectId !== project.id) return [];
+
   return await prisma.campaignLog.findMany({
     where: { campaignId },
     orderBy: { createdAt: 'desc' }

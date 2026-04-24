@@ -48,6 +48,9 @@ export async function getActiveChats(_timestamp?: number) {
 
 export async function getChatMessages(chatId: string) {
   noStore();
+  const project = await getCurrentProject();
+  if (!project) return null;
+
   // 1. Obtener el chat base
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
@@ -57,6 +60,8 @@ export async function getChatMessages(chatId: string) {
       }
     }
   });
+
+  if (!chat || chat.lead.projectId !== project.id) return null;
 
   if (!chat) return null;
 
@@ -75,10 +80,15 @@ export async function getChatMessages(chatId: string) {
 // Versión paginada: carga solo los últimos `limit` mensajes de forma rápida
 export async function getChatMessagesPaginated(chatId: string, limit = 30) {
   noStore();
+  const project = await getCurrentProject();
+  if (!project) return null;
+
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
     include: { lead: { include: { project: true } } }
   });
+
+  if (!chat || chat.lead.projectId !== project.id) return null;
 
   if (!chat) return null;
 
@@ -104,6 +114,16 @@ export async function getChatMessagesPaginated(chatId: string, limit = 30) {
 // cursor = createdAt del mensaje más antiguo actualmente visible
 export async function loadMoreMessages(chatId: string, beforeDate: string, limit = 30) {
   noStore();
+  const project = await getCurrentProject();
+  if (!project) return [];
+
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: { lead: true }
+  });
+
+  if (!chat || chat.lead.projectId !== project.id) return [];
+
   const messages = await prisma.message.findMany({
     where: {
       chatId,
@@ -118,6 +138,11 @@ export async function loadMoreMessages(chatId: string, beforeDate: string, limit
 
 // Apaga o enciende la IA (Handover manual)
 export async function toggleBotActive(chatId: string, botActive: boolean) {
+  const project = await getCurrentProject();
+  if (!project) return;
+  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return;
+
   const chat = await prisma.chat.update({
     where: { id: chatId },
     data: { botActive },
@@ -135,6 +160,11 @@ export async function toggleBotActive(chatId: string, botActive: boolean) {
 
 // Apaga la IA automáticamente y marca como prioridad roja
 export async function requestHandoff(chatId: string) {
+  const project = await getCurrentProject();
+  if (!project) return;
+  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return;
+
   const chat = await prisma.chat.update({
     where: { id: chatId },
     data: { botActive: false },
@@ -340,6 +370,11 @@ export async function saveAssistantReply(
 // Guarda respuestas y acciones del Agente Humano en el frontend (bot desactivado)
 // Retorna { success, error } para que el UI muestre errores de envío al usuario
 export async function saveAgentMessage(chatId: string, text: string): Promise<{ success: boolean; error?: string }> {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, error: "No autorizado" };
+  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return { success: false, error: "No autorizado" };
+
   const chat = await prisma.chat.update({
     where: { id: chatId },
     data: { lastActiveAt: new Date() },
@@ -404,6 +439,11 @@ export async function sendAgentMedia(
   filename: string,
   caption?: string
 ): Promise<{ success: boolean; error?: string }> {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, error: "No autorizado" };
+  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return { success: false, error: "No autorizado" };
+
   const chat = await prisma.chat.update({
     where: { id: chatId },
     data: { lastActiveAt: new Date() },
@@ -462,6 +502,11 @@ export async function sendAgentMedia(
 
 // Archiva el chat de la bandeja (NO borra el lead, mensajes ni datos de métricas)
 export async function deleteChat(chatId: string) {
+  const project = await getCurrentProject();
+  if (!project) return;
+  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return;
+
   await prisma.chat.update({
     where: { id: chatId },
     data: { isArchived: true }
@@ -473,33 +518,62 @@ export async function deleteChat(chatId: string) {
 
 // Archiva múltiples chats
 export async function bulkArchiveChats(chatIds: string[]) {
-  await prisma.chat.updateMany({
-    where: { id: { in: chatIds } },
-    data: { isArchived: true }
+  const project = await getCurrentProject();
+  if (!project || chatIds.length === 0) return;
+
+  const validChats = await prisma.chat.findMany({
+    where: { id: { in: chatIds }, lead: { projectId: project.id } },
+    select: { id: true }
   });
+  const validIds = validChats.map(c => c.id);
+
+  if (validIds.length > 0) {
+    await prisma.chat.updateMany({
+      where: { id: { in: validIds } },
+      data: { isArchived: true }
+    });
+  }
   revalidatePath('/');
 }
 
 // Desactiva la IA SOLO en chats donde actualmente está activa
 export async function bulkDisableBot(chatIds: string[]) {
-  await prisma.chat.updateMany({
-    where: { id: { in: chatIds }, botActive: true },
-    data: { botActive: false }
+  const project = await getCurrentProject();
+  if (!project || chatIds.length === 0) return;
+
+  const validChats = await prisma.chat.findMany({
+    where: { id: { in: chatIds }, lead: { projectId: project.id } },
+    select: { id: true }
   });
+  const validIds = validChats.map(c => c.id);
+
+  if (validIds.length > 0) {
+    await prisma.chat.updateMany({
+      where: { id: { in: validIds }, botActive: true },
+      data: { botActive: false }
+    });
+  }
 }
 
 // Activa la IA en todos los chats seleccionados
 export async function bulkEnableBot(chatIds: string[]) {
-  await prisma.chat.updateMany({
-    where: { id: { in: chatIds }, botActive: false },
-    data: { botActive: true }
+  const project = await getCurrentProject();
+  if (!project || chatIds.length === 0) return;
+
+  const chats = await prisma.chat.findMany({
+    where: { id: { in: chatIds }, lead: { projectId: project.id } },
+    select: { id: true, leadId: true }
   });
+  const validIds = chats.map(c => c.id);
+
+  if (validIds.length > 0) {
+    await prisma.chat.updateMany({
+      where: { id: { in: validIds }, botActive: false },
+      data: { botActive: true }
+    });
+  }
   
   // También reiniciamos los leads a PENDING
-  const chats = await prisma.chat.findMany({
-    where: { id: { in: chatIds } },
-    select: { leadId: true }
-  });
 
   const leadIds = chats.map(c => c.leadId).filter(Boolean) as string[];
   if (leadIds.length > 0) {

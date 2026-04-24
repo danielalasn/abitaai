@@ -19,6 +19,11 @@ export async function getUnansweredQuestions() {
 }
 
 export async function resolveQuestion(id: string) {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, message: 'Unauthenticated' };
+  const question = await prisma.unansweredQuestion.findUnique({ where: { id } });
+  if (!question || question.projectId !== project.id) return { success: false, message: 'Acceso denegado' };
+
   await prisma.unansweredQuestion.update({
     where: { id },
     data: { resolved: true }
@@ -28,6 +33,11 @@ export async function resolveQuestion(id: string) {
 }
 
 export async function deleteQuestion(id: string) {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, message: 'Unauthenticated' };
+  const question = await prisma.unansweredQuestion.findUnique({ where: { id } });
+  if (!question || question.projectId !== project.id) return { success: false, message: 'Acceso denegado' };
+
   await prisma.unansweredQuestion.delete({
     where: { id }
   });
@@ -36,11 +46,14 @@ export async function deleteQuestion(id: string) {
 }
 
 export async function answerAndTrain(id: string, answer: string) {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, message: 'Unauthenticated' };
+
   const questionRecord = await prisma.unansweredQuestion.findUnique({
     where: { id }
   });
 
-  if (!questionRecord) return { success: false, message: 'Pregunta no encontrada' };
+  if (!questionRecord || questionRecord.projectId !== project.id) return { success: false, message: 'Pregunta no encontrada o acceso denegado' };
 
   // Find the agent that couldn't answer (or fall back to the first agent)
   let agent = null;
