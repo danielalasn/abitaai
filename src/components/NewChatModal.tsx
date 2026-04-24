@@ -16,6 +16,7 @@ type MetaTemplate = {
   name: string;
   language: string;
   components: any[];
+  category: string;
 };
 
 export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) {
@@ -109,6 +110,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
         selectedTemplate.language,
         variables,
         bodyText,
+        selectedTemplate.category,
         headerImageUrl,
         botActive,
         leadName

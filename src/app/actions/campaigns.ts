@@ -50,6 +50,7 @@ export async function launchCampaignAction(
   languageCode: string,
   variableMapping: Record<string, string>, // { "1": "colCSV", "2": "colCSV2" }
   leadsData: any[],
+  templateCategory: string, // MARKETING o UTILITY
   headerUrl?: string, // Nuevo: URL de imagen o nombre de columna CSV
   botActive: boolean = true
 ) {
@@ -67,6 +68,7 @@ export async function launchCampaignAction(
       leadCount: leadsData.length,
       csvData: JSON.stringify(leadsData),
       templateName,
+      templateCategory,
       variableMapping: JSON.stringify(variableMapping),
     }
   });
@@ -187,7 +189,15 @@ export async function processCampaignLead(
       // Pequeño delay extra para simular latencia de red
       await new Promise(r => setTimeout(r, 100));
     } else {
-      waResult = await sendWhatsAppTemplate(cleanPhone, templateName!, languageCode, components, project.whatsappPhoneId, project.whatsappToken);
+      waResult = await sendWhatsAppTemplate(
+        cleanPhone, 
+        templateName!, 
+        languageCode, 
+        components, 
+        project.whatsappPhoneId, 
+        project.whatsappToken,
+        (campaign.templateCategory as any) || 'MARKETING'
+      );
     }
 
     if (!waResult.success) {

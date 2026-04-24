@@ -14,7 +14,7 @@ import { uploadImageAction } from '@/app/actions/storage';
 // ──────────────────────────────────────────────
 type TemplateParam = { type: string; text?: string };
 type TemplateComponent = { type: string; parameters?: TemplateParam[]; text?: string; buttons?: any[] };
-type MetaTemplate = { name: string; language: string; components: TemplateComponent[] };
+type MetaTemplate = { name: string; language: string; components: TemplateComponent[]; category: string };
 
 // Extract {{n}} variables from a template's body text
 function extractBodyVars(template: MetaTemplate): string[] {
@@ -193,6 +193,7 @@ export default function CampaignsPage() {
         selectedTemplate.language,
         variableMapping,
         parsedLeads,
+        selectedTemplate.category,
         headerUrl,
         isBotActive
       );

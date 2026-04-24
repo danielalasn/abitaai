@@ -392,6 +392,7 @@ export async function startIndividualChatAction(
   languageCode: string,
   variables: Record<string, string>,
   templateText: string,
+  templateCategory: string, // MARKETING o UTILITY
   headerImageUrl?: string,
   botActive: boolean = true,
   leadName?: string
@@ -467,7 +468,8 @@ export async function startIndividualChatAction(
       languageCode,
       components as any,
       project.whatsappPhoneId!,
-      project.whatsappToken!
+      project.whatsappToken!,
+      (templateCategory as any) || 'MARKETING'
     );
 
     // Si el envío falló, retornar error amigable
