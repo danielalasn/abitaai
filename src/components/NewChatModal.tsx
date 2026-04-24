@@ -10,6 +10,8 @@ interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (chatId: string) => void;
+  initialPhone?: string;
+  initialLeadName?: string;
 }
 
 type MetaTemplate = {
@@ -19,10 +21,10 @@ type MetaTemplate = {
   category: string;
 };
 
-export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) {
+export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initialLeadName }: NewChatModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [phone, setPhone] = useState('');
-  const [leadName, setLeadName] = useState('');
+  const [phone, setPhone] = useState(initialPhone || '');
+  const [leadName, setLeadName] = useState(initialLeadName || '');
   const [templates, setTemplates] = useState<MetaTemplate[]>([]);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<MetaTemplate | null>(null);
@@ -37,16 +39,16 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
   useEffect(() => {
     if (isOpen) {
       loadTemplates();
-      setStep(1);
-      setPhone('');
-      setLeadName('');
+      setPhone(initialPhone || '');
+      setLeadName(initialLeadName || '');
+      setStep(initialPhone ? 2 : 1);
       setSelectedTemplate(null);
       setVariables({});
       setHeaderImageUrl('');
       setBotActive(true);
       setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialPhone, initialLeadName]);
 
   const loadTemplates = async () => {
     setIsLoadingTemplates(true);
@@ -200,9 +202,12 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
           {step === 2 && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
               <div className="flex items-center justify-between sticky top-0 bg-[#E9E4D8] dark:bg-[#1A1714] pb-2 z-10">
-                <button onClick={() => setStep(1)} className="text-xs text-emerald-600 font-bold hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg transition-colors">
-                  ← Volver
-                </button>
+                {!initialPhone && (
+                  <button onClick={() => setStep(1)} className="text-xs text-emerald-600 font-bold hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg transition-colors">
+                    ← Volver
+                  </button>
+                )}
+                {initialPhone && <div></div>}
                 <div className="px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-[10px] font-bold text-zinc-500 tracking-wider">
                   TEL: {phone}
                 </div>

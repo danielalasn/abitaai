@@ -16,6 +16,14 @@ export interface WaSendResult {
   raw: any
 }
 
+// Detecta el tipo de media de WhatsApp según MIME type
+export function getWaMediaType(mimeType: string): 'image' | 'document' | 'video' | 'audio' {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
 export function translateWaError(error: any): string {
   if (!error) return 'Error desconocido de conexión';
   
@@ -53,21 +61,25 @@ export async function sendWhatsAppMessage(
   }
 
   const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+  const cleanTo = to.replace(/[^0-9]/g, '');
 
   try {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: cleanTo,
+      type: 'text',
+      text: { body: text },
+    };
+    console.log('[WA] Sending text to:', cleanTo);
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to,
-        type: 'text',
-        text: { body: text },
-      }),
+      body: JSON.stringify(payload),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -95,6 +107,71 @@ export async function sendWhatsAppMessage(
     return { success: false, messageId: null, category: null, raw: null }
   }
 }
+
+// ──────────────────────────────────────────────
+// Send a MEDIA message (image, document, video, audio)
+// mediaUrl must be a publicly accessible URL
+// ──────────────────────────────────────────────
+export type WaMediaType = 'image' | 'document' | 'video' | 'audio'
+
+export async function sendWhatsAppMedia(
+  to: string,
+  mediaUrl: string,
+  mediaType: WaMediaType,
+  phoneNumberId: string,
+  accessToken: string,
+  caption?: string,
+  filename?: string
+): Promise<WaSendResult> {
+  if (!accessToken || !phoneNumberId) {
+    return { success: false, messageId: null, category: null, raw: null }
+  }
+
+  const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+  const cleanTo = to.replace(/[^0-9]/g, '');
+
+  const mediaPayload: any = { link: mediaUrl }
+  if (caption && (mediaType === 'image' || mediaType === 'video')) mediaPayload.caption = caption
+  if (filename && mediaType === 'document') mediaPayload.filename = filename
+
+  try {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: cleanTo,
+      type: mediaType,
+      [mediaType]: mediaPayload,
+    };
+    console.log('[WA] Sending media to:', cleanTo, 'Type:', mediaType, 'URL:', mediaUrl);
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      console.error('[WA] MEDIA ERROR:', data.error)
+      return {
+        success: false,
+        messageId: null,
+        category: null,
+        friendlyError: translateWaError(data.error),
+        raw: data,
+      }
+    }
+    const msgId = data.messages?.[0]?.id || null
+    console.log('[WA] Media enviado. ID:', msgId)
+    return { success: true, messageId: msgId, category: 'SERVICE', raw: data }
+  } catch (err) {
+    console.error('[WA] sendMedia network error:', err)
+    return { success: false, messageId: null, category: null, raw: null }
+  }
+}
+
 
 // ──────────────────────────────────────────────
 // Send a TEMPLATE message (required for campaigns / >24h sessions)
@@ -126,11 +203,12 @@ export async function sendWhatsAppTemplate(
   }
 
   const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+  const cleanTo = to.replace(/[^0-9]/g, '');
 
   const body = {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
-    to,
+    to: cleanTo,
     type: 'template',
     template: {
       name: templateName,

@@ -18,6 +18,7 @@ export async function getProjectConfig() {
     whatsappToken: project.whatsappToken || '',
     whatsappPhoneId: project.whatsappPhoneId || '',
     whatsappBusinessId: project.whatsappBusinessId || '',
+    defaultBotActive: project.defaultBotActive,
     agents: project.agents || [],
     client: project.client,
   };
@@ -32,6 +33,15 @@ export async function saveProjectWhatsApp(
   await prisma.project.update({
     where: { id: projectId },
     data: { whatsappToken, whatsappPhoneId, whatsappBusinessId }
+  });
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function updateDefaultBotActive(projectId: string, defaultBotActive: boolean) {
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { defaultBotActive }
   });
   revalidatePath('/settings');
   return { success: true };

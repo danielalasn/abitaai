@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { sendWhatsAppMessage, sendWhatsAppTemplate } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, sendWhatsAppTemplate, sendWhatsAppMedia, WaMediaType } from '@/lib/whatsapp';
 import { getCurrentProject } from '@/lib/auth-server';
 import { updateLeadAISummary } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
@@ -25,22 +25,17 @@ export async function getActiveChats(_timestamp?: number) {
 
   if (chats.length === 0) return [];
 
-  // 2. Obtener los mensajes de estos chats en UNA SOLA consulta (Eficiente)
-  const chatIds = chats.map(c => c.id);
-  const allMessages = await prisma.message.findMany({
-    where: { chatId: { in: chatIds } },
-    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }]
-  });
-
-  // 3. Mapear el último mensaje a cada chat en memoria
-  const chatsWithMessages = chats.map(chat => {
-    // El primer mensaje que coincida con el chatId será el más reciente por el orderBy
-    const lastMessage = allMessages.find(m => m.chatId === chat.id);
+  // 2. Obtener el último mensaje de cada chat de forma eficiente
+  const chatsWithMessages = await Promise.all(chats.map(async chat => {
+    const lastMessage = await prisma.message.findFirst({
+      where: { chatId: chat.id },
+      orderBy: { createdAt: 'desc' }
+    });
     return {
       ...chat,
       messages: lastMessage ? [lastMessage] : []
     };
-  });
+  }));
 
   return chatsWithMessages;
 }
@@ -69,6 +64,50 @@ export async function getChatMessages(chatId: string) {
     ...chat,
     messages
   };
+}
+
+// Versión paginada: carga solo los últimos `limit` mensajes de forma rápida
+export async function getChatMessagesPaginated(chatId: string, limit = 30) {
+  noStore();
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: { lead: { include: { project: true } } }
+  });
+
+  if (!chat) return null;
+
+  const [total, messages] = await Promise.all([
+    prisma.message.count({ where: { chatId } }),
+    prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    })
+  ]);
+
+  // Devolvemos en orden cronológico (asc) para renderizar correctamente
+  return {
+    ...chat,
+    messages: messages.reverse(),
+    totalMessages: total,
+    hasMore: total > limit
+  };
+}
+
+// Carga mensajes más antiguos (infinite scroll hacia arriba)
+// cursor = createdAt del mensaje más antiguo actualmente visible
+export async function loadMoreMessages(chatId: string, beforeDate: string, limit = 30) {
+  noStore();
+  const messages = await prisma.message.findMany({
+    where: {
+      chatId,
+      createdAt: { lt: new Date(beforeDate) }
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit
+  });
+
+  return messages.reverse();
 }
 
 // Apaga o enciende la IA (Handover manual)
@@ -106,8 +145,18 @@ export async function requestHandoff(chatId: string) {
   revalidatePath('/');
 }
 
-// Simula la entrada de un mensaje
-export async function simulateIncomingMessage(phone: string, text: string, name?: string, phoneId?: string, channel: string = 'whatsapp', fallbackProjectId?: string) {
+// Simula la recepción de un mensaje a través del webhook guardándolo en BD (Chat + Mensajes)
+export async function simulateIncomingMessage(
+  phone: string, 
+  text: string, 
+  name?: string, 
+  phoneId?: string, 
+  channel: 'whatsapp' | 'instagram' = 'whatsapp',
+  fallbackProjectId?: string,
+  mediaUrl?: string,
+  mediaFilename?: string,
+  mediaType?: string
+) {
   let project: any = null;
 
   if (phoneId) {
@@ -176,16 +225,26 @@ export async function simulateIncomingMessage(phone: string, text: string, name?
   let chat = currentLead.chat;
   if (!chat) {
     chat = await prisma.chat.create({
-      data: { leadId: currentLead.id, channel }
+      data: { 
+        leadId: currentLead.id, 
+        channel,
+        botActive: project.defaultBotActive ?? true
+      }
     });
   }
 
   // Guardar mensaje entrante
+  const isImage = mediaType === 'image';
+  
   await prisma.message.create({
     data: {
       chatId: chat.id,
       role: 'user',
-      content: text
+      content: text,
+      imageUrl: isImage && mediaUrl ? mediaUrl : null,
+      mediaUrl,
+      mediaFilename,
+      mediaType
     }
   });
 
@@ -330,6 +389,70 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
   // Guardar en BD local — el mensaje se guarda siempre para que quede en el historial
   await prisma.message.create({
     data: { chatId, role: 'agent', content: text, waCategory, wamid }
+  });
+
+  revalidatePath('/');
+  return { success: waSendSuccess, error: waSendError };
+}
+
+// Envia un archivo multimedia (imagen, PDF, video) como agente humano
+export async function sendAgentMedia(
+  chatId: string,
+  mediaUrl: string,
+  mediaType: WaMediaType,
+  filename: string,
+  caption?: string
+): Promise<{ success: boolean; error?: string }> {
+  const chat = await prisma.chat.update({
+    where: { id: chatId },
+    data: { lastActiveAt: new Date() },
+    include: { lead: { include: { project: true } } }
+  });
+
+  let waSendSuccess = true;
+  let waSendError: string | undefined;
+  let wamid: string | null = null;
+  let waCategory: string | null = null;
+
+  if (chat?.leadId) {
+    await prisma.lead.update({
+      where: { id: chat.leadId },
+      data: { status: 'IN_PROGRESS' }
+    });
+
+    const phone = chat.lead.phone;
+    const phoneId = chat.lead.project?.whatsappPhoneId;
+    const token = chat.lead.project?.whatsappToken;
+
+    if (phone && phoneId && token) {
+      const result = await sendWhatsAppMedia(
+        phone, mediaUrl, mediaType, phoneId, token, caption, filename
+      );
+      waSendSuccess = result.success;
+      waCategory = result.category;
+      wamid = result.messageId;
+      if (!result.success) waSendError = result.friendlyError || 'Error al enviar media';
+    } else {
+      waSendSuccess = false;
+      waSendError = 'Configura el Phone Number ID y el Token en Ajustes.';
+    }
+  }
+
+  // Determinar si es imagen para mostrarla en el chat
+  const isImage = mediaType === 'image';
+
+  await prisma.message.create({
+    data: {
+      chatId,
+      role: 'agent',
+      content: caption || filename,
+      imageUrl: isImage ? mediaUrl : null,
+      mediaUrl,
+      mediaFilename: filename,
+      mediaType,
+      waCategory,
+      wamid
+    }
   });
 
   revalidatePath('/');

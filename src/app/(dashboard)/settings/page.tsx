@@ -45,6 +45,7 @@ export default function SettingsPage() {
   const [showToken, setShowToken] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [defaultBotActive, setDefaultBotActive] = useState(true)
 
   // Agent list
   const [agents, setAgents] = useState<AgentSummary[]>([])
@@ -75,7 +76,7 @@ export default function SettingsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   // Profile management
-  const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'connections'>(isAdmin ? 'agent' : 'profile')
+  const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'connections' | 'botConfig'>(isAdmin ? 'agent' : 'profile')
   const [userName, setUserName] = useState("")
   const [userEmail, setUserEmail] = useState("")
   const [oldPassword, setOldPassword] = useState("")
@@ -129,6 +130,7 @@ export default function SettingsPage() {
       setWhatsappToken(data.whatsappToken)
       setWhatsappPhoneId(data.whatsappPhoneId)
       setWhatsappBusinessId(data.whatsappBusinessId)
+      setDefaultBotActive(data.defaultBotActive ?? true)
       setAgents(data.agents as AgentSummary[])
       
       // Load user profile from data
@@ -238,6 +240,19 @@ export default function SettingsPage() {
     setIsSavingWA(false)
   }
 
+  const handleSaveBotConfig = async () => {
+    setIsSaving(true); setSaveStatus(null)
+    try {
+      const { updateDefaultBotActive } = await import('@/app/actions/settings')
+      await updateDefaultBotActive(projectId, defaultBotActive)
+      setSaveStatus('success'); setTimeout(() => setSaveStatus(null), 3000)
+    } catch (e: any) {
+      alert(e.message)
+      setSaveStatus('error')
+    }
+    setIsSaving(false)
+  }
+
   const handleCreateAgent = async () => {
     if (!newAgentName.trim()) return
     try {
@@ -326,6 +341,12 @@ export default function SettingsPage() {
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'connections' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
               >
                 <Globe size={18} /> Conexiones
+              </button>
+              <button
+                onClick={() => { setActiveSection('botConfig'); setSelectedAgentId(null); }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'botConfig' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
+              >
+                <Bot size={18} /> Asistente IA
               </button>
             </div>
 
@@ -570,6 +591,63 @@ export default function SettingsPage() {
                     >
                       {isUpdatingPassword ? <Loader2 size={16} className="animate-spin" /> : passwordStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Listo!</> : 'Actualizar Pass'}
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* BOT CONFIG SECTION */}
+          {activeSection === 'botConfig' && (
+            <div className="h-full flex flex-col p-6 lg:p-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <header className="mb-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
+                  <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Configuración</span>
+                </div>
+                <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Asistente IA</h2>
+              </header>
+
+              <div className="grid grid-cols-1 gap-6">
+                <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none transition-all duration-500">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
+                      <Bot className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Comportamiento del Bot</h3>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Controla cómo interactúa la IA con los nuevos clientes.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                      <div className="flex flex-col gap-1 pr-4">
+                        <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Responder automáticamente</span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                          Si activas esta opción, el bot contestará a los clientes que te escriban por primera vez. Si la apagas, todos los mensajes nuevos requerirán atención humana y la IA no enviará respuestas automáticas.
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setDefaultBotActive(!defaultBotActive)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#F36A2D] focus:ring-offset-2 ${defaultBotActive ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                        role="switch"
+                        aria-checked={defaultBotActive}
+                      >
+                        <span className="sr-only">Habilitar bot por defecto</span>
+                        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${defaultBotActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800/40">
+                      <button 
+                        onClick={handleSaveBotConfig}
+                        disabled={isSaving}
+                        className="px-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-md hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {isSaving ? <Loader2 size={16} className="animate-spin" /> : saveStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Hecho!</> : 'Guardar Cambios'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

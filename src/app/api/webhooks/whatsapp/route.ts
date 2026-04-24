@@ -3,6 +3,7 @@ import { simulateIncomingMessage, saveAssistantReply, getChatMessages } from '@/
 import { sendTestMessage } from '@/app/actions/chat';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { prisma } from '@/lib/prisma';
+import { downloadAndUploadMetaMedia } from '@/app/actions/storage';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -99,18 +100,85 @@ export async function POST(req: NextRequest) {
     }
 
     const from = message.from; // Número del cliente
-    const text = message.text?.body; // Texto del mensaje
+    let text = message.text?.body; // Texto del mensaje
     const profileName = body.entry?.[0]?.changes?.[0]?.value?.contacts?.[0]?.profile?.name;
 
-    if (!text) {
-        return NextResponse.json({ status: 'ok', detail: 'Empty text' });
+    // Procesamiento de Media (adjuntos)
+    let finalMediaUrl: string | undefined;
+    let finalMediaFilename: string | undefined;
+    let finalMediaType: string | undefined;
+
+    const mediaTypes = ['image', 'document', 'audio', 'video', 'sticker'];
+    if (mediaTypes.includes(message.type)) {
+      const mediaObj = message[message.type];
+      const mediaId = mediaObj?.id;
+      const mimeType = mediaObj?.mime_type;
+      
+      if (mediaId) {
+        // Obtenemos token para descargar (prioridad: token del proyecto -> master token)
+        const project = metadataPhoneId ? await prisma.project.findFirst({ where: { whatsappPhoneId: metadataPhoneId } }) : null;
+        let token = project?.whatsappToken;
+
+        if (!token) {
+          const adminClient = await prisma.client.findFirst({
+              where: { email: 'info@abitaai.com' },
+              include: { projects: true }
+          });
+          token = adminClient?.projects?.[0]?.whatsappToken || undefined;
+        }
+
+        if (token) {
+           console.log(`[Media] Preparando descarga del mediaId=${mediaId} con token ${token.substring(0, 10)}...`);
+           const fileData = await downloadAndUploadMetaMedia(
+              mediaId, 
+              token, 
+              mimeType, 
+              mediaObj?.filename || `adjunto_${message.type}`
+           );
+           
+           if (fileData) {
+              console.log(`[Media] ¡Cargado con éxito en Supabase! URL: ${fileData.url}`);
+              finalMediaUrl = fileData.url;
+              finalMediaType = fileData.mediaType;
+              finalMediaFilename = fileData.filename;
+           } else {
+              console.error(`[Media Error] No se pudo descargar el archivo mediaId=${mediaId}. Revisar permisos del Token o de Meta App.`);
+              text = '[Error descargando archivo adjunto de WhatsApp]';
+           }
+        } else {
+           console.error(`[Media Error] No hay token válido para el proyecto ${metadataPhoneId}`);
+           text = '[Error de Token: No se pudo descargar el adjunto]';
+        }
+      }
+      
+      // Si el media incluye un caption (ej. imagen con texto adjunto)
+      if (mediaObj?.caption) {
+         text = mediaObj.caption;
+      }
     }
 
-    console.log(`Mensaje recibido de ${from} (${profileName || 'Unknown'}): ${text}`);
+    if (!text && !finalMediaUrl) {
+        console.log(`[Webhook Warning] Mensaje vacío y sin media procesada. Type: ${message.type}. Ignorando.`);
+        return NextResponse.json({ status: 'ok', detail: 'Empty text and no media' });
+    }
+
+    const safeText = text || (finalMediaType === 'image' ? '📷 Imagen' : finalMediaType === 'document' ? '📄 Documento' : finalMediaType === 'video' ? '🎥 Video' : finalMediaType === 'audio' ? '🎵 Audio' : '📎 Archivo adjunto');
+
+    console.log(`Mensaje recibido de ${from} (${profileName || 'Unknown'}): ${safeText}`);
 
     // 1. Procesar mensaje entrante (Lo guarda en BD y crea Chat/Lead si no existen)
-    // Pasamos el profileName si es un lead nuevo y el metadataPhoneId para saber a qué proyecto pertenece
-    const chatId = await simulateIncomingMessage(from, text, profileName, metadataPhoneId, 'whatsapp');
+    const chatId = await simulateIncomingMessage(
+      from, 
+      safeText, 
+      profileName, 
+      metadataPhoneId, 
+      'whatsapp',
+      undefined,
+      finalMediaUrl,
+      finalMediaFilename,
+      finalMediaType
+    );
+
     
     // 2. Obtener estado del chat (¿Bot activo?)
     const chatDetails = await getChatMessages(chatId);

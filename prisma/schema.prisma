@@ -59,6 +59,9 @@ model Project {
   whatsappToken      String?
   whatsappPhoneId    String?
   whatsappBusinessId String?
+  
+  // Opción general para deshabilitar el bot por defecto para nuevos leads
+  defaultBotActive   Boolean  @default(true)
 
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   botConfig BotConfig?
@@ -137,6 +140,9 @@ model Message {
   scoreBump    Int?     // Puntos sumados/restados en este mensaje
   scoreReason  String?  // Razón de la calificación (ej: "Preguntó por precios")
   imageUrl     String?  // URL de imagen adjunta (ej: de una campaña)
+  mediaUrl     String?  // URL de cualquier archivo adjunto
+  mediaFilename String? // Nombre original del archivo
+  mediaType    String?  // image, document, video, audio
   createdAt    DateTime @default(now())
 
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)

@@ -3,11 +3,14 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef } from "react";
-import { 
-  Bot, User, Send, Loader2, Phone, Hash, AlertCircle, TrendingUp, Clock, 
-  PanelLeftClose, PanelLeftOpen, Search, Filter, Mail, Trash2, Archive, 
-  CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck
+import {
+  Bot, User, Send, Loader2, Phone, Hash, AlertCircle, TrendingUp, Clock,
+  PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
+  CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
+  Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw
 } from "lucide-react";
+import nextDynamic from 'next/dynamic';
+const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
 
 const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -16,7 +19,15 @@ const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: stri
     <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
   </svg>
 );
-import { getActiveChats, getChatMessages, toggleBotActive, requestHandoff, simulateIncomingMessage, saveAssistantReply, saveAgentMessage, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
+
+const WaIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+  </svg>
+);
+import { getActiveChats, getChatMessages, getChatMessagesPaginated, loadMoreMessages, toggleBotActive, requestHandoff, simulateIncomingMessage, saveAssistantReply, saveAgentMessage, sendAgentMedia, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
+import { updateLeadAISummary } from "@/app/actions/leads";
+import { uploadFileAction } from "@/app/actions/storage";
 import { sendTestMessage } from "@/app/actions/chat";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -111,20 +122,36 @@ export default function InboxPage() {
   // Cache de chats abiertos para cambio instantáneo
   const [chatsCache, setChatsCache] = useState<Record<string, any>>({});
 
+  // Paginación de mensajes
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+
   // States para los dos inputs mockeados
   const [clientInput, setClientInput] = useState('');
   const [agentInput, setAgentInput] = useState('');
+
+  // Media attachment state
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFilePreview, setPendingFilePreview] = useState<string | null>(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   // States para filtros de inbox
   const [filterHeat, setFilterHeat] = useState<'ALL' | 'FRIO' | 'TIBIO' | 'CALIENTE'>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'BOT' | 'NEEDS_AGENT' | 'AGENT' | 'UNANSWERED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [isRefreshingSummary, setIsRefreshingSummary] = useState(false);
   const [isInboxSidebarOpen, setIsInboxSidebarOpen] = useState(true);
+  const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(true);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [readMessageIds, setReadMessageIds] = useState<Record<string, string>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -139,6 +166,17 @@ export default function InboxPage() {
   useEffect(() => {
     activeChatIdRef.current = activeChat?.id || null;
   }, [activeChat?.id]);
+
+  // Cerrar emoji picker al hacer clic fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Lee los filtros de la URL al cargar la página si vienen desde el Analytics Dashboard
   useEffect(() => {
@@ -156,13 +194,13 @@ export default function InboxPage() {
   const scrollToBottom = (force = false) => {
     const currentMessages = activeChat?.messages || [];
     const currentId = activeChat?.id || null;
+    const isNewChat = currentId !== lastActiveChatId.current;
+    const isNewMessage = currentMessages.length > lastMessageCount.current;
 
-    // Scroll if: 
-    // 1. Forced 
-    // 2. Switched chat 
-    // 3. New message arrived
-    if (force || currentId !== lastActiveChatId.current || currentMessages.length > lastMessageCount.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (force || isNewChat || isNewMessage) {
+      // Use 'auto' (instant) for new chats to avoid visual jumps, 'smooth' for incoming messages
+      messagesEndRef.current?.scrollIntoView({ behavior: isNewChat ? "auto" : "smooth" });
+
       lastMessageCount.current = currentMessages.length;
       lastActiveChatId.current = currentId;
     }
@@ -179,7 +217,7 @@ export default function InboxPage() {
       // Buscamos si hay CUALQUIER llave en pendingOptimistic que contenga este ID
       const pendingKeys = Array.from(pendingOptimistic.current);
       const isPending = pendingKeys.some(key => key.includes(newChat.id));
-      
+
       if (isPending) {
         // Si está pendiente, forzamos el valor que está actualmente en la pantalla (prev)
         const chatEnPantalla = prev.find(p => p.id === newChat.id);
@@ -243,14 +281,29 @@ export default function InboxPage() {
         // Sincronizar lista lateral (Bypass cache con timestamp)
         const latestChats = await getActiveChats(Date.now());
         if (cancelled) return;
-        
+
         const currentId = activeChatIdRef.current;
         const hasOptimistic = pendingOptimistic.current.size > 0;
 
         if (currentId && !hasOptimistic) {
-          const refreshed = await getChatMessages(currentId);
+          const refreshed = await getChatMessagesPaginated(currentId, 30);
           if (cancelled) return;
-          setActiveChat(refreshed);
+          setActiveChat((prev: any) => {
+            if (!prev || prev.id !== currentId) return prev;
+            const newMsgsFromRefreshed = refreshed?.messages || [];
+
+            // Remove optimistic messages that have a counterpart in the refreshed list
+            const currentMsgs = (prev.messages || []).filter((msg: any) => {
+              if (!msg.id.startsWith('temp-')) return true;
+              return !newMsgsFromRefreshed.some((nm: any) => nm.content === msg.content && nm.role === msg.role);
+            });
+
+            const existingIds = new Set(currentMsgs.map((m: any) => m.id));
+            const distinctNewMsgs = newMsgsFromRefreshed.filter((m: any) => !existingIds.has(m.id));
+
+            const merged = [...currentMsgs, ...distinctNewMsgs].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            return { ...prev, messages: merged };
+          });
           setChatsCache(prev => ({ ...prev, [currentId]: refreshed }));
         }
 
@@ -259,12 +312,12 @@ export default function InboxPage() {
           latestChats.forEach(newChat => {
             const oldChat = prev.find(p => p.id === newChat.id);
             const lastMsg = newChat.messages?.[0];
-            
+
             // Si el bot está apagado Y el mensaje es nuevo Y es del usuario Y NO ha sido notificado
             if (oldChat && !newChat.botActive && lastMsg && lastMsg.id !== oldChat.messages?.[0]?.id && lastMsg.role === 'user' && !notifiedMessageIds.current.has(lastMsg.id)) {
-              
+
               notifiedMessageIds.current.add(lastMsg.id); // Marcar como notificado
-              
+
               const toast = {
                 id: Date.now() + Math.random(),
                 name: newChat.lead?.name || 'Cliente',
@@ -272,15 +325,15 @@ export default function InboxPage() {
                 chatId: newChat.id
               };
               setNotifications(n => [...n, toast]);
-              audioRef.current?.play().catch(() => {});
-              
+              audioRef.current?.play().catch(() => { });
+
               // Auto-eliminar notificación después de 10 segundos
               setTimeout(() => {
                 setNotifications(n => n.filter(item => item.id !== toast.id));
               }, 10000);
             }
           });
-          
+
           // FORZAMOS LOS DATOS DEL SERVIDOR SI NO HAY OPTIMISMO PENDIENTE
           if (pendingOptimistic.current.size === 0) {
             return latestChats;
@@ -306,7 +359,7 @@ export default function InboxPage() {
     };
   }, []);
 
-  // Cargar detalle de un chat con CACHE para respuesta instantánea
+  // Cargar detalle de un chat con CACHE para respuesta instantánea (paginado)
   const loadChatDetails = async (chatId: string) => {
     // 0. Registrar el ID solicitado inmediatamente para evitar condiciones de carrera
     lastRequestedId.current = chatId;
@@ -315,21 +368,20 @@ export default function InboxPage() {
     // 1. Cambio instantáneo si ya tenemos los datos en cache
     if (chatsCache[chatId]) {
       setActiveChat(chatsCache[chatId]);
-      // Si ya hay cache, no activamos el loader "full" pero el fetch va en paralelo
+      setHasMoreMessages(chatsCache[chatId]?.hasMore ?? false);
     } else {
-      // Solo mostramos el loader principal si NO hay cache previo
       setIsChatLoading(true);
     }
 
     try {
-      const data = await getChatMessages(chatId);
-      
-      // 2. IMPORTANTE: Solo actualizamos el estado si el usuario NO ha cambiado de chat mientras cargaba
+      // Usa la versión paginada: solo los últimos 30 mensajes
+      const data = await getChatMessagesPaginated(chatId, 30);
+
       if (lastRequestedId.current === chatId) {
         setChatsCache(prev => ({ ...prev, [chatId]: data }));
         setActiveChat(data);
-        
-        // Marcar el último mensaje como leído al entrar
+        setHasMoreMessages(data?.hasMore ?? false);
+
         const lastId = data?.messages?.[data.messages.length - 1]?.id;
         if (lastId) {
           setReadMessageIds(prev => ({ ...prev, [chatId]: lastId }));
@@ -338,12 +390,49 @@ export default function InboxPage() {
     } catch (error) {
       console.error("Error al cargar chat:", error);
     } finally {
-      // Solo quitamos el loader si seguimos en este chat
       if (lastRequestedId.current === chatId) {
         setIsChatLoading(false);
       }
     }
   };
+
+  // Carga mensajes anteriores al hacer scroll hacia arriba
+  const handleLoadMoreMessages = async () => {
+    if (!activeChat || isLoadingMore || !hasMoreMessages) return;
+    const firstMsg = activeChat.messages?.[0];
+    if (!firstMsg) return;
+
+    setIsLoadingMore(true);
+    try {
+      const older = await loadMoreMessages(activeChat.id, firstMsg.createdAt, 30);
+      if (older && older.length > 0) {
+        const container = messagesScrollRef.current;
+        const prevScrollHeight = container?.scrollHeight ?? 0;
+
+        setActiveChat((prev: any) => {
+          if (!prev) return prev;
+          const newMessages = [...older, ...prev.messages];
+          const newHasMore = (prev.totalMessages ?? 0) > newMessages.length;
+          setHasMoreMessages(newHasMore);
+          return { ...prev, messages: newMessages, hasMore: newHasMore };
+        });
+
+        // Mantener posición de scroll después de prepend
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - prevScrollHeight;
+          }
+        });
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (e) {
+      console.error('Error loading more messages:', e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
 
   // Toggle Bot Handover
   const handleToggleBot = async () => {
@@ -354,7 +443,7 @@ export default function InboxPage() {
     // --- ACTUALIZACIÓN OPTIMISTA ---
     // 1. Cambiamos el estado en el chat activo
     setActiveChat((prev: any) => prev?.id === chatId ? { ...prev, botActive: newStatus } : prev);
-    
+
     // 2. Cambiamos el estado en la lista lateral (UI instantánea)
     setChats(prev => prev.map(c => c.id === chatId ? { ...c, botActive: newStatus } : c));
 
@@ -401,24 +490,24 @@ export default function InboxPage() {
   const handleBulkDisableBot = async () => {
     if (selectedIds.size === 0) return;
     const idsToUpdate = [...selectedIds];
-    
+
     // --- OPTIMISTA ---
     setChats(prev => prev.map(c => idsToUpdate.includes(c.id) ? { ...c, botActive: false } : c));
-    
+
     // Registrar IDs como pendientes
     idsToUpdate.forEach(id => pendingOptimistic.current.add('bulk-' + id));
 
     if (activeChat && idsToUpdate.includes(activeChat.id)) {
       setActiveChat((prev: any) => ({ ...prev, botActive: false }));
     }
-    
+
     setSelectedIds(new Set());
 
     try {
       await bulkDisableBot(idsToUpdate);
     } catch (error) {
       console.error(error);
-      loadChats(); 
+      loadChats();
     } finally {
       // Damos 5 segundos de margen para actualizaciones masivas (más pesado para la BD)
       setTimeout(() => {
@@ -429,7 +518,7 @@ export default function InboxPage() {
   const handleBulkEnableBot = async () => {
     if (selectedIds.size === 0) return;
     const idsToUpdate = [...selectedIds];
-    
+
     // --- OPTIMISTA ---
     setChats(prev => prev.map(c => idsToUpdate.includes(c.id) ? { ...c, botActive: true } : c));
 
@@ -446,7 +535,7 @@ export default function InboxPage() {
       await bulkEnableBot(idsToUpdate);
     } catch (error) {
       console.error(error);
-      loadChats(); 
+      loadChats();
     } finally {
       // 5 segundos de margen para acciones masivas
       setTimeout(() => {
@@ -495,8 +584,8 @@ export default function InboxPage() {
         const history = chatDetails.messages.slice(0, -1);
 
         const botData = await sendTestMessage(
-          msg, 
-          history, 
+          msg,
+          history,
           chatDetails.lead.name || undefined,
           undefined,
           undefined,
@@ -504,11 +593,11 @@ export default function InboxPage() {
         );
         if (botData && typeof botData !== 'string') {
           await saveAssistantReply(
-            chatId, 
-            botData.reply, 
-            botData.scoreBump, 
-            botData.inputTokens, 
-            botData.outputTokens, 
+            chatId,
+            botData.reply,
+            botData.scoreBump,
+            botData.inputTokens,
+            botData.outputTokens,
             'SERVICE',
             botData.agentName,
             botData.scoreReason
@@ -603,6 +692,105 @@ export default function InboxPage() {
     })();
   };
 
+  // Seleccionar archivo adjunto
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingFile(file);
+    if (file.type.startsWith('image/')) {
+      setPendingFilePreview(URL.createObjectURL(file));
+    } else {
+      setPendingFilePreview(null);
+    }
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
+
+  // Enviar archivo multimedia como agente
+  const handleMediaSend = async () => {
+    if (!pendingFile || !activeChat || activeChat.botActive) return;
+    setIsUploadingMedia(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', pendingFile);
+      const uploadResult = await uploadFileAction(formData);
+
+      if (!uploadResult.success || !uploadResult.url) {
+        alert('Error al subir el archivo: ' + (uploadResult as any).error);
+        return;
+      }
+
+      const { url, mediaType, filename } = uploadResult as any;
+      const caption = agentInput.trim() || undefined;
+      const chatId = activeChat.id;
+
+      // Optimistic UI
+      const tempId = 'temp-media-' + Date.now();
+      const isImage = mediaType === 'image';
+      pendingOptimistic.current.add(tempId);
+      setActiveChat((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, {
+            id: tempId,
+            role: 'agent',
+            content: caption || filename,
+            imageUrl: isImage ? url : null,
+            createdAt: new Date().toISOString(),
+            status: 'pending',
+            _mediaType: mediaType,
+            _mediaUrl: url,
+            _filename: filename,
+          }]
+        };
+      });
+
+      // Limpiar UI inmediatamente
+      setPendingFile(null);
+      setPendingFilePreview(null);
+      setAgentInput('');
+
+      // Enviar en background
+      const result = await sendAgentMedia(chatId, url, mediaType, filename, caption);
+
+      setActiveChat((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m: any) =>
+            m.id === tempId ? { ...m, status: result.success ? 'sent' : 'failed', sendError: result.error } : m
+          )
+        };
+      });
+
+      setTimeout(() => { pendingOptimistic.current.delete(tempId); }, 5000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUploadingMedia(false);
+    }
+  };
+
+  const handleRefreshSummary = async () => {
+    if (!activeChat) return;
+    setIsRefreshingSummary(true);
+    try {
+      const newSummary = await updateLeadAISummary(activeChat.id, true);
+      if (newSummary) {
+        setActiveChat((prev: any) => ({
+          ...prev,
+          lead: { ...prev.lead, aiSummary: newSummary }
+        }));
+      }
+    } catch (err) {
+      console.error("Error refreshing summary", err);
+    } finally {
+      setIsRefreshingSummary(false);
+    }
+  };
+
   // Filtrado de chats
   const filteredChats = chats.filter(chat => {
     // Filtrar por temperatura (heat)
@@ -615,11 +803,11 @@ export default function InboxPage() {
       if (filterStatus === 'BOT' && !chat.botActive) return false;
       if (filterStatus === 'NEEDS_AGENT' && (chat.botActive || chat.lead.status !== 'NEEDS_AGENT')) return false;
       if (filterStatus === 'AGENT' && (chat.botActive || chat.lead.status === 'NEEDS_AGENT')) return false;
-      
+
       if (filterStatus === 'UNANSWERED') {
-         const lastMsg = chat.messages[chat.messages.length - 1];
-         const isUnanswered = !chat.botActive && lastMsg?.role === 'user';
-         if (!isUnanswered) return false;
+        const lastMsg = chat.messages[chat.messages.length - 1];
+        const isUnanswered = !chat.botActive && lastMsg?.role === 'user';
+        if (!isUnanswered) return false;
       }
     }
 
@@ -648,10 +836,10 @@ export default function InboxPage() {
   if (!session) return null;
 
   return (
-    <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714]">
+    <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714] min-w-0">
       {/* 1. SIDEBAR DE CHATS */}
-      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col transition-all duration-300 ease-in-out ${isInboxSidebarOpen ? 'w-[340px]' : 'w-0 opacity-0 pointer-events-none'}`}>
-        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#E9E4D8] dark:bg-[#1A1714] min-w-[340px]">
+      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col transition-all duration-300 ease-in-out ${isInboxSidebarOpen ? 'w-[300px]' : 'w-0 opacity-0 pointer-events-none'}`}>
+        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#E9E4D8] dark:bg-[#1A1714] min-w-[300px]">
           {selectedIds.size > 0 ? (
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center gap-3">
@@ -663,7 +851,7 @@ export default function InboxPage() {
                 </button>
                 <span className="text-sm font-bold text-[#F36A2D]">{selectedIds.size} seleccionados</span>
               </div>
-              
+
               <div className="flex items-center gap-1">
                 <button
                   onClick={handleBulkEnableBot}
@@ -709,7 +897,7 @@ export default function InboxPage() {
                     ⬜
                   </button>
                 )}
-                <button 
+                <button
                   onClick={() => setIsNewChatModalOpen(true)}
                   className="p-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg hover:scale-105 transition-all shadow-sm"
                   title="Nuevo Chat Individual"
@@ -774,13 +962,13 @@ export default function InboxPage() {
               const isHandoff = chat.lead.status === 'NEEDS_AGENT';
               const isBot = chat.botActive;
               const lastMsg = chat.messages?.[0];
-              
+
               // Lógica de estados
               const lastReadId = readMessageIds[chat.id];
               const isNewMessage = !isBot && lastMsg && lastMsg.id !== lastReadId && lastMsg.role === 'user';
               const isUnanswered = !isBot && lastMsg?.role === 'user' && !isNewMessage;
               const isAnsweredHuman = !isBot && lastMsg?.role === 'agent' && !isHandoff;
-              
+
               // Si está activo, lo marcamos como leído en cada render (simplificación)
               if (isActive && lastMsg?.id && lastReadId !== lastMsg.id) {
                 setTimeout(() => setReadMessageIds(prev => ({ ...prev, [chat.id]: lastMsg.id })), 0);
@@ -788,22 +976,9 @@ export default function InboxPage() {
 
               return (
                 <div key={chat.id} className="relative group">
-                  {/* Checkbox */}
-                  <div
-                    onClick={(e) => toggleSelect(chat.id, e)}
-                    className={`absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-5 h-5 rounded-md border-2 flex items-center justify-center cursor-pointer transition-all ${
-                      isMultiSelected
-                        ? 'bg-orange-600 border-orange-600'
-                        : 'border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 opacity-0 group-hover:opacity-100'
-                    }`}
-                  >
-                    {isMultiSelected && <span className="text-white text-[10px] font-bold">✓</span>}
-                  </div>
-
-                <button
-                  onClick={() => { if (selectedIds.size > 0) toggleSelect(chat.id, { stopPropagation: () => {} } as any); else loadChatDetails(chat.id); }}
-                  className={`w-full text-left p-4 pl-8 rounded-2xl transition-all duration-200 flex flex-col gap-1 border shadow-sm ${
-                    isMultiSelected
+                  <button
+                    onClick={() => { if (selectedIds.size > 0) toggleSelect(chat.id, { stopPropagation: () => { } } as any); else loadChatDetails(chat.id); }}
+                    className={`w-full text-left p-2.5 pl-4 rounded-2xl transition-all duration-200 flex items-center gap-4 border shadow-sm ${isMultiSelected
                       ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-400 dark:border-orange-600'
                       : isActive
                         ? 'bg-blue-50 dark:bg-blue-900/40 border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/20 z-10'
@@ -813,51 +988,72 @@ export default function InboxPage() {
                             ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 dark:border-emerald-400 ring-1 ring-emerald-500/20'
                             : isUnanswered
                               ? 'bg-white dark:bg-zinc-900 border-emerald-500 dark:border-emerald-400/50'
-                              : 'bg-white/50 dark:bg-black/10 border-[#DEDAD0] dark:border-zinc-800' // Bot o Humano Contestado
-                    }`}
-                >
-                  <div className="flex justify-between items-center w-full gap-2 text-sm">
-                    <div className="flex items-center gap-2 truncate flex-1">
-                      {chat.lead.heat === 'CALIENTE' && <span className="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
-                      {chat.lead.heat === 'TIBIO' && <span className="text-[10px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={10} /> {chat.lead.score}</span>}
-                      {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
-
-                      <span className={`truncate ${isNewMessage || isUnanswered || isHandoff ? 'font-black text-[#111111] dark:text-[#EDE9E0]' : 'font-medium text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}>
-                        {chat.lead.name || chat.lead.phone}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] text-[#6F6F6F] font-medium opacity-70">
-                        {formatSidebarDate(new Date(chat.lastActiveAt))}
-                      </span>
-                      {isBot ? (
-                        <Bot size={13} className="text-[#F36A2D]" />
-                      ) : isHandoff ? (
-                        <div className="relative">
-                          <AlertCircle size={13} className="text-red-500 animate-pulse" />
-                        </div>
+                              : 'bg-white/50 dark:bg-black/10 border-[#DEDAD0] dark:border-zinc-800'
+                      }`}
+                  >
+                    {/* Avatar / Canal / Selector */}
+                    <div
+                      onClick={(e) => { e.stopPropagation(); toggleSelect(chat.id, e); }}
+                      className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 shadow-sm border-2 transition-all cursor-pointer relative overflow-hidden group/avatar ${isMultiSelected
+                          ? 'bg-orange-600 border-orange-600 text-white scale-105'
+                          : chat.lead.channel === 'instagram'
+                            ? 'bg-pink-50 border-white text-pink-500 dark:bg-pink-900/40 dark:border-zinc-800 hover:border-orange-500'
+                            : 'bg-[#25D366]/10 border-white text-[#25D366] dark:bg-[#25D366]/20 dark:border-zinc-800 hover:border-orange-500'
+                        }`}
+                    >
+                      {isMultiSelected ? (
+                        <Check size={24} strokeWidth={3} className="animate-in zoom-in-50 duration-200" />
                       ) : (
-                        <User size={13} className="text-emerald-500" />
+                        <>
+                          <div className="transition-all duration-200 group-hover/avatar:opacity-0 group-hover/avatar:scale-50 opacity-100">
+                            {chat.lead.channel === 'instagram' ? <IgIcon size={22} /> : <WaIcon size={22} />}
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 opacity-0 scale-50 group-hover/avatar:opacity-100 group-hover/avatar:scale-100 text-orange-600">
+                            <Check size={20} strokeWidth={3} />
+                          </div>
+                        </>
                       )}
                     </div>
-                  </div>
 
-                  {isHandoff && (
-                    <div className="flex justify-start ml-1 mb-1">
-                      <WaitTimer startTime={chat.lastActiveAt} />
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5 text-left">
+                      <div className="flex justify-between items-center w-full gap-2">
+                        <span className={`truncate text-sm ${isNewMessage || isUnanswered || isHandoff ? 'font-black text-[#111111] dark:text-[#EDE9E0]' : 'font-semibold text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}>
+                          {chat.lead.name || chat.lead.phone}
+                        </span>
+                        <span className="text-[10px] text-[#6F6F6F] font-medium shrink-0">
+                          {formatSidebarDate(new Date(chat.lastActiveAt))}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`text-xs line-clamp-1 ${isNewMessage || isUnanswered || isHandoff ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
+                          {lastMsg ? lastMsg.content : <span className="italic opacity-50 text-[10px]">Sin mensajes</span>}
+                        </p>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isBot ? (
+                            <Bot size={12} className="text-[#F36A2D]" />
+                          ) : isHandoff ? (
+                            <AlertCircle size={12} className="text-red-500 animate-pulse" />
+                          ) : isNewMessage ? (
+                            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse" />
+                          ) : (
+                            <User size={11} className="text-emerald-500/50" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-1 flex items-center gap-2">
+                        {chat.lead.heat === 'CALIENTE' && <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
+                        {chat.lead.heat === 'TIBIO' && <span className="text-[9px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={9} /> {chat.lead.score}</span>}
+                        {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
+
+                        {isHandoff && (
+                          <WaitTimer startTime={chat.lastActiveAt} />
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {/* Ultimo Mensaje */}
-                  <div className="flex items-start justify-between gap-1 mt-0.5">
-                    <p className={`text-[11px] line-clamp-1 flex-1 ${isNewMessage || isUnanswered || isHandoff ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
-                      {lastMsg ? lastMsg.content : <span className="italic opacity-50">Sin mensajes</span>}
-                    </p>
-                    {isNewMessage && (
-                      <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 mt-1 shrink-0 animate-pulse" />
-                    )}
-                  </div>
-                </button>
+                  </button>
                 </div>
               );
             })
@@ -867,13 +1063,13 @@ export default function InboxPage() {
       </div>
 
       {/* 2. VENTANA DE CHAT CENTRAL */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#1A1714] relative">
+      <div className="flex-1 min-w-0 flex flex-col bg-white dark:bg-[#1A1714] relative">
         {/* Loader de transición rápida */}
         {isChatLoading && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#E9E4D8]/30 dark:bg-[#1A1714]/30 backdrop-blur-[2px] animate-in fade-in">
             <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl flex items-center gap-3 border border-[#DEDAD0] dark:border-zinc-800">
-               <Loader2 className="animate-spin text-[#F36A2D]" size={20} />
-               <span className="text-xs font-semibold text-[#111111] dark:text-[#EDE9E0]">Cargando conversación...</span>
+              <Loader2 className="animate-spin text-[#F36A2D]" size={20} />
+              <span className="text-xs font-semibold text-[#111111] dark:text-[#EDE9E0]">Cargando conversación...</span>
             </div>
           </div>
         )}
@@ -887,7 +1083,7 @@ export default function InboxPage() {
           <>
             <header className="h-16 px-6 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-[#E9E4D8]/80 dark:bg-[#111111]/10 backdrop-blur-md">
               <div className="flex items-center gap-4">
-                <button 
+                <button
                   onClick={() => setIsInboxSidebarOpen(!isInboxSidebarOpen)}
                   className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors"
                 >
@@ -926,10 +1122,44 @@ export default function InboxPage() {
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeChat.botActive ? 'translate-x-[22px]' : 'translate-x-1'
                     }`} />
                 </button>
+                <div className="w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
+                <button
+                  onClick={() => setIsProfileSidebarOpen(!isProfileSidebarOpen)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border ${isProfileSidebarOpen
+                    ? 'bg-[#F36A2D] text-white border-[#F36A2D] shadow-sm shadow-[#F36A2D]/20'
+                    : 'bg-white dark:bg-zinc-900 text-[#6F6F6F] border-[#DEDAD0] dark:border-zinc-800 hover:border-[#F36A2D] hover:text-[#F36A2D]'
+                    }`}
+                  title={isProfileSidebarOpen ? "Cerrar Perfil" : "Ver Perfil"}
+                >
+                  <span className="text-[10px] font-black uppercase tracking-wider">Perfil</span>
+                  {isProfileSidebarOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+                </button>
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div ref={messagesScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4" onScroll={(e) => {
+              if (e.currentTarget.scrollTop < 120 && hasMoreMessages && !isLoadingMore) {
+                handleLoadMoreMessages();
+              }
+            }}>
+              {/* Sentinel de "cargar más" */}
+              {hasMoreMessages && (
+                <div className="flex justify-center py-2">
+                  {isLoadingMore ? (
+                    <div className="flex items-center gap-2 text-xs text-[#6F6F6F]">
+                      <Loader2 size={12} className="animate-spin" />
+                      <span>Cargando historial...</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleLoadMoreMessages}
+                      className="text-xs text-[#F36A2D] hover:underline font-medium"
+                    >
+                      Cargar mensajes anteriores
+                    </button>
+                  )}
+                </div>
+              )}
               {activeChat.messages?.map((msg: any, idx: number) => {
                 const isUser = msg.role === 'user';
                 const isBot = msg.role === 'assistant';
@@ -969,13 +1199,13 @@ export default function InboxPage() {
                           ? 'bg-[#F36A2D] text-white rounded-tr-sm shadow-md'
                           : 'bg-[#1A1714] text-white dark:bg-[#EDE9E0] dark:text-[#111111] rounded-tr-sm shadow-md'
                         } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${msg.status === 'failed' ? 'ring-2 ring-red-500/50' : ''}`}>
-                        
+
                         {(isBot || isAgent) && msg.agentName && (
                           <div className={`absolute -top-5 ${isBot ? 'right-1' : 'left-1'} flex items-center gap-1`}>
-                             <span className={`text-[9px] font-bold uppercase tracking-widest ${isBot ? 'text-white/70' : 'text-zinc-500'}`}>{msg.agentName}</span>
+                            <span className={`text-[9px] font-bold uppercase tracking-widest ${isBot ? 'text-white/70' : 'text-zinc-500'}`}>{msg.agentName}</span>
                           </div>
                         )}
-                        
+
                         {msg.scoreBump && (
                           <div className="absolute -top-10 right-0 flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900 border border-emerald-200 dark:border-emerald-700 px-3 py-1 rounded-full shadow-lg animate-in fade-in zoom-in duration-300 z-10">
                             <div className="px-2 py-0.5 bg-emerald-500 rounded-full text-[10px] text-white font-black">
@@ -986,15 +1216,43 @@ export default function InboxPage() {
                             </span>
                           </div>
                         )}
-                        
-                        {msg.imageUrl && (
+
+                        {/* Imagen / Thumbnail */}
+                        {(msg.mediaUrl || msg.imageUrl) && (msg.mediaType === 'image' || !msg.mediaType) && (
                           <div className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0]">
-                            <img 
-                              src={msg.imageUrl} 
-                              alt="Adjunto" 
+                            <img
+                              src={msg.mediaUrl || msg.imageUrl}
+                              alt="Adjunto"
+                              onLoad={() => scrollToBottom(true)}
                               className="w-full h-auto max-h-[300px] object-cover hover:scale-105 transition-transform duration-500"
                             />
                           </div>
+                        )}
+
+                        {/* Documento / PDF / Video adjunto */}
+                        {msg.mediaUrl && msg.mediaType !== 'image' && (
+                          <a
+                            href={msg.mediaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mb-2 flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10"
+                          >
+                            <FileText size={16} className="shrink-0 opacity-80" />
+                            <span className="text-xs font-semibold truncate">{msg.mediaFilename || 'Ver archivo'}</span>
+                          </a>
+                        )}
+
+                        {/* Fallback para optimistic messages que todavía no tienen mediaType persistido (usando campos locales temp) */}
+                        {!msg.mediaUrl && !msg.imageUrl && (msg._mediaUrl || msg._filename) && (
+                          <a
+                            href={msg._mediaUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mb-2 flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10"
+                          >
+                            <FileText size={16} className="shrink-0 opacity-80" />
+                            <span className="text-xs font-semibold truncate">{msg._filename || msg.content}</span>
+                          </a>
                         )}
 
                         <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
@@ -1060,64 +1318,277 @@ export default function InboxPage() {
             <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-2">
 
               {/* AGENT INPUT */}
-              <div className="px-4 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 bg-[#F8F5EE] dark:bg-[#1A1714]">
-                <div className="text-[10px] font-bold text-[#F36A2D] mb-2 flex items-center justify-between tracking-widest px-1">
-                  <span>AGENTE REAL (TU RESPUESTA)</span>
-                  <User size={10} />
-                </div>
+              {(() => {
+                const isWhatsApp = activeChat.lead?.channel === 'whatsapp';
+                const messages = activeChat.messages || [];
+                const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
+                const lastUserMsgDate = lastUserMsg ? new Date(lastUserMsg.createdAt).getTime() : 0;
 
-                <div className="relative flex items-center">
-                  <textarea
-                    value={agentInput}
-                    onChange={(e) => setAgentInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleAgentSubmit();
-                      }
-                    }}
-                    disabled={activeChat.botActive}
-                    placeholder={activeChat.botActive ? "Desactiva la IA para responder" : "Escribe una respuesta..."}
-                    className="w-full bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-14 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 text-sm text-[#111111] dark:text-white"
-                    rows={1}
-                  />
-                  {!activeChat.botActive && (
-                    <button
-                      onClick={handleAgentSubmit}
-                      disabled={!agentInput.trim()}
-                      className="absolute right-2 p-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center h-9 w-9 hover:scale-105 shadow-sm"
-                    >
-                      <Send size={15} />
-                    </button>
-                  )}
-                </div>
+                // Si es WhatsApp y (nunca ha enviado msj [0] o pasaron 24h)
+                const msPassed = lastUserMsgDate ? Date.now() - lastUserMsgDate : 0;
+                const isPast24h = isWhatsApp && (!lastUserMsgDate || msPassed > 24 * 60 * 60 * 1000);
 
-                {activeChat.botActive && (
-                  <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#6F6F6F] bg-[#DEDAD0]/30 dark:bg-zinc-800/20 py-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-800/40 opacity-80">
-                    <Bot size={12} className="text-[#F36A2D]" />
-                    Inteligencia Artificial Gestionando
+                return (
+                  <div className="px-4 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 bg-[#F8F5EE] dark:bg-[#1A1714]">
+                    <div className="text-[10px] font-bold text-[#F36A2D] mb-2 flex items-center justify-between tracking-widest px-1">
+                      <span>{isPast24h ? "SESIÓN EXPIRADA (> 24H)" : "AGENTE REAL (TU RESPUESTA)"}</span>
+                      <User size={10} />
+                    </div>
+
+                    {/* Preview de archivo adjunto */}
+                    {pendingFile && (
+                      <div className="mb-2 flex items-center gap-2 p-2 bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-700 rounded-xl">
+                        {pendingFilePreview ? (
+                          <img src={pendingFilePreview} alt="preview" className="h-10 w-10 object-cover rounded-lg shrink-0" />
+                        ) : (
+                          <div className="h-10 w-10 bg-[#F36A2D]/10 rounded-lg flex items-center justify-center shrink-0">
+                            <FileText size={18} className="text-[#F36A2D]" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-[#111111] dark:text-white truncate">{pendingFile.name}</p>
+                          <p className="text-[10px] text-[#6F6F6F]">{(pendingFile.size / 1024).toFixed(0)} KB</p>
+                        </div>
+                        <button
+                          onClick={() => { setPendingFile(null); setPendingFilePreview(null); }}
+                          className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#6F6F6F]"
+                        >
+                          <XIcon size={14} />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="relative flex items-center gap-2">
+                      {isPast24h && (
+                        <button
+                          onClick={() => setIsTemplateModalOpen(true)}
+                          className="shrink-0 px-4 py-2.5 bg-[#F36A2D] text-white rounded-xl font-bold text-xs shadow-md flex items-center gap-2 hover:opacity-90 transition-opacity"
+                        >
+                          <MessageSquare size={16} /> Ver Templates
+                        </button>
+                      )}
+
+                      {/* Botón adjuntar y emojis solo si la ventana está abierta */}
+                      {!activeChat.botActive && !isPast24h && (
+                        <>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            accept="image/*,application/pdf,video/*,audio/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                            onChange={handleFileSelect}
+                          />
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="shrink-0 p-2.5 bg-white dark:bg-zinc-800 border border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D] rounded-xl transition-all"
+                            title="Adjuntar archivo"
+                          >
+                            <Paperclip size={16} />
+                          </button>
+
+                          <div className="relative" ref={emojiPickerRef}>
+                            <button
+                              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                              className={`shrink-0 p-2.5 border rounded-xl transition-all ${showEmojiPicker ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
+                              title="Insertar emoji"
+                            >
+                              <Smile size={16} />
+                            </button>
+
+                            {showEmojiPicker && (
+                              <div className="absolute bottom-full left-0 mb-4 z-[70] shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
+                                <EmojiPicker
+                                  onEmojiClick={(emojiData) => {
+                                    setAgentInput(prev => prev + emojiData.emoji);
+                                    // No cerramos automáticamente para que pueda poner varios
+                                  }}
+                                  theme={'auto' as any}
+                                  lazyLoadEmojis={true}
+                                  searchPlaceholder="Buscar emoji..."
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      <textarea
+                        value={agentInput}
+                        onChange={(e) => setAgentInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (pendingFile) handleMediaSend();
+                            else handleAgentSubmit();
+                          }
+                        }}
+                        disabled={activeChat.botActive || isPast24h}
+                        placeholder={
+                          isPast24h
+                            ? "Envía un Template para abrirla."
+                            : activeChat.botActive
+                              ? "Desactiva la IA para responder"
+                              : pendingFile
+                                ? "Agrega un caption (opcional)..."
+                                : "Escribe una respuesta..."
+                        }
+                        className="flex-1 bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-14 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 text-sm text-[#111111] dark:text-white"
+                        rows={1}
+                      />
+                      {!activeChat.botActive && !isPast24h && (
+                        <button
+                          onClick={() => { if (pendingFile) handleMediaSend(); else handleAgentSubmit(); }}
+                          disabled={(!agentInput.trim() && !pendingFile) || isUploadingMedia}
+                          className="absolute right-2 p-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center h-9 w-9 hover:scale-105 shadow-sm"
+                        >
+                          {isUploadingMedia ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                        </button>
+                      )}
+                    </div>
+
+                    {activeChat.botActive && (
+                      <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#6F6F6F] bg-[#DEDAD0]/30 dark:bg-zinc-800/20 py-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-800/40 opacity-80">
+                        <Bot size={12} className="text-[#F36A2D]" />
+                        Inteligencia Artificial Gestionando
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
           </>
         )}
       </div>
 
-      <NewChatModal 
-        isOpen={isNewChatModalOpen} 
+      {/* 3. SIDEBAR DE PERFIL DE CONTACTO */}
+      <div
+        className={`shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'w-[300px]' : 'w-0 opacity-0 pointer-events-none border-l-0'
+          }`}
+      >
+        {activeChat && isProfileSidebarOpen && (
+          <div className="flex-1 w-[300px] overflow-y-auto no-scrollbar pb-6 absolute inset-0">
+            {/* Cabecera del perfil */}
+            <div className="px-6 py-8 flex flex-col items-center justify-center border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/30 dark:bg-black/20">
+              <div className="h-20 w-20 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-black text-3xl shadow-xl mb-4 relative">
+                {activeChat.lead.name?.[0]?.toUpperCase() || 'A'}
+                <div className="absolute -bottom-1 -right-1 bg-white dark:bg-[#1A1714] p-1 rounded-full shadow-sm">
+                  {activeChat.lead.channel === 'instagram' ? <IgIcon size={16} className="text-pink-500" /> : <MessageSquare size={16} className="text-emerald-500" />}
+                </div>
+              </div>
+              <h2 className="font-bold text-lg text-[#111111] dark:text-[#EDE9E0] text-center px-4 leading-tight mb-1">
+                {activeChat.lead.name || 'Sin Nombre'}
+              </h2>
+              <p className="text-sm font-medium text-[#6F6F6F] flex items-center gap-1.5">
+                <Phone size={12} /> {activeChat.lead.phone}
+              </p>
+            </div>
+
+            <div className="p-5 space-y-6">
+
+              {/* Información Básica */}
+              <div className="space-y-4">
+                <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2">
+                  <User size={12} /> Detalles
+                </h3>
+
+                <div className="grid gap-3">
+                  <div className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800">
+                    <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Temperatura</span>
+                    <div className="flex items-center gap-2">
+                      {activeChat.lead.heat === 'CALIENTE' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Caliente 🔥</span>}
+                      {activeChat.lead.heat === 'TIBIO' && <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Tibio 📈</span>}
+                      {(!activeChat.lead.heat || activeChat.lead.heat === 'FRIO') && <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Frío ❄️</span>}
+                      <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
+                    <div>
+                      <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Contactado</span>
+                      <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0]">
+                        {new Date(activeChat.lead.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Última Acc.</span>
+                      <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0]">
+                        {new Date(activeChat.lastActiveAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resumen de IA */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2">
+                    <Bot size={12} /> Resumen de IA
+                  </h3>
+                  <button
+                    onClick={handleRefreshSummary}
+                    disabled={isRefreshingSummary}
+                    className={`p-1.5 rounded-lg transition-all ${isRefreshingSummary ? 'animate-spin text-[#F36A2D]' : 'text-[#6F6F6F] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[#F36A2D]'}`}
+                    title="Refrescar resumen"
+                  >
+                    <RefreshCw size={12} />
+                  </button>
+                </div>
+                <div className="bg-[#F36A2D]/5 border border-[#F36A2D]/20 p-4 rounded-xl text-xs text-[#111111] dark:text-[#EDE9E0] leading-relaxed relative">
+                  <Sparkles size={14} className="absolute top-2 right-2 text-[#F36A2D]/40" />
+                  {activeChat.lead.aiSummary ? (
+                    <span className="font-medium">{activeChat.lead.aiSummary}</span>
+                  ) : (
+                    <span className="text-[#6F6F6F] italic">No hay notas o IA no ha detectado suficiente información relevante.</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Metadata Variables (Ej: De CSV de Campañas) */}
+              {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && (
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2">
+                    <FileText size={12} /> Datos de Campaña / Extra
+                  </h3>
+                  <div className="space-y-2">
+                    {Object.entries(activeChat.lead.metadata).map(([key, val]) => (
+                      <div key={key} className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 px-3 py-2.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 flex flex-col gap-0.5">
+                        <span className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-wider">{key}</span>
+                        <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0] truncate">{String(val)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
+      </div>
+
+      <NewChatModal
+        isOpen={isNewChatModalOpen}
         onClose={() => setIsNewChatModalOpen(false)}
         onSuccess={(chatId) => {
           loadChats(chatId);
-          // Opcional: mostrar un toast o mensaje de éxito
+        }}
+      />
+
+      <NewChatModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        initialPhone={activeChat?.lead?.phone}
+        initialLeadName={activeChat?.lead?.name || ''}
+        onSuccess={(chatId) => {
+          loadChats(chatId);
         }}
       />
 
       {/* Notificaciones Flotantes */}
       <div className="fixed top-20 right-8 z-[60] flex flex-col gap-3 pointer-events-none">
         {notifications.map(n => (
-          <div 
-            key={n.id} 
+          <div
+            key={n.id}
             className="pointer-events-auto bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 shadow-2xl rounded-2xl p-4 w-72 animate-in slide-in-from-right-8 fade-in duration-500 cursor-pointer hover:scale-[1.02] transition-transform"
             onClick={() => {
               loadChatDetails(n.chatId);

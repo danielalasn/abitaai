@@ -47,7 +47,7 @@ export async function getLeads() {
   });
 }
 
-export async function updateLeadAISummary(chatId: string) {
+export async function updateLeadAISummary(chatId: string, force: boolean = false) {
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
     include: {
@@ -56,14 +56,14 @@ export async function updateLeadAISummary(chatId: string) {
     },
   });
 
-  if (!chat || !chat.lead) return;
+  if (!chat || !chat.lead) return null;
 
   const userMessages = chat.messages.filter((m) => m.role === 'user');
   const count = userMessages.length;
 
   // Generate summary on 3rd user message, then every 5 after
-  const shouldUpdate = count === 3 || (count > 3 && (count - 3) % 5 === 0);
-  if (!shouldUpdate) return;
+  const shouldUpdate = force || count === 3 || (count > 3 && (count - 3) % 5 === 0);
+  if (!shouldUpdate) return chat.lead.aiSummary;
 
   // Build conversation transcript
   const transcript = chat.messages
@@ -101,7 +101,10 @@ ${transcript}`,
       where: { id: chat.lead.id },
       data: { aiSummary: summary },
     });
+
+    return summary;
   } catch (e) {
     console.error('[AI Summary] Error generando resumen:', e);
+    return null;
   }
 }
