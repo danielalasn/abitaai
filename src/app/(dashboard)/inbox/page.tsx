@@ -302,7 +302,13 @@ export default function InboxPage() {
             const distinctNewMsgs = newMsgsFromRefreshed.filter((m: any) => !existingIds.has(m.id));
 
             const merged = [...currentMsgs, ...distinctNewMsgs].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-            return { ...prev, messages: merged };
+            
+            // Actualizamos todo el objeto (lead, score, heat, etc) y no solo los mensajes
+            return { 
+              ...prev, 
+              ...refreshed,
+              messages: merged 
+            };
           });
           setChatsCache(prev => ({ ...prev, [currentId]: refreshed }));
         }
