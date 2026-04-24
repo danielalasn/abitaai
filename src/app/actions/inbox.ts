@@ -174,14 +174,9 @@ export async function simulateIncomingMessage(
   }
 
   if (!project) {
-    project = await getCurrentProject();
+    console.error(`[Inbox] No se encontró el proyecto para PhoneID: ${phoneId}. El mensaje será ignorado para evitar asignación incorrecta.`);
+    throw new Error("Proyecto no encontrado para el PhoneID proporcionado.");
   }
-
-  if (!project) {
-    project = await prisma.project.findFirst(); // Fallback for backwards compatibility if needed
-  }
-  
-  if (!project) throw new Error("No se encontró ningún proyecto.");
 
   // Buscar todos los agentes activos del proyecto para decidir si auto-asignar
   const activeAgents = await prisma.agent.findMany({
