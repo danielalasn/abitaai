@@ -225,18 +225,30 @@ Output ONLY a valid JSON string. Do not include markdown wrappers or explanation
 // ──────────────────────────────────────────────
 
 export async function verifyWhatsappConnection(
-  whatsappPhoneId: string,
-  whatsappToken: string
+  explicitPhoneId?: string,
+  explicitToken?: string
 ): Promise<{ success: boolean; message: string }> {
-  if (!whatsappPhoneId || !whatsappToken) {
+  let phoneId = explicitPhoneId;
+  let token = explicitToken;
+
+  // Si no se pasan credenciales explícitas, usamos las del proyecto actual (con fallback)
+  if (!phoneId || !token) {
+    const project = await getCurrentProject();
+    if (!project) return { success: false, message: 'No se encontró el proyecto.' };
+    
+    phoneId = phoneId || project.whatsappPhoneId || '';
+    token = token || project.whatsappToken || '';
+  }
+
+  if (!phoneId || !token) {
     return { success: false, message: 'Faltan credenciales. Ingresa el Phone Number ID y el Access Token.' }
   }
 
-  console.log(`[WA_VERIFY] Iniciando verificación para PhoneId: ${whatsappPhoneId}`);
+  console.log(`[WA_VERIFY] Iniciando verificación para PhoneId: ${phoneId}`);
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v21.0/${whatsappPhoneId}?fields=display_phone_number,verified_name,status&access_token=${whatsappToken}`,
+      `https://graph.facebook.com/v21.0/${phoneId}?fields=display_phone_number,verified_name,status&access_token=${token}`,
       { method: 'GET', cache: 'no-store' }
     )
     const data = await res.json()

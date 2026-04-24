@@ -145,6 +145,7 @@ ${handoff}
 
 <visual_format_rules>
 ${visual}
+PROHIBICIÓN ESTRICTA: NO USES EMOJIS bajo ninguna circunstancia. Tu respuesta debe ser solo texto plano y profesional.
 </visual_format_rules>
 
 <heatmap_scoring_system>
@@ -159,7 +160,16 @@ ${scoringBase}
 ${learning}
 </learning_system>
 </critical_instructions_and_rules>
+
+<strict_reminder>
+RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
+</strict_reminder>
   `;
+
+  console.log("\n\n" + "=".repeat(50));
+  console.log("🚀 [DEBUG] SYSTEM PROMPT GENERATED:");
+  console.log(systemPrompt);
+  console.log("=".repeat(50) + "\n\n");
 
   try {
     // We filter history down to what anthropic expects: assistant and user

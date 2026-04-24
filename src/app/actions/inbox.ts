@@ -322,8 +322,8 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
         }
     } else {
         waSendSuccess = false;
-        waSendError = 'No hay credenciales de WhatsApp configuradas. Ve a Ajustes y configura el Phone Number ID y el Token.';
-        console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas en los ajustes del bot para este proyecto.');
+        waSendError = 'Configura el Phone Number ID y el CRM Token en Ajustes antes de enviar mensajes.';
+        console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas.');
     }
   }
 
@@ -395,105 +395,110 @@ export async function startIndividualChatAction(
   headerImageUrl?: string,
   botActive: boolean = true,
   leadName?: string
-) {
-  const project = await getCurrentProject();
-  if (!project) throw new Error('No se encontró el proyecto base.');
-  
-  if (!project.whatsappPhoneId || !project.whatsappToken) {
-    throw new Error('Configura el Phone Number ID y el CRM Token en Ajustes antes de iniciar chats.');
-  }
+): Promise<{ success: boolean; error?: string; chatId?: string }> {
+  try {
+    const project = await getCurrentProject();
+    if (!project) return { success: false, error: 'No se encontró el proyecto base.' };
+    
+    if (!project.whatsappPhoneId || !project.whatsappToken) {
+      return { success: false, error: 'Configura el Phone Number ID y el CRM Token en Ajustes antes de iniciar chats.' };
+    }
 
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
-  if (cleanPhone.length < 7) throw new Error('El número de teléfono es demasiado corto.');
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    if (cleanPhone.length < 7) return { success: false, error: 'El número de teléfono es demasiado corto.' };
 
-  // Construir parámetros del cuerpo
-  const paramEntries = Object.entries(variables).sort(([a], [b]) => Number(a) - Number(b));
-  const bodyParams = paramEntries.map(([, val]) => ({
-    type: 'text' as const,
-    text: val,
-  }));
+    // Construir parámetros del cuerpo
+    const paramEntries = Object.entries(variables).sort(([a], [b]) => Number(a) - Number(b));
+    const bodyParams = paramEntries.map(([, val]) => ({
+      type: 'text' as const,
+      text: val,
+    }));
 
-  const components: any[] = bodyParams.length > 0
-    ? [{ type: 'body' as const, parameters: bodyParams }]
-    : [];
+    const components: any[] = bodyParams.length > 0
+      ? [{ type: 'body' as const, parameters: bodyParams }]
+      : [];
 
-  // Añadir imagen si se proporcionó
-  if (headerImageUrl && headerImageUrl.startsWith('http')) {
-    components.unshift({
-      type: 'header',
-      parameters: [
-        { type: 'image', image: { link: headerImageUrl } }
-      ]
+    // Añadir imagen si se proporcionó
+    if (headerImageUrl && headerImageUrl.startsWith('http')) {
+      components.unshift({
+        type: 'header',
+        parameters: [
+          { type: 'image', image: { link: headerImageUrl } }
+        ]
+      });
+    }
+
+    // Texto amigable para el historial del chat
+    let previewText = templateText;
+    paramEntries.forEach(([k, val]) => {
+      previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
     });
-  }
 
-  // Texto amigable para el historial del chat
-  let previewText = templateText;
-  paramEntries.forEach(([k, val]) => {
-    previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
-  });
+    // 1. Upsert Lead
+    let lead = await prisma.lead.findFirst({ where: { phone: cleanPhone, projectId: project.id } });
+    const finalName = leadName?.trim() || cleanPhone;
 
-  // 1. Upsert Lead
-  let lead = await prisma.lead.findFirst({ where: { phone: cleanPhone, projectId: project.id } });
-  const finalName = leadName?.trim() || cleanPhone;
+    if (!lead) {
+      lead = await prisma.lead.create({
+        data: {
+          phone: cleanPhone,
+          projectId: project.id,
+          name: finalName,
+        }
+      });
+    } else if (leadName?.trim() && (lead.name?.includes('Lead') || lead.name === lead.phone)) {
+      // Actualizar nombre si era genérico
+      lead = await prisma.lead.update({
+        where: { id: lead.id },
+        data: { name: leadName.trim() }
+      });
+    }
 
-  if (!lead) {
-    lead = await prisma.lead.create({
-      data: {
-        phone: cleanPhone,
-        projectId: project.id,
-        name: finalName,
+    // 2. Upsert Chat
+    let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
+    if (!chat) {
+      chat = await prisma.chat.create({ data: { leadId: lead.id } });
+    }
+
+    // 3. Enviar vía WhatsApp Cloud API
+    const waResult = await sendWhatsAppTemplate(
+      cleanPhone,
+      templateName,
+      languageCode,
+      components as any,
+      project.whatsappPhoneId!,
+      project.whatsappToken!
+    );
+
+    // Si el envío falló, retornar error amigable
+    if (!waResult.success) {
+      return { success: false, error: waResult.friendlyError || 'Error desconocido al enviar plantilla' };
+    }
+
+    // 4. Guardar mensaje en el historial (como agente ya que es una acción proactiva nuestra)
+    await prisma.message.create({
+      data: { 
+        chatId: chat.id, 
+        role: 'agent', 
+        content: previewText,
+        waCategory: waResult.category || 'MARKETING',
+        imageUrl: headerImageUrl
       }
     });
-  } else if (leadName?.trim() && (lead.name?.includes('Lead') || lead.name === lead.phone)) {
-    // Actualizar nombre si era genérico
-    lead = await prisma.lead.update({
-      where: { id: lead.id },
-      data: { name: leadName.trim() }
+
+    // 5. Actualizar última actividad y estado del bot
+    await prisma.chat.update({
+      where: { id: chat.id },
+      data: { 
+        lastActiveAt: new Date(),
+        botActive: botActive 
+      }
     });
+
+    revalidatePath('/');
+    return { success: true, chatId: chat.id };
+  } catch (error: any) {
+    console.error('[startIndividualChatAction] Error:', error);
+    return { success: false, error: 'Ocurrió un error inesperado al iniciar el chat.' };
   }
-
-  // 2. Upsert Chat
-  let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
-  if (!chat) {
-    chat = await prisma.chat.create({ data: { leadId: lead.id } });
-  }
-
-  // 3. Enviar vía WhatsApp Cloud API
-  const waResult = await sendWhatsAppTemplate(
-    cleanPhone,
-    templateName,
-    languageCode,
-    components as any,
-    project.whatsappPhoneId!,
-    project.whatsappToken!
-  );
-
-  // Si el envío falló, lanzar error amigable para que el UI lo muestre al usuario
-  if (!waResult.success) {
-    throw new Error(waResult.friendlyError || 'Error desconocido al enviar plantilla');
-  }
-
-  // 4. Guardar mensaje en el historial (como agente ya que es una acción proactiva nuestra)
-  await prisma.message.create({
-    data: { 
-      chatId: chat.id, 
-      role: 'agent', 
-      content: previewText,
-      waCategory: waResult.category || 'MARKETING',
-      imageUrl: headerImageUrl
-    }
-  });
-
-  // 5. Actualizar última actividad y estado del bot
-  await prisma.chat.update({
-    where: { id: chat.id },
-    data: { 
-      lastActiveAt: new Date(),
-      botActive: botActive 
-    }
-  });
-
-  revalidatePath('/');
-  return chat.id;
 }

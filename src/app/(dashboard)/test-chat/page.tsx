@@ -83,6 +83,13 @@ export default function TestChatPage() {
       setScore(chatData.score);
       setHeat(chatData.heat);
 
+      // --- LOG DEBUG PROMPT ---
+      if (result.debugPrompt) {
+        console.log("%c🚀 [AI DEBUG PROMPT]", "color: #F36A2D; font-size: 14px; font-weight: bold;");
+        console.log(result.debugPrompt);
+        console.log("%c-----------------------", "color: #F36A2D;");
+      }
+
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { role: 'assistant', content: 'Lo siento, hubo un error procesando tu mensaje.' }]);

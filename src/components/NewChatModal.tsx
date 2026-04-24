@@ -103,7 +103,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
     setError(null);
     try {
       const bodyText = selectedTemplate.components.find((c: any) => c.type === 'BODY')?.text ?? '';
-      const chatId = await startIndividualChatAction(
+      const result = await startIndividualChatAction(
         phone,
         selectedTemplate.name,
         selectedTemplate.language,
@@ -113,10 +113,16 @@ export function NewChatModal({ isOpen, onClose, onSuccess }: NewChatModalProps) 
         botActive,
         leadName
       );
-      onSuccess(chatId);
-      onClose();
+
+      if (result.success && result.chatId) {
+        onSuccess(result.chatId);
+        onClose();
+      } else {
+        setError(result.error || 'Error al iniciar el chat');
+      }
     } catch (err: any) {
-      setError(err.message);
+      console.error('[NewChatModal] Error:', err);
+      setError('Ocurrió un error inesperado. Inténtalo de nuevo.');
     } finally {
       setIsSending(false);
     }

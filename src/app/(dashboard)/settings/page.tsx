@@ -630,19 +630,98 @@ export default function SettingsPage() {
                 </div>
 
                 {/* ─── WhatsApp ─── */}
-                <div className="p-5 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[2rem] opacity-60 flex flex-col group transition-all duration-300 hover:scale-[1.02]">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center">
-                      <MessageSquare size={20} />
+                <div className={`p-6 bg-white dark:bg-[#111111]/60 border rounded-[2rem] shadow-sm flex flex-col group transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-none hover:border-emerald-500/40 ${
+                  whatsappPhoneId ? 'border-emerald-500/20 shadow-md ring-1 ring-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'
+                }`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center">
+                        <MessageSquare size={20} />
+                      </div>
+                      <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">WhatsApp Business</h3>
                     </div>
-                    <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">WhatsApp Business</h3>
+                    {verifyResult?.success ? (
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        <span className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Conectado</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-50 dark:bg-zinc-800/40 rounded-full border border-zinc-100 dark:border-zinc-800">
+                         <Wifi size={10} className="text-zinc-400" />
+                         <span className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Sin Verificar</span>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
-                    Gestión inteligente de chats mediante la API oficial de Meta y flujos de ventas.
-                  </p>
-                  <div className="mt-auto py-2 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest text-center border border-zinc-100 dark:border-zinc-800">
-                    Próximamente
+                  
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1 block px-1">Phone Number ID</label>
+                      <input 
+                        type="text" 
+                        value={whatsappPhoneId} 
+                        onChange={e => setWhatsappPhoneId(e.target.value)} 
+                        placeholder="Ej: 1234567890123"
+                        className="w-full text-xs p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1 block px-1">Access Token</label>
+                      <div className="relative">
+                        <input 
+                          type={showToken ? "text" : "password"} 
+                          value={whatsappToken} 
+                          onChange={e => setWhatsappToken(e.target.value)} 
+                          placeholder={whatsappToken ? "••••••••••••••••" : "Opcional (usará el sistema por defecto)"}
+                          className="w-full text-xs p-3 pr-10 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all font-mono"
+                        />
+                        <button onClick={() => setShowToken(!showToken)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                          {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    <div>
+                      <label className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1 block px-1">WhatsApp Business ID</label>
+                      <input 
+                        type="text" 
+                        value={whatsappBusinessId} 
+                        onChange={e => setWhatsappBusinessId(e.target.value)} 
+                        placeholder="ID del Administrador Comercial"
+                        className="w-full text-xs p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all font-mono"
+                      />
+                    </div>
                   </div>
+
+                  <div className="mt-auto flex gap-2">
+                    <button 
+                      onClick={handleSaveWhatsApp} 
+                      disabled={isSavingWA}
+                      className="flex-1 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50"
+                    >
+                      {isSavingWA ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Guardar Configuración'}
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        setIsVerifying(true); setVerifyResult(null)
+                        const r = await verifyWhatsappConnection(whatsappPhoneId || undefined, whatsappToken || undefined)
+                        setVerifyResult(r); setIsVerifying(false)
+                      }}
+                      disabled={isVerifying}
+                      className="px-5 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
+                      title="Probar Conexión"
+                    >
+                      {isVerifying ? <Loader2 size={14} className="animate-spin text-emerald-500" /> : <Wifi size={14} className="text-emerald-500" />}
+                    </button>
+                  </div>
+
+                  {verifyResult && (
+                    <div className={`mt-4 p-4 rounded-xl text-xs font-medium border animate-in slide-in-from-top-2 duration-300 ${
+                      verifyResult.success ? 'bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/10 dark:border-emerald-800/40' : 'bg-red-50 border-red-100 text-red-600 dark:bg-red-950/20 dark:border-red-900/40'
+                    }`}>
+                      <div className="flex gap-2">
+                        {verifyResult.success ? <CheckCircle2 size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
+                        <p className="whitespace-pre-line leading-relaxed">{verifyResult.message}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* ─── Facebook ─── */}
