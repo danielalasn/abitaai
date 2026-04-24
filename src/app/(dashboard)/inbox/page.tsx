@@ -1505,6 +1505,24 @@ export default function InboxPage() {
                         <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
                       </div>
                     </div>
+
+                    {/* Triggers de Score */}
+                    {activeChat.messages?.some((m: any) => m.scoreBump) && (
+                      <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800">
+                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-2">Eventos de Interés</span>
+                        <div className="space-y-2">
+                          {activeChat.messages
+                            .filter((m: any) => m.scoreBump)
+                            .map((m: any, i: number) => (
+                              <div key={i} className="flex items-start gap-2 text-[11px] bg-white/40 dark:bg-black/20 p-2 rounded-lg border border-[#DEDAD0]/50 dark:border-zinc-800/50">
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">+{m.scoreBump}</span>
+                                <span className="text-[#111111] dark:text-[#EDE9E0] leading-tight">{m.scoreReason || 'Sin razón especificada'}</span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-center pt-3 border-t border-[#DEDAD0] dark:border-zinc-800">
                       <div>
                         <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Contactado</span>
