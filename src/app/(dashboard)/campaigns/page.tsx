@@ -388,11 +388,18 @@ export default function CampaignsPage() {
                         onClick={() => handleSelectTemplate(t)}
                         className={`w-full text-left p-4 rounded-2xl border transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5 ${selectedTemplate?.name === t.name ? 'border-emerald-500 bg-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
                       >
-                        <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">
-                          {templatePrefix && t.name.startsWith(templatePrefix) 
-                            ? t.name.replace(templatePrefix, '') 
-                            : t.name}
-                        </p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">
+                            {templatePrefix && t.name.startsWith(templatePrefix) 
+                              ? t.name.replace(templatePrefix, '') 
+                              : t.name}
+                          </p>
+                          <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${
+                            t.category === 'MARKETING' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'
+                          }`}>
+                            {t.category}
+                          </span>
+                        </div>
                         <p className="text-xs text-[#6F6F6F] line-clamp-1">{t.components.find(c => c.type === 'BODY')?.text}</p>
                       </button>
                     ))}
