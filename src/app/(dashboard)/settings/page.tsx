@@ -678,6 +678,7 @@ export default function SettingsPage() {
                           {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                       </div>
+                    </div>
                     <div>
                       <label className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1 block px-1">WhatsApp Business ID</label>
                       <input 
