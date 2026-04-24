@@ -37,7 +37,8 @@ export async function sendTestMessage(
       scoreReason: "",
       inputTokens: 0, 
       outputTokens: 0,
-      agentName: "Error"
+      agentName: "Error",
+      debugPrompt: ""
     };
   }
 
@@ -58,7 +59,8 @@ export async function sendTestMessage(
       scoreReason: "",
       inputTokens: 0, 
       outputTokens: 0,
-      agentName: "Error"
+      agentName: "Error",
+      debugPrompt: ""
     };
   }
 
@@ -255,7 +257,8 @@ RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
       scoreReason, // Devolvemos la razón
       inputTokens, 
       outputTokens,
-      agentName: config.name
+      agentName: config.name,
+      debugPrompt: systemPrompt
     };
 
   } catch (error: any) {
@@ -267,7 +270,8 @@ RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
       scoreReason: "",
       inputTokens: 0, 
       outputTokens: 0,
-      agentName: "Error"
+      agentName: "Error",
+      debugPrompt: ""
     };
   }
 }
