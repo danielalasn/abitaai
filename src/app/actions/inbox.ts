@@ -19,7 +19,13 @@ export async function getActiveChats(_timestamp?: number) {
       isArchived: false,
       lead: { projectId: project.id }
     },
-    include: { lead: true },
+    include: { 
+      lead: {
+        include: {
+          project: { select: { leadScoringEnabled: true } }
+        }
+      } 
+    },
     orderBy: { lastActiveAt: 'desc' }
   });
 

@@ -1043,10 +1043,14 @@ export default function InboxPage() {
                         </div>
                       </div>
 
-                      <div className="mt-1 flex items-center gap-2">
-                        {chat.lead.heat === 'CALIENTE' && <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
-                        {chat.lead.heat === 'TIBIO' && <span className="text-[9px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={9} /> {chat.lead.score}</span>}
-                        {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
+                      <div className="flex items-center gap-1 mt-1">
+                        {chat.lead.project?.leadScoringEnabled !== false && (
+                          <>
+                            {chat.lead.heat === 'CALIENTE' && <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
+                            {chat.lead.heat === 'TIBIO' && <span className="text-[9px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={9} /> {chat.lead.score}</span>}
+                            {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
+                          </>
+                        )}
 
                         {isHandoff && (
                           <WaitTimer startTime={chat.lastActiveAt} />
@@ -1096,7 +1100,7 @@ export default function InboxPage() {
                   <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
                     {activeChat.lead.name}
                     <span className="text-[10px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded-md font-mono border border-[#DEDAD0] dark:border-zinc-700 flex items-center gap-1 shrink-0">
-                      {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : <MessageSquare size={10} />}
+                      {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : <WaIcon size={10} />}
                       {activeChat.lead.channel === 'instagram' ? 'Instagram' : 'WhatsApp'}
                     </span>
                   </h2>
@@ -1472,7 +1476,7 @@ export default function InboxPage() {
               <div className="h-20 w-20 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-black text-3xl shadow-xl mb-4 relative">
                 {activeChat.lead.name?.[0]?.toUpperCase() || 'A'}
                 <div className="absolute -bottom-1 -right-1 bg-white dark:bg-[#1A1714] p-1 rounded-full shadow-sm">
-                  {activeChat.lead.channel === 'instagram' ? <IgIcon size={16} className="text-pink-500" /> : <MessageSquare size={16} className="text-emerald-500" />}
+                  {activeChat.lead.channel === 'instagram' ? <IgIcon size={16} className="text-pink-500" /> : <WaIcon size={16} className="text-[#25D366]" />}
                 </div>
               </div>
               <h2 className="font-bold text-lg text-[#111111] dark:text-[#EDE9E0] text-center px-4 leading-tight mb-1">
@@ -1485,23 +1489,46 @@ export default function InboxPage() {
 
             <div className="p-5 space-y-6">
 
-              {/* Información Básica */}
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2">
-                  <User size={12} /> Detalles
-                </h3>
-
-                <div className="grid gap-3">
-                  <div className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800">
-                    <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Temperatura</span>
-                    <div className="flex items-center gap-2">
-                      {activeChat.lead.heat === 'CALIENTE' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Caliente 🔥</span>}
-                      {activeChat.lead.heat === 'TIBIO' && <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Tibio 📈</span>}
-                      {(!activeChat.lead.heat || activeChat.lead.heat === 'FRIO') && <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Frío ❄️</span>}
-                      <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
+              {/* Score Section: Condicional según config */}
+              {activeChat.lead.project?.leadScoringEnabled !== false && (
+                <div>
+                  <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2 mb-3">
+                    <User size={12} /> Detalles
+                  </h3>
+                  <div className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 space-y-4">
+                    <div>
+                      <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Temperatura</span>
+                      <div className="flex items-center gap-2">
+                        {activeChat.lead.heat === 'CALIENTE' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Caliente 🔥</span>}
+                        {activeChat.lead.heat === 'TIBIO' && <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Tibio 📈</span>}
+                        {(!activeChat.lead.heat || activeChat.lead.heat === 'FRIO') && <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Frío ❄️</span>}
+                        <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-3 border-t border-[#DEDAD0] dark:border-zinc-800">
+                      <div>
+                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Contactado</span>
+                        <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0]">
+                          {new Date(activeChat.lead.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Última Acc.</span>
+                        <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0]">
+                          {new Date(activeChat.lastActiveAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                </div>
+              )}
 
+              {/* Fallback de layout si el score está apagado */}
+              {activeChat.lead.project?.leadScoringEnabled === false && (
+                <div>
+                  <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2 mb-3">
+                    <User size={12} /> Detalles Básicos
+                  </h3>
                   <div className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
                     <div>
                       <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Contactado</span>
@@ -1517,7 +1544,7 @@ export default function InboxPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Resumen de IA */}
               <div className="space-y-3">

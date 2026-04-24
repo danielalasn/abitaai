@@ -81,6 +81,10 @@ export default function AdminPage() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileStatus, setCompileStatus] = useState<'success' | 'error' | null>(null);
 
+  // Bot Scoring state (JSON array) + leadScoringEnabled (from project)
+  const [scoringRulesList, setScoringRulesList] = useState<{ condition: string; score: number }[]>([]);
+
+
   // Edit User state
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -217,10 +221,21 @@ export default function AdminPage() {
       knowledgeRaw: initialConfig.knowledgeRaw || '',
       faq: initialConfig.faq || '',
       leadScoringRules: initialConfig.leadScoringRules || '',
+      leadScoringEnabled: project?.leadScoringEnabled ?? true,
       whatsappToken: project?.whatsappToken || '',
       whatsappPhoneId: project?.whatsappPhoneId || '',
       whatsappBusinessId: project?.whatsappBusinessId || '',
     });
+
+    try {
+      if (initialConfig.leadScoringRules) {
+        setScoringRulesList(JSON.parse(initialConfig.leadScoringRules));
+      } else {
+        setScoringRulesList([]);
+      }
+    } catch {
+      setScoringRulesList([]);
+    }
 
     // Preload usage stats
     setUsageStats(null);
@@ -243,7 +258,11 @@ export default function AdminPage() {
 
     setIsSavingConfig(true);
     try {
-      await updateBotConfig(project.id, configData);
+      const configToSave = {
+        ...configData,
+        leadScoringRules: JSON.stringify(scoringRulesList) // Save list as JSON string
+      };
+      await updateBotConfig(project.id, configToSave);
       alert('Configuración guardada exitosamente');
       loadClients();
     } catch (err: any) {
@@ -1143,9 +1162,73 @@ export default function AdminPage() {
                         )}
 
                         {activeBotSubTab === 'scoring' && (
-                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
-                            <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Reglas de Calificación (Scoring)</label>
-                            <textarea value={configData.leadScoringRules} onChange={e => setConfigData({ ...configData, leadScoringRules: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" placeholder="Ej: +10 si pregunta precio, -5 si es estudiante..." />
+                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200 overflow-y-auto pr-2">
+                            <div className="flex items-center justify-between mb-4 bg-orange-50 dark:bg-orange-950/20 px-4 py-3 rounded-2xl border border-orange-100 dark:border-orange-900/30 shrink-0">
+                              <div>
+                                <h4 className="font-bold text-orange-800 dark:text-orange-400 text-sm">Sistema de Puntuación</h4>
+                                <p className="text-[11px] text-orange-600/80 dark:text-orange-400/80">Activa el heatmap para calificar leads.</p>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  className="sr-only peer" 
+                                  checked={configData.leadScoringEnabled}
+                                  onChange={e => setConfigData({ ...configData, leadScoringEnabled: e.target.checked })}
+                                />
+                                <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-500"></div>
+                              </label>
+                            </div>
+
+                            <div className={`flex flex-col gap-3 transition-opacity ${!configData.leadScoringEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+                              <label className="text-[10px] font-bold text-zinc-500 block uppercase tracking-widest leading-none mb-1">Reglas ({scoringRulesList.length})</label>
+                              
+                              {scoringRulesList.map((rule, idx) => (
+                                <div key={idx} className="flex items-start gap-2 bg-zinc-50 dark:bg-zinc-800/30 p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                                  <div className="flex-1 space-y-2">
+                                    <input 
+                                      type="text" 
+                                      value={rule.condition}
+                                      onChange={e => {
+                                        const newList = [...scoringRulesList];
+                                        newList[idx].condition = e.target.value;
+                                        setScoringRulesList(newList);
+                                      }}
+                                      placeholder="Si el cliente pregunta por precios..." 
+                                      className="w-full text-[13px] px-3 py-2 border border-zinc-200 rounded-lg dark:bg-[#121416] dark:border-zinc-700 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100" 
+                                    />
+                                  </div>
+                                  <div className="w-24 shrink-0 flex items-center gap-1">
+                                    <span className="text-zinc-400 font-bold px-1">+</span>
+                                    <input 
+                                      type="number" 
+                                      value={rule.score || ''}
+                                      max={100}
+                                      onChange={e => {
+                                        const newList = [...scoringRulesList];
+                                        newList[idx].score = parseInt(e.target.value) || 0;
+                                        setScoringRulesList(newList);
+                                      }}
+                                      placeholder="Puntos" 
+                                      className="w-full text-center text-[13px] px-2 py-2 border border-zinc-200 rounded-lg dark:bg-[#121416] dark:border-zinc-700 outline-none focus:border-orange-500 text-emerald-600 dark:text-emerald-400 font-bold" 
+                                    />
+                                  </div>
+                                  <button onClick={() => setScoringRulesList(scoringRulesList.filter((_, i) => i !== idx))} className="shrink-0 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors mt-0.5">
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              ))}
+
+                              {scoringRulesList.length === 0 && (
+                                <p className="text-xs text-zinc-500 italic text-center py-4 bg-zinc-50 dark:bg-zinc-800/20 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700">No hay reglas configuradas. La IA no sumará puntos todavía.</p>
+                              )}
+
+                              <button 
+                                onClick={() => setScoringRulesList([...scoringRulesList, { condition: '', score: 10 }])}
+                                className="w-full py-2.5 mt-2 border border-dashed border-orange-300 dark:border-orange-800 text-orange-600 dark:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+                              >
+                                <Plus size={14} /> Añadir Regla de Puntuación
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>

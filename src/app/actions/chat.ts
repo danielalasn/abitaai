@@ -150,6 +150,7 @@ ${visual}
 PROHIBICIÓN ESTRICTA: NO USES EMOJIS bajo ninguna circunstancia. Tu respuesta debe ser solo texto plano y profesional.
 </visual_format_rules>
 
+${project?.leadScoringEnabled ? `
 <heatmap_scoring_system>
 Tu trabajo en segundo plano también es calificar el interés del cliente ("Heatmap"). Revisa estas reglas dadas por el dueño:
 REGLAS DE EVENTOS (Suma 100 en total):
@@ -157,6 +158,7 @@ ${scoringText}
 
 ${scoringBase}
 </heatmap_scoring_system>
+` : ''}
 
 <learning_system>
 ${learning}
