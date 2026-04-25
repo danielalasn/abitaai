@@ -53,13 +53,24 @@ export async function updateLeadAISummary(chatId: string, force: boolean = false
 
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
+    include: { lead: true },
+  });
+
+  if (!chat || !chat.lead || chat.lead.projectId !== project.id) return null;
+
+  return updateLeadAISummaryInternal(chatId, force);
+}
+
+export async function updateLeadAISummaryInternal(chatId: string, force: boolean = false) {
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
     include: {
       lead: true,
       messages: { orderBy: { createdAt: 'asc' } },
     },
   });
 
-  if (!chat || !chat.lead || chat.lead.projectId !== project.id) return null;
+  if (!chat || !chat.lead) return null;
 
   const userMessages = chat.messages.filter((m) => m.role === 'user');
   const count = userMessages.length;

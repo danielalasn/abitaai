@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsAppMessage, sendWhatsAppTemplate, sendWhatsAppMedia, WaMediaType } from '@/lib/whatsapp';
 import { getCurrentProject } from '@/lib/auth-server';
-import { updateLeadAISummary } from '@/app/actions/leads';
+import { updateLeadAISummaryInternal } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
@@ -360,7 +360,7 @@ export async function saveAssistantReply(
   }
 
   // Disparar resumen IA de forma asíncrona (no bloquea el mensaje)
-  updateLeadAISummary(chatId).catch((e) =>
+  updateLeadAISummaryInternal(chatId).catch((e) =>
     console.error('[AI Summary] Error en disparo asíncrono:', e)
   );
 

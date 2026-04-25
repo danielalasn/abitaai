@@ -182,7 +182,13 @@ export async function POST(req: NextRequest) {
 
     
     // 2. Obtener estado del chat (¿Bot activo?)
-    const chatDetails = await getChatMessages(chatId);
+    const chatDetails = await prisma.chat.findUnique({
+      where: { id: chatId },
+      include: {
+        lead: { include: { project: true } },
+        messages: { orderBy: { createdAt: 'asc' } }
+      }
+    });
     
     if (chatDetails?.botActive) {
         // 3. Generar respuesta de la IA
@@ -231,8 +237,14 @@ export async function POST(req: NextRequest) {
 
             // 6. Si hubo un Handoff, desactivar el bot
             if (botData.isHandoff) {
-                const { requestHandoff } = await import('@/app/actions/inbox');
-                await requestHandoff(chatId);
+                await prisma.chat.update({
+                  where: { id: chatId },
+                  data: { botActive: false }
+                });
+                await prisma.lead.update({
+                  where: { id: chatDetails.lead.id },
+                  data: { status: 'NEEDS_AGENT' }
+                });
                 console.log(`Bot desactivado automáticamente por HandOff para el chat ${chatId}`);
             }
         }
