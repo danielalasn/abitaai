@@ -600,25 +600,17 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
-                  <div className="flex gap-2">
                     <select
-                      value={availableGroups.includes(newUserTemplateGroup) ? newUserTemplateGroup : ""}
+                      value={newUserTemplateGroup}
                       onChange={e => setNewUserTemplateGroup(e.target.value)}
-                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                      className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
                     >
-                      <option value="">Seleccionar existente...</option>
+                      <option value="">Inactivo / Ninguno</option>
                       {availableGroups.map(g => (
                         <option key={g} value={g}>{g}</option>
                       ))}
                     </select>
-                    <input
-                      value={newUserTemplateGroup}
-                      onChange={e => setNewUserTemplateGroup(e.target.value)}
-                      placeholder="O escribe uno nuevo..."
-                      className="flex-1 text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
-                    />
-                  </div>
-                  <p className="text-[10px] text-zinc-500 mt-1 pl-1">Selecciona del dropdown (extraído de Meta) o escribe el prefijo manualmente.</p>
+                  <p className="text-[10px] text-zinc-500 mt-1 pl-1">Selecciona el grupo de plantillas autorizado para este cliente.</p>
                 </div>
                 <button disabled={isCreating} type="submit" className="w-full py-3 h-12 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-bold tracking-wide shadow-sm flex items-center justify-center gap-2 mt-4 transition-all">
                   {isCreating ? <Loader2 size={18} className="animate-spin" /> : 'Registrar Cliente'}
@@ -878,24 +870,16 @@ export default function AdminPage() {
                             </div>
                             <div>
                               <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Grupo de Plantillas (WABA)</label>
-                              <div className="flex gap-2">
-                                <select
-                                  value={availableGroups.includes(editTemplateGroup) ? editTemplateGroup : ""}
-                                  onChange={e => setEditTemplateGroup(e.target.value)}
-                                  className="flex-1 text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
-                                >
-                                  <option value="">Existentes...</option>
-                                  {availableGroups.map(g => (
-                                    <option key={g} value={g}>{g}</option>
-                                  ))}
-                                </select>
-                                <input
-                                  value={editTemplateGroup}
-                                  onChange={e => setEditTemplateGroup(e.target.value)}
-                                  placeholder="Nuevo..."
-                                  className="flex-1 text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
-                                />
-                              </div>
+                              <select
+                                value={editTemplateGroup}
+                                onChange={e => setEditTemplateGroup(e.target.value)}
+                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                              >
+                                <option value="">Inactivo / Ninguno</option>
+                                {availableGroups.map(g => (
+                                  <option key={g} value={g}>{g}</option>
+                                ))}
+                              </select>
                             </div>
                           </div>
                           <div className="pt-4 flex justify-end gap-3">

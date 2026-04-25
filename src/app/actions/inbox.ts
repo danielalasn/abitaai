@@ -17,7 +17,10 @@ export async function getActiveChats(_timestamp?: number) {
   const chats = await prisma.chat.findMany({
     where: {
       isArchived: false,
-      lead: { projectId: project.id }
+      lead: { 
+        projectId: project.id,
+        NOT: { channel: 'simulator' }
+      }
     },
     include: { 
       lead: {

@@ -340,13 +340,19 @@ export async function sendSimulatorMessage(
     include: { chat: true }
   });
 
+  if (lead && lead.channel !== "simulator") {
+    await prisma.lead.update({ where: { id: lead.id }, data: { channel: "simulator" } });
+    if (lead.chat) await prisma.chat.update({ where: { id: lead.chat.id }, data: { channel: "simulator" } });
+  }
+
   if (!lead) {
     lead = await prisma.lead.create({
       data: {
         projectId,
         phone: SIMULATOR_PHONE,
         name: "Usuario de Prueba",
-        chat: { create: {} }
+        channel: "simulator",
+        chat: { create: { channel: "simulator" } }
       },
       include: { chat: true }
     });
