@@ -320,13 +320,21 @@ export default function SettingsPage() {
           </div>
         )}
         {verifyResult && (
-          <div className={`${verifyResult.success ? 'bg-emerald-600' : 'bg-red-600'} text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300`}>
-            <div className="bg-white/20 p-1.5 rounded-full">
+          <div className={`${verifyResult.success ? 'bg-emerald-600' : 'bg-red-600'} text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 relative group/notif`}>
+            <button 
+              onClick={() => setVerifyResult(null)}
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/20 transition-colors opacity-0 group-hover/notif:opacity-100"
+            >
+              <X size={14} />
+            </button>
+            <div className="bg-white/20 p-1.5 rounded-full shrink-0">
               {verifyResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
             </div>
             <div className="flex flex-col">
               <p className="text-sm font-semibold">{verifyResult.success ? 'Conexión Exitosa' : 'Error de Conexión'}</p>
-              <p className="text-xs opacity-90 whitespace-pre-line">{verifyResult.message}</p>
+              <p className="text-xs opacity-90 whitespace-pre-line">
+                {verifyResult.message.replace(/^[^\n]*\n/, '')}
+              </p>
             </div>
           </div>
         )}
@@ -761,7 +769,7 @@ export default function SettingsPage() {
                         setIsVerifying(true); setVerifyResult(null)
                         const r = await verifyWhatsappConnection(whatsappPhoneId || undefined, whatsappToken || undefined)
                         setVerifyResult(r); setIsVerifying(false)
-                        setTimeout(() => setVerifyResult(null), 5000)
+                        setTimeout(() => setVerifyResult(null), 10000)
                       }}
                       disabled={isVerifying}
                       className="px-5 py-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-300"
