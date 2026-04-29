@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GLOBAL_SYSTEM_GUARDRAILS } from '@/lib/guardrails';
 import { getCurrentProject } from '@/lib/auth-server';
 
@@ -172,12 +173,28 @@ Si el usuario proporciona su correo electrónico, incluye obligatoriamente este 
 <strict_reminder>
 RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
 </strict_reminder>
+
+<language_instruction>
+STRICT RULE: Detect the user's language and respond in the SAME language. 
+- If the user writes in English, respond in English.
+- If the user writes in Spanish, respond in Spanish.
+- If the user ASKS to speak in a specific language (e.g., "Can we speak in English?"), you MUST agree enthusiastically (e.g., "Yes, of course!", "¡Claro que sí, con gusto!") and switch to that language immediately.
+Maintaining the same language as the customer is your TOP priority.
+</language_instruction>
   `;
 
-  console.log("\n\n" + "=".repeat(50));
-  console.log("🚀 [DEBUG] SYSTEM PROMPT GENERATED:");
-  console.log(systemPrompt);
-  console.log("=".repeat(50) + "\n\n");
+  console.log("\n" + "=".repeat(60));
+  console.log("🚀 [CLAUDE REQUEST DEBUG]");
+  console.log("-".repeat(60));
+  console.log("SYSTEM PROMPT:");
+  console.log(systemPrompt); 
+  console.log("-".repeat(60));
+  console.log("CONVERSATION HISTORY:");
+  history.forEach((h, i) => console.log(`  [${i}] ${h.role.toUpperCase()}: ${h.content.substring(0, 100)}${h.content.length > 100 ? '...' : ''}`));
+  console.log("-".repeat(60));
+  console.log("USER MESSAGE:");
+  console.log(`  ${message}`);
+  console.log("=".repeat(60) + "\n");
 
   try {
     // We filter history down to what anthropic expects: assistant and user
@@ -273,17 +290,81 @@ RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
     };
 
   } catch (error: any) {
-    console.error("AI Error:", error);
-    return { 
-      reply: `Error conectando con la IA: ${error.message}`, 
-      isHandoff: false, 
-      scoreBump: 0, 
-      scoreReason: "",
-      inputTokens: 0, 
-      outputTokens: 0,
-      agentName: "Error",
-      debugPrompt: ""
-    };
+    console.error("Claude Error, intentando fallback con Gemini:", error.message || error);
+    
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY no configurado para fallback");
+      }
+      
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-flash-latest",
+        systemInstruction: systemPrompt 
+      });
+      
+      const geminiHistory = history.map(h => ({
+        role: h.role === 'user' ? 'user' : 'model',
+        parts: [{ text: h.content }],
+      }));
+      
+      const chat = model.startChat({
+        history: geminiHistory,
+      });
+      
+      const result = await chat.sendMessage(message);
+      const rawReply = result.response.text();
+      
+      // Capturar uso de tokens para monitoreo de costos
+      const inputTokens = result.response.usageMetadata?.promptTokenCount || 0;
+      const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
+      console.log(`[GEMINI TOKENS] Input: ${inputTokens} | Output: ${outputTokens}`);
+
+      // Clean up reply from tags
+      const reply = rawReply.replace(/\[ACTION: .+?\]/g, "").trim();
+      const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
+
+      let scoreBump = 0;
+      let scoreReason = "";
+      const scoreMatches = Array.from(rawReply.matchAll(/\[ACTION: SCORE_BUMP ([+-]?\d+)(?:\s+REASON:\s*"([^"]+)")?\]/gi));
+      if (scoreMatches.length > 0) {
+        const reasons: string[] = [];
+        scoreMatches.forEach(match => {
+          scoreBump += parseInt(match[1]);
+          if (match[2]) reasons.push(match[2]);
+        });
+        scoreReason = reasons.join("; ");
+        console.log(`Heatmap Score Detectado (Gemini): +${scoreBump} (${scoreReason})`);
+      }
+
+      const emailMatch = rawReply.match(/\[ACTION: UPDATE_EMAIL "(.*?)"\]/);
+      const extractedEmail = emailMatch ? emailMatch[1].trim() : null;
+
+      return { 
+        reply, 
+        isHandoff, 
+        scoreBump, 
+        scoreReason,
+        inputTokens, 
+        outputTokens,
+        agentName: config.name + " (Gemini)",
+        extractedEmail,
+        debugPrompt: systemPrompt
+      };
+
+    } catch (geminiError: any) {
+      console.error("Gemini Fallback Error:", geminiError);
+      return { 
+        reply: null, // No enviar nada al cliente
+        isHandoff: false, 
+        scoreBump: 0, 
+        scoreReason: "AI_ERROR",
+        inputTokens: 0, 
+        outputTokens: 0,
+        agentName: "Error",
+        debugPrompt: ""
+      };
+    }
   }
 }
 
@@ -395,19 +476,27 @@ export async function sendSimulatorMessage(
     lead.metadata // Pasamos la info previa (habitaciones, presupuesto, etc.)
   );
 
-  // 5. Guardar respuesta de la IA (incluyendo el nombre del agente)
-  await prisma.message.create({
-    data: {
-      chatId,
-      role: 'assistant',
-      content: result.reply,
-      agentName: result.agentName, // Guardamos quién respondió
-      scoreBump: result.scoreBump > 0 ? result.scoreBump : null, // Solo guardamos si sumó
-      scoreReason: result.scoreReason || null,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens
-    }
-  });
+  // 5. Guardar respuesta de la IA (solo si no hubo error)
+  if (result.reply) {
+    await prisma.message.create({
+      data: {
+        chatId,
+        role: 'assistant',
+        content: result.reply,
+        agentName: result.agentName, 
+        scoreBump: result.scoreBump > 0 ? result.scoreBump : null,
+        scoreReason: result.scoreReason || null,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens
+      }
+    });
+  } else {
+    // Desactivar bot si falla la IA
+    await prisma.chat.update({
+      where: { id: chatId },
+      data: { botActive: false }
+    });
+  }
 
   // 6. Actualizar Score si hubo bump o email
   let updatedScore = lead.score;

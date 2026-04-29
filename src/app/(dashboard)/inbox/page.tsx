@@ -159,6 +159,10 @@ export default function InboxPage() {
   const [readMessageIds, setReadMessageIds] = useState<Record<string, string>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const notifiedMessageIds = useRef<Set<string>>(new Set());
+  
+  // Refs para Debounce del Simulador de Cliente (Inbox)
+  const clientPendingMessages = useRef<string[]>([]);
+  const clientDebounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Refs para control de estado optimista y polling
   const pendingOptimistic = useRef<Set<string>>(new Set());
@@ -572,59 +576,76 @@ export default function InboxPage() {
   };
 
 
-  // 2. Simular que el CLIENTE envía un mensaje por WhatsApp al chat actual
+  // 2. Simular que el CLIENTE envía un mensaje por WhatsApp al chat actual (CON DEBOUNCE)
   const handleClientSubmit = async () => {
     if (!clientInput.trim() || !activeChat) return;
-    setIsSimulating(true);
-    try {
-      const msg = clientInput.trim();
-      const phone = activeChat.lead.phone;
-      setClientInput('');
+    
+    const msg = clientInput.trim();
+    const phone = activeChat.lead.phone;
+    const chatId = activeChat.id;
+    setClientInput('');
 
-      // Guardar el mensaje del cliente en BD
-      const chatId = await simulateIncomingMessage(phone, msg);
+    // 1. Acumular mensaje
+    clientPendingMessages.current.push(msg);
 
-      const chatDetails = await getChatMessages(chatId);
+    // 2. Mostrar mensaje optimista en el chat (opcional, pero ayuda al feedback)
+    // simulateIncomingMessage ya lo guarda en BD, pero queremos que sea instantáneo en UI
+    // En el simulador de inbox, mejor esperamos al timer para no duplicar si el polling ocurre
+    
+    // 3. Reiniciar timer de 6 segundos (mismo que WhatsApp)
+    if (clientDebounceTimer.current) {
+      clearTimeout(clientDebounceTimer.current);
+    }
 
-      // Si el bot está activo, responde automáticamente
-      if (chatDetails?.botActive) {
-        // Extraemos el historial de la BD, pero evitamos pasarle el que acabamos de meter
-        // para no duplicarlo en la lógica de sendTestMessage.
-        const history = chatDetails.messages.slice(0, -1);
+    clientDebounceTimer.current = setTimeout(async () => {
+      // Limpiar referencia al timer una vez disparado
+      clientDebounceTimer.current = null;
+      
+      if (clientPendingMessages.current.length === 0) return;
 
-        const botData = await sendTestMessage(
-          msg,
-          history,
-          chatDetails.lead.name || undefined,
-          undefined,
-          undefined,
-          chatDetails.lead.metadata // Info del CRM
-        );
-        if (botData && typeof botData !== 'string') {
-          await saveAssistantReply(
-            chatId,
-            botData.reply,
-            botData.scoreBump,
-            botData.inputTokens,
-            botData.outputTokens,
-            'SERVICE',
-            botData.agentName,
-            botData.scoreReason
+      const combinedText = clientPendingMessages.current.join('\n');
+      clientPendingMessages.current = [];
+      
+      setIsSimulating(true);
+      try {
+        await simulateIncomingMessage(phone, combinedText);
+        const chatDetails = await getChatMessages(chatId);
+
+        if (chatDetails?.botActive) {
+          const history = chatDetails.messages.slice(0, -1);
+          const botData = await sendTestMessage(
+            combinedText,
+            history.map((m: any) => ({ role: m.role, content: m.content })),
+            chatDetails.lead.name || undefined,
+            undefined,
+            undefined,
+            chatDetails.lead.metadata
           );
 
-          if (botData.isHandoff) {
-            await requestHandoff(chatId);
+          if (botData && typeof botData !== 'string' && botData.reply) {
+            await saveAssistantReply(
+              chatId,
+              botData.reply,
+              botData.scoreBump,
+              botData.inputTokens,
+              botData.outputTokens,
+              'SERVICE',
+              botData.agentName,
+              botData.scoreReason
+            );
+
+            if (botData.isHandoff) {
+              await requestHandoff(chatId);
+            }
           }
         }
+        await loadChats();
+      } catch (error: any) {
+        console.error(error);
+      } finally {
+        setIsSimulating(false);
       }
-
-      await loadChats();
-    } catch (error: any) {
-      console.error(error);
-      alert("Error: " + error.message);
-    } finally {
-      setIsSimulating(false);
-    }
+    }, 6000);
   };
 
   // 3. El AGENTE envía un mensaje: aparece INSTANTÁNEO en UI, BD en background
@@ -1107,15 +1128,15 @@ export default function InboxPage() {
                 <div className="h-10 w-10 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-bold shadow-sm">
                   {activeChat.lead.name?.[0]?.toUpperCase() || 'a'}
                 </div>
-                <div>
-                  <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
-                    {activeChat.lead.name}
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2 min-w-0">
+                    <span className="truncate">{activeChat.lead.name}</span>
                      <span className="text-[10px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded-md font-mono border border-[#DEDAD0] dark:border-zinc-700 flex items-center gap-1 shrink-0">
                       {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : activeChat.lead.channel === 'simulator' ? <SimIcon size={10} /> : <WaIcon size={10} />}
                       {activeChat.lead.channel === 'instagram' ? 'Instagram' : activeChat.lead.channel === 'simulator' ? 'Simulador' : 'WhatsApp'}
                     </span>
                   </h2>
-                  <p className="text-xs text-[#6F6F6F]">{activeChat.lead.phone}</p>
+                  <p className="text-xs text-[#6F6F6F] truncate">{activeChat.lead.phone}</p>
                 </div>
               </div>
 
@@ -1152,7 +1173,7 @@ export default function InboxPage() {
               </div>
             </header>
 
-            <div ref={messagesScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4" onScroll={(e) => {
+            <div ref={messagesScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-4" onScroll={(e) => {
               if (e.currentTarget.scrollTop < 120 && hasMoreMessages && !isLoadingMore) {
                 handleLoadMoreMessages();
               }

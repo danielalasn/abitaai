@@ -59,42 +59,57 @@ export default function TestChatPage() {
     init();
   }, []);
 
+  const pendingMessages = useRef<string[]>([]);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
   const handleSend = async () => {
-    if (!input.trim() || isLoading || !projectId) return;
+    if (!input.trim() || !projectId) return;
     
     const userMessage = input.trim();
     setInput('');
-    // Actualización optimista
+    
+    // 1. Agregar a la cola y mostrar en UI de inmediato
+    pendingMessages.current.push(userMessage);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsLoading(true);
 
-    try {
-      const result = await sendSimulatorMessage(
-        userMessage,
-        projectId,
-        selectedAgentId || undefined
-      );
-      
-      // Recargar todo el chat para asegurar persistencia y orden (o solo agregar la respuesta)
-      // En este caso, el servidor ya guardó ambos. Agregamos solo la respuesta para rapidez.
-      // Pero mejor pedimos el score actualizado
-      const chatData = await getSimulatorChat(projectId);
-      setMessages(chatData.messages);
-      setScore(chatData.score);
-      setHeat(chatData.heat);
-
-      // --- LOG DEBUG PROMPT ---
-      if (result.debugPrompt) {
-        console.log("%c🚀 [AI DEBUG PROMPT]", "color: #F36A2D; font-size: 14px; font-weight: bold;");
-        console.log(result.debugPrompt);
-        console.log("%c-----------------------", "color: #F36A2D;");
-      }
-
-    } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Lo siento, hubo un error procesando tu mensaje.' }]);
+    // 2. Limpiar timer anterior
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
     }
-    setIsLoading(false);
+
+    // 3. Crear nuevo timer de 3 segundos
+    debounceTimer.current = setTimeout(async () => {
+      if (pendingMessages.current.length === 0) return;
+      
+      const combinedText = pendingMessages.current.join('\n');
+      pendingMessages.current = []; // Vaciar la cola
+      
+      setIsLoading(true);
+      try {
+        const result = await sendSimulatorMessage(
+          combinedText,
+          projectId,
+          selectedAgentId || undefined
+        );
+        
+        // Recargar el chat para sincronizar con BD
+        const chatData = await getSimulatorChat(projectId);
+        setMessages(chatData.messages);
+        setScore(chatData.score);
+        setHeat(chatData.heat);
+
+        if (result.debugPrompt) {
+          console.log("%c🚀 [AI DEBUG PROMPT]", "color: #F36A2D; font-size: 14px; font-weight: bold;");
+          console.log(result.debugPrompt);
+          console.log("%c-----------------------", "color: #F36A2D;");
+        }
+      } catch (error) {
+        console.error(error);
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Lo siento, hubo un error procesando tu mensaje.' }]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 6000);
   };
 
   const handleReset = async () => {
@@ -283,7 +298,7 @@ export default function TestChatPage() {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim()}
             className="h-12 w-12 shrink-0 rounded-full bg-[#111111] dark:bg-[#EDE9E0] hover:scale-105 active:scale-95 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 text-white dark:text-zinc-900 flex items-center justify-center transition-all shadow-md group border border-transparent dark:border-zinc-800"
           >
             <Send size={18} className={`transition-transform duration-300 ${input.trim() && !isLoading ? 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5' : ''}`} />
