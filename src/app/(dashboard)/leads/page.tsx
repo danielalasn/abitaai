@@ -14,6 +14,7 @@ type Lead = {
   id: string;
   phone: string;
   name: string | null;
+  email: string | null;
   status: string;
   score: number;
   heat: string;
@@ -103,6 +104,7 @@ export default function LeadsPage() {
       return (
         l.phone.includes(q) ||
         (l.name || '').toLowerCase().includes(q) ||
+        (l.email || '').toLowerCase().includes(q) ||
         (l.aiSummary || '').toLowerCase().includes(q)
       );
     })
@@ -117,9 +119,10 @@ export default function LeadsPage() {
     });
 
   const exportCSV = () => {
-    const headers = ['Nombre', 'Número', 'Fecha Contacto', 'Último Mensaje', 'Temperatura', 'Score', 'Campaña Destino', 'Mensajes Enviados', 'Resumen IA'];
+    const headers = ['Nombre', 'Correo', 'Número', 'Fecha Contacto', 'Último Mensaje', 'Temperatura', 'Score', 'Campaña Destino', 'Mensajes Enviados', 'Resumen IA'];
     const rows = filtered.map(l => [
       l.name || 'Sin nombre',
+      l.email || '—',
       l.phone,
       new Date(l.createdAt).toLocaleDateString('es-ES'),
       l.lastMessageAt ? new Date(l.lastMessageAt).toLocaleDateString('es-ES') : '—',
@@ -264,6 +267,7 @@ export default function LeadsPage() {
                               </p>
                               <div className="flex flex-col gap-1 mt-0.5">
                                 <p className="text-xs text-[#6F6F6F] font-mono">{lead.phone}</p>
+                                {lead.email && <p className="text-[10px] text-[#F36A2D]/80 font-medium truncate max-w-[150px]">{lead.email}</p>}
                                 {lead.latestCampaignName && (
                                   <span className="text-[9px] font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-[#6F6F6F] px-1.5 py-0.5 rounded-sm w-max">
                                     {lead.latestCampaignName}

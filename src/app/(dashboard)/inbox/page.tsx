@@ -847,8 +847,8 @@ export default function InboxPage() {
   return (
     <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714] min-w-0">
       {/* 1. SIDEBAR DE CHATS */}
-      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col transition-all duration-300 ease-in-out ${isInboxSidebarOpen ? 'w-[300px]' : 'w-0 opacity-0 pointer-events-none'}`}>
-        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#E9E4D8] dark:bg-[#1A1714] min-w-[300px]">
+      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out ${isInboxSidebarOpen ? 'w-[300px]' : 'w-0 opacity-0 pointer-events-none'}`}>
+        <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#DEDAD0]/50 dark:bg-[#141210] min-w-[300px]">
           {selectedIds.size > 0 ? (
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-200">
               <div className="flex items-center gap-3">
@@ -1496,6 +1496,11 @@ export default function InboxPage() {
               <p className="text-sm font-medium text-[#6F6F6F] flex items-center gap-1.5">
                 <Phone size={12} /> {activeChat.lead.phone}
               </p>
+              {activeChat.lead.email && (
+                <p className="text-xs font-medium text-[#6F6F6F] flex items-center gap-1.5 mt-1">
+                  <Mail size={12} /> {activeChat.lead.email}
+                </p>
+              )}
             </div>
 
             <div className="p-5 space-y-6">

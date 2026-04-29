@@ -163,6 +163,10 @@ ${scoringBase}
 <learning_system>
 ${learning}
 </learning_system>
+
+<data_collection>
+Si el usuario proporciona su correo electrónico, incluye obligatoriamente este comando al final de tu respuesta: [ACTION: UPDATE_EMAIL "correo@ejemplo.com"]
+</data_collection>
 </critical_instructions_and_rules>
 
 <strict_reminder>
@@ -252,6 +256,10 @@ RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
       console.log(`Heatmap Score Detectado: +${scoreBump} (${scoreReason})`);
     }
 
+    // Check for Email extraction
+    const emailMatch = rawReply.match(/\[ACTION: UPDATE_EMAIL "(.*?)"\]/);
+    const extractedEmail = emailMatch ? emailMatch[1].trim() : null;
+
     return { 
       reply, 
       isHandoff, 
@@ -260,6 +268,7 @@ RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
       inputTokens, 
       outputTokens,
       agentName: config.name,
+      extractedEmail,
       debugPrompt: systemPrompt
     };
 
@@ -400,19 +409,22 @@ export async function sendSimulatorMessage(
     }
   });
 
-  // 6. Actualizar Score si hubo bump
+  // 6. Actualizar Score si hubo bump o email
   let updatedScore = lead.score;
   let updatedHeat = lead.heat;
+  let updatedEmail = lead.email;
 
-  if (result.scoreBump !== 0) {
+  if (result.scoreBump !== 0 || (result.extractedEmail && lead.email !== result.extractedEmail)) {
     updatedScore = Math.min(100, Math.max(0, lead.score + result.scoreBump));
     updatedHeat = "FRIO";
     if (updatedScore >= 70) updatedHeat = "CALIENTE";
     else if (updatedScore >= 30) updatedHeat = "TIBIO";
+    
+    updatedEmail = result.extractedEmail || lead.email;
 
     await prisma.lead.update({
       where: { id: lead.id },
-      data: { score: updatedScore, heat: updatedHeat }
+      data: { score: updatedScore, heat: updatedHeat, email: updatedEmail }
     });
   }
 

@@ -319,6 +319,17 @@ export default function SettingsPage() {
             <div className="flex flex-col"><p className="text-sm font-semibold">WhatsApp guardado</p></div>
           </div>
         )}
+        {verifyResult && (
+          <div className={`${verifyResult.success ? 'bg-emerald-600' : 'bg-red-600'} text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300`}>
+            <div className="bg-white/20 p-1.5 rounded-full">
+              {verifyResult.success ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            </div>
+            <div className="flex flex-col">
+              <p className="text-sm font-semibold">{verifyResult.success ? 'Conexión Exitosa' : 'Error de Conexión'}</p>
+              <p className="text-xs opacity-90 whitespace-pre-line">{verifyResult.message}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Layout = Sidebar + Content */}
@@ -671,166 +682,119 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* ─── Instagram Card ─── */}
-                <div className={`p-5 bg-white dark:bg-[#111111]/60 border rounded-[2rem] shadow-sm flex flex-col group transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-none hover:border-[#F36A2D]/40 ${
-                  igIntegration?.status === 'active' ? 'border-[#F36A2D]/30 border-2' : 'border-[#DEDAD0] dark:border-zinc-800'
+                <div className={`group relative p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-[#F36A2D]/40 ${
+                  igIntegration?.status === 'active' ? 'border-[#F36A2D]/30 ring-1 ring-[#F36A2D]/20' : 'border-[#DEDAD0] dark:border-zinc-800'
                 }`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 shadow-md">
-                        <IgIcon size={20} />
-                      </div>
-                      <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">Instagram DMs</h3>
+                  <div className="mb-6 relative">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 rounded-2xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                    <div className="relative h-16 w-16 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 shadow-xl group-hover:rotate-3 transition-transform duration-500">
+                      <IgIcon size={32} />
                     </div>
                     {igIntegration?.status === 'active' && (
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Activo</span>
-                      </div>
+                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
                     )}
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+
+                  <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">Instagram</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-8 max-w-[240px]">
                     Automatiza respuestas a DMs y menciones con tus agentes de IA personalizados.
                   </p>
-                  <div className="mt-auto">
+
+                  <div className="mt-auto flex gap-3 w-full">
                     {igIntegration?.status === 'active' ? (
-                      <button onClick={handleDisconnectIg} disabled={igLoading} className="w-full py-2.5 border border-red-100 dark:border-red-900/50 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-900/10 transition-all">
+                      <button 
+                        onClick={handleDisconnectIg} 
+                        disabled={igLoading} 
+                        className="flex-1 py-4 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
+                      >
                         {igLoading ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />}
-                        Desconectar Cuenta
+                        Desconectar
                       </button>
                     ) : (
-                      <a href="/api/integrations/instagram/connect" className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-pink-500/10 hover:opacity-90 active:scale-[0.98] transition-all">
-                        <IgIcon size={14} /> Conectar Instagram
+                      <a 
+                        href="/api/integrations/instagram/connect" 
+                        className="flex-1 py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-[#F36A2D] hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
+                      >
+                        <IgIcon size={14} /> Conectar
                       </a>
                     )}
+                    <button 
+                      className="px-5 py-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all duration-300 group/verify"
+                      title="Verificar conexión"
+                    >
+                      <Wifi size={18} className="group-hover/verify:text-[#F36A2D] transition-colors" />
+                    </button>
                   </div>
                 </div>
 
-                {/* ─── WhatsApp ─── */}
-                <div className={`p-6 bg-white dark:bg-[#111111]/60 border rounded-[2rem] shadow-sm flex flex-col group transition-all duration-300 hover:scale-[1.01] hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-none hover:border-emerald-500/40 ${
-                  whatsappPhoneId ? 'border-emerald-500/20 shadow-md ring-1 ring-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'
+                {/* ─── WhatsApp Card ─── */}
+                <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-emerald-500/40 ${
+                  whatsappPhoneId ? 'border-emerald-500/20 ring-1 ring-emerald-500/20' : 'border-[#DEDAD0] dark:border-zinc-800'
                 }`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center">
-                        <MessageSquare size={20} />
-                      </div>
-                      <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">WhatsApp Business</h3>
+                  <div className="mb-6 relative">
+                    <div className="absolute inset-0 bg-emerald-500 rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
+                    <div className="relative h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-sm group-hover:-rotate-3 transition-transform duration-500">
+                      <MessageSquare size={32} />
                     </div>
-                    {verifyResult?.success ? (
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-800">
-                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Conectado</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 px-3 py-1 bg-zinc-50 dark:bg-zinc-800/40 rounded-full border border-zinc-100 dark:border-zinc-800">
-                         <Wifi size={10} className="text-zinc-400" />
-                         <span className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Sin Verificar</span>
-                      </div>
+                    {verifyResult?.success && (
+                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg" />
                     )}
                   </div>
-                  
-                  <div className="space-y-4 mb-6">
-                    <div>
-                      <label className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1 block px-1">Phone Number ID</label>
-                      <input 
-                        type="text" 
-                        value={whatsappPhoneId} 
-                        onChange={e => setWhatsappPhoneId(e.target.value)} 
-                        placeholder="Ej: 1234567890123"
-                        className="w-full text-xs p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1 block px-1">Access Token</label>
-                      <div className="relative">
-                        <input 
-                          type={showToken ? "text" : "password"} 
-                          value={whatsappToken} 
-                          onChange={e => setWhatsappToken(e.target.value)} 
-                          placeholder={whatsappToken ? "••••••••••••••••" : "Opcional (usará el sistema por defecto)"}
-                          className="w-full text-xs p-3 pr-10 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all font-mono"
-                        />
-                        <button onClick={() => setShowToken(!showToken)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">
-                          {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-1 block px-1">WhatsApp Business ID</label>
-                      <input 
-                        type="text" 
-                        value={whatsappBusinessId} 
-                        onChange={e => setWhatsappBusinessId(e.target.value)} 
-                        placeholder="ID del Administrador Comercial"
-                        className="w-full text-xs p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 outline-none transition-all font-mono"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="mt-auto flex gap-2">
+                  <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">WhatsApp</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6 max-w-[240px]">
+                    Conecta tu número a través de la API oficial de WhatsApp Business.
+                  </p>
+                  
+                  <div className="mt-auto flex gap-3 w-full">
                     <button 
                       onClick={handleSaveWhatsApp} 
                       disabled={isSavingWA}
-                      className="flex-1 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50"
+                      className="flex-1 py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
                     >
-                      {isSavingWA ? <Loader2 size={14} className="animate-spin mx-auto" /> : 'Guardar Configuración'}
+                      {isSavingWA ? <Loader2 size={16} className="animate-spin" /> : 'Conectar'}
                     </button>
                     <button 
                       onClick={async () => {
                         setIsVerifying(true); setVerifyResult(null)
                         const r = await verifyWhatsappConnection(whatsappPhoneId || undefined, whatsappToken || undefined)
                         setVerifyResult(r); setIsVerifying(false)
+                        setTimeout(() => setVerifyResult(null), 5000)
                       }}
                       disabled={isVerifying}
-                      className="px-5 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2"
-                      title="Probar Conexión"
+                      className="px-5 py-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-300"
                     >
-                      {isVerifying ? <Loader2 size={14} className="animate-spin text-emerald-500" /> : <Wifi size={14} className="text-emerald-500" />}
+                      {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <Wifi size={18} />}
                     </button>
                   </div>
-
-                  {verifyResult && (
-                    <div className={`mt-4 p-4 rounded-xl text-xs font-medium border animate-in slide-in-from-top-2 duration-300 ${
-                      verifyResult.success ? 'bg-emerald-50 border-emerald-100 text-emerald-700 dark:bg-emerald-900/10 dark:border-emerald-800/40' : 'bg-red-50 border-red-100 text-red-600 dark:bg-red-950/20 dark:border-red-900/40'
-                    }`}>
-                      <div className="flex gap-2">
-                        {verifyResult.success ? <CheckCircle2 size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
-                        <p className="whitespace-pre-line leading-relaxed">{verifyResult.message}</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
-                {/* ─── Facebook ─── */}
-                <div className="p-5 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[2rem] opacity-60 flex flex-col group transition-all duration-300 hover:scale-[1.02]">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 bg-blue-500/10 text-blue-500 rounded-xl flex items-center justify-center">
-                      <Globe size={20} />
-                    </div>
-                    <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">Messenger</h3>
+                {/* ─── Facebook Card ─── */}
+                <div className="p-8 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[3rem] opacity-50 flex flex-col items-center text-center">
+                  <div className="mb-6 h-16 w-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center">
+                    <Globe size={32} />
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+                  <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">Messenger</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-8 max-w-[240px]">
                     Extiende tus agentes a tus páginas de Facebook para respuestas inmediatas.
                   </p>
-                  <div className="mt-auto py-2 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest text-center border border-zinc-100 dark:border-zinc-800">
+                  <div className="mt-auto w-full py-4 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-center border border-zinc-100 dark:border-zinc-800">
                     Próximamente
                   </div>
                 </div>
 
-                {/* ─── HubSpot ─── */}
-                <div className="p-5 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[2rem] opacity-60 flex flex-col group transition-all duration-300 hover:scale-[1.02]">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 bg-orange-500/10 text-orange-500 rounded-xl flex items-center justify-center">
-                      <Link size={20} />
-                    </div>
-                    <h3 className="font-bold text-zinc-900 dark:text-[#EDE9E0] text-base">CRM HubSpot</h3>
+                {/* ─── HubSpot Card ─── */}
+                <div className="p-8 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[3rem] opacity-50 flex flex-col items-center text-center">
+                  <div className="mb-6 h-16 w-16 bg-orange-500/10 text-orange-500 rounded-2xl flex items-center justify-center">
+                    <Link size={32} />
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+                  <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">CRM HubSpot</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-8 max-w-[240px]">
                     Sincronización automática de leads y conversaciones directamente en tu CRM.
                   </p>
-                  <div className="mt-auto py-2 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-xl text-[9px] font-black uppercase tracking-widest text-center border border-zinc-100 dark:border-zinc-800">
+                  <div className="mt-auto w-full py-4 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-center border border-zinc-100 dark:border-zinc-800">
                     Próximamente
                   </div>
                 </div>

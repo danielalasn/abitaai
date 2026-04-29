@@ -302,7 +302,8 @@ export async function saveAssistantReply(
   waCategory: string = 'SERVICE',
   agentName?: string,
   scoreReason?: string,
-  wamid?: string
+  wamid?: string,
+  extractedEmail?: string | null
 ) {
   // Forzar valores explícitos para evitar undefined/null que Prisma convierte a NULL
   const safeInputTokens = inputTokens ?? 0;
@@ -347,7 +348,7 @@ export async function saveAssistantReply(
       console.log("Bono de Retención detectado (+10 pts)");
     }
 
-    if (finalScoreBump !== 0) {
+    if (finalScoreBump !== 0 || (extractedEmail && chat.lead.email !== extractedEmail)) {
       let newScore = (chat.lead.score || 0) + finalScoreBump;
       newScore = Math.max(0, Math.min(100, newScore));
       
@@ -357,7 +358,11 @@ export async function saveAssistantReply(
 
       await prisma.lead.update({
         where: { id: chat.lead.id },
-        data: { score: newScore, heat: newHeat }
+        data: { 
+          score: newScore, 
+          heat: newHeat,
+          email: extractedEmail || chat.lead.email
+        }
       });
     }
   }

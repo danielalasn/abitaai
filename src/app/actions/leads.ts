@@ -35,6 +35,7 @@ export async function getLeads() {
       id: lead.id,
       phone: lead.phone,
       name: lead.name,
+      email: lead.email,
       status: lead.status,
       score: lead.score,
       heat: lead.heat,

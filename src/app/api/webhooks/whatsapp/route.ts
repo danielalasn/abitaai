@@ -232,7 +232,8 @@ export async function POST(req: NextRequest) {
                 waCategory,
                 botData.agentName,
                 botData.scoreReason,
-                waMessageId
+                waMessageId,
+                botData.extractedEmail
             );
 
             // 6. Si hubo un Handoff, desactivar el bot

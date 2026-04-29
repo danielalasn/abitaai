@@ -97,6 +97,7 @@ model Lead {
   phone     String
   channel   String   @default("whatsapp") // "whatsapp" | "instagram"
   name      String?
+  email     String?
   status    String   @default("PENDING")
   score     Int      @default(0) // Puntuación de interés del cliente
   heat      String   @default("FRIO") // FRIO, TIBIO, CALIENTE
