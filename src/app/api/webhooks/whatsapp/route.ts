@@ -7,11 +7,6 @@ import { downloadAndUploadMetaMedia } from '@/app/actions/storage';
 import crypto from 'crypto';
 import { decrypt } from '@/lib/encryption';
 import { enqueueMessage } from '@/lib/queue';
-import { initWorker } from '@/lib/worker';
-
-// Inicializar worker una sola vez
-initWorker();
-
 // Lógica de procesamiento movida al Worker en src/lib/worker.ts
 // ──────────────────────────────────────────────────────────────────────────────
 
