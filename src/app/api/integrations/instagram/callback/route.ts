@@ -150,3 +150,75 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${BASE_URL}/settings?tab=connections&error=oauth_failed`)
   }
 }
+
+export async function POST(req: NextRequest) {
+  const { code } = await req.json()
+  const session = await (await import('next-auth')).getServerSession((await import('@/lib/auth')).authOptions)
+  const user = session?.user as any
+
+  if (!user?.id || !code) return NextResponse.json({ error: 'Unauthorized or missing code' }, { status: 401 })
+
+  const BASE_URL    = process.env.NEXTAUTH_URL!
+  const APP_ID      = process.env.META_APP_ID!
+  const APP_SECRET  = process.env.META_APP_SECRET!
+  const REDIRECT_URI = `${BASE_URL}/api/integrations/instagram/callback`
+
+  try {
+    // 1. Exchange code
+    const tokenUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token')
+    tokenUrl.searchParams.set('client_id', APP_ID)
+    tokenUrl.searchParams.set('client_secret', APP_SECRET)
+    tokenUrl.searchParams.set('redirect_uri', REDIRECT_URI)
+    tokenUrl.searchParams.set('code', code)
+
+    const tokenRes  = await fetch(tokenUrl.toString())
+    const tokenData = await tokenRes.json()
+    if (!tokenData.access_token) throw new Error(`Token exchange failed: ${JSON.stringify(tokenData)}`)
+
+    const shortLivedToken = tokenData.access_token
+
+    // 2. Exchange for long-lived token
+    const llUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token')
+    llUrl.searchParams.set('grant_type', 'fb_exchange_token')
+    llUrl.searchParams.set('client_id', APP_ID)
+    llUrl.searchParams.set('client_secret', APP_SECRET)
+    llUrl.searchParams.set('fb_exchange_token', shortLivedToken)
+
+    const llRes  = await fetch(llUrl.toString())
+    const llData = await llRes.json()
+    const longLivedToken  = llData.access_token || shortLivedToken
+    const tokenExpiresAt  = new Date(Date.now() + (llData.expires_in || 5183944) * 1000)
+
+    // 3. Get Pages
+    const pagesRes  = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${longLivedToken}`)
+    const pagesData = await pagesRes.json()
+    const page = pagesData.data?.[0]
+    if (!page) throw new Error('No Facebook Pages found')
+
+    const pageAccessToken = page.access_token
+    const pageId          = page.id
+
+    // 4. Get IG Account
+    const igRes  = await fetch(`https://graph.facebook.com/v21.0/${pageId}?fields=instagram_business_account&access_token=${pageAccessToken}`)
+    const igData = await igRes.json()
+    const instagramAccountId = igData.instagram_business_account?.id || null
+
+    // 5. Subscribe
+    await fetch(`https://graph.facebook.com/v21.0/${pageId}/subscribed_apps`, {
+      method: 'POST',
+      body: new URLSearchParams({ subscribed_fields: 'messages,messaging_postbacks,feed', access_token: pageAccessToken }),
+    })
+
+    // 6. Save/Upsert integration
+    await prisma.integration.upsert({
+      where: { clientId_provider: { clientId: user.id, provider: 'meta_instagram' } },
+      create: { clientId: user.id, provider: 'meta_instagram', status: 'active', accessToken: pageAccessToken, tokenExpiresAt, pageId, instagramAccountId },
+      update: { status: 'active', accessToken: pageAccessToken, tokenExpiresAt, pageId, instagramAccountId, oauthState: null }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    console.error('[IG Popup Callback] Error:', err.message)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}

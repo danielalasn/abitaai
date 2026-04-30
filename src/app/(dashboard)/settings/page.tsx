@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Script from 'next/script'
 import { useSession } from 'next-auth/react'
 import {
   Save, Bot, BookOpen, Fingerprint, Loader2, HelpCircle, Code, Sparkles,
@@ -240,6 +241,125 @@ export default function SettingsPage() {
     setIsSavingWA(false)
   }
 
+  const handleConnectInstagram = () => {
+    const FB = (window as any).FB;
+    if (FB) {
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isLocalhost && window.location.protocol !== 'https:') {
+        alert("Facebook Login requiere una conexión segura (HTTPS).");
+        return;
+      }
+
+      setIgLoading(true);
+      FB.login(
+        (response: any) => {
+          if (response.authResponse) {
+            const code = response.authResponse.code;
+            fetch('/api/integrations/instagram/callback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code })
+            })
+            .then(res => {
+              if (res.ok) {
+                setIgFeedback('success');
+                loadIgStatus();
+              } else {
+                setIgFeedback('error');
+              }
+            })
+            .catch(() => setIgFeedback('error'))
+            .finally(() => setIgLoading(false));
+          } else {
+            setIgLoading(false);
+          }
+        },
+        {
+          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID || process.env.NEXT_PUBLIC_META_CONFIG_ID,
+          response_type: 'code',
+          override_default_response_type: true
+        }
+      );
+    } else {
+      alert("Facebook SDK no cargado aún.");
+    }
+  };
+
+  const handleConnectWhatsApp = () => {
+    const FB = (window as any).FB;
+    if (FB) {
+      // Check if we are on localhost or https
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (!isLocalhost && window.location.protocol !== 'https:') {
+        alert("Facebook Login requiere una conexión segura (HTTPS).");
+        return;
+      }
+
+      FB.login(
+        (response: any) => {
+          if (response.authResponse) {
+            const code = response.authResponse.code;
+            setIsSavingWA(true);
+            
+            // Call async logic in a separate promise chain or IIFE to avoid SDK issues with async callbacks
+            fetch('/api/integrations/whatsapp/callback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code })
+            })
+            .then(res => {
+              if (res.ok) {
+                setWaStatus('success');
+                setTimeout(() => setWaStatus(null), 3000);
+                loadProject();
+              } else {
+                setWaStatus('error');
+              }
+            })
+            .catch(() => setWaStatus('error'))
+            .finally(() => setIsSavingWA(false));
+          }
+        },
+        {
+          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID || process.env.NEXT_PUBLIC_META_CONFIG_ID,
+          response_type: 'code',
+          override_default_response_type: true,
+          extras: {
+            feature: 'whatsapp_embedded_signup',
+            version: 3,
+            sessionInfoVersion: 3
+          }
+        }
+      );
+    } else {
+      alert("Facebook SDK no cargado aún. Refresca la página e intenta nuevamente.");
+    }
+  };
+
+  const handleVerifyWhatsApp = async () => {
+    setIsVerifying(true); setVerifyResult(null)
+    try {
+      const r = await verifyWhatsappConnection(whatsappPhoneId || undefined, whatsappToken || undefined)
+      setVerifyResult(r); 
+      setTimeout(() => setVerifyResult(null), 10000)
+    } catch {
+      setVerifyResult({ success: false, message: "Error al conectar con el servidor." })
+    }
+    setIsVerifying(false)
+  }
+
+  const handleCompileKnowledge = async () => {
+    setIsCompiling(true); setCompileStatus(null)
+    try { 
+      const json = await compileKnowledgeWithAI(knowledgeRaw); 
+      setKnowledgeData(json); 
+      setCompileStatus("success"); 
+      setTimeout(() => setCompileStatus(null), 4000) 
+    }
+    catch { setCompileStatus("error") }
+    setIsCompiling(false)
+  }
+
   const handleSaveBotConfig = async () => {
     setIsSaving(true); setSaveStatus(null)
     try {
@@ -287,6 +407,20 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
+      <Script 
+        src="https://connect.facebook.net/en_US/sdk.js" 
+        strategy="lazyOnload" 
+        onLoad={() => {
+          (window as any).fbAsyncInit = function() {
+            (window as any).FB.init({
+              appId: process.env.NEXT_PUBLIC_META_APP_ID || process.env.NEXT_PUBLIC_FB_APP_ID || '',
+              cookie: true,
+              xfbml: true,
+              version: 'v21.0'
+            });
+          };
+        }}
+      />
       {/* Header */}
       <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-4">
@@ -721,12 +855,13 @@ export default function SettingsPage() {
                         Desconectar
                       </button>
                     ) : (
-                      <a 
-                        href="/api/integrations/instagram/connect" 
+                      <button 
+                        onClick={handleConnectInstagram}
+                        disabled={igLoading}
                         className="flex-1 py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-[#F36A2D] hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
                       >
-                        <IgIcon size={14} /> Conectar
-                      </a>
+                        {igLoading ? <Loader2 size={14} className="animate-spin" /> : <><IgIcon size={14} /> Conectar</>}
+                      </button>
                     )}
                     <button 
                       className="px-5 py-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all duration-300 group/verify"
@@ -758,19 +893,14 @@ export default function SettingsPage() {
                   
                   <div className="mt-auto flex gap-3 w-full">
                     <button 
-                      onClick={handleSaveWhatsApp} 
+                      onClick={handleConnectWhatsApp} 
                       disabled={isSavingWA}
                       className="flex-1 py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
                     >
-                      {isSavingWA ? <Loader2 size={16} className="animate-spin" /> : 'Conectar'}
+                      {isSavingWA ? <Loader2 size={16} className="animate-spin" /> : 'Conectar con Facebook'}
                     </button>
                     <button 
-                      onClick={async () => {
-                        setIsVerifying(true); setVerifyResult(null)
-                        const r = await verifyWhatsappConnection(whatsappPhoneId || undefined, whatsappToken || undefined)
-                        setVerifyResult(r); setIsVerifying(false)
-                        setTimeout(() => setVerifyResult(null), 10000)
-                      }}
+                      onClick={handleVerifyWhatsApp}
                       disabled={isVerifying}
                       className="px-5 py-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-300"
                     >
@@ -908,12 +1038,11 @@ export default function SettingsPage() {
                           <textarea value={knowledgeRaw} onChange={e => setKnowledgeRaw(e.target.value)} placeholder="Ej: Tenemos un restaurante llamado 'Bella Italia'..." className="w-full min-h-[300px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#F36A2D]/50 transition-all resize-y" />
                           <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 border border-[#F36A2D]/20 p-4 rounded-xl">
                             <p className="text-sm text-zinc-900 dark:text-[#EDE9E0] flex items-center gap-2"><Sparkles size={16} className="text-[#F36A2D]" /> Procesador inteligente de texto a JSON.</p>
-                          <button onClick={async () => {
-                            setIsCompiling(true); setCompileStatus(null)
-                            try { const json = await compileKnowledgeWithAI(knowledgeRaw); setKnowledgeData(json); setCompileStatus("success"); setTimeout(() => setCompileStatus(null), 4000) }
-                            catch { setCompileStatus("error") }
-                            setIsCompiling(false)
-                          }} disabled={isCompiling || !knowledgeRaw.trim()} className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${compileStatus === 'success' ? "bg-green-600 text-white" : "bg-[#F36A2D] hover:bg-[#E55A1D] text-white"}`}>
+                          <button 
+                            onClick={handleCompileKnowledge}
+                            disabled={isCompiling || !knowledgeRaw.trim()} 
+                            className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${compileStatus === 'success' ? "bg-green-600 text-white" : "bg-[#F36A2D] hover:bg-[#E55A1D] text-white"}`}
+                          >
                             {isCompiling ? <Loader2 size={16} className="animate-spin" /> : compileStatus === 'success' ? <CheckCircle2 size={16} /> : <Sparkles size={16} />}
                             {isCompiling ? "Analizando..." : compileStatus === 'success' ? "¡Estructurado!" : "Sincronizar con IA"}
                           </button>
