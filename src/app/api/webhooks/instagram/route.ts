@@ -1,3 +1,4 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { simulateIncomingMessage } from '@/app/actions/inbox'
 import crypto from 'crypto'

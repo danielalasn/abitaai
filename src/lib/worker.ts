@@ -86,9 +86,9 @@ export function initWorker() {
         // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
         const history = chatDetails.messages.slice(0, -1);
         const botData = await sendTestMessage(
-          text,
+          combinedText || '[Archivo]',
           history.map(m => ({ role: m.role, content: m.content })),
-          chatDetails.lead.name || profileName,
+          chatDetails.lead.name || metadata.profileName || 'Desconocido',
           chatDetails.lead.projectId
         );
 
