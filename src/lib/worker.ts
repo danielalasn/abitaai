@@ -22,6 +22,7 @@ export function initWorker() {
   console.log('🤖 [Worker] Inicializando procesador de mensajes...');
 
   globalAny.messageWorker = new Worker('whatsapp-messages', async (job: Job) => {
+    console.log(`🤖 [Worker] Picked up job: ${job.id} for lead: ${job.data.from}`);
     const { from } = job.data;
     const listKey = `buffer:${from}`;
     const metadataKey = `metadata:${from}`;
