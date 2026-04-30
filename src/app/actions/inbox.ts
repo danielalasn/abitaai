@@ -181,7 +181,7 @@ export async function requestHandoff(chatId: string) {
     });
   }
 
-  revalidatePath('/');
+  try { revalidatePath('/') } catch (e) {};
 }
 
 // Simula la recepción de un mensaje a través del webhook guardándolo en BD (Chat + Mensajes)
@@ -288,7 +288,7 @@ export async function simulateIncomingMessage(
     data: { lastActiveAt: new Date(), isArchived: false }
   });
 
-  revalidatePath('/');
+  try { try { revalidatePath('/') } catch (e) {}; } catch (e) {}
   return chat.id;
 }
 
@@ -372,7 +372,7 @@ export async function saveAssistantReply(
     console.error('[AI Summary] Error en disparo asíncrono:', e)
   );
 
-  revalidatePath('/');
+  try { revalidatePath('/') } catch (e) {};
 }
 
 // Guarda respuestas y acciones del Agente Humano en el frontend (bot desactivado)
@@ -435,7 +435,7 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
     data: { chatId, role: 'agent', content: text, waCategory, wamid }
   });
 
-  revalidatePath('/');
+  try { revalidatePath('/') } catch (e) {};
   return { success: waSendSuccess, error: waSendError };
 }
 
@@ -504,7 +504,7 @@ export async function sendAgentMedia(
     }
   });
 
-  revalidatePath('/');
+  try { revalidatePath('/') } catch (e) {};
   return { success: waSendSuccess, error: waSendError };
 }
 
@@ -519,7 +519,7 @@ export async function deleteChat(chatId: string) {
     where: { id: chatId },
     data: { isArchived: true }
   });
-  revalidatePath('/');
+  try { revalidatePath('/') } catch (e) {};
 }
 
 // --- ACCIONES EN MASA ---
@@ -541,7 +541,7 @@ export async function bulkArchiveChats(chatIds: string[]) {
       data: { isArchived: true }
     });
   }
-  revalidatePath('/');
+  try { revalidatePath('/') } catch (e) {};
 }
 
 // Desactiva la IA SOLO en chats donde actualmente está activa
@@ -703,7 +703,7 @@ export async function startIndividualChatAction(
       }
     });
 
-    revalidatePath('/');
+    try { try { revalidatePath('/') } catch (e) {}; } catch (e) {}
     return { success: true, chatId: chat.id };
   } catch (error: any) {
     console.error('[startIndividualChatAction] Error:', error);
