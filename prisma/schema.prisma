@@ -226,3 +226,12 @@ model SystemConfig {
   scoringBaseRules String?
   updatedAt        DateTime @updatedAt
 }
+
+model WebhookEvent {
+  id        String   @id // El ID que manda Meta (wamid o id de evento)
+  provider  String   // "whatsapp" | "instagram"
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

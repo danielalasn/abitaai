@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '@/lib/whatsapp';
 import { getApprovedTemplates } from '@/lib/whatsapp';
+import { decrypt } from '@/lib/encryption';
 import { revalidatePath } from 'next/cache';
 import { getCurrentProject } from '@/lib/auth-server';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -24,7 +25,8 @@ export async function fetchMetaTemplates() {
     if (!project.whatsappBusinessId || !project.whatsappToken) {
       return { error: 'Configura el WhatsApp Business ID y el Access Token en Configuración.', templates: [] };
     }
-    let templates = await getApprovedTemplates(project.whatsappBusinessId, project.whatsappToken);
+    const decryptedToken = decrypt(project.whatsappToken);
+    let templates = await getApprovedTemplates(project.whatsappBusinessId, decryptedToken!);
     
     // Filtro por Grupo de Plantillas (Prefijo)
     const prefix = project.client?.templateGroup;
@@ -195,8 +197,8 @@ export async function processCampaignLead(
         templateName!, 
         languageCode, 
         components, 
-        project.whatsappPhoneId, 
-        project.whatsappToken,
+        project.whatsappPhoneId!, 
+        decrypt(project.whatsappToken)!,
         (campaign.templateCategory as any) || 'MARKETING'
       );
     }

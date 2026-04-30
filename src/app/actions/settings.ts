@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import Anthropic from '@anthropic-ai/sdk'
 import { getCurrentProject } from '@/lib/auth-server'
+import { encrypt, decrypt } from '@/lib/encryption'
 
 // ──────────────────────────────────────────────
 // Project-level: WhatsApp Config & Agents list
@@ -15,7 +16,7 @@ export async function getProjectConfig() {
 
   return {
     projectId: project.id,
-    whatsappToken: project.whatsappToken || '',
+    whatsappToken: decrypt(project.whatsappToken) || '',
     whatsappPhoneId: project.whatsappPhoneId || '',
     whatsappBusinessId: project.whatsappBusinessId || '',
     defaultBotActive: project.defaultBotActive,
@@ -32,7 +33,11 @@ export async function saveProjectWhatsApp(
 ) {
   await prisma.project.update({
     where: { id: projectId },
-    data: { whatsappToken, whatsappPhoneId, whatsappBusinessId }
+    data: { 
+      whatsappToken: encrypt(whatsappToken), 
+      whatsappPhoneId, 
+      whatsappBusinessId 
+    }
   });
   revalidatePath('/settings');
   return { success: true };
@@ -144,7 +149,7 @@ export async function getOrCreateDefaultConfig() {
     return {
       ...newAgent,
       projectId: project.id,
-      whatsappToken: project.whatsappToken || '',
+      whatsappToken: decrypt(project.whatsappToken) || '',
       whatsappPhoneId: project.whatsappPhoneId || '',
       whatsappBusinessId: project.whatsappBusinessId || '',
     };
@@ -153,7 +158,7 @@ export async function getOrCreateDefaultConfig() {
   return {
     ...agent,
     projectId: project.id,
-    whatsappToken: project.whatsappToken || '',
+    whatsappToken: decrypt(project.whatsappToken) || '',
     whatsappPhoneId: project.whatsappPhoneId || '',
     whatsappBusinessId: project.whatsappBusinessId || '',
   };
@@ -171,10 +176,14 @@ export async function saveBotConfig(
   whatsappPhoneId: string,
   whatsappBusinessId: string
 ) {
-  // Save WhatsApp at project level
+  // Save WhatsApp at project level cifrado
   await prisma.project.update({
     where: { id: projectId },
-    data: { whatsappToken, whatsappPhoneId, whatsappBusinessId }
+    data: { 
+      whatsappToken: encrypt(whatsappToken), 
+      whatsappPhoneId, 
+      whatsappBusinessId 
+    }
   });
 
   // Save agent config on the first agent
@@ -247,7 +256,7 @@ export async function verifyWhatsappConnection(
     if (!project) return { success: false, message: 'No se encontró el proyecto.' };
     
     phoneId = phoneId || project.whatsappPhoneId || '';
-    token = token || project.whatsappToken || '';
+    token = token || decrypt(project.whatsappToken) || '';
   }
 
   if (!phoneId || !token) {

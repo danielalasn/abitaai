@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { encrypt } from '@/lib/encryption'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
       data: {
         status:            'active',
         oauthState:        null,
-        accessToken:       pageAccessToken,
+        accessToken:       encrypt(pageAccessToken),
         tokenExpiresAt,
         pageId,
         instagramAccountId,
@@ -212,8 +212,8 @@ export async function POST(req: NextRequest) {
     // 6. Save/Upsert integration
     await prisma.integration.upsert({
       where: { clientId_provider: { clientId: user.id, provider: 'meta_instagram' } },
-      create: { clientId: user.id, provider: 'meta_instagram', status: 'active', accessToken: pageAccessToken, tokenExpiresAt, pageId, instagramAccountId },
-      update: { status: 'active', accessToken: pageAccessToken, tokenExpiresAt, pageId, instagramAccountId, oauthState: null }
+      create: { clientId: user.id, provider: 'meta_instagram', status: 'active', accessToken: encrypt(pageAccessToken), tokenExpiresAt, pageId, instagramAccountId },
+      update: { status: 'active', accessToken: encrypt(pageAccessToken), tokenExpiresAt, pageId, instagramAccountId, oauthState: null }
     })
 
     return NextResponse.json({ success: true })

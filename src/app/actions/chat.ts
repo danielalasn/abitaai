@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GLOBAL_SYSTEM_GUARDRAILS } from '@/lib/guardrails';
 import { getCurrentProject } from '@/lib/auth-server';
+import { redactPII } from '@/lib/pii';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -198,13 +199,12 @@ Maintaining the same language as the customer is your TOP priority.
 
   try {
     // We filter history down to what anthropic expects: assistant and user
-    // The previous python script used plain lists or tuples, the SDK accepts arrays of objects.
     const messages = history.map(h => ({
       role: h.role === 'user' ? 'user' : 'assistant',
-      content: h.content,
+      content: redactPII(h.content),
     })) as Anthropic.MessageParam[];
 
-    messages.push({ role: 'user', content: message });
+    messages.push({ role: 'user', content: redactPII(message) });
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
@@ -305,14 +305,14 @@ Maintaining the same language as the customer is your TOP priority.
       
       const geminiHistory = history.map(h => ({
         role: h.role === 'user' ? 'user' : 'model',
-        parts: [{ text: h.content }],
+        parts: [{ text: redactPII(h.content) }],
       }));
       
       const chat = model.startChat({
         history: geminiHistory,
       });
       
-      const result = await chat.sendMessage(message);
+      const result = await chat.sendMessage(redactPII(message));
       const rawReply = result.response.text();
       
       // Capturar uso de tokens para monitoreo de costos

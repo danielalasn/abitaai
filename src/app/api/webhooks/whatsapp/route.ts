@@ -4,99 +4,15 @@ import { sendTestMessage } from '@/app/actions/chat';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { prisma } from '@/lib/prisma';
 import { downloadAndUploadMetaMedia } from '@/app/actions/storage';
+import crypto from 'crypto';
+import { decrypt } from '@/lib/encryption';
+import { enqueueMessage } from '@/lib/queue';
+import { initWorker } from '@/lib/worker';
 
-// ─── Debounce Store (Global) ──────────────────────────────────────────────────
-// Usamos globalThis para evitar que Next.js Dev Mode (HMR) borre los mapas en cada request
-const DEBOUNCE_MS = 6000;
+// Inicializar worker una sola vez
+initWorker();
 
-const globalAny = global as any;
-if (!globalAny.messageBuffers) globalAny.messageBuffers = new Map<string, any[]>();
-if (!globalAny.activeTimers) globalAny.activeTimers = new Map<string, NodeJS.Timeout>();
-if (!globalAny.bufferMetadata) globalAny.bufferMetadata = new Map<string, { profileName?: string; phoneId?: string }>();
-
-const messageBuffers: Map<string, any[]> = globalAny.messageBuffers;
-const activeTimers: Map<string, NodeJS.Timeout> = globalAny.activeTimers;
-const bufferMetadata: Map<string, { profileName?: string; phoneId?: string }> = globalAny.bufferMetadata;
-
-async function processFinalBuffer(from: string) {
-  const messages = messageBuffers.get(from) || [];
-  const metadata = bufferMetadata.get(from);
-  
-  // Limpiar todo antes de procesar
-  messageBuffers.delete(from);
-  activeTimers.delete(from);
-  bufferMetadata.delete(from);
-
-  if (messages.length === 0) return;
-
-  const combinedText = messages.map(m => m.text).filter(Boolean).join('\n');
-  const firstMedia = messages.find(m => m.mediaUrl);
-  
-  console.log(`[DEBOUNCE] Procesando ${messages.length} mensajes de ${from}.`);
-
-  try {
-    const chatId = await simulateIncomingMessage(
-      from,
-      combinedText || '[Archivo]',
-      metadata?.profileName,
-      metadata?.phoneId,
-      'whatsapp',
-      undefined,
-      firstMedia?.mediaUrl,
-      firstMedia?.mediaFilename,
-      firstMedia?.mediaType
-    );
-
-    const chatDetails = await prisma.chat.findUnique({
-      where: { id: chatId },
-      include: { lead: { include: { project: true } }, messages: { orderBy: { createdAt: 'asc' } } }
-    });
-
-    if (chatDetails?.botActive) {
-      const history = chatDetails.messages.slice(0, -1);
-      const botData = await sendTestMessage(
-        combinedText,
-        history.map(m => ({ role: m.role, content: m.content })),
-        chatDetails.lead.name || metadata?.profileName,
-        chatDetails.lead.projectId
-      );
-
-      if (botData && typeof botData !== 'string' && botData.reply) {
-        const phoneId = (chatDetails as any)?.lead?.project?.whatsappPhoneId;
-        const projectToken = (chatDetails as any)?.lead?.project?.whatsappToken;
-        let waMessageId;
-        let waCategory = 'SERVICE';
-
-        if (phoneId && projectToken) {
-          const waResult = await sendWhatsAppMessage(from, botData.reply, phoneId, projectToken);
-          waCategory = waResult.category || 'SERVICE';
-          waMessageId = waResult.messageId;
-        }
-
-        await saveAssistantReply(
-          chatId,
-          botData.reply,
-          botData.scoreBump,
-          botData.inputTokens,
-          botData.outputTokens,
-          waCategory,
-          botData.agentName,
-          botData.scoreReason,
-          waMessageId || undefined
-        );
-      } else {
-        // Si no hay respuesta (error de IA), desactivamos el bot para este chat
-        await prisma.chat.update({
-          where: { id: chatId },
-          data: { botActive: false }
-        });
-        console.log(`[BOT] Desactivado automáticamente por error de IA en chat ${chatId}`);
-      }
-    }
-  } catch (err) {
-    console.error("[DEBOUNCE ERROR]", err);
-  }
-}
+// Lógica de procesamiento movida al Worker en src/lib/worker.ts
 // ──────────────────────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -109,11 +25,43 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const signature = req.headers.get('x-hub-signature-256');
+    const rawBody = await req.text();
+    const appSecret = process.env.META_APP_SECRET;
+
+    // ─── VERIFICACIÓN DE FIRMA (HMAC-SHA256) ───
+    if (appSecret && signature) {
+      const hmac = crypto.createHmac('sha256', appSecret);
+      const digest = 'sha256=' + hmac.update(rawBody).digest('hex');
+      
+      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest))) {
+        console.warn('[Webhook WhatsApp] Firma inválida. Posible intento de inyección.');
+        return new NextResponse('Invalid signature', { status: 401 });
+      }
+    } else if (!signature && process.env.NODE_ENV === 'production') {
+      console.warn('[Webhook WhatsApp] Falta firma x-hub-signature-256 en entorno de producción.');
+      return new NextResponse('Missing signature', { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
     const value = body.entry?.[0]?.changes?.[0]?.value;
     const message = value?.messages?.[0];
     const status = value?.statuses?.[0];
     const phoneId = value?.metadata?.phone_number_id;
+
+    // ─── IDEMPOTENCIA ───
+    const eventId = message?.id || status?.id || body.entry?.[0]?.id;
+    if (eventId) {
+      const existing = await prisma.webhookEvent.findUnique({ where: { id: eventId } });
+      if (existing) {
+        console.log(`[Webhook WhatsApp] Evento duplicado detectado y omitido: ${eventId}`);
+        return NextResponse.json({ status: 'ok', duplicated: true });
+      }
+      // Registramos el evento antes de procesarlo
+      await prisma.webhookEvent.create({
+        data: { id: eventId, provider: 'whatsapp', payload: body }
+      }).catch(err => console.error('[Webhook WhatsApp] Error guardando evento de idempotencia:', err));
+    }
 
     if (status) {
       // Lógica de actualización de estados (simplificada para el ejemplo, pero mantenemos la funcionalidad)
@@ -135,31 +83,23 @@ export async function POST(req: NextRequest) {
     if (mediaTypes.includes(message.type)) {
       const mediaObj = message[message.type];
       const project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
-      if (project?.whatsappToken) {
-        const file = await downloadAndUploadMetaMedia(mediaObj.id, project.whatsappToken, mediaObj.mime_type, mediaObj.filename);
+      const decryptedToken = decrypt(project?.whatsappToken);
+      if (decryptedToken) {
+        const file = await downloadAndUploadMetaMedia(mediaObj.id, decryptedToken, mediaObj.mime_type, mediaObj.filename);
         if (file) mediaData = { mediaUrl: file.url, mediaType: file.mediaType, mediaFilename: file.filename };
       }
       if (mediaObj.caption) text = mediaObj.caption;
     }
 
-    // ─── DEBOUNCE LOGIC ───
-    // 1. Cancelar timer existente
-    if (activeTimers.has(from)) {
-      clearTimeout(activeTimers.get(from));
-      console.log(`[DEBOUNCE] Timer cancelado para ${from}.`);
-    }
+    // ─── ASYNC QUEUE LOGIC (Redis + BullMQ) ───
+    await enqueueMessage(from, { 
+      text, 
+      profileName, 
+      phoneId, 
+      ...mediaData 
+    });
 
-    // 2. Acumular mensaje
-    const currentMsgs = messageBuffers.get(from) || [];
-    currentMsgs.push({ text, ...mediaData });
-    messageBuffers.set(from, currentMsgs);
-    bufferMetadata.set(from, { profileName, phoneId });
-
-    // 3. Programar nuevo timer
-    const timer = setTimeout(() => processFinalBuffer(from), DEBOUNCE_MS);
-    activeTimers.set(from, timer);
-
-    console.log(`[DEBOUNCE] Mensaje recibido de ${from}. Esperando ${DEBOUNCE_MS/1000}s... (Total: ${currentMsgs.length})`);
+    console.log(`[Webhook WhatsApp] Mensaje encolado para ${from}.`);
 
     return NextResponse.json({ status: 'ok' });
   } catch (error) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { encrypt } from '@/lib/encryption'
 
 export async function POST(req: NextRequest) {
   try {
@@ -103,11 +104,11 @@ export async function POST(req: NextRequest) {
     })
 
     if (project) {
-      // Guardar en la BD
+      // Guardar en la BD cifrado
       await prisma.project.update({
         where: { id: project.id },
         data: {
-          whatsappToken: longLivedToken,
+          whatsappToken: encrypt(longLivedToken),
           whatsappPhoneId: phoneId,
           whatsappBusinessId: wabaId
         }
