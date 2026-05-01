@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { initWorker } from './lib/worker';
 
 console.log('🚀 [Dedicated Worker Process] Arrancando...');
+console.log('🔗 [Redis] Conectando a:', process.env.REDIS_URL ? process.env.REDIS_URL.split('@')[1] : 'localhost:6379 (Default)');
 
 try {
   initWorker();

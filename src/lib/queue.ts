@@ -48,14 +48,15 @@ export async function enqueueMessage(from: string, data: any) {
   await redisConnection.expire(metadataKey, 60);
 
   // 4. Encolar el Job de procesamiento (BullMQ ignora si ya hay uno pendiente con el mismo ID)
-  // Esto simula el debounce: el primero que llega programa la ejecución, los siguientes solo acumulan en la lista.
-  await messageQueue.add('process-buffer', 
+  console.log(`[Queue] Intentando encolar job para ${from}...`);
+  const job = await messageQueue.add('process-buffer', 
     { from }, 
     { 
       jobId: `debounce-${from}`, 
-      delay,
+      delay: 0,
       removeOnComplete: true,
       removeOnFail: true
     }
   );
+  console.log(`[Queue] Job encolado con ID: ${job.id}`);
 }
