@@ -11,8 +11,11 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 export const redisConnection = new IORedis(REDIS_URL, {
   maxRetriesPerRequest: null,
-  // Necesario para conectar con Upstash (SSL/TLS)
   tls: REDIS_URL.startsWith('rediss') ? {} : undefined,
+});
+
+redisConnection.on('error', (err) => {
+  console.error('❌ [Redis] Error de conexión:', err.message);
 });
 
 // 1. Definimos la Cola
@@ -51,7 +54,8 @@ export async function enqueueMessage(from: string, data: any) {
     { 
       jobId: `debounce-${from}`, 
       delay,
-      removeOnComplete: true
+      removeOnComplete: true,
+      removeOnFail: true
     }
   );
 }

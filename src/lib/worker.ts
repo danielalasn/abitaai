@@ -19,7 +19,7 @@ const globalAny = global as any;
 export function initWorker() {
   if (globalAny.messageWorker) return;
 
-  console.log('🤖 [Worker] Inicializando procesador de mensajes...');
+  console.log('🤖 [Worker] Iniciando motor de procesamiento BullMQ...');
 
   globalAny.messageWorker = new Worker('whatsapp-messages', async (job: Job) => {
     console.log(`🤖 [Worker] Picked up job: ${job.id} for lead: ${job.data.from}`);
