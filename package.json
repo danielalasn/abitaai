@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:https": "next dev --experimental-https",
     "build": "next build",
-    "start": "next start",
+    "start": "npx tsx src/run-worker.ts & next start",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },
@@ -34,6 +34,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0",
+    "tsx": "^4.21.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
