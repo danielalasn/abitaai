@@ -7,7 +7,8 @@ import {
   Bot, User, Send, Loader2, Phone, Hash, AlertCircle, TrendingUp, Clock,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
-  Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download
+  Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
+  Mic, Square
 } from "lucide-react";
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
@@ -161,6 +162,13 @@ export default function InboxPage() {
   const [readMessageIds, setReadMessageIds] = useState<Record<string, string>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const notifiedMessageIds = useRef<Set<string>>(new Set());
+
+  // Estados para grabación de voz
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Refs para Debounce del Simulador de Cliente (Inbox)
   const clientPendingMessages = useRef<string[]>([]);
@@ -536,6 +544,83 @@ export default function InboxPage() {
     }
 
     return <div className="whitespace-pre-wrap leading-relaxed">{content}</div>;
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        if (audioBlob.size > 0) {
+          await handleSendVoiceNote(audioBlob);
+        }
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error("Error al acceder al micrófono:", err);
+      alert("No se pudo acceder al micrófono. Por favor, revisa los permisos.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current!);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleSendVoiceNote = async (blob: Blob) => {
+    if (!activeChat) return;
+    setIsUploadingMedia(true);
+    try {
+      const fileName = `voice-note-${Date.now()}.webm`;
+      const file = new File([blob], fileName, { type: 'audio/webm' });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', `chats/${activeChat.id}`);
+
+      const uploadResult = await uploadFileAction(formData);
+      if (uploadResult.url) {
+        await sendAgentMedia(activeChat.id, uploadResult.url, 'audio', fileName);
+      }
+    } catch (err) {
+      console.error("Error enviando nota de voz:", err);
+    } finally {
+      setIsUploadingMedia(false);
+    }
   };
 
   const handleDeleteChat = async () => {
@@ -1313,9 +1398,34 @@ export default function InboxPage() {
                           </div>
                         )}
 
-                        {/* Imagen / Thumbnail */}
+                        {/* 1. Bloque de respuesta (si existe) */}
+                        {msg.content && msg.content.includes('[En respuesta a:') && (
+                          (() => {
+                            const replyRegex = /\[En respuesta a:\s*"([^"]+)"\]\n?/;
+                            const match = msg.content.match(replyRegex);
+                            if (match) {
+                              const repliedText = match[1];
+                              const originalMsg = activeChat.messages.find((m: any) => m.content === repliedText);
+                              return (
+                                <div
+                                  onClick={() => originalMsg && scrollToMessage(originalMsg.id)}
+                                  className={`group p-2.5 mb-2 rounded-xl bg-black/5 dark:bg-black/30 text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/10 dark:hover:bg-black/50' : 'opacity-70'}`}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="font-black text-[9px] uppercase tracking-tighter text-[#F36A2D]">En respuesta a:</div>
+                                    {originalMsg && <div className="text-[8px] font-bold text-[#F36A2D] opacity-0 group-hover:opacity-100 transition-opacity">IR AL MENSAJE ↑</div>}
+                                  </div>
+                                  <div className="line-clamp-2 italic opacity-80 leading-snug">{repliedText}</div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()
+                        )}
+
+                        {/* 2. Imagen / Thumbnail */}
                         {(msg.mediaUrl || msg.imageUrl) && (msg.mediaType === 'image' || !msg.mediaType) && (
-                          <div 
+                          <div
                             className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0] cursor-pointer relative z-10"
                             onClick={(e) => { e.stopPropagation(); setSelectedImage(msg.mediaUrl || msg.imageUrl); }}
                           >
@@ -1328,14 +1438,14 @@ export default function InboxPage() {
                           </div>
                         )}
 
-                        {/* Audio adjunto */}
+                        {/* 3. Audio adjunto */}
                         {msg.mediaUrl && msg.mediaType === 'audio' && (
                           <div className="mb-2 w-full pt-1">
                             <VoiceNotePlayer url={msg.mediaUrl} />
                           </div>
                         )}
 
-                        {/* Documento / PDF / Video adjunto */}
+                        {/* 4. Otros documentos */}
                         {msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'audio' && (
                           <a
                             href={msg.mediaUrl}
@@ -1348,21 +1458,11 @@ export default function InboxPage() {
                           </a>
                         )}
 
-                        {/* Fallback para optimistic messages que todavía no tienen mediaType persistido (usando campos locales temp) */}
-                        {!msg.mediaUrl && !msg.imageUrl && (msg._mediaUrl || msg._filename) && (
-                          <a
-                            href={msg._mediaUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mb-2 flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10"
-                          >
-                            <FileText size={16} className="shrink-0 opacity-80" />
-                            <span className="text-xs font-semibold truncate">{msg._filename || msg.content}</span>
-                          </a>
-                        )}
-
+                        {/* 5. Contenido del mensaje (sin el tag de respuesta) */}
                         {msg.content && msg.content !== '[Archivo]' && (
-                          renderMessageContent(msg.content, activeChat.messages)
+                          <div className="whitespace-pre-wrap leading-relaxed">
+                            {msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()}
+                          </div>
                         )}
                         <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
                           }`}>
@@ -1476,81 +1576,125 @@ export default function InboxPage() {
                         </button>
                       )}
 
-                      {/* Botón adjuntar y emojis solo si la ventana está abierta */}
                       {!activeChat.botActive && !isPast24h && (
                         <>
                           <input
-                            ref={fileInputRef}
                             type="file"
+                            ref={fileInputRef}
                             className="hidden"
                             accept="image/*,application/pdf,video/*,audio/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                             onChange={handleFileSelect}
                           />
-                          <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="shrink-0 p-2.5 bg-white dark:bg-zinc-800 border border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D] rounded-xl transition-all"
-                            title="Adjuntar archivo"
-                          >
-                            <Paperclip size={16} />
-                          </button>
 
-                          <div className="relative" ref={emojiPickerRef}>
-                            <button
-                              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                              className={`shrink-0 p-2.5 border rounded-xl transition-all ${showEmojiPicker ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
-                              title="Insertar emoji"
-                            >
-                              <Smile size={16} />
-                            </button>
-
-                            {showEmojiPicker && (
-                              <div className="absolute bottom-full left-0 mb-4 z-[70] shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
-                                <EmojiPicker
-                                  onEmojiClick={(emojiData) => {
-                                    setAgentInput(prev => prev + emojiData.emoji);
-                                    // No cerramos automáticamente para que pueda poner varios
-                                  }}
-                                  theme={'auto' as any}
-                                  lazyLoadEmojis={true}
-                                  searchPlaceholder="Buscar emoji..."
-                                />
+                          {isRecording ? (
+                            <div className="flex-1 flex items-center gap-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl px-4 py-2 animate-in fade-in zoom-in duration-300 h-[52px]">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                <span className="text-xs font-black text-red-600 dark:text-red-400 tabular-nums">
+                                  {formatRecordingTime(recordingTime)}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        </>
-                      )}
+                              <div className="flex-1 text-[11px] font-bold text-red-500/70 uppercase tracking-wider animate-pulse">
+                                Grabando audio...
+                              </div>
+                              <button
+                                onClick={cancelRecording}
+                                className="p-2 text-zinc-400 hover:text-red-500 transition-colors"
+                                title="Cancelar"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                              <button
+                                onClick={stopRecording}
+                                className="p-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 flex items-center justify-center"
+                                title="Detener y enviar"
+                              >
+                                <Send size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="shrink-0 p-2.5 bg-white dark:bg-zinc-800 border border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D] rounded-xl transition-all"
+                                title="Adjuntar archivo"
+                              >
+                                <Paperclip size={16} />
+                              </button>
 
-                      <textarea
-                        value={agentInput}
-                        onChange={(e) => setAgentInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            if (pendingFile) handleMediaSend();
-                            else handleAgentSubmit();
-                          }
-                        }}
-                        disabled={activeChat.botActive || isPast24h}
-                        placeholder={
-                          isPast24h
-                            ? "Envía un Template para abrirla."
-                            : activeChat.botActive
-                              ? "Desactiva la IA para responder"
-                              : pendingFile
-                                ? "Agrega un caption (opcional)..."
-                                : "Escribe una respuesta..."
-                        }
-                        className="flex-1 bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-14 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 text-sm text-[#111111] dark:text-white"
-                        rows={1}
-                      />
-                      {!activeChat.botActive && !isPast24h && (
-                        <button
-                          onClick={() => { if (pendingFile) handleMediaSend(); else handleAgentSubmit(); }}
-                          disabled={(!agentInput.trim() && !pendingFile) || isUploadingMedia}
-                          className="absolute right-2 p-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center h-9 w-9 hover:scale-105 shadow-sm"
-                        >
-                          {isUploadingMedia ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                        </button>
+                              <div className="relative" ref={emojiPickerRef}>
+                                <button
+                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                  className={`shrink-0 p-2.5 border rounded-xl transition-all ${showEmojiPicker ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
+                                  title="Insertar emoji"
+                                >
+                                  <Smile size={16} />
+                                </button>
+
+                                {showEmojiPicker && (
+                                  <div className="absolute bottom-full left-0 mb-4 z-[70] shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
+                                    <EmojiPicker
+                                      onEmojiClick={(emojiData) => {
+                                        setAgentInput(prev => prev + emojiData.emoji);
+                                      }}
+                                      theme={'auto' as any}
+                                      lazyLoadEmojis={true}
+                                      searchPlaceholder="Buscar emoji..."
+                                    />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex-1 relative flex items-center">
+                                <textarea
+                                  value={agentInput}
+                                  onChange={(e) => setAgentInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      if (pendingFile) handleMediaSend();
+                                      else handleAgentSubmit();
+                                    }
+                                  }}
+                                  disabled={activeChat.botActive || isPast24h}
+                                  placeholder={
+                                    isPast24h
+                                      ? "Envía un Template para abrirla."
+                                      : activeChat.botActive
+                                        ? "Desactiva la IA para responder"
+                                        : pendingFile
+                                          ? "Agrega un caption (opcional)..."
+                                          : "Escribe una respuesta..."
+                                  }
+                                  className="w-full bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-12 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 text-sm text-[#111111] dark:text-white"
+                                  rows={1}
+                                />
+
+                                {!activeChat.botActive && !isPast24h && (
+                                  <div className="absolute right-2 flex items-center gap-1">
+                                    {!agentInput.trim() && !pendingFile ? (
+                                      <button
+                                        onClick={startRecording}
+                                        className="p-2 text-[#F36A2D] hover:bg-[#F36A2D]/10 rounded-xl transition-all"
+                                        title="Grabar nota de voz"
+                                      >
+                                        <Mic size={20} />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => { if (pendingFile) handleMediaSend(); else handleAgentSubmit(); }}
+                                        disabled={(!agentInput.trim() && !pendingFile) || isUploadingMedia}
+                                        className="p-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl transition-all disabled:opacity-50 flex items-center justify-center h-8 w-8 hover:scale-105 shadow-sm"
+                                      >
+                                        {isUploadingMedia ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </>
                       )}
                     </div>
 
