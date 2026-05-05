@@ -1674,7 +1674,7 @@ export default function InboxPage() {
       <NewChatModal
         isOpen={isNewChatModalOpen}
         onClose={() => setIsNewChatModalOpen(false)}
-        onChatCreated={(chatId) => {
+        onSuccess={(chatId) => {
           loadChats(chatId);
         }}
       />
