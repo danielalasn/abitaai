@@ -465,10 +465,12 @@ export default function InboxPage() {
 
     try {
       await toggleBotActive(chatId, newStatus);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      // Revertir si falla
-      setActiveChat((prev: any) => ({ ...prev, botActive: !newStatus }));
+      alert('Error al cambiar el estado del bot: ' + (error?.message || 'Error desconocido'));
+      // Revertir si falla en ambas listas
+      setActiveChat((prev: any) => prev?.id === chatId ? { ...prev, botActive: !newStatus } : prev);
+      setChats(prev => prev.map(c => c.id === chatId ? { ...c, botActive: !newStatus } : c));
     } finally {
       // Desbloqueamos el polling después de un pequeño delay para asegurar consistencia
       setTimeout(() => {

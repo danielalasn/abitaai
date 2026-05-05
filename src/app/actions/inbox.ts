@@ -142,9 +142,19 @@ export async function loadMoreMessages(chatId: string, beforeDate: string, limit
 // Apaga o enciende la IA (Handover manual)
 export async function toggleBotActive(chatId: string, botActive: boolean) {
   const project = await getCurrentProject();
-  if (!project) return;
+  if (!project) {
+    console.error(`[toggleBotActive] No project found for current session`);
+    throw new Error("No project found");
+  }
   const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
-  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return;
+  if (!chatToVerify) {
+    console.error(`[toggleBotActive] Chat not found: ${chatId}`);
+    throw new Error("Chat not found");
+  }
+  if (chatToVerify.lead.projectId !== project.id) {
+    console.error(`[toggleBotActive] Project mismatch. Chat project: ${chatToVerify.lead.projectId}, Session project: ${project.id}`);
+    throw new Error("Project mismatch");
+  }
 
   const chat = await prisma.chat.update({
     where: { id: chatId },
