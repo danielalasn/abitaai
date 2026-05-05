@@ -119,7 +119,37 @@ ${transcript}`,
 
     return summary;
   } catch (e) {
-    console.error('[AI Summary] Error generando resumen:', e);
+    console.error('[AI Summary] Claude Error, intentando fallback con Gemini:', e);
+    
+    try {
+      if (!process.env.GEMINI_API_KEY) return null;
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+      const prompt = `Analiza esta conversación entre un cliente y un asistente virtual. 
+Genera un resumen de máximo 2 oraciones que explique:
+1. Qué preguntó o buscaba el cliente
+2. En qué punto se detuvo la conversación o cuál fue el momento clave
+
+Responde SOLO el resumen, sin introducción ni explicación adicional. Usa español.
+
+CONVERSACIÓN:
+${transcript}`;
+
+      const result = await model.generateContent(prompt);
+      const summary = result.response.text().trim();
+
+      if (summary) {
+        await prisma.lead.update({
+          where: { id: chat.lead.id },
+          data: { aiSummary: summary },
+        });
+        return summary;
+      }
+    } catch (geminiError) {
+      console.error('[AI Summary] Gemini Fallback Error:', geminiError);
+    }
     return null;
   }
 }

@@ -299,7 +299,7 @@ Maintaining the same language as the customer is your TOP priority.
       
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-flash-latest",
+        model: "gemini-3.1-pro-preview",
         systemInstruction: systemPrompt 
       });
       
