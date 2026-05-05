@@ -1275,8 +1275,15 @@ export default function InboxPage() {
                           </div>
                         )}
 
+                        {/* Audio adjunto */}
+                        {msg.mediaUrl && msg.mediaType === 'audio' && (
+                          <div className="mb-2 w-full max-w-[240px] pt-1">
+                            <audio controls src={msg.mediaUrl} className="w-full h-10" />
+                          </div>
+                        )}
+
                         {/* Documento / PDF / Video adjunto */}
-                        {msg.mediaUrl && msg.mediaType !== 'image' && (
+                        {msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'audio' && (
                           <a
                             href={msg.mediaUrl}
                             target="_blank"
@@ -1301,7 +1308,9 @@ export default function InboxPage() {
                           </a>
                         )}
 
-                        <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                        {msg.content && msg.content !== '[Archivo]' && (
+                          <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                        )}
                         <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
                           }`}>
                           <span className="opacity-60">

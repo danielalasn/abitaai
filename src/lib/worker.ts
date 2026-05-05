@@ -64,7 +64,7 @@ export function initWorker() {
       // 5. Simular entrada en base de datos
       const chatId = await simulateIncomingMessage(
         from,
-        combinedText || '[Archivo]',
+        combinedText || '',
         metadata.profileName || undefined,
         metadata.phoneId || undefined,
         channel,
@@ -87,7 +87,7 @@ export function initWorker() {
         // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
         const history = chatDetails.messages.slice(0, -1);
         const botData = await sendTestMessage(
-          combinedText || '[Archivo]',
+          combinedText || '',
           history.map(m => ({ role: m.role, content: m.content })),
           chatDetails.lead.name || metadata.profileName || 'Desconocido',
           chatDetails.lead.projectId

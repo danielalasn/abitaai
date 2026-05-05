@@ -72,6 +72,14 @@ export async function POST(req: NextRequest) {
     const profileName = value?.contacts?.[0]?.profile?.name;
     let text = message.text?.body || message.button?.text || message.interactive?.button_reply?.title || message.interactive?.list_reply?.title;
 
+    // Handle reply context
+    if (message.context?.id) {
+      const repliedMsg = await prisma.message.findUnique({ where: { wamid: message.context.id } });
+      if (repliedMsg && repliedMsg.content) {
+        text = `[En respuesta a: "${repliedMsg.content}"]\n${text || ''}`;
+      }
+    }
+
     // Media processing
     let mediaData: any = {};
     const mediaTypes = ['image', 'document', 'audio', 'video'];
