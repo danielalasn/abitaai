@@ -30,14 +30,17 @@ export async function GET(req: NextRequest) {
     update: { status: 'pending', oauthState: state },
   })
 
-  // Use config_id — Meta controls all scopes, pages, and Instagram accounts
-  // No manual 'scope' param needed when using a Business Login Configuration
+  // PARA DEBUG: Usamos Login Clásico con scopes explícitos en lugar de config_id.
+  // Esto obligará a Meta a mostrar un error detallado (ej. "URL Blocked", "Invalid Scope")
+  // en lugar de la pantalla genérica de "App no disponible".
   const authUrl = new URL('https://www.facebook.com/v19.0/dialog/oauth')
   authUrl.searchParams.set('client_id', APP_ID)
   authUrl.searchParams.set('redirect_uri', REDIRECT_URI)
-  authUrl.searchParams.set('config_id', CONFIG_ID)
   authUrl.searchParams.set('state', state)
   authUrl.searchParams.set('response_type', 'code')
+  
+  // Scopes requeridos para Instagram/WhatsApp
+  authUrl.searchParams.set('scope', 'instagram_basic,instagram_manage_messages,pages_show_list,pages_manage_metadata,pages_read_engagement,pages_messaging')
 
   return NextResponse.redirect(authUrl.toString())
 }
