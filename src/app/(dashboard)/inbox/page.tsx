@@ -1267,8 +1267,8 @@ export default function InboxPage() {
                         {/* Imagen / Thumbnail */}
                         {(msg.mediaUrl || msg.imageUrl) && (msg.mediaType === 'image' || !msg.mediaType) && (
                           <div 
-                            className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0] cursor-pointer"
-                            onClick={() => setSelectedImage(msg.mediaUrl || msg.imageUrl)}
+                            className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0] cursor-pointer relative z-10"
+                            onClick={(e) => { e.stopPropagation(); setSelectedImage(msg.mediaUrl || msg.imageUrl); }}
                           >
                             <img
                               src={msg.mediaUrl || msg.imageUrl}
@@ -1281,8 +1281,11 @@ export default function InboxPage() {
 
                         {/* Audio adjunto */}
                         {msg.mediaUrl && msg.mediaType === 'audio' && (
-                          <div className="mb-2 w-full max-w-[240px] pt-1">
-                            <audio controls src={msg.mediaUrl} className="w-full h-10" />
+                          <div className="mb-2 w-full max-w-[260px] pt-1 flex flex-col gap-1.5">
+                            <audio controls src={msg.mediaUrl} preload="metadata" className="w-full" />
+                            <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#111111] dark:text-white opacity-60 hover:opacity-100 transition-opacity text-right underline">
+                              Abrir / Descargar
+                            </a>
                           </div>
                         )}
 
