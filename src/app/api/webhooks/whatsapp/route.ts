@@ -86,15 +86,36 @@ export async function POST(req: NextRequest) {
       if (mediaObj.caption) text = mediaObj.caption;
     }
 
+    // ─── CHECK BOT ACTIVE STATUS ───
+    let isBotActive = true;
+    if (phoneId) {
+      const project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
+      if (project) {
+        const possiblePhones = [from];
+        if (from.startsWith('503') && from.length === 11) {
+          possiblePhones.push(from.substring(3));
+        }
+        const lead = await prisma.lead.findFirst({
+          where: { projectId: project.id, phone: { in: possiblePhones } },
+          include: { chat: true }
+        });
+        if (lead?.chat) {
+          isBotActive = lead.chat.botActive;
+        } else {
+          isBotActive = project.defaultBotActive ?? true;
+        }
+      }
+    }
+
     // ─── ASYNC QUEUE LOGIC (Redis + BullMQ) ───
     await enqueueMessage(from, { 
       text, 
       profileName, 
       phoneId, 
       ...mediaData 
-    });
+    }, isBotActive);
 
-    console.log(`[Webhook WhatsApp] Mensaje encolado para ${from}.`);
+    console.log(`[Webhook WhatsApp] Mensaje encolado para ${from} (Bot Activo: ${isBotActive}).`);
 
     return NextResponse.json({ status: 'ok' });
   } catch (error) {

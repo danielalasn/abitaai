@@ -27,8 +27,8 @@ export const messageQueue = new Queue('whatsapp-messages', {
  * Esta función encola un mensaje para ser procesado después de un delay (debounce).
  * Usamos Redis para acumular los mensajes mientras esperamos el delay.
  */
-export async function enqueueMessage(from: string, data: any) {
-  const delay = 6000;
+export async function enqueueMessage(from: string, data: any, isBotActive: boolean = true) {
+  const delay = isBotActive ? 6000 : 0;
   const listKey = `buffer:${from}`;
   const metadataKey = `metadata:${from}`;
 
@@ -48,23 +48,25 @@ export async function enqueueMessage(from: string, data: any) {
   await redisConnection.expire(metadataKey, 60);
 
   // 4. Implementar Debounce Real (Sliding Window)
-  // Si ya hay un trabajo pendiente de procesar para este usuario, lo eliminamos
-  // para "reiniciar" el contador de 6 segundos.
-  const existingJob = await messageQueue.getJob(`debounce-${from}`);
-  if (existingJob) {
-    try {
-      await existingJob.remove();
-    } catch (e) {
-      // Si ya se estaba procesando, no podemos removerlo, pero no importa
+  if (delay > 0) {
+    // Si ya hay un trabajo pendiente de procesar para este usuario, lo eliminamos
+    // para "reiniciar" el contador de 6 segundos.
+    const existingJob = await messageQueue.getJob(`debounce-${from}`);
+    if (existingJob) {
+      try {
+        await existingJob.remove();
+      } catch (e) {
+        // Si ya se estaba procesando, no podemos removerlo, pero no importa
+      }
     }
   }
 
-  console.log(`[Queue] Re-encolando job con delay de 6s para ${from}...`);
+  console.log(`[Queue] Encolando job con delay de ${delay}ms para ${from} (Bot Activo: ${isBotActive})...`);
   const job = await messageQueue.add('process-buffer', 
     { from }, 
     { 
-      jobId: `debounce-${from}`, 
-      delay: 6000, // <--- ESPERA 6 SEGUNDOS DE SILENCIO
+      jobId: delay > 0 ? `debounce-${from}` : undefined, // Sin ID único si es instantáneo para evitar bloqueos
+      delay: delay,
       removeOnComplete: true,
       removeOnFail: true
     }

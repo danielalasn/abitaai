@@ -84,8 +84,23 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'no_tenant' })
       }
 
+      // Check if bot is active to bypass debounce
+      let isBotActive = true;
+      if (integration?.client?.projects?.[0]) {
+        const projectId = integration.client.projects[0].id;
+        const lead = await prisma.lead.findFirst({
+          where: { projectId: projectId, phone: senderId },
+          include: { chat: true }
+        });
+        if (lead?.chat) {
+          isBotActive = lead.chat.botActive;
+        } else {
+          isBotActive = integration.client.projects[0].defaultBotActive ?? true;
+        }
+      }
+
       console.log(
-        `[Instagram Webhook] DM from ${senderId} → Encolando para procesamiento asíncrono`
+        `[Instagram Webhook] DM from ${senderId} → Encolando para procesamiento asíncrono (Bot Activo: ${isBotActive})`
       )
 
       // Encolar mensaje en lugar de procesar directamente
@@ -94,7 +109,7 @@ export async function POST(req: NextRequest) {
         profileName: `@${senderId}`,
         phoneId: recipientId,
         channel: 'instagram'
-      });
+      }, isBotActive);
 
       // TODO: pipe to AI agent and reply back via instagram_replies API using integration.accessToken
       // Example reply:
