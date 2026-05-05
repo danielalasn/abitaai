@@ -7,7 +7,7 @@ import {
   Bot, User, Send, Loader2, Phone, Hash, AlertCircle, TrendingUp, Clock,
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
-  Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw
+  Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download
 } from "lucide-react";
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
@@ -121,6 +121,7 @@ export default function InboxPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Cache de chats abiertos para cambio instantáneo
   const [chatsCache, setChatsCache] = useState<Record<string, any>>({});
@@ -1265,7 +1266,10 @@ export default function InboxPage() {
 
                         {/* Imagen / Thumbnail */}
                         {(msg.mediaUrl || msg.imageUrl) && (msg.mediaType === 'image' || !msg.mediaType) && (
-                          <div className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0]">
+                          <div 
+                            className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0] cursor-pointer"
+                            onClick={() => setSelectedImage(msg.mediaUrl || msg.imageUrl)}
+                          >
                             <img
                               src={msg.mediaUrl || msg.imageUrl}
                               alt="Adjunto"
@@ -1670,7 +1674,7 @@ export default function InboxPage() {
       <NewChatModal
         isOpen={isNewChatModalOpen}
         onClose={() => setIsNewChatModalOpen(false)}
-        onSuccess={(chatId) => {
+        onChatCreated={(chatId) => {
           loadChats(chatId);
         }}
       />
