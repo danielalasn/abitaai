@@ -509,6 +509,15 @@ export async function sendSimulatorMessage(
     });
   }
 
+  // 7. DESACTIVAR BOT SI HAY HANDOFF
+  if (result.isHandoff) {
+    console.log(`[HANDOFF] Desactivando bot para chatId: ${chatId}`);
+    await prisma.chat.update({
+      where: { id: chatId },
+      data: { botActive: false }
+    });
+  }
+
   return {
     ...result,
     newScore: updatedScore,

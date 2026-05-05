@@ -4,10 +4,10 @@
  */
 export const AI_MODELS = {
   // Modelo principal (Claude)
-  CLAUDE_MAIN: 'claude-3-5-sonnet-20240620',
+  CLAUDE_MAIN: 'claude-3-5-sonnet-latest',
   
   // Modelo para resúmenes automáticos (Claude)
-  CLAUDE_SUMMARY: 'claude-3-haiku-20240307',
+  CLAUDE_SUMMARY: 'claude-3-5-haiku-latest',
 
   // Modelo de Gemini para el "Plan B" (si falla Claude en el chat)
   GEMINI_FALLBACK: 'gemini-flash-latest',

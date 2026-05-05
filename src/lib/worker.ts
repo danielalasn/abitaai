@@ -157,6 +157,15 @@ export function initWorker() {
               botData.scoreReason,
               waMessageId || undefined
             );
+
+            // 6. DESACTIVAR BOT SI HAY HANDOFF
+            if (botData.isHandoff) {
+              console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}`);
+              await prisma.chat.update({
+                where: { id: chatId },
+                data: { botActive: false }
+              });
+            }
           }
         }
       }
