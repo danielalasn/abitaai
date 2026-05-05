@@ -494,11 +494,11 @@ export default function InboxPage() {
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Efecto de resalto temporal
-      element.classList.add('ring-2', 'ring-[#F36A2D]', 'ring-offset-4', 'ring-offset-transparent');
+      // Efecto de pulso sutil y rápido
+      element.classList.add('ring-1', 'ring-[#F36A2D]/50', 'scale-[1.01]', 'brightness-110', 'z-50');
       setTimeout(() => {
-        element.classList.remove('ring-2', 'ring-[#F36A2D]', 'ring-offset-4', 'ring-offset-transparent');
-      }, 2000);
+        element.classList.remove('ring-1', 'ring-[#F36A2D]/50', 'scale-[1.01]', 'brightness-110', 'z-50');
+      }, 800);
     }
   };
 
