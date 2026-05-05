@@ -490,6 +490,51 @@ export default function InboxPage() {
   };
 
   // Delete Chat
+  const scrollToMessage = (msgId: string) => {
+    const element = document.getElementById(`msg-${msgId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Efecto de resalto temporal
+      element.classList.add('ring-2', 'ring-[#F36A2D]', 'ring-offset-4', 'ring-offset-transparent');
+      setTimeout(() => {
+        element.classList.remove('ring-2', 'ring-[#F36A2D]', 'ring-offset-4', 'ring-offset-transparent');
+      }, 2000);
+    }
+  };
+
+  const renderMessageContent = (content: string, allMessages: any[]) => {
+    const replyMatch = content.match(/^\[En respuesta a: "(.*?)"\]\n([\s\S]*)$/);
+
+    if (replyMatch) {
+      const repliedText = replyMatch[1];
+      const actualMessage = replyMatch[2];
+
+      // Intentar encontrar el mensaje original para el link
+      const originalMsg = allMessages.find(m => m.content === repliedText);
+
+      return (
+        <div className="space-y-2">
+          <div
+            onClick={() => originalMsg && scrollToMessage(originalMsg.id)}
+            className={`group p-2.5 mb-1 rounded-xl border-l-4 border-[#F36A2D] bg-black/5 dark:bg-black/30 text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/10 dark:hover:bg-black/50' : 'opacity-70'
+              }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-black text-[9px] uppercase tracking-tighter text-[#F36A2D]">En respuesta a:</div>
+              {originalMsg && <div className="text-[8px] font-bold text-[#F36A2D] opacity-0 group-hover:opacity-100 transition-opacity">IR AL MENSAJE ↑</div>}
+            </div>
+            <div className="line-clamp-2 italic opacity-80 leading-snug">
+              {repliedText}
+            </div>
+          </div>
+          <div className="whitespace-pre-wrap leading-relaxed">{actualMessage}</div>
+        </div>
+      );
+    }
+
+    return <div className="whitespace-pre-wrap leading-relaxed">{content}</div>;
+  };
+
   const handleDeleteChat = async () => {
     if (!activeChat) return;
     const confirmDelete = window.confirm("¿Seguro que quieres eliminar toda la conversación y el contacto? Esto no se puede deshacer.");
@@ -1218,7 +1263,7 @@ export default function InboxPage() {
                 const showDateHeader = !prevMsgDate || currentMsgDate.toDateString() !== prevMsgDate.toDateString();
 
                 return (
-                  <div key={msg.id}>
+                  <div key={msg.id} id={`msg-${msg.id}`} className="transition-all duration-500 rounded-2xl">
                     {showDateHeader && (
                       <div className="flex justify-center my-6">
                         <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700/50">
@@ -1314,7 +1359,7 @@ export default function InboxPage() {
                         )}
 
                         {msg.content && msg.content !== '[Archivo]' && (
-                          <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                          renderMessageContent(msg.content, activeChat.messages)
                         )}
                         <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
                           }`}>
