@@ -14,7 +14,7 @@ export async function transcribeAudioWithGemini(audioUrl: string): Promise<strin
     const base64Audio = buffer.toString('base64');
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     console.log(`🎙️ [Gemini] Transcribiendo...`);
     const result = await model.generateContent([

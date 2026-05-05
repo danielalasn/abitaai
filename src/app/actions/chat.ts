@@ -184,18 +184,8 @@ Maintaining the same language as the customer is your TOP priority.
 </language_instruction>
   `;
 
-  console.log("\n" + "=".repeat(60));
-  console.log("🚀 [CLAUDE REQUEST DEBUG]");
-  console.log("-".repeat(60));
-  console.log("SYSTEM PROMPT:");
-  console.log(systemPrompt); 
-  console.log("-".repeat(60));
-  console.log("CONVERSATION HISTORY:");
-  history.forEach((h, i) => console.log(`  [${i}] ${h.role.toUpperCase()}: ${h.content.substring(0, 100)}${h.content.length > 100 ? '...' : ''}`));
-  console.log("-".repeat(60));
-  console.log("USER MESSAGE:");
-  console.log(`  ${message}`);
-  console.log("=".repeat(60) + "\n");
+  // Logs eliminados para limpiar consola
+  console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name}`);
 
   try {
     // We filter history down to what anthropic expects: assistant and user
@@ -299,7 +289,7 @@ Maintaining the same language as the customer is your TOP priority.
       
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-1.5-flash",
         systemInstruction: systemPrompt 
       });
       
