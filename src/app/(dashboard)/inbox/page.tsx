@@ -295,6 +295,14 @@ export default function InboxPage() {
         if (currentId && !hasOptimistic) {
           const refreshed = await getChatMessagesPaginated(currentId, 30);
           if (cancelled) return;
+          
+          // EVITAR CARRERAS (RACE CONDITIONS):
+          // Si el usuario hizo clic en el toggle MIENTRAS esta petición estaba en vuelo,
+          // ignoramos la respuesta del servidor para no sobreescribir el estado optimista.
+          if (pendingOptimistic.current.has('toggle-' + currentId) || pendingOptimistic.current.has('bulk-' + currentId)) {
+            return;
+          }
+
           setActiveChat((prev: any) => {
             if (!prev || prev.id !== currentId) return prev;
             const newMsgsFromRefreshed = refreshed?.messages || [];
