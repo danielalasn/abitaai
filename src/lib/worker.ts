@@ -7,6 +7,7 @@ import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { sendInstagramMessage } from '@/lib/instagram';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
+import { transcribeAudioWithGemini } from './transcribe';
 
 /**
  * WORKER DE PROCESAMIENTO
@@ -61,10 +62,20 @@ export function initWorker() {
         projectId = integration?.client?.projects?.[0]?.id;
       }
 
+      let finalCombinedText = combinedText || '';
+
+      // Transcribir audio si hay
+      if (firstMedia?.mediaType === 'audio' && firstMedia?.mediaUrl) {
+        const transcript = await transcribeAudioWithGemini(firstMedia.mediaUrl);
+        if (transcript) {
+           finalCombinedText = `[Audio Transcrito]: "${transcript}"\n${finalCombinedText}`.trim();
+        }
+      }
+
       // 5. Simular entrada en base de datos
       const chatId = await simulateIncomingMessage(
         from,
-        combinedText || '',
+        finalCombinedText,
         metadata.profileName || undefined,
         metadata.phoneId || undefined,
         channel,
@@ -87,7 +98,7 @@ export function initWorker() {
         // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
         const history = chatDetails.messages.slice(0, -1);
         const botData = await sendTestMessage(
-          combinedText || '',
+          finalCombinedText,
           history.map(m => ({ role: m.role, content: m.content })),
           chatDetails.lead.name || metadata.profileName || 'Desconocido',
           chatDetails.lead.projectId
