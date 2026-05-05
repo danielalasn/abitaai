@@ -47,16 +47,27 @@ export async function enqueueMessage(from: string, data: any) {
   await redisConnection.expire(listKey, 60);
   await redisConnection.expire(metadataKey, 60);
 
-  // 4. Encolar el Job de procesamiento (BullMQ ignora si ya hay uno pendiente con el mismo ID)
-  console.log(`[Queue] Intentando encolar job para ${from}...`);
+  // 4. Implementar Debounce Real (Sliding Window)
+  // Si ya hay un trabajo pendiente de procesar para este usuario, lo eliminamos
+  // para "reiniciar" el contador de 6 segundos.
+  const existingJob = await messageQueue.getJob(`debounce-${from}`);
+  if (existingJob) {
+    try {
+      await existingJob.remove();
+    } catch (e) {
+      // Si ya se estaba procesando, no podemos removerlo, pero no importa
+    }
+  }
+
+  console.log(`[Queue] Re-encolando job con delay de 6s para ${from}...`);
   const job = await messageQueue.add('process-buffer', 
     { from }, 
     { 
       jobId: `debounce-${from}`, 
-      delay: 0,
+      delay: 6000, // <--- ESPERA 6 SEGUNDOS DE SILENCIO
       removeOnComplete: true,
       removeOnFail: true
     }
   );
-  console.log(`[Queue] Job encolado con ID: ${job.id}`);
+  console.log(`[Queue] Job programado con ID: ${job.id}`);
 }
