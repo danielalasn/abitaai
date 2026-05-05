@@ -125,7 +125,7 @@ ${transcript}`,
       if (!process.env.GEMINI_API_KEY) return null;
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
       const prompt = `Analiza esta conversación entre un cliente y un asistente virtual. 
 Genera un resumen de máximo 2 oraciones que explique:
