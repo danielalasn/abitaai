@@ -159,7 +159,11 @@ export function initWorker() {
             );
 
             // 6. DESACTIVAR BOT SI HAY HANDOFF
-            if (botData.isHandoff) {
+            // Reforzamos con detección de texto por si la IA olvida el tag
+            const handoffKeywords = ['transfiriendo', 'con un asesor', 'un momento por favor', 'espera un momento'];
+            const hasHandoffKeyword = handoffKeywords.some(k => botData.reply.toLowerCase().includes(k));
+
+            if (botData.isHandoff || hasHandoffKeyword) {
               console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}`);
               await prisma.chat.update({
                 where: { id: chatId },

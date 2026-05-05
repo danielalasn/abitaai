@@ -494,10 +494,10 @@ export default function InboxPage() {
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Efecto de pulso sutil y rápido
-      element.classList.add('ring-1', 'ring-[#F36A2D]/50', 'scale-[1.01]', 'brightness-110', 'z-50');
+      // Pulso de tamaño y brillo sin bordes
+      element.classList.add('scale-[1.02]', 'brightness-125', 'z-50');
       setTimeout(() => {
-        element.classList.remove('ring-1', 'ring-[#F36A2D]/50', 'scale-[1.01]', 'brightness-110', 'z-50');
+        element.classList.remove('scale-[1.02]', 'brightness-125', 'z-50');
       }, 800);
     }
   };
