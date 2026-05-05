@@ -503,11 +503,14 @@ export default function InboxPage() {
   };
 
   const renderMessageContent = (content: string, allMessages: any[]) => {
-    const replyMatch = content.match(/^\[En respuesta a: "(.*?)"\]\n([\s\S]*)$/);
+    // Buscar si hay un bloque "[En respuesta a: "..."]" en cualquier parte del mensaje
+    const replyRegex = /\[En respuesta a:\s*"([^"]+)"\]\n?/;
+    const match = content.match(replyRegex);
 
-    if (replyMatch) {
-      const repliedText = replyMatch[1];
-      const actualMessage = replyMatch[2];
+    if (match) {
+      const repliedText = match[1];
+      // Remover el tag de la respuesta del texto principal
+      const actualMessage = content.replace(match[0], '').trim();
 
       // Intentar encontrar el mensaje original para el link
       const originalMsg = allMessages.find(m => m.content === repliedText);
@@ -516,7 +519,7 @@ export default function InboxPage() {
         <div className="space-y-2">
           <div
             onClick={() => originalMsg && scrollToMessage(originalMsg.id)}
-            className={`group p-2.5 mb-1 rounded-xl border-l-4 border-[#F36A2D] bg-black/5 dark:bg-black/30 text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/10 dark:hover:bg-black/50' : 'opacity-70'
+            className={`group p-2.5 mb-1 rounded-xl bg-black/5 dark:bg-black/30 text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/10 dark:hover:bg-black/50' : 'opacity-70'
               }`}
           >
             <div className="flex items-center justify-between mb-1">
