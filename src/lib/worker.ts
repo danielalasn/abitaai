@@ -95,51 +95,69 @@ export function initWorker() {
       });
 
       if (chatDetails?.botActive) {
-        // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
-        const history = chatDetails.messages.slice(0, -1);
-        const botData = await sendTestMessage(
-          finalCombinedText,
-          history.map(m => ({ role: m.role, content: m.content })),
-          chatDetails.lead.name || metadata.profileName || 'Desconocido',
-          chatDetails.lead.projectId
-        );
-
-        if (botData && botData.reply) {
-          let waMessageId;
-          let waCategory = 'SERVICE';
-
-          // 4. Enviar respuesta por el canal correspondiente
-          if (channel === 'whatsapp') {
-            const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
-            const projectToken = decrypt(chatDetails.lead.project?.whatsappToken);
-            if (projectPhoneId && projectToken) {
-              const waResult = await sendWhatsAppMessage(from, botData.reply, projectPhoneId, projectToken);
-              waCategory = waResult.category || 'SERVICE';
-              waMessageId = waResult.messageId;
-            }
-          } else if (channel === 'instagram') {
-            const integration = await prisma.integration.findFirst({
-              where: { instagramAccountId: metadata.phoneId, provider: 'meta_instagram', status: 'active' }
-            });
-            const accessToken = decrypt(integration?.accessToken);
-            if (accessToken) {
-              const igResult = await sendInstagramMessage(from, botData.reply, accessToken);
-              waMessageId = igResult.messageId;
-            }
+        // Determinar un texto para la IA si finalCombinedText está vacío (pero hay media)
+        let aiInputText = finalCombinedText;
+        if (!aiInputText && firstMedia) {
+          if (firstMedia.mediaType === 'audio' || firstMedia.mediaType === 'voice') {
+            aiInputText = '[El usuario envió una nota de voz (No pudo ser transcrita)]';
+          } else if (firstMedia.mediaType === 'image') {
+            aiInputText = '[El usuario envió una imagen]';
+          } else if (firstMedia.mediaType === 'video') {
+            aiInputText = '[El usuario envió un video]';
+          } else {
+            aiInputText = `[El usuario envió un archivo: ${firstMedia.mediaFilename || 'Sin nombre'}]`;
           }
+        }
 
-          // 5. Guardar respuesta en el inbox
-          await saveAssistantReply(
-            chatId,
-            botData.reply,
-            botData.scoreBump,
-            botData.inputTokens,
-            botData.outputTokens,
-            waCategory,
-            botData.agentName,
-            botData.scoreReason,
-            waMessageId || undefined
+        if (!aiInputText) {
+          console.warn('⚠️ [Worker] Saltando llamada a IA porque el texto está vacío y no hay media.');
+        } else {
+          // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
+          const history = chatDetails.messages.slice(0, -1);
+          const botData = await sendTestMessage(
+            aiInputText,
+            history.map(m => ({ role: m.role, content: m.content })),
+            chatDetails.lead.name || metadata.profileName || 'Desconocido',
+            chatDetails.lead.projectId
           );
+
+          if (botData && botData.reply) {
+            let waMessageId;
+            let waCategory = 'SERVICE';
+
+            // 4. Enviar respuesta por el canal correspondiente
+            if (channel === 'whatsapp') {
+              const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
+              const projectToken = decrypt(chatDetails.lead.project?.whatsappToken);
+              if (projectPhoneId && projectToken) {
+                const waResult = await sendWhatsAppMessage(from, botData.reply, projectPhoneId, projectToken);
+                waCategory = waResult.category || 'SERVICE';
+                waMessageId = waResult.messageId;
+              }
+            } else if (channel === 'instagram') {
+              const integration = await prisma.integration.findFirst({
+                where: { instagramAccountId: metadata.phoneId, provider: 'meta_instagram', status: 'active' }
+              });
+              const accessToken = decrypt(integration?.accessToken);
+              if (accessToken) {
+                const igResult = await sendInstagramMessage(from, botData.reply, accessToken);
+                waMessageId = igResult.messageId;
+              }
+            }
+
+            // 5. Guardar respuesta en el inbox
+            await saveAssistantReply(
+              chatId,
+              botData.reply,
+              botData.scoreBump,
+              botData.inputTokens,
+              botData.outputTokens,
+              waCategory,
+              botData.agentName,
+              botData.scoreReason,
+              waMessageId || undefined
+            );
+          }
         }
       }
     } catch (err) {

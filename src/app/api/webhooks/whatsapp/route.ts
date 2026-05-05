@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     // Media processing
     let mediaData: any = {};
-    const mediaTypes = ['image', 'document', 'audio', 'video'];
+    const mediaTypes = ['image', 'document', 'audio', 'video', 'voice'];
     if (mediaTypes.includes(message.type)) {
       const mediaObj = message[message.type];
       const project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
