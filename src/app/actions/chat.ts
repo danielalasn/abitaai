@@ -7,6 +7,8 @@ import { GLOBAL_SYSTEM_GUARDRAILS } from '@/lib/guardrails';
 import { getCurrentProject } from '@/lib/auth-server';
 import { redactPII } from '@/lib/pii';
 
+import { AI_MODELS } from '@/lib/models';
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -197,7 +199,7 @@ Maintaining the same language as the customer is your TOP priority.
     messages.push({ role: 'user', content: redactPII(message) });
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: AI_MODELS.CLAUDE_MAIN,
       max_tokens: 1024,
       system: systemPrompt,
       messages: messages,
@@ -289,7 +291,7 @@ Maintaining the same language as the customer is your TOP priority.
       
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-flash-latest",
+        model: AI_MODELS.GEMINI_FALLBACK,
         systemInstruction: systemPrompt 
       });
       

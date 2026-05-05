@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentProject } from '@/lib/auth-server';
 import Anthropic from '@anthropic-ai/sdk';
+import { AI_MODELS } from '@/lib/models';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -90,7 +91,7 @@ export async function updateLeadAISummaryInternal(chatId: string, force: boolean
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
+      model: AI_MODELS.CLAUDE_SUMMARY,
       max_tokens: 200,
       messages: [
         {
@@ -125,7 +126,7 @@ ${transcript}`,
       if (!process.env.GEMINI_API_KEY) return null;
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      const model = genAI.getGenerativeModel({ model: AI_MODELS.GEMINI_SUMMARY });
 
       const prompt = `Analiza esta conversación entre un cliente y un asistente virtual. 
 Genera un resumen de máximo 2 oraciones que explique:

@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AI_MODELS } from './models';
 
 export async function transcribeAudioWithGemini(audioUrl: string): Promise<string> {
   try {
@@ -14,7 +15,7 @@ export async function transcribeAudioWithGemini(audioUrl: string): Promise<strin
     const base64Audio = buffer.toString('base64');
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: AI_MODELS.GEMINI_TRANSCRIBE });
 
     console.log(`🎙️ [Gemini] Transcribiendo...`);
     const result = await model.generateContent([
