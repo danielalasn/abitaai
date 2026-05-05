@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
+import { VoiceNotePlayer } from "@/components/VoiceNotePlayer";
 
 const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -1281,11 +1282,8 @@ export default function InboxPage() {
 
                         {/* Audio adjunto */}
                         {msg.mediaUrl && msg.mediaType === 'audio' && (
-                          <div className="mb-2 w-full max-w-[260px] pt-1 flex flex-col gap-1.5">
-                            <audio controls src={msg.mediaUrl} preload="metadata" className="w-full" />
-                            <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#111111] dark:text-white opacity-60 hover:opacity-100 transition-opacity text-right underline">
-                              Abrir / Descargar
-                            </a>
+                          <div className="mb-2 w-full pt-1">
+                            <VoiceNotePlayer url={msg.mediaUrl} />
                           </div>
                         )}
 
@@ -1712,6 +1710,40 @@ export default function InboxPage() {
           </div>
         ))}
       </div>
+
+      {/* Modal de Imagen */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" 
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-screen flex flex-col items-center justify-center">
+            <button 
+              className="absolute -top-12 right-0 text-white hover:text-[#F36A2D] transition-colors p-2"
+              onClick={() => setSelectedImage(null)}
+            >
+              <XIcon size={24} />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Ampliada" 
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" 
+              onClick={(e) => e.stopPropagation()} 
+            />
+            <div className="mt-4 flex gap-4" onClick={(e) => e.stopPropagation()}>
+              <a 
+                href={selectedImage} 
+                download 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="flex items-center gap-2 bg-[#F36A2D] hover:bg-[#F36A2D]/90 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg"
+              >
+                <Download size={18} /> Descargar Imagen
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
