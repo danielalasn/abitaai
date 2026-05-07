@@ -52,10 +52,17 @@ export async function POST(req: NextRequest) {
         console.log(`[Webhook WhatsApp] Evento duplicado detectado y omitido: ${eventId}`);
         return NextResponse.json({ status: 'ok', duplicated: true });
       }
-      // Registramos el evento antes de procesarlo
-      await prisma.webhookEvent.create({
-        data: { id: eventId, provider: 'whatsapp', payload: body }
-      }).catch(err => console.error('[Webhook WhatsApp] Error guardando evento de idempotencia:', err));
+      try {
+        await prisma.webhookEvent.create({
+          data: { id: eventId, provider: 'whatsapp', payload: body }
+        });
+      } catch (err: any) {
+        if (err.code === 'P2002') {
+          console.log(`[Webhook WhatsApp] Evento duplicado evitado por constraint en BD: ${eventId}`);
+          return NextResponse.json({ status: 'ok', duplicated: true });
+        }
+        console.error('[Webhook WhatsApp] Error guardando evento de idempotencia:', err);
+      }
     }
 
     if (status) {

@@ -322,6 +322,14 @@ export async function saveAssistantReply(
   
   console.log(`[saveAssistantReply] chatId=${chatId} inputTokens=${safeInputTokens} outputTokens=${safeOutputTokens} waCategory=${safeWaCategory} (agent: ${agentName})`);
   
+  if (wamid) {
+    const existing = await prisma.message.findUnique({ where: { wamid } });
+    if (existing) {
+      console.log(`[saveAssistantReply] Mensaje con wamid ${wamid} ya existe. Omitiendo creación duplicada.`);
+      return;
+    }
+  }
+
   await prisma.message.create({
     data: {
       chatId,
@@ -440,6 +448,14 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
     }
   }
 
+  if (wamid) {
+    const existing = await prisma.message.findUnique({ where: { wamid } });
+    if (existing) {
+      console.log(`[Manual Agent] Mensaje con wamid ${wamid} ya existe. Omitiendo duplicado.`);
+      return { success: waSendSuccess, error: waSendError };
+    }
+  }
+
   // Guardar en BD local — el mensaje se guarda siempre para que quede en el historial
   await prisma.message.create({
     data: { chatId, role: 'agent', content: text, waCategory, wamid }
@@ -499,6 +515,14 @@ export async function sendAgentMedia(
 
   // Determinar si es imagen para mostrarla en el chat
   const isImage = mediaType === 'image';
+
+  if (wamid) {
+    const existing = await prisma.message.findUnique({ where: { wamid } });
+    if (existing) {
+      console.log(`[sendAgentMedia] Mensaje con wamid ${wamid} ya existe. Omitiendo duplicado.`);
+      return { success: waSendSuccess, error: waSendError };
+    }
+  }
 
   await prisma.message.create({
     data: {

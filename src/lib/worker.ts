@@ -145,7 +145,17 @@ export function initWorker() {
               }
             }
 
-            // 5. Guardar respuesta en el inbox
+            // 5. DESACTIVAR BOT SI HAY HANDOFF
+            // Reforzamos con detección de texto por si la IA olvida el tag
+            const handoffKeywords = ['transfiriendo', 'con un asesor', 'un momento por favor', 'espera un momento'];
+            const hasHandoffKeyword = handoffKeywords.some(k => botData.reply.toLowerCase().includes(k));
+
+            if (botData.isHandoff || hasHandoffKeyword) {
+              console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}`);
+              await requestHandoff(chatId);
+            }
+
+            // 6. Guardar respuesta en el inbox
             await saveAssistantReply(
               chatId,
               botData.reply,
@@ -157,16 +167,6 @@ export function initWorker() {
               botData.scoreReason,
               waMessageId || undefined
             );
-
-            // 6. DESACTIVAR BOT SI HAY HANDOFF
-            // Reforzamos con detección de texto por si la IA olvida el tag
-            const handoffKeywords = ['transfiriendo', 'con un asesor', 'un momento por favor', 'espera un momento'];
-            const hasHandoffKeyword = handoffKeywords.some(k => botData.reply.toLowerCase().includes(k));
-
-            if (botData.isHandoff || hasHandoffKeyword) {
-              console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}`);
-              await requestHandoff(chatId);
-            }
           }
         }
       }
