@@ -1,7 +1,7 @@
 
 import { Worker, Job } from 'bullmq';
 import { redisConnection } from './queue';
-import { simulateIncomingMessage, saveAssistantReply } from '@/app/actions/inbox';
+import { simulateIncomingMessage, saveAssistantReply, requestHandoff } from '@/app/actions/inbox';
 import { sendTestMessage } from '@/app/actions/chat';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { sendInstagramMessage } from '@/lib/instagram';
@@ -165,10 +165,7 @@ export function initWorker() {
 
             if (botData.isHandoff || hasHandoffKeyword) {
               console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}`);
-              await prisma.chat.update({
-                where: { id: chatId },
-                data: { botActive: false }
-              });
+              await requestHandoff(chatId);
             }
           }
         }
