@@ -207,6 +207,7 @@ export default function InboxPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCount = useRef(0);
   const lastActiveChatId = useRef<string | null>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
 
   const scrollToBottom = (force = false) => {
     const currentMessages = activeChat?.messages || [];
