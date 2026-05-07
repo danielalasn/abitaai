@@ -152,7 +152,7 @@ export function initWorker() {
 
             if (botData.isHandoff || hasHandoffKeyword) {
               console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}`);
-              await requestHandoff(chatId);
+              await requestHandoff(chatId, true);
             }
 
             // 6. Guardar respuesta en el inbox

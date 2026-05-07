@@ -172,11 +172,13 @@ export async function toggleBotActive(chatId: string, botActive: boolean) {
 }
 
 // Apaga la IA automáticamente y marca como prioridad roja
-export async function requestHandoff(chatId: string) {
-  const project = await getCurrentProject();
-  if (!project) return;
-  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
-  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return;
+export async function requestHandoff(chatId: string, skipAuth = false) {
+  if (!skipAuth) {
+    const project = await getCurrentProject();
+    if (!project) return;
+    const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+    if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return;
+  }
 
   const chat = await prisma.chat.update({
     where: { id: chatId },
