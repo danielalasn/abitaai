@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen } from 'lucide-react';
-import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getSystemConfig, updateSystemConfig } from '@/app/actions/admin';
+import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getSystemConfig, updateSystemConfig, getGlobalStats } from '@/app/actions/admin';
 import { compileKnowledgeWithAI } from '@/app/actions/settings';
 
 export default function AdminPage() {
@@ -15,6 +15,9 @@ export default function AdminPage() {
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
+
+  // Global Stats state
+  const [globalStats, setGlobalStats] = useState<any>(null);
 
   // Create User state
   const [showCreate, setShowCreate] = useState(false);
@@ -115,10 +118,14 @@ export default function AdminPage() {
   const loadClients = async () => {
     setIsLoading(true);
     try {
-      const data = await getClients();
+      const [data, groups, stats] = await Promise.all([
+        getClients(),
+        fetchAvailableTemplateGroups(),
+        getGlobalStats()
+      ]);
       setClients(data);
-      const groups = await fetchAvailableTemplateGroups();
       setAvailableGroups(groups);
+      setGlobalStats(stats);
     } catch (err) { console.error('Error fetching clients or groups', err) }
     setIsLoading(false);
   };
@@ -621,6 +628,42 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* GLOBAL DASHBOARD */}
+      {globalStats && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+            <Users className="text-blue-500 mb-2" size={24} />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Usuarios Totales</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.totalClients}</span>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+            <CheckCircle2 className="text-green-500 mb-2" size={24} />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Activos</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.activeClients}</span>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+            <Bot className="text-purple-500 mb-2" size={24} />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Mensajes IA</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.botMessages}</span>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+            <MessageSquare className="text-orange-500 mb-2" size={24} />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Msj Nosotros</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.agentMessages}</span>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+            <AlertTriangle className="text-red-500 mb-2" size={24} />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Handoffs</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.handoffs}</span>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+            <DollarSign className="text-emerald-500 mb-2" size={24} />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Costo Est.</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">${globalStats.totalEstimatedCostUsd.toFixed(2)}</span>
+          </div>
+        </div>
+      )}
+
       {/* CARDS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {clients.map(client => {
@@ -661,11 +704,11 @@ export default function AdminPage() {
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{campCount}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Respuestas Bot</span>
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Mensajes (IA)</span>
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.botMessagesCount || 0}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Contactos Nosotros</span>
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Mensajes (Nosotros)</span>
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.agentMessagesCount || 0}</span>
                   </div>
                 </div>
@@ -799,7 +842,7 @@ export default function AdminPage() {
                           <Bot size={28} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mensajes Bot</p>
+                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mensajes (IA)</p>
                           <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
                             {selectedClient.projects?.[0]?.botMessagesCount || 0}
                           </p>
@@ -810,12 +853,12 @@ export default function AdminPage() {
                           <User size={28} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Contactos Nosotros</p>
+                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mensajes (Nosotros)</p>
                           <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
                             {selectedClient.projects?.[0]?.agentMessagesCount || 0}
                           </p>
+                        </div>
                       </div>
-                    </div>
                     </div>
                   </div>
                 )}

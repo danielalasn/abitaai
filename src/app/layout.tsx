@@ -15,6 +15,7 @@ export const viewport: Viewport = {
 };
 
 import { Providers } from "./providers";
+import { VersionChecker } from "@/components/VersionChecker";
 
 export default function RootLayout({
   children,
@@ -24,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning className="h-full antialiased">
       <body suppressHydrationWarning className="min-h-full flex flex-col">
+        <VersionChecker />
         <Providers>{children}</Providers>
       </body>
     </html>

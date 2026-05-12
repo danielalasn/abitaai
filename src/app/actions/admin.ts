@@ -42,7 +42,10 @@ export async function getClients() {
         // Contactos NUESTROS (Campañas, Individuales, Manuales)
         project.agentMessagesCount = await prisma.message.count({
           where: {
-            role: 'agent',
+            OR: [
+              { role: 'agent' },
+              { waCategory: { in: ['MARKETING', 'UTILITY'] } }
+            ],
             chat: { 
               lead: { 
                 projectId: project.id,
@@ -279,6 +282,54 @@ export async function getUsageStats(projectId: string): Promise<ProjectUsageStat
     waUtilityMessages,
     estimatedWaCostUsd,
     totalEstimatedCostUsd,
+  };
+}
+
+export async function getGlobalStats() {
+  const notSimulator = { phone: { not: 'SIMULADOR_TEST' } };
+  
+  const [
+    totalClients,
+    activeClients,
+    botMessages,
+    agentMessages,
+    handoffs,
+  ] = await Promise.all([
+    prisma.client.count({ where: { email: { not: 'info@abitaai.com' } } }),
+    prisma.client.count({ where: { email: { not: 'info@abitaai.com' }, subscriptionStatus: 'ACTIVE' } }),
+    prisma.message.count({ where: { role: 'assistant', chat: { lead: notSimulator } } }),
+    prisma.message.count({ where: { 
+      OR: [
+        { role: 'agent' },
+        { waCategory: { in: ['MARKETING', 'UTILITY'] } }
+      ],
+      chat: { lead: notSimulator } 
+    }}),
+    prisma.lead.count({ where: { status: 'NEEDS_AGENT', phone: { not: 'SIMULADOR_TEST' } } })
+  ]);
+
+  const tokenAgg = await prisma.message.aggregate({
+    where: { role: 'assistant', chat: { lead: notSimulator } },
+    _sum: { inputTokens: true, outputTokens: true }
+  });
+  
+  const estimatedAiCostUsd = 
+    ((tokenAgg._sum.inputTokens || 0) / 1_000_000) * AI_PRICING.inputPerMillion +
+    ((tokenAgg._sum.outputTokens || 0) / 1_000_000) * AI_PRICING.outputPerMillion;
+
+  const waMarketing = await prisma.message.count({ where: { waCategory: 'MARKETING', chat: { lead: notSimulator } } });
+  const waUtility = await prisma.message.count({ where: { waCategory: 'UTILITY', chat: { lead: notSimulator } } });
+  
+  const estimatedWaCostUsd = (waMarketing * WA_PRICING.MARKETING) + (waUtility * WA_PRICING.UTILITY);
+  const totalEstimatedCostUsd = estimatedAiCostUsd + estimatedWaCostUsd;
+
+  return {
+    totalClients,
+    activeClients,
+    botMessages,
+    agentMessages,
+    handoffs,
+    totalEstimatedCostUsd
   };
 }
 
