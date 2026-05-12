@@ -10,8 +10,11 @@ export function VersionChecker() {
 
   useEffect(() => {
     let initialVersion: string | null = null;
+    let isChecking = false;
 
     const checkVersion = async () => {
+      if (isChecking) return;
+      isChecking = true;
       try {
         const res = await fetch("/api/version", { cache: "no-store" });
         if (!res.ok) return;
@@ -26,16 +29,33 @@ export function VersionChecker() {
         }
       } catch (error) {
         console.error("Error checking version:", error);
+      } finally {
+        isChecking = false;
       }
     };
 
     // Initial check
     checkVersion();
 
+    // Interceptar fetch para detectar errores en Server Actions antes de que pasen los 2 min
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      const isServerAction = args[1]?.headers && typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>);
+      
+      if (isServerAction && !response.ok) {
+        checkVersion();
+      }
+      return response;
+    };
+
     // Check every 2 minutes
     const interval = setInterval(checkVersion, 120000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.fetch = originalFetch;
+    };
   }, []);
 
   if (!hasNewVersion) return null;
