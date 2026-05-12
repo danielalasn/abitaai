@@ -40,13 +40,33 @@ export function VersionChecker() {
     // Interceptar fetch para detectar errores en Server Actions antes de que pasen los 2 min
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
-      const response = await originalFetch(...args);
-      const isServerAction = args[1]?.headers && typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>);
-      
-      if (isServerAction && !response.ok) {
-        checkVersion();
+      try {
+        const response = await originalFetch(...args);
+        
+        // Next-Action es el header que usa Next.js para Server Actions
+        const isServerAction = args[1]?.headers && 
+          (
+            (typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>)) ||
+            (args[1].headers instanceof Headers && args[1].headers.has('Next-Action'))
+          );
+        
+        // Si es una Server Action y falla con 404 o 500, es muy probable que sea un desfase de versión
+        if (isServerAction && (response.status === 404 || response.status === 500)) {
+          console.warn("[VersionChecker] Server Action failed, checking for new version...");
+          checkVersion();
+        }
+        
+        return response;
+      } catch (err) {
+        // Si hay un error de red en una Server Action, también verificamos
+        const isServerAction = args[1]?.headers && 
+          (
+            (typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>)) ||
+            (args[1].headers instanceof Headers && args[1].headers.has('Next-Action'))
+          );
+        if (isServerAction) checkVersion();
+        throw err;
       }
-      return response;
     };
 
     // Check every 2 minutes
