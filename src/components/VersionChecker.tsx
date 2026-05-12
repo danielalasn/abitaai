@@ -16,12 +16,15 @@ export function VersionChecker() {
       if (isChecking) return;
       isChecking = true;
       try {
-        const res = await fetch("/api/version", { cache: "no-store" });
+        // Añadimos timestamp para evitar cache del navegador o CDN
+        const res = await fetch(`/api/version?t=${Date.now()}`, { 
+          cache: "no-store",
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
         if (!res.ok) return;
         
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-          console.warn("[VersionChecker] Response is not JSON:", contentType);
           return;
         }
 
@@ -50,28 +53,25 @@ export function VersionChecker() {
       try {
         const response = await originalFetch(...args);
         
-        // Next-Action es el header que usa Next.js para Server Actions
         const isServerAction = args[1]?.headers && 
           (
             (typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>)) ||
             (args[1].headers instanceof Headers && args[1].headers.has('Next-Action'))
           );
         
-        // Si es una Server Action y falla con 404 o 500, es muy probable que sea un desfase de versión
         if (isServerAction && (response.status === 404 || response.status === 500)) {
-          console.warn("[VersionChecker] Server Action failed, checking for new version...");
-          checkVersion();
+          // Esperar un poco antes de verificar la versión por si Render está en medio de un despliegue
+          setTimeout(checkVersion, 2000);
         }
         
         return response;
       } catch (err) {
-        // Si hay un error de red en una Server Action, también verificamos
         const isServerAction = args[1]?.headers && 
           (
             (typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>)) ||
             (args[1].headers instanceof Headers && args[1].headers.has('Next-Action'))
           );
-        if (isServerAction) checkVersion();
+        if (isServerAction) setTimeout(checkVersion, 2000);
         throw err;
       }
     };
