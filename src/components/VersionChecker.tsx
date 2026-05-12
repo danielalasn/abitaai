@@ -47,31 +47,46 @@ export function VersionChecker() {
     // Initial check
     checkVersion();
 
-    // Interceptar fetch para detectar errores en Server Actions antes de que pasen los 2 min
+    // Interceptar fetch para detectar errores en Server Actions
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
       try {
         const response = await originalFetch(...args);
         
-        const isServerAction = args[1]?.headers && 
-          (
-            (typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>)) ||
-            (args[1].headers instanceof Headers && args[1].headers.has('Next-Action'))
-          );
+        const method = (args[1]?.method || 'GET').toUpperCase();
+        let isServerAction = false;
         
-        if (isServerAction && (response.status === 404 || response.status === 500)) {
-          // Esperar un poco antes de verificar la versión por si Render está en medio de un despliegue
+        if (args[1]?.headers) {
+          if (args[1].headers instanceof Headers) {
+            isServerAction = args[1].headers.has('Next-Action') || args[1].headers.has('next-action');
+          } else {
+            const h = args[1].headers as Record<string, string>;
+            isServerAction = Object.keys(h).some(k => k.toLowerCase() === 'next-action');
+          }
+        }
+        
+        // Si es un POST o una Server Action explícita y falla, verificamos versión
+        if ((isServerAction || method === 'POST') && (response.status === 404 || response.status === 500)) {
           setTimeout(checkVersion, 500);
         }
         
         return response;
       } catch (err) {
-        const isServerAction = args[1]?.headers && 
-          (
-            (typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>)) ||
-            (args[1].headers instanceof Headers && args[1].headers.has('Next-Action'))
-          );
-        if (isServerAction) setTimeout(checkVersion, 500);
+        const method = (args[1]?.method || 'GET').toUpperCase();
+        let isServerAction = false;
+        
+        if (args[1]?.headers) {
+          if (args[1].headers instanceof Headers) {
+            isServerAction = args[1].headers.has('Next-Action') || args[1].headers.has('next-action');
+          } else {
+            const h = args[1].headers as Record<string, string>;
+            isServerAction = Object.keys(h).some(k => k.toLowerCase() === 'next-action');
+          }
+        }
+        
+        if (isServerAction || method === 'POST') {
+          setTimeout(checkVersion, 500);
+        }
         throw err;
       }
     };
