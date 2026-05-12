@@ -61,7 +61,7 @@ export function VersionChecker() {
         
         if (isServerAction && (response.status === 404 || response.status === 500)) {
           // Esperar un poco antes de verificar la versión por si Render está en medio de un despliegue
-          setTimeout(checkVersion, 2000);
+          setTimeout(checkVersion, 500);
         }
         
         return response;
@@ -71,16 +71,12 @@ export function VersionChecker() {
             (typeof args[1].headers === 'object' && 'Next-Action' in (args[1].headers as Record<string, string>)) ||
             (args[1].headers instanceof Headers && args[1].headers.has('Next-Action'))
           );
-        if (isServerAction) setTimeout(checkVersion, 2000);
+        if (isServerAction) setTimeout(checkVersion, 500);
         throw err;
       }
     };
 
-    // Check every 2 minutes
-    const interval = setInterval(checkVersion, 120000);
-
     return () => {
-      clearInterval(interval);
       window.fetch = originalFetch;
     };
   }, []);
