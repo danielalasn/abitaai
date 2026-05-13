@@ -321,7 +321,7 @@ export default function SettingsPage() {
           }
         },
         {
-          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP,
+          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_INSTAGRAM,
           response_type: 'code',
           override_default_response_type: true,
           extras: {
