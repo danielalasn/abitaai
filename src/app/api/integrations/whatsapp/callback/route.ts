@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Exchange code for short-lived token
-    const tokenUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token')
+    const tokenUrl = new URL('https://graph.facebook.com/v22.0/oauth/access_token')
     tokenUrl.searchParams.set('client_id', APP_ID)
     tokenUrl.searchParams.set('client_secret', APP_SECRET)
     tokenUrl.searchParams.set('redirect_uri', REDIRECT_URI)
@@ -40,13 +40,14 @@ export async function POST(req: NextRequest) {
 
     if (!tokenData.access_token) {
       console.error('[WhatsApp OAuth] Short-lived token error:', tokenData)
-      return NextResponse.json({ error: 'Failed to exchange token' }, { status: 400 })
+      return NextResponse.json({ error: 'Failed to exchange token', detail: tokenData }, { status: 400 })
     }
 
     const shortLivedToken = tokenData.access_token
+    console.log('[WhatsApp OAuth] Short-lived token OK, expires_in:', tokenData.expires_in)
 
     // 2. Exchange for long-lived token
-    const llUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token')
+    const llUrl = new URL('https://graph.facebook.com/v22.0/oauth/access_token')
     llUrl.searchParams.set('grant_type', 'fb_exchange_token')
     llUrl.searchParams.set('client_id', APP_ID)
     llUrl.searchParams.set('client_secret', APP_SECRET)
@@ -56,40 +57,44 @@ export async function POST(req: NextRequest) {
     const llData = await llRes.json()
 
     const longLivedToken = llData.access_token || shortLivedToken
+    console.log('[WhatsApp OAuth] Long-lived token OK:', !!llData.access_token, 'expires_in:', llData.expires_in)
 
     // 3. Fetch user's WABAs
-    const bizRes = await fetch(`https://graph.facebook.com/v21.0/me/businesses?access_token=${longLivedToken}`)
+    const bizRes = await fetch(`https://graph.facebook.com/v22.0/me/businesses?access_token=${longLivedToken}`)
     const bizData = await bizRes.json()
+    console.log('[WhatsApp OAuth] Businesses:', JSON.stringify(bizData?.data?.map((b: any) => b.id)))
 
     if (!bizData.data || bizData.data.length === 0) {
-      return NextResponse.json({ error: 'No businesses found' }, { status: 400 })
+      return NextResponse.json({ error: 'No businesses found', detail: bizData }, { status: 400 })
     }
 
     const bizId = bizData.data[0].id
 
-    const wabaRes = await fetch(`https://graph.facebook.com/v21.0/${bizId}/owned_whatsapp_business_accounts?access_token=${longLivedToken}`)
+    const wabaRes = await fetch(`https://graph.facebook.com/v22.0/${bizId}/owned_whatsapp_business_accounts?access_token=${longLivedToken}`)
     const wabaData = await wabaRes.json()
+    console.log('[WhatsApp OAuth] WABAs:', JSON.stringify(wabaData?.data?.map((w: any) => w.id)))
 
     if (!wabaData.data || wabaData.data.length === 0) {
-      return NextResponse.json({ error: 'No WhatsApp Business Accounts found' }, { status: 400 })
+      return NextResponse.json({ error: 'No WhatsApp Business Accounts found', detail: wabaData }, { status: 400 })
     }
 
     const waba = wabaData.data[0]
     const wabaId = waba.id
 
     // 4. Fetch phone numbers
-    const phoneRes = await fetch(`https://graph.facebook.com/v21.0/${wabaId}/phone_numbers?access_token=${longLivedToken}`)
+    const phoneRes = await fetch(`https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?access_token=${longLivedToken}`)
     const phoneData = await phoneRes.json()
+    console.log('[WhatsApp OAuth] Phones:', JSON.stringify(phoneData?.data?.map((p: any) => p.id)))
 
     if (!phoneData.data || phoneData.data.length === 0) {
-      return NextResponse.json({ error: 'No phone numbers found in WABA' }, { status: 400 })
+      return NextResponse.json({ error: 'No phone numbers found in WABA', detail: phoneData }, { status: 400 })
     }
 
     const phone = phoneData.data[0]
     const phoneId = phone.id
 
     // 5. Subscribe app to webhooks
-    const subRes = await fetch(`https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`, {
+    const subRes = await fetch(`https://graph.facebook.com/v22.0/${wabaId}/subscribed_apps`, {
       method: 'POST',
       body: new URLSearchParams({ access_token: longLivedToken })
     })
