@@ -263,7 +263,7 @@ export async function getApprovedTemplates(
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${businessId}/message_templates?status=APPROVED&fields=name,components,language,category&limit=100`,
+      `https://graph.facebook.com/v22.0/${businessId}/message_templates?status=APPROVED&fields=name,components,language,category&limit=100`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: 'no-store',
