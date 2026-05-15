@@ -320,7 +320,7 @@ export default function SettingsPage() {
           }
         },
         {
-          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_INSTAGRAM || '845192391252310',
+          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP || '975039465239632',
           response_type: 'code',
           override_default_response_type: true
         }

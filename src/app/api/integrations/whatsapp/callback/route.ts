@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const APP_ID = process.env.NEXT_PUBLIC_FB_APP_ID || process.env.META_APP_ID
     const APP_SECRET = process.env.META_APP_SECRET
-    const REDIRECT_URI = 'https://www.facebook.com/connect/login_success.html'
+    const REDIRECT_URI = `${process.env.NEXTAUTH_URL}/api/integrations/whatsapp/callback`
 
     if (!APP_ID || !APP_SECRET) {
       return NextResponse.json({ error: 'Meta App credentials not configured' }, { status: 500 })
