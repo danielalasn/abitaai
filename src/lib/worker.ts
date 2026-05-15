@@ -147,7 +147,8 @@ export function initWorker() {
 
             // 5. DESACTIVAR BOT SI HAY HANDOFF
             // Reforzamos con detección de texto por si la IA olvida el tag
-            const handoffKeywords = ['transfiriendo', 'con un asesor', 'un momento por favor', 'espera un momento'];
+            // Phrases that indicate an ACTIVE handoff action (declarative, not questions)
+            const handoffKeywords = ['transfiriendo al equipo', 'conectando al equipo', 'conectando con el equipo', 'te paso con', 'pasándote con', 'connecting our team', 'connecting the team', 'transferring you'];
             const hasHandoffKeyword = handoffKeywords.some(k => botData.reply.toLowerCase().includes(k));
 
             if (botData.isHandoff || hasHandoffKeyword) {

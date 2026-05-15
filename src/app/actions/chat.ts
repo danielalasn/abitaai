@@ -510,7 +510,8 @@ export async function sendSimulatorMessage(
   }
 
   // 7. DESACTIVAR BOT SI HAY HANDOFF
-  const handoffKeywords = ['transfiriendo', 'con un asesor', 'un momento por favor', 'espera un momento'];
+  // Phrases that indicate an ACTIVE handoff action (declarative, not questions)
+  const handoffKeywords = ['transfiriendo al equipo', 'conectando al equipo', 'conectando con el equipo', 'te paso con', 'pasándote con', 'connecting our team', 'connecting the team', 'transferring you'];
   const hasHandoffKeyword = handoffKeywords.some(k => result.reply?.toLowerCase().includes(k));
 
   if (result.isHandoff || hasHandoffKeyword) {
