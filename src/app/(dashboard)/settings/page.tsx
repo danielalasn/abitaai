@@ -288,20 +288,17 @@ export default function SettingsPage() {
   const handleConnectWhatsApp = () => {
     const FB = (window as any).FB;
     if (FB) {
-      // Check if we are on localhost or https
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       if (!isLocalhost && window.location.protocol !== 'https:') {
         alert("Facebook Login requiere una conexión segura (HTTPS).");
         return;
       }
 
+      setIsSavingWA(true);
       FB.login(
         (response: any) => {
           if (response.authResponse) {
             const code = response.authResponse.code;
-            setIsSavingWA(true);
-            
-            // Call async logic in a separate promise chain or IIFE to avoid SDK issues with async callbacks
             fetch('/api/integrations/whatsapp/callback', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -318,17 +315,14 @@ export default function SettingsPage() {
             })
             .catch(() => setWaStatus('error'))
             .finally(() => setIsSavingWA(false));
+          } else {
+            setIsSavingWA(false);
           }
         },
         {
-          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP || '975039465239632',
+          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_INSTAGRAM || '845192391252310',
           response_type: 'code',
-          override_default_response_type: true,
-          extras: {
-            feature: 'whatsapp_embedded_signup',
-            version: 3,
-            sessionInfoVersion: 3
-          }
+          override_default_response_type: true
         }
       );
     } else {
