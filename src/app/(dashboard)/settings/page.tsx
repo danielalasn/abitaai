@@ -321,7 +321,7 @@ export default function SettingsPage() {
           }
         },
         {
-          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_INSTAGRAM,
+          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP || '975039465239632',
           response_type: 'code',
           override_default_response_type: true,
           extras: {
@@ -416,7 +416,7 @@ export default function SettingsPage() {
               appId: process.env.NEXT_PUBLIC_META_APP_ID || process.env.NEXT_PUBLIC_FB_APP_ID || '',
               cookie: true,
               xfbml: true,
-              version: 'v21.0'
+              version: 'v22.0'
             });
           };
         }}
