@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 async function main() {
   const email = 'radar@abitaai.com'
   
-  const token = 'EAANJtIVY0OIBRTDZArkDFMyoiQEFTcLn0k6GVmqZAuhO4F61LOwtgYl84vyqV4mrI7wNkcvzqT4SalqFQHctgT8Tkz08GCwOwh1LYRcEz12vwMDh6DuT45iNeKTbKyJmEn8PiH1ZAICob8U4ZCZBanp2uneKI7DZARONoqBrXkZAeuJpDiQ98OLh94Kbdb5R03T7ZALfnprYREOR1ygbs86D3IOJAXPCftkiR1ZBpKorrwr9ZCNKLGJIMK8oASXae1gNNQfcIHSzMcnZB1PZAzCV9qVUG3ZChjVOAsvRbvk1c' 
+  const token = 'EAANJtIVY0OIBRYV72KOxdQ0plMMbknvWq3tO0sJW4s0AmZC5yI3Lk6HplZCT9FEE12gQUlOoEXXljJfYdT9amD5JszJ2fZCq4q8iA2yrZBGiavtzsdFcanfZAMzLcRkbO55e3wbNQW9mZADoh3ikt7AHY0pM3nMDZABdpxRwG05IxVJoF6poSIMhYyrQ6zXp5tSshWGMSciZBFtZCzqVDEVcM1VwCPcekLL37eXEPuukzSsOliZCFJX4mS8ZAJZBY32BVwkEICjn2dCxWrp2YzU7EfeGweL0e2ldk3ZBWxMxQ' 
   
   const phoneId = '1037952669409790'
   const businessId = '2192832414784722'

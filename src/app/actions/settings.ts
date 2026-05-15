@@ -267,7 +267,7 @@ export async function verifyWhatsappConnection(
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v21.0/${phoneId}?fields=display_phone_number,verified_name,status&access_token=${token}`,
+      `https://graph.facebook.com/v22.0/${phoneId}?fields=display_phone_number,verified_name,status&access_token=${token}`,
       { method: 'GET', cache: 'no-store' }
     )
     const data = await res.json()

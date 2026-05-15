@@ -28,11 +28,13 @@ export async function fetchMetaTemplates() {
     const decryptedToken = decrypt(project.whatsappToken);
     let templates = await getApprovedTemplates(project.whatsappBusinessId, decryptedToken!);
     
-    // Filtro por Grupo de Plantillas (Prefijo)
+    // Filtro por Grupo de Plantillas (Prefijo) - solo si el cliente tiene uno configurado
     const prefix = project.client?.templateGroup;
     if (prefix) {
       console.log(`[Templates] Filtrando plantillas para grupo: ${prefix}`);
       templates = templates.filter((t: any) => t.name.startsWith(prefix));
+    } else {
+      console.log(`[Templates] Sin grupo configurado, mostrando todas las plantillas aprobadas.`);
     }
 
     return { templates, prefix, error: null };
