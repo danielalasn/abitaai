@@ -22,11 +22,17 @@ export async function POST(req: NextRequest) {
 
     const APP_ID = process.env.NEXT_PUBLIC_FB_APP_ID || process.env.META_APP_ID
     const APP_SECRET = process.env.META_APP_SECRET
-    const REDIRECT_URI = `${process.env.NEXTAUTH_URL}/api/integrations/whatsapp/callback`
+    const REDIRECT_URI = `${process.env.NEXTAUTH_URL}/api/integrations/instagram/callback`
 
     if (!APP_ID || !APP_SECRET) {
       return NextResponse.json({ error: 'Meta App credentials not configured' }, { status: 500 })
     }
+
+    console.log('[WA OAuth DEBUG] ============================================')
+    console.log('[WA OAuth DEBUG] code recibido:', code?.substring(0, 20) + '...')
+    console.log('[WA OAuth DEBUG] APP_ID:', APP_ID)
+    console.log('[WA OAuth DEBUG] REDIRECT_URI:', REDIRECT_URI)
+    console.log('[WA OAuth DEBUG] ============================================')
 
     // 1. Exchange code for short-lived token
     const tokenUrl = new URL('https://graph.facebook.com/v22.0/oauth/access_token')
