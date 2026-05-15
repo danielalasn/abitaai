@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  const APP_ID      = process.env.META_APP_ID
-  const CONFIG_ID   = process.env.META_CONFIG_ID || '845192391252310'
+  const APP_ID = process.env.META_APP_ID
+  const CONFIG_ID = process.env.META_CONFIG_ID || '975039465239632'
   const REDIRECT_URI = `${process.env.NEXTAUTH_URL}/api/integrations/instagram/callback`
 
   if (!APP_ID) {
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   authUrl.searchParams.set('redirect_uri', REDIRECT_URI)
   authUrl.searchParams.set('state', state)
   authUrl.searchParams.set('response_type', 'code')
-  
+
   // Scopes requeridos para Instagram/WhatsApp
   authUrl.searchParams.set('scope', 'instagram_basic,instagram_manage_messages,pages_show_list,pages_manage_metadata,pages_read_engagement,pages_messaging')
 
