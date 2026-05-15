@@ -286,48 +286,7 @@ export default function SettingsPage() {
   };
 
   const handleConnectWhatsApp = () => {
-    const FB = (window as any).FB;
-    if (FB) {
-      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (!isLocalhost && window.location.protocol !== 'https:') {
-        alert("Facebook Login requiere una conexión segura (HTTPS).");
-        return;
-      }
-
-      setIsSavingWA(true);
-      FB.login(
-        (response: any) => {
-          if (response.authResponse) {
-            const code = response.authResponse.code;
-            fetch('/api/integrations/whatsapp/callback', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code })
-            })
-            .then(res => {
-              if (res.ok) {
-                setWaStatus('success');
-                setTimeout(() => setWaStatus(null), 3000);
-                loadProject();
-              } else {
-                setWaStatus('error');
-              }
-            })
-            .catch(() => setWaStatus('error'))
-            .finally(() => setIsSavingWA(false));
-          } else {
-            setIsSavingWA(false);
-          }
-        },
-        {
-          config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP || '975039465239632',
-          response_type: 'code',
-          override_default_response_type: true
-        }
-      );
-    } else {
-      alert("Facebook SDK no cargado aún. Refresca la página e intenta nuevamente.");
-    }
+    window.location.href = '/api/integrations/whatsapp/connect'
   };
 
   const handleVerifyWhatsApp = async () => {
