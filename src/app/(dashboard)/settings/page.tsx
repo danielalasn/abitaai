@@ -93,16 +93,24 @@ export default function SettingsPage() {
   const [igIntegration, setIgIntegration] = useState<{ status: string; instagramAccountId: string | null; pageId: string | null; createdAt: Date } | null>(null)
   const [igLoading, setIgLoading] = useState(false)
   const [igFeedback, setIgFeedback] = useState<'success' | 'denied' | 'error' | null>(null)
+  const [waIntegration, setWaIntegration] = useState<{ status: string } | null>(null)
+  const [waLoading, setWaLoading] = useState(false)
+  const [waFeedback, setWaFeedback] = useState<'success' | 'error' | null>(null)
 
   const loadIgStatus = useCallback(async () => {
     const integration = await getIntegrationStatus('meta_instagram')
     setIgIntegration(integration as any)
   }, [])
 
+  const loadWaStatus = useCallback(async () => {
+    const integration = await getIntegrationStatus('meta_whatsapp')
+    setWaIntegration(integration as any)
+  }, [])
+
   useEffect(() => {
     loadProject()
     loadIgStatus()
-    // Handle redirect back from Meta OAuth
+    loadWaStatus()
     const tab     = searchParams.get('tab')
     const success = searchParams.get('success')
     const error   = searchParams.get('error')
@@ -286,8 +294,46 @@ export default function SettingsPage() {
   };
 
   const handleConnectWhatsApp = () => {
-    window.location.href = '/api/integrations/whatsapp/connect'
-  };
+    const FB = (window as any).FB
+    if (!FB) { alert('Facebook SDK no cargado aún.'); return }
+
+    setWaLoading(true)
+    setWaFeedback(null)
+
+    FB.login(
+      (response: any) => {
+        if (response.authResponse) {
+          const code = response.authResponse.code
+          fetch('/api/integrations/whatsapp/callback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                setWaFeedback('success')
+                loadWaStatus()
+                loadProject()
+              } else {
+                console.error('[WA Embedded Signup]', data)
+                setWaFeedback('error')
+              }
+            })
+            .catch(() => setWaFeedback('error'))
+            .finally(() => setWaLoading(false))
+        } else {
+          setWaLoading(false)
+        }
+      },
+      {
+        config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP,
+        response_type: 'code',
+        override_default_response_type: true,
+        scope: 'whatsapp_business_management,whatsapp_business_messaging',
+      }
+    )
+  }
 
   const handleVerifyWhatsApp = async () => {
     setIsVerifying(true); setVerifyResult(null)
@@ -827,15 +873,15 @@ export default function SettingsPage() {
 
                 {/* ─── WhatsApp Card ─── */}
                 <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-emerald-500/40 ${
-                  whatsappPhoneId ? 'border-emerald-500/20 ring-1 ring-emerald-500/20' : 'border-[#DEDAD0] dark:border-zinc-800'
+                  waIntegration?.status === 'active' ? 'border-emerald-500/20 ring-1 ring-emerald-500/20' : 'border-[#DEDAD0] dark:border-zinc-800'
                 }`}>
                   <div className="mb-6 relative">
                     <div className="absolute inset-0 bg-emerald-500 rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
                     <div className="relative h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-sm group-hover:-rotate-3 transition-transform duration-500">
                       <MessageSquare size={32} />
                     </div>
-                    {verifyResult?.success && (
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg" />
+                    {waIntegration?.status === 'active' && (
+                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
                     )}
                   </div>
 
@@ -847,10 +893,10 @@ export default function SettingsPage() {
                   <div className="mt-auto flex gap-3 w-full">
                     <button 
                       onClick={handleConnectWhatsApp} 
-                      disabled={isSavingWA}
+                      disabled={waLoading}
                       className="flex-1 py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
                     >
-                      {isSavingWA ? <Loader2 size={16} className="animate-spin" /> : 'Conectar con Facebook'}
+                      {waLoading ? <Loader2 size={16} className="animate-spin" /> : waIntegration?.status === 'active' ? 'Reconectar' : 'Conectar'}
                     </button>
                     <button 
                       onClick={handleVerifyWhatsApp}
