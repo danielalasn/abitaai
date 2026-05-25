@@ -3,10 +3,9 @@
 import { prisma } from '@/lib/prisma';
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GLOBAL_SYSTEM_GUARDRAILS } from '@/lib/guardrails';
 import { getCurrentProject } from '@/lib/auth-server';
 import { redactPII } from '@/lib/pii';
-
+import { buildSystemPrompt } from '@/app/actions/prompt-builder';
 import { AI_MODELS } from '@/lib/models';
 
 const anthropic = new Anthropic({
@@ -68,12 +67,12 @@ export async function sendTestMessage(
     };
   }
 
-  let scoringText = "No hay reglas de calificación definidas.";
+  let scoringText = 'No hay reglas de calificación definidas.';
   try {
     if (config.leadScoringRules) {
       const rules = JSON.parse(config.leadScoringRules);
       if (Array.isArray(rules) && rules.length > 0) {
-        scoringText = rules.map((r: any) => `- Si el cliente: "${r.condition}" -> Otorga este puntaje exacto: +${r.score}`).join("\n");
+        scoringText = rules.map((r: any) => `- Si el cliente: "${r.condition}" -> Otorga este puntaje exacto: +${r.score}`).join('\n');
       }
     }
   } catch (e) {
@@ -81,110 +80,17 @@ export async function sendTestMessage(
   }
 
   const isRealName = clientName && !clientName.startsWith('+');
-  const finalName = isRealName ? clientName : "Desconocido";
+  const finalName = isRealName ? clientName : 'Desconocido';
 
-  const systemConfig = await prisma.systemConfig.findUnique({
-    where: { id: "default" }
+  // Build the system prompt dynamically from PromptBlocks in DB
+  const systemPrompt = await buildSystemPrompt({
+    agentConfig: config,
+    clientName: finalName,
+    projectName: project?.name || 'Demo Test',
+    metadata: metadata || null,
+    scoringText,
+    leadScoringEnabled: project?.leadScoringEnabled ?? true,
   });
-
-  // Si systemConfig existe, usamos sus valores (aunque estén vacíos).
-  // Si no existe el registro en DB, usamos los mínimos necesarios.
-  const guardrails = systemConfig?.globalGuardrails ?? GLOBAL_SYSTEM_GUARDRAILS;
-  const naming = systemConfig?.namingRules ?? "";
-  const business = systemConfig?.businessRules ?? "";
-  const pricing = systemConfig?.pricingRules ?? "";
-  const handoff = systemConfig?.handoffRules ?? "";
-  const visual = systemConfig?.visualRules ?? "";
-  const learning = systemConfig?.learningRules ?? "";
-  const scoringBase = systemConfig?.scoringBaseRules ?? "";
-
-  // Create the system prompt
-  const systemPrompt = `
-<identity>
-${config.identity || "Eres un asistente virtual"}
-</identity>
-
-<client_context>
-Nombre: ${finalName}
-Proyecto Interesado: ${project?.name || "Demo Test"}
-</client_context>
-
-<crm_metadata>
-Aquí tienes información previa que ya conocemos del cliente (datos de campañas o CRM):
-${metadata ? JSON.stringify(metadata, null, 2) : "No hay información previa."}
-
-REGLA DE CONTEXTO: Usa esta información para personalizar tu respuesta y evitar preguntar datos que ya aparecen aquí. Por ejemplo, si el cliente ya indicó su interés o presupuesto, hazle saber que ya lo sabes (ej: "He visto que te interesan x habitaciones...").
-</crm_metadata>
-
-<critical_rules_mentioning_names>
-${naming}
-</critical_rules_mentioning_names>
-
-<knowledge_base>
-${config.knowledgeData || "{}"}
-</knowledge_base>
-
-<frequently_asked_questions>
-SI EL CLIENTE PREGUNTA ALGO RELACIONADO A ESTAS PREGUNTAS FRECUENTES, CÓPIALES ESTA RESPUESTA TEXTUALMENTE:
-${config.faq || "No hay preguntas frecuentes."}
-</frequently_asked_questions>
-
-<global_system_guardrails>
-${guardrails}
-</global_system_guardrails>
-
-<critical_instructions_and_rules>
-ESTAS REGLAS DEL NEGOCIO DEBEN SEGUIRSE AL PIE DE LA LETRA BAJO CUALQUIER CIRCUNSTANCIA:
-${config.instructions || ""}
-
-<master_business_rules>
-${business}
-</master_business_rules>
-
-<strict_pricing_rules>
-${pricing}
-</strict_pricing_rules>
-
-<handoff_instructions>
-${handoff}
-</handoff_instructions>
-
-<visual_format_rules>
-${visual}
-PROHIBICIÓN ESTRICTA: NO USES EMOJIS bajo ninguna circunstancia. Tu respuesta debe ser solo texto plano y profesional.
-</visual_format_rules>
-
-${project?.leadScoringEnabled ? `
-<heatmap_scoring_system>
-Tu trabajo en segundo plano también es calificar el interés del cliente ("Heatmap"). Revisa estas reglas dadas por el dueño:
-REGLAS DE EVENTOS (Suma 100 en total):
-${scoringText}
-
-${scoringBase}
-</heatmap_scoring_system>
-` : ''}
-
-<learning_system>
-${learning}
-</learning_system>
-
-<data_collection>
-Si el usuario proporciona su correo electrónico, incluye obligatoriamente este comando al final de tu respuesta: [ACTION: UPDATE_EMAIL "correo@ejemplo.com"]
-</data_collection>
-</critical_instructions_and_rules>
-
-<strict_reminder>
-RECUERDA: No uses emojis. Tu tono debe ser profesional y directo.
-</strict_reminder>
-
-<language_instruction>
-STRICT RULE: Detect the user's language and respond in the SAME language. 
-- If the user writes in English, respond in English.
-- If the user writes in Spanish, respond in Spanish.
-- If the user ASKS to speak in a specific language (e.g., "Can we speak in English?"), you MUST agree enthusiastically (e.g., "Yes, of course!", "¡Claro que sí, con gusto!") and switch to that language immediately.
-Maintaining the same language as the customer is your TOP priority.
-</language_instruction>
-  `;
 
   // Logs eliminados para limpiar consola
   console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name}`);

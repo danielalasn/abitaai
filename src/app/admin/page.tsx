@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getSystemConfig, updateSystemConfig, getGlobalStats } from '@/app/actions/admin';
 import { compileKnowledgeWithAI } from '@/app/actions/settings';
-import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock } from '@/app/actions/prompt-builder';
+import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -239,6 +239,16 @@ export default function AdminPage() {
       setPromptBlocks(prev => prev.filter(b => b.id !== id));
     } catch (err: any) {
       alert(err.message);
+    }
+  };
+
+  const handleResetBlocks = async () => {
+    if (!confirm('Esto reemplazará todos los bloques default con la configuración original. Los bloques custom se conservan. ¿Continuar?')) return;
+    try {
+      await resetToDefaultBlocks();
+      await loadPromptBlocks();
+    } catch (err: any) {
+      alert('Error: ' + err.message);
     }
   };
 
@@ -658,67 +668,102 @@ export default function AdminPage() {
                   </div>
                 )}
                 {globalConfigTab === 'prompt' && (
-                  <div className="flex flex-col h-full gap-4">
+                  <div className="flex flex-col h-full gap-3">
+                    {/* Header */}
                     <div className="shrink-0 flex items-center justify-between">
-                      <p className="text-sm text-zinc-500">Define la estructura y contenido del system prompt. Arrastra para reordenar.</p>
-                      <button
-                        onClick={() => setShowNewBlock(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
-                      >
-                        <Plus size={14} /> Nuevo Bloque
-                      </button>
+                      <div>
+                        <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Estructura del Prompt</p>
+                        <p className="text-xs text-zinc-400 mt-0.5">Reordena los bloques. Los bloques <span className="text-orange-500 font-bold">globales</span> son editables; los <span className="text-purple-500 font-bold">de cliente</span> son variables automáticas.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleResetBlocks}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-zinc-500 hover:text-red-500 text-xs font-bold rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-red-300 transition-all"
+                          title="Restaurar bloques default"
+                        >
+                          <RefreshCw size={12} /> Reset
+                        </button>
+                        <button
+                          onClick={() => setShowNewBlock(true)}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                        >
+                          <Plus size={14} /> Nuevo Bloque
+                        </button>
+                      </div>
                     </div>
 
                     {isLoadingBlocks ? (
                       <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-orange-600" size={28} /></div>
                     ) : (
-                      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                        {promptBlocks.map((block, index) => (
-                          <div key={block.id} className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${block.isEnabled ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900 opacity-60'}`}>
-                            {/* Order controls */}
-                            <div className="flex flex-col gap-0.5 shrink-0 mt-0.5">
-                              <button onClick={() => handleMoveBlock(promptBlocks, index, 'up')} disabled={index === 0} className="p-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 disabled:opacity-20"><ChevronUp size={14} /></button>
-                              <button onClick={() => handleMoveBlock(promptBlocks, index, 'down')} disabled={index === promptBlocks.length - 1} className="p-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 disabled:opacity-20"><ChevronDown size={14} /></button>
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-xs font-bold text-zinc-400 w-5 text-right shrink-0">{index + 1}.</span>
-                                <span className="font-semibold text-sm text-zinc-900 dark:text-white">{block.label}</span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  block.source === 'global' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-                                  block.source === 'agent' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
-                                  'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
-                                }`}>{block.source}</span>
-                                {!block.isEnabled && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-500">OFF</span>}
+                      <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                        {promptBlocks.map((block, index) => {
+                          const isPlaceholder = block.source === 'agent' || block.source === 'runtime';
+                          const isGlobal = block.source === 'global';
+                          return (
+                            <div
+                              key={block.id}
+                              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${
+                                !block.isEnabled
+                                  ? 'opacity-40 bg-zinc-50 dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900'
+                                  : isPlaceholder
+                                  ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/40'
+                                  : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-orange-300 dark:hover:border-orange-700'
+                              }`}
+                            >
+                              {/* Order controls */}
+                              <div className="flex flex-col gap-0 shrink-0">
+                                <button onClick={() => handleMoveBlock(promptBlocks, index, 'up')} disabled={index === 0} className="p-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-300 disabled:opacity-20"><ChevronUp size={13} /></button>
+                                <button onClick={() => handleMoveBlock(promptBlocks, index, 'down')} disabled={index === promptBlocks.length - 1} className="p-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-300 disabled:opacity-20"><ChevronDown size={13} /></button>
                               </div>
-                              {block.description && <p className="text-[11px] text-zinc-400 mt-0.5 ml-7">{block.description}</p>}
-                              <p className="text-[10px] font-mono text-zinc-300 dark:text-zinc-600 mt-1 ml-7">&lt;{block.xmlTag}&gt;</p>
-                            </div>
 
-                            {/* Actions */}
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button onClick={() => handleToggleBlock(block)} className={`p-1.5 rounded-lg transition-all ${
-                                block.isEnabled ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                              }`} title={block.isEnabled ? 'Desactivar' : 'Activar'}>
-                                {block.isEnabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                              </button>
-                              {block.source !== 'runtime' && (
-                                <button onClick={() => setEditingBlock({ ...block })} className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-white transition-all" title="Editar">
-                                  <Edit3 size={16} />
+                              {/* Number */}
+                              <span className="text-[11px] font-bold text-zinc-300 w-4 shrink-0">{index + 1}</span>
+
+                              {/* Label + badge */}
+                              <div className="flex-1 min-w-0 flex items-center gap-2">
+                                <span className={`font-semibold text-sm ${isPlaceholder ? 'text-purple-700 dark:text-purple-300' : 'text-zinc-900 dark:text-white'}`}>
+                                  {isPlaceholder ? `{ ${block.label} }` : block.label}
+                                </span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ${
+                                  block.source === 'global' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' :
+                                  block.source === 'agent' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
+                                  'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                                }`}>
+                                  {block.source === 'global' ? 'Global' : block.source === 'agent' ? 'Cliente' : 'Auto'}
+                                </span>
+                                {!block.isEnabled && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-500">OFF</span>}
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleToggleBlock(block)}
+                                  className={`p-1.5 rounded-lg transition-all ${block.isEnabled ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                                  title={block.isEnabled ? 'Desactivar' : 'Activar'}
+                                >
+                                  {block.isEnabled ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                                 </button>
-                              )}
-                              {block.isDeletable && (
-                                <button onClick={() => handleDeleteBlock(block.id)} className="p-1.5 rounded-lg text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all" title="Eliminar">
-                                  <Trash2 size={16} />
-                                </button>
-                              )}
+                                {isGlobal && (
+                                  <button
+                                    onClick={() => setEditingBlock({ ...block })}
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 transition-all"
+                                    title="Editar contenido"
+                                  >
+                                    <Edit3 size={15} />
+                                  </button>
+                                )}
+                                {block.isDeletable && (
+                                  <button onClick={() => handleDeleteBlock(block.id)} className="p-1.5 rounded-lg text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all" title="Eliminar">
+                                    <Trash2 size={15} />
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
+
 
                     {/* Edit Block Modal */}
                     {editingBlock && (

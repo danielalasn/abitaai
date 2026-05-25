@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { DEFAULT_PROMPT_BLOCKS } from '@/lib/prompt-blocks-default';
 
 // ─────────────────────────────────────────────────────────────
-// SEED — poblar los bloques por primera vez
+// SEED & RESET
 // ─────────────────────────────────────────────────────────────
 
 export async function seedPromptBlocks() {
@@ -20,9 +20,25 @@ export async function seedPromptBlocks() {
   return { seeded: true, count: DEFAULT_PROMPT_BLOCKS.length };
 }
 
+// Borra todo y re-inserta los defaults (preserva bloques custom)
+export async function resetToDefaultBlocks() {
+  // Borrar solo los bloques no-custom (isDeletable: false con key conocido)
+  const defaultKeys = DEFAULT_PROMPT_BLOCKS.map(b => b.key);
+  await prisma.promptBlock.deleteMany({ where: { key: { in: defaultKeys } } });
+
+  await prisma.promptBlock.createMany({
+    data: DEFAULT_PROMPT_BLOCKS,
+    skipDuplicates: true,
+  });
+
+  revalidatePath('/admin');
+  return { reset: true };
+}
+
 // ─────────────────────────────────────────────────────────────
 // CRUD
 // ─────────────────────────────────────────────────────────────
+
 export async function getPromptBlocks() {
   await ensureBlocksExist();
   return prisma.promptBlock.findMany({ orderBy: { order: 'asc' } });
@@ -77,6 +93,7 @@ export async function deletePromptBlock(id: string) {
 // ─────────────────────────────────────────────────────────────
 // PROMPT BUILDER ENGINE
 // ─────────────────────────────────────────────────────────────
+
 export async function buildSystemPrompt(params: {
   agentConfig: any;
   clientName: string;
@@ -100,13 +117,11 @@ export async function buildSystemPrompt(params: {
 
     if (block.source === 'runtime') {
       content = buildRuntimeBlock(block.key, { clientName, projectName, metadata, scoringText, leadScoringEnabled });
-      if (!content) continue; // skip empty runtime blocks
+      if (!content) continue;
     } else if (block.source === 'agent') {
-      // Use agent's value if set, otherwise fall back to block.content
       const fieldValue = block.agentField ? agentConfig?.[block.agentField] : null;
       content = fieldValue || block.content;
     } else {
-      // global
       content = block.content;
     }
 
@@ -120,23 +135,32 @@ export async function buildSystemPrompt(params: {
 
 function buildRuntimeBlock(key: string, ctx: any): string {
   switch (key) {
-    case 'client_context':
-      return `Nombre: ${ctx.clientName}\nProyecto Interesado: ${ctx.projectName}`;
+    case 'client_context': {
+      let out = `Nombre del cliente: ${ctx.clientName}\nProyecto Interesado: ${ctx.projectName}`;
+      if (ctx.metadata) {
+        out += `\n\nInformación previa del CRM (campañas, intereses, etc.):\n${JSON.stringify(ctx.metadata, null, 2)}\nREGLA: Usa esta info para personalizar tu respuesta y no preguntar datos que ya tienes.`;
+      }
+      return out;
+    }
+
+    case 'client_scoring':
+      if (!ctx.leadScoringEnabled) return '';
+      return `Reglas de calificación de interés del lead (definidas por el negocio):\n${ctx.scoringText || 'No hay reglas de calificación configuradas.'}`;
+
+    // Legacy keys por compatibilidad
+    case 'heatmap_scoring':
+      if (!ctx.leadScoringEnabled) return '';
+      return `Reglas de calificación de interés del lead:\n${ctx.scoringText || 'No hay reglas de calificación configuradas.'}`;
 
     case 'crm_metadata':
       if (!ctx.metadata) return '';
-      return `Aquí tienes información previa que ya conocemos del cliente (datos de campañas o CRM):\n${JSON.stringify(ctx.metadata, null, 2)}\n\nREGLA DE CONTEXTO: Usa esta información para personalizar tu respuesta y evitar preguntar datos que ya aparecen aquí.`;
-
-    case 'heatmap_scoring':
-      if (!ctx.leadScoringEnabled) return '';
-      return `Tu trabajo en segundo plano también es calificar el interés del cliente ("Heatmap"). Revisa estas reglas dadas por el dueño:\nREGLAS DE EVENTOS (Suma 100 en total):\n${ctx.scoringText || 'No hay reglas de calificación definidas.'}`;
+      return `Información previa del CRM:\n${JSON.stringify(ctx.metadata, null, 2)}`;
 
     default:
       return '';
   }
 }
 
-// Garantiza que los bloques existan (auto-seed en primer uso)
 async function ensureBlocksExist() {
   const count = await prisma.promptBlock.count();
   if (count === 0) await seedPromptBlocks();
