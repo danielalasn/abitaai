@@ -80,6 +80,7 @@ model BotConfig {
   knowledgeData    String?
   knowledgeRaw     String?
   faq              String?
+  handoffRules     String? // Reglas específicas de cuándo transferir a humano
   leadScoringRules String? // Reglas de puntuación en texto natural
   
   // WhatsApp Configuration
@@ -206,6 +207,7 @@ model Agent {
   knowledgeData    String?
   knowledgeRaw     String?
   faq              String?
+  handoffRules     String? // Reglas específicas de cuándo transferir a humano
   leadScoringRules String?
   
   project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -214,18 +216,7 @@ model Agent {
   unansweredQuestions UnansweredQuestion[]
 }
 
-model SystemConfig {
-  id               String   @id @default("default")
-  globalGuardrails String?  
-  namingRules      String?
-  businessRules    String?
-  pricingRules     String?
-  handoffRules     String?
-  visualRules      String?
-  learningRules    String?
-  scoringBaseRules String?
-  updatedAt        DateTime @updatedAt
-}
+
 
 model PromptBlock {
   id          String   @id @default(cuid())

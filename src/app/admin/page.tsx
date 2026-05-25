@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
-import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getSystemConfig, updateSystemConfig, getGlobalStats } from '@/app/actions/admin';
+import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getGlobalStats } from '@/app/actions/admin';
 import { compileKnowledgeWithAI } from '@/app/actions/settings';
 import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
 
@@ -32,18 +32,9 @@ export default function AdminPage() {
   const [showGlobalConfig, setShowGlobalConfig] = useState(false);
   const [masterWabaId, setMasterWabaId] = useState('');
   const [masterToken, setMasterToken] = useState('');
-  const [globalGuardrails, setGlobalGuardrails] = useState('');
-  const [namingRules, setNamingRules] = useState('');
-  const [businessRules, setBusinessRules] = useState('');
-  const [pricingRules, setPricingRules] = useState('');
-  const [handoffRules, setHandoffRules] = useState('');
-  const [visualRules, setVisualRules] = useState('');
-  const [learningRules, setLearningRules] = useState('');
-  const [scoringBaseRules, setScoringBaseRules] = useState('');
   const [isSavingGlobal, setIsSavingGlobal] = useState(false);
-  const [globalConfigTab, setGlobalConfigTab] = useState<'api' | 'rules' | 'prompt'>('api');
-  const [activeRuleSubTab, setActiveRuleSubTab] = useState<'guardrails' | 'naming' | 'business' | 'pricing' | 'handoff' | 'visual' | 'scoring' | 'learning'>('guardrails');
-  const [activeBotSubTab, setActiveBotSubTab] = useState<'api' | 'identity' | 'instructions' | 'knowledge' | 'faq' | 'scoring'>('identity');
+  const [globalConfigTab, setGlobalConfigTab] = useState<'api' | 'prompt'>('api');
+  const [activeBotSubTab, setActiveBotSubTab] = useState<'api' | 'identity' | 'instructions' | 'handoff' | 'knowledge' | 'faq' | 'scoring'>('identity');
 
   // Prompt Builder state
   const [promptBlocks, setPromptBlocks] = useState<any[]>([]);
@@ -147,16 +138,6 @@ export default function AdminPage() {
       const config = await getMasterConfig();
       setMasterWabaId(config.whatsappBusinessId);
       setMasterToken(config.whatsappToken);
-
-      const sysConfig = await getSystemConfig();
-      setGlobalGuardrails(sysConfig.globalGuardrails || '');
-      setNamingRules(sysConfig.namingRules || '');
-      setBusinessRules(sysConfig.businessRules || '');
-      setPricingRules(sysConfig.pricingRules || '');
-      setHandoffRules(sysConfig.handoffRules || '');
-      setVisualRules(sysConfig.visualRules || '');
-      setLearningRules(sysConfig.learningRules || '');
-      setScoringBaseRules(sysConfig.scoringBaseRules || '');
     } catch (err) {
       console.error('Error loading master config:', err);
     }
@@ -260,16 +241,6 @@ export default function AdminPage() {
         whatsappBusinessId: masterWabaId,
         whatsappToken: masterToken
       });
-      await updateSystemConfig({
-        globalGuardrails,
-        namingRules,
-        businessRules,
-        pricingRules,
-        handoffRules,
-        visualRules,
-        learningRules,
-        scoringBaseRules
-      });
       alert('Configuración maestra guardada con éxito.');
       setShowGlobalConfig(false);
       // Refresh groups after updating credentials
@@ -327,6 +298,7 @@ export default function AdminPage() {
     setConfigData({
       identity: initialConfig.identity || '',
       instructions: initialConfig.instructions || '',
+      handoffRules: initialConfig.handoffRules || '',
       knowledgeData: initialConfig.knowledgeData || '',
       knowledgeRaw: initialConfig.knowledgeRaw || '',
       faq: initialConfig.faq || '',
@@ -522,12 +494,6 @@ export default function AdminPage() {
                   <Key size={18} /> API &amp; Tokens
                 </button>
                 <button
-                  onClick={() => setGlobalConfigTab('rules')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${globalConfigTab === 'rules' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
-                >
-                  <Bot size={18} /> Reglas Base Bot
-                </button>
-                <button
                   onClick={() => { setGlobalConfigTab('prompt'); if (promptBlocks.length === 0) loadPromptBlocks(); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${globalConfigTab === 'prompt' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
@@ -567,106 +533,7 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {globalConfigTab === 'rules' && (
-                  <div className="flex flex-col h-full gap-6">
-                    <div className="shrink-0 flex items-center justify-between">
-                      <p className="text-sm text-zinc-500">
-                        Gestiona las reglas maestras que rigen a todos los agentes de la plataforma.
-                      </p>
-                    </div>
 
-                    <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-[1.5rem] overflow-hidden">
-                      {/* Sub-tabs horizontal scrollable for rules */}
-                      <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/50 shrink-0 overflow-x-auto no-scrollbar">
-                        {[
-                          { id: 'guardrails', label: 'Guardrails' },
-                          { id: 'naming', label: 'Nombres' },
-                          { id: 'business', label: 'Negocio' },
-                          { id: 'pricing', label: 'Precios' },
-                          { id: 'handoff', label: 'Handoff' },
-                          { id: 'visual', label: 'Visual' },
-                          { id: 'scoring', label: 'Scoring' },
-                          { id: 'learning', label: 'Learning' },
-                        ].map((tab) => (
-                          <button
-                            key={tab.id}
-                            onClick={() => setActiveRuleSubTab(tab.id as any)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${activeRuleSubTab === tab.id ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
-                          >
-                            {tab.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="h-[320px] p-2 relative">
-                        {activeRuleSubTab === 'guardrails' && (
-                          <textarea
-                            value={globalGuardrails}
-                            onChange={e => setGlobalGuardrails(e.target.value)}
-                            placeholder="REGLAS GLOBALES DEL SISTEMA..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                        {activeRuleSubTab === 'naming' && (
-                          <textarea
-                            value={namingRules}
-                            onChange={e => setNamingRules(e.target.value)}
-                            placeholder="Reglas de contacto y nombres..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                        {activeRuleSubTab === 'business' && (
-                          <textarea
-                            value={businessRules}
-                            onChange={e => setBusinessRules(e.target.value)}
-                            placeholder="Reglas de oro del negocio..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                        {activeRuleSubTab === 'pricing' && (
-                          <textarea
-                            value={pricingRules}
-                            onChange={e => setPricingRules(e.target.value)}
-                            placeholder="Reglas de precios y modelos..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                        {activeRuleSubTab === 'handoff' && (
-                          <textarea
-                            value={handoffRules}
-                            onChange={e => setHandoffRules(e.target.value)}
-                            placeholder="Reglas de transferencia a humano..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                        {activeRuleSubTab === 'visual' && (
-                          <textarea
-                            value={visualRules}
-                            onChange={e => setVisualRules(e.target.value)}
-                            placeholder="Formato visual (WhatsApp)..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                        {activeRuleSubTab === 'scoring' && (
-                          <textarea
-                            value={scoringBaseRules}
-                            onChange={e => setScoringBaseRules(e.target.value)}
-                            placeholder="Instrucciones de calificación base..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                        {activeRuleSubTab === 'learning' && (
-                          <textarea
-                            value={learningRules}
-                            onChange={e => setLearningRules(e.target.value)}
-                            placeholder="Sistema de aprendizaje (Preguntas sin respuesta)..."
-                            className="absolute inset-2 w-[calc(100%-1rem)] h-[calc(100%-1rem)] bg-transparent outline-none resize-none text-[13px] font-mono leading-relaxed text-zinc-800 dark:text-zinc-200 overflow-y-auto"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
                 {globalConfigTab === 'prompt' && (
                   <div className="flex flex-col h-full gap-3">
                     {/* Header */}
@@ -1371,6 +1238,7 @@ export default function AdminPage() {
                             { id: 'api', label: 'Keys', icon: <Key size={14} /> },
                             { id: 'identity', label: 'Identidad', icon: <User size={14} /> },
                             { id: 'instructions', label: 'Instrucciones', icon: <Edit3 size={14} /> },
+                            { id: 'handoff', label: 'Handoff', icon: <User size={14} /> },
                             { id: 'knowledge', label: 'Knowledge Base', icon: <Database size={14} /> },
                             { id: 'faq', label: 'FAQs', icon: <HelpCircle size={14} /> },
                             { id: 'scoring', label: 'Scoring', icon: <Cpu size={14} /> },
@@ -1437,6 +1305,14 @@ export default function AdminPage() {
                           <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
                             <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Instrucciones Estrictas (System Prompt)</label>
                             <textarea value={configData.instructions} onChange={e => setConfigData({ ...configData, instructions: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" placeholder="Instrucciones específicas para este bot..." />
+                          </div>
+                        )}
+
+                        {activeBotSubTab === 'handoff' && (
+                          <div className="flex-1 flex flex-col min-h-0 animate-in fade-in duration-200">
+                            <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Reglas de Handoff (Transferencia a Humano)</label>
+                            <p className="text-[11px] text-zinc-500 mb-2">Define cuándo y cómo el bot debe transferir la conversación a un asesor. Si lo dejas vacío, no transferirá proactivamente.</p>
+                            <textarea value={configData.handoffRules} onChange={e => setConfigData({ ...configData, handoffRules: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed" placeholder="Ej: 1. Si el cliente pide hablar con alguien, pregúntale si quiere que lo transfiera... 2. Si dice que sí, pon [ACTION: HANDOFF]." />
                           </div>
                         )}
 
