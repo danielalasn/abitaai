@@ -61,7 +61,7 @@ model Project {
   whatsappBusinessId String?
   
   // Opción general para deshabilitar el bot por defecto para nuevos leads
-  defaultBotActive   Boolean  @default(true)
+  defaultBotActive   Boolean  @default(false)
   leadScoringEnabled Boolean  @default(true)
 
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -225,6 +225,22 @@ model SystemConfig {
   learningRules    String?
   scoringBaseRules String?
   updatedAt        DateTime @updatedAt
+}
+
+model PromptBlock {
+  id          String   @id @default(cuid())
+  order       Int      // Posición en el prompt (1, 2, 3...)
+  key         String   @unique // Identificador único inmutable del bloque
+  label       String   // Nombre legible para el admin
+  description String?  // Texto de ayuda visible en la UI
+  xmlTag      String   // Tag XML que envuelve el contenido en el prompt final
+  content     String   @default("") // Contenido editable por el admin
+  source      String   // "global" | "agent" | "runtime"
+  agentField  String?  // Si source="agent": campo en Agent que sobreescribe el content
+  isEnabled   Boolean  @default(true)
+  isDeletable Boolean  @default(true) // false = bloque del sistema, no se puede borrar
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model WebhookEvent {

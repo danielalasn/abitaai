@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen } from 'lucide-react';
+import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getSystemConfig, updateSystemConfig, getGlobalStats } from '@/app/actions/admin';
 import { compileKnowledgeWithAI } from '@/app/actions/settings';
+import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock } from '@/app/actions/prompt-builder';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -40,9 +41,20 @@ export default function AdminPage() {
   const [learningRules, setLearningRules] = useState('');
   const [scoringBaseRules, setScoringBaseRules] = useState('');
   const [isSavingGlobal, setIsSavingGlobal] = useState(false);
-  const [globalConfigTab, setGlobalConfigTab] = useState<'api' | 'rules'>('api');
+  const [globalConfigTab, setGlobalConfigTab] = useState<'api' | 'rules' | 'prompt'>('api');
   const [activeRuleSubTab, setActiveRuleSubTab] = useState<'guardrails' | 'naming' | 'business' | 'pricing' | 'handoff' | 'visual' | 'scoring' | 'learning'>('guardrails');
   const [activeBotSubTab, setActiveBotSubTab] = useState<'api' | 'identity' | 'instructions' | 'knowledge' | 'faq' | 'scoring'>('identity');
+
+  // Prompt Builder state
+  const [promptBlocks, setPromptBlocks] = useState<any[]>([]);
+  const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
+  const [editingBlock, setEditingBlock] = useState<any | null>(null);
+  const [showNewBlock, setShowNewBlock] = useState(false);
+  const [newBlockLabel, setNewBlockLabel] = useState('');
+  const [newBlockXmlTag, setNewBlockXmlTag] = useState('');
+  const [newBlockContent, setNewBlockContent] = useState('');
+  const [newBlockDescription, setNewBlockDescription] = useState('');
+  const [isSavingBlock, setIsSavingBlock] = useState(false);
 
   // Modal / Tab state
   const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -146,9 +158,90 @@ export default function AdminPage() {
       setLearningRules(sysConfig.learningRules || '');
       setScoringBaseRules(sysConfig.scoringBaseRules || '');
     } catch (err) {
-      console.error("Error loading master config:", err);
+      console.error('Error loading master config:', err);
     }
   };
+
+  const loadPromptBlocks = async () => {
+    setIsLoadingBlocks(true);
+    try {
+      const blocks = await getPromptBlocks();
+      setPromptBlocks(blocks);
+    } catch (err) {
+      console.error('Error loading prompt blocks:', err);
+    } finally {
+      setIsLoadingBlocks(false);
+    }
+  };
+
+  const handleToggleBlock = async (block: any) => {
+    try {
+      await updatePromptBlock(block.id, { isEnabled: !block.isEnabled });
+      setPromptBlocks(prev => prev.map(b => b.id === block.id ? { ...b, isEnabled: !b.isEnabled } : b));
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const handleMoveBlock = async (blocks: any[], fromIndex: number, direction: 'up' | 'down') => {
+    const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
+    if (toIndex < 0 || toIndex >= blocks.length) return;
+    const reordered = [...blocks];
+    [reordered[fromIndex], reordered[toIndex]] = [reordered[toIndex], reordered[fromIndex]];
+    setPromptBlocks(reordered);
+    await reorderPromptBlocks(reordered.map(b => b.id));
+  };
+
+  const handleSaveBlock = async () => {
+    if (!editingBlock) return;
+    setIsSavingBlock(true);
+    try {
+      await updatePromptBlock(editingBlock.id, {
+        label: editingBlock.label,
+        description: editingBlock.description,
+        xmlTag: editingBlock.xmlTag,
+        content: editingBlock.content,
+      });
+      setPromptBlocks(prev => prev.map(b => b.id === editingBlock.id ? { ...b, ...editingBlock } : b));
+      setEditingBlock(null);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsSavingBlock(false);
+    }
+  };
+
+  const handleCreateBlock = async () => {
+    if (!newBlockLabel || !newBlockXmlTag) return;
+    setIsSavingBlock(true);
+    try {
+      const block = await createPromptBlock({
+        label: newBlockLabel,
+        description: newBlockDescription,
+        xmlTag: newBlockXmlTag,
+        content: newBlockContent,
+        source: 'global',
+      });
+      setPromptBlocks(prev => [...prev, block]);
+      setShowNewBlock(false);
+      setNewBlockLabel(''); setNewBlockXmlTag(''); setNewBlockContent(''); setNewBlockDescription('');
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsSavingBlock(false);
+    }
+  };
+
+  const handleDeleteBlock = async (id: string) => {
+    if (!confirm('¿Eliminar este bloque?')) return;
+    try {
+      await deletePromptBlock(id);
+      setPromptBlocks(prev => prev.filter(b => b.id !== id));
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
 
   const handleSaveGlobalConfig = async () => {
     setIsSavingGlobal(true);
@@ -229,6 +322,7 @@ export default function AdminPage() {
       faq: initialConfig.faq || '',
       leadScoringRules: initialConfig.leadScoringRules || '',
       leadScoringEnabled: project?.leadScoringEnabled ?? true,
+      defaultBotActive: project?.defaultBotActive ?? false,
       whatsappToken: project?.whatsappToken || '',
       whatsappPhoneId: project?.whatsappPhoneId || '',
       whatsappBusinessId: project?.whatsappBusinessId || '',
@@ -415,13 +509,19 @@ export default function AdminPage() {
                   onClick={() => setGlobalConfigTab('api')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${globalConfigTab === 'api' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
-                  <Key size={18} /> API & Tokens
+                  <Key size={18} /> API &amp; Tokens
                 </button>
                 <button
                   onClick={() => setGlobalConfigTab('rules')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${globalConfigTab === 'rules' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
                   <Bot size={18} /> Reglas Base Bot
+                </button>
+                <button
+                  onClick={() => { setGlobalConfigTab('prompt'); if (promptBlocks.length === 0) loadPromptBlocks(); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${globalConfigTab === 'prompt' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                >
+                  <Layers size={18} /> Prompt Builder
                 </button>
               </div>
 
@@ -557,6 +657,152 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
+                {globalConfigTab === 'prompt' && (
+                  <div className="flex flex-col h-full gap-4">
+                    <div className="shrink-0 flex items-center justify-between">
+                      <p className="text-sm text-zinc-500">Define la estructura y contenido del system prompt. Arrastra para reordenar.</p>
+                      <button
+                        onClick={() => setShowNewBlock(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm"
+                      >
+                        <Plus size={14} /> Nuevo Bloque
+                      </button>
+                    </div>
+
+                    {isLoadingBlocks ? (
+                      <div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-orange-600" size={28} /></div>
+                    ) : (
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                        {promptBlocks.map((block, index) => (
+                          <div key={block.id} className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${block.isEnabled ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800' : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900 opacity-60'}`}>
+                            {/* Order controls */}
+                            <div className="flex flex-col gap-0.5 shrink-0 mt-0.5">
+                              <button onClick={() => handleMoveBlock(promptBlocks, index, 'up')} disabled={index === 0} className="p-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 disabled:opacity-20"><ChevronUp size={14} /></button>
+                              <button onClick={() => handleMoveBlock(promptBlocks, index, 'down')} disabled={index === promptBlocks.length - 1} className="p-0.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 disabled:opacity-20"><ChevronDown size={14} /></button>
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold text-zinc-400 w-5 text-right shrink-0">{index + 1}.</span>
+                                <span className="font-semibold text-sm text-zinc-900 dark:text-white">{block.label}</span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  block.source === 'global' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+                                  block.source === 'agent' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
+                                  'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                                }`}>{block.source}</span>
+                                {!block.isEnabled && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/20 text-red-500">OFF</span>}
+                              </div>
+                              {block.description && <p className="text-[11px] text-zinc-400 mt-0.5 ml-7">{block.description}</p>}
+                              <p className="text-[10px] font-mono text-zinc-300 dark:text-zinc-600 mt-1 ml-7">&lt;{block.xmlTag}&gt;</p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => handleToggleBlock(block)} className={`p-1.5 rounded-lg transition-all ${
+                                block.isEnabled ? 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                              }`} title={block.isEnabled ? 'Desactivar' : 'Activar'}>
+                                {block.isEnabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                              </button>
+                              {block.source !== 'runtime' && (
+                                <button onClick={() => setEditingBlock({ ...block })} className="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-white transition-all" title="Editar">
+                                  <Edit3 size={16} />
+                                </button>
+                              )}
+                              {block.isDeletable && (
+                                <button onClick={() => handleDeleteBlock(block.id)} className="p-1.5 rounded-lg text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 transition-all" title="Eliminar">
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Edit Block Modal */}
+                    {editingBlock && (
+                      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl max-h-[85vh] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden">
+                          <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                            <h3 className="font-bold text-zinc-900 dark:text-white">Editar: {editingBlock.label}</h3>
+                            <button onClick={() => setEditingBlock(null)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400"><X size={18} /></button>
+                          </div>
+                          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Label</label>
+                                <input value={editingBlock.label} onChange={e => setEditingBlock((b: any) => ({ ...b, label: e.target.value }))} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100" />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">XML Tag</label>
+                                <input value={editingBlock.xmlTag} onChange={e => setEditingBlock((b: any) => ({ ...b, xmlTag: e.target.value }))} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 font-mono" />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Descripción (ayuda interna)</label>
+                              <input value={editingBlock.description || ''} onChange={e => setEditingBlock((b: any) => ({ ...b, description: e.target.value }))} className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100" />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Contenido del Bloque</label>
+                              <textarea
+                                value={editingBlock.content || ''}
+                                onChange={e => setEditingBlock((b: any) => ({ ...b, content: e.target.value }))
+                                }
+                                rows={14}
+                                className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 font-mono resize-none leading-relaxed"
+                              />
+                            </div>
+                          </div>
+                          <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-3 shrink-0">
+                            <button onClick={() => setEditingBlock(null)} className="px-5 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all">Cancelar</button>
+                            <button onClick={handleSaveBlock} disabled={isSavingBlock} className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition-all">
+                              {isSavingBlock ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* New Block Modal */}
+                    {showNewBlock && (
+                      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl max-h-[85vh] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden">
+                          <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                            <h3 className="font-bold text-zinc-900 dark:text-white">Nuevo Bloque de Prompt</h3>
+                            <button onClick={() => setShowNewBlock(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400"><X size={18} /></button>
+                          </div>
+                          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Label</label>
+                                <input value={newBlockLabel} onChange={e => setNewBlockLabel(e.target.value)} placeholder="Ej: Regla Final Especial" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100" />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">XML Tag</label>
+                                <input value={newBlockXmlTag} onChange={e => setNewBlockXmlTag(e.target.value)} placeholder="Ej: final_rule" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 font-mono" />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Descripción (ayuda interna)</label>
+                              <input value={newBlockDescription} onChange={e => setNewBlockDescription(e.target.value)} placeholder="Para qué sirve este bloque..." className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-zinc-500 mb-1.5 block uppercase tracking-widest">Contenido</label>
+                              <textarea value={newBlockContent} onChange={e => setNewBlockContent(e.target.value)} rows={12} placeholder="Escribe el contenido de este bloque..." className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 font-mono resize-none leading-relaxed" />
+                            </div>
+                          </div>
+                          <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-3 shrink-0">
+                            <button onClick={() => setShowNewBlock(false)} className="px-5 py-2 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all">Cancelar</button>
+                            <button onClick={handleCreateBlock} disabled={isSavingBlock || !newBlockLabel || !newBlockXmlTag} className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition-all disabled:opacity-50">
+                              {isSavingBlock ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Crear Bloque
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
               </div>
             </div>
@@ -580,6 +826,7 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
 
       {/* CREATE MODAL */}
       {showCreate && (
@@ -1097,6 +1344,21 @@ export default function AdminPage() {
                       <div className="bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm h-[320px] flex flex-col overflow-hidden">
                         {activeBotSubTab === 'api' && (
                           <div className="space-y-6 animate-in fade-in duration-200 overflow-y-auto pr-2">
+                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
+                              <div>
+                                <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Respuesta Automática del Bot</h4>
+                                <p className="text-[11px] text-zinc-500 mt-0.5">Si está apagado, los mensajes nuevos requerirán atención humana.</p>
+                              </div>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  className="sr-only peer" 
+                                  checked={configData.defaultBotActive ?? false}
+                                  onChange={e => setConfigData({ ...configData, defaultBotActive: e.target.checked })}
+                                />
+                                <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                              </label>
+                            </div>
                             <div>
                               <h4 className="font-bold text-zinc-900 dark:text-white uppercase text-[10px] tracking-widest text-zinc-400 mb-4 flex items-center gap-2">
                                 <Key size={14} /> Credenciales Meta (WhatsApp API)
