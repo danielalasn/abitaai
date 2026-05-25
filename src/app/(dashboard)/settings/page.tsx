@@ -835,17 +835,9 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* ─── Instagram Card ─── */}
-                <div className={`group relative p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-[#F36A2D]/40 ${
-                  igIntegration?.status === 'active' ? 'border-[#F36A2D]/30 ring-1 ring-[#F36A2D]/20' : 'border-[#DEDAD0] dark:border-zinc-800'
-                }`}>
-                  <div className="mb-6 relative">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400 rounded-2xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-                    <div className="relative h-16 w-16 rounded-2xl flex items-center justify-center text-white bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 shadow-xl group-hover:rotate-3 transition-transform duration-500">
-                      <IgIcon size={32} />
-                    </div>
-                    {igIntegration?.status === 'active' && (
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
-                    )}
+                <div className="p-8 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[3rem] opacity-50 flex flex-col items-center text-center">
+                  <div className="mb-6 h-16 w-16 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center">
+                    <IgIcon size={32} />
                   </div>
 
                   <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">Instagram</h3>
@@ -853,31 +845,8 @@ export default function SettingsPage() {
                     Automatiza respuestas a DMs y menciones con tus agentes de IA personalizados.
                   </p>
 
-                  <div className="mt-auto flex gap-3 w-full">
-                    {igIntegration?.status === 'active' ? (
-                      <button 
-                        onClick={handleDisconnectIg} 
-                        disabled={igLoading} 
-                        className="flex-1 py-4 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
-                      >
-                        {igLoading ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />}
-                        Desconectar
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={handleConnectInstagram}
-                        disabled={igLoading}
-                        className="flex-1 py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-[#F36A2D] hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
-                      >
-                        {igLoading ? <Loader2 size={14} className="animate-spin" /> : <><IgIcon size={14} /> Conectar</>}
-                      </button>
-                    )}
-                    <button 
-                      className="px-5 py-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all duration-300 group/verify"
-                      title="Verificar conexión"
-                    >
-                      <Wifi size={18} className="group-hover/verify:text-[#F36A2D] transition-colors" />
-                    </button>
+                  <div className="mt-auto w-full py-4 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-center border border-zinc-100 dark:border-zinc-800">
+                    Próximamente
                   </div>
                 </div>
 

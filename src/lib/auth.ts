@@ -18,8 +18,13 @@ export const authOptions = {
         }
 
         try {
-          const client = await prisma.client.findUnique({
-            where: { email: credentials.email },
+          const client = await prisma.client.findFirst({
+            where: {
+              email: {
+                equals: credentials.email,
+                mode: 'insensitive'
+              }
+            },
           }) as any
 
           if (!client) {
