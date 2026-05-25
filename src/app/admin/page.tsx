@@ -902,7 +902,7 @@ export default function AdminPage() {
               onClick={() => handleSelectClient(client)}
               className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-left hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-lg hover:-translate-y-1 transition-all group relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+              <div className="absolute top-0 right-0 p-4 text-zinc-200 dark:text-zinc-800 opacity-60 group-hover:opacity-100 transition-opacity">
                 <Users size={80} />
               </div>
 
