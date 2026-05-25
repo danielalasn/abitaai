@@ -46,6 +46,7 @@ export default function AdminPage() {
   const [newBlockContent, setNewBlockContent] = useState('');
   const [newBlockDescription, setNewBlockDescription] = useState('');
   const [isSavingBlock, setIsSavingBlock] = useState(false);
+  const [showCheatsheet, setShowCheatsheet] = useState(false);
 
   // Modal / Tab state
   const [selectedClient, setSelectedClient] = useState<any>(null);
@@ -544,6 +545,13 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => setShowCheatsheet(true)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 hover:bg-orange-200 dark:hover:bg-orange-900/50 text-xs font-bold rounded-xl transition-all"
+                          title="Guía de Acciones"
+                        >
+                          <HelpCircle size={14} /> Actions Cheat Sheet
+                        </button>
+                        <button
                           onClick={handleResetBlocks}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-zinc-500 hover:text-red-500 text-xs font-bold rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-red-300 transition-all"
                           title="Restaurar bloques default"
@@ -709,6 +717,64 @@ export default function AdminPage() {
                             <button onClick={handleCreateBlock} disabled={isSavingBlock || !newBlockLabel || !newBlockXmlTag} className="px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 transition-all disabled:opacity-50">
                               {isSavingBlock ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Crear Bloque
                             </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions Cheat Sheet Modal */}
+                    {showCheatsheet && (
+                      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 w-full max-w-xl max-h-[85vh] rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden">
+                          <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                            <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                              <HelpCircle size={18} className="text-orange-500" /> System Actions Cheat Sheet
+                            </h3>
+                            <button onClick={() => setShowCheatsheet(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400"><X size={18} /></button>
+                          </div>
+                          
+                          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                              Usa estas etiquetas (tags) en tus reglas maestras. El sistema intercepta estas etiquetas y ejecuta la acción automáticamente en la base de datos o en la bandeja de entrada.
+                            </p>
+
+                            <div className="space-y-4">
+                              <div className="bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
+                                <h4 className="text-sm font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2"><User size={16} className="text-orange-500" /> Transferencia a Humano (Handoff)</h4>
+                                <p className="text-xs text-zinc-500 mb-3">Apaga el bot inmediatamente y pone el chat en modo "Atención Humana".</p>
+                                <code className="block bg-black dark:bg-black/50 text-orange-400 px-3 py-2 rounded-lg text-xs font-mono">
+                                  [ACTION: HANDOFF]
+                                </code>
+                              </div>
+
+                              <div className="bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
+                                <h4 className="text-sm font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2"><AlertTriangle size={16} className="text-orange-500" /> Pregunta Sin Respuesta</h4>
+                                <p className="text-xs text-zinc-500 mb-3">Registra en la base de datos una pregunta que el bot no supo contestar para posterior aprendizaje.</p>
+                                <code className="block bg-black dark:bg-black/50 text-orange-400 px-3 py-2 rounded-lg text-xs font-mono">
+                                  [ACTION: UNANSWERED_QUESTION "Pregunta exacta del usuario"]
+                                </code>
+                              </div>
+
+                              <div className="bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
+                                <h4 className="text-sm font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2"><Cpu size={16} className="text-orange-500" /> Sube Puntos (Lead Scoring)</h4>
+                                <p className="text-xs text-zinc-500 mb-3">Incrementa el Heatmap (Score) del prospecto por mostrar interés.</p>
+                                <code className="block bg-black dark:bg-black/50 text-orange-400 px-3 py-2 rounded-lg text-xs font-mono mb-2">
+                                  [ACTION: SCORE_BUMP +10]
+                                </code>
+                                <p className="text-[10px] text-zinc-400 mb-1">O especificando la razón:</p>
+                                <code className="block bg-black dark:bg-black/50 text-orange-400 px-3 py-2 rounded-lg text-xs font-mono">
+                                  [ACTION: SCORE_BUMP +10 REASON: "Hizo click en precio"]
+                                </code>
+                              </div>
+
+                              <div className="bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4">
+                                <h4 className="text-sm font-bold text-zinc-900 dark:text-white mb-2 flex items-center gap-2"><MessageSquare size={16} className="text-orange-500" /> Actualizar Correo</h4>
+                                <p className="text-xs text-zinc-500 mb-3">Guarda automáticamente el correo del prospecto en el CRM.</p>
+                                <code className="block bg-black dark:bg-black/50 text-orange-400 px-3 py-2 rounded-lg text-xs font-mono">
+                                  [ACTION: UPDATE_EMAIL "correo@ejemplo.com"]
+                                </code>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
