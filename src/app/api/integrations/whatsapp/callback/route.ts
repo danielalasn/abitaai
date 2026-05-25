@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     console.log('[WA Embedded Signup] Businesses:', bizData?.data?.map((b: any) => b.id))
 
     if (!bizData.data || bizData.data.length === 0) {
-      return NextResponse.json({ error: 'No businesses found', detail: bizData }, { status: 400 })
+      return NextResponse.json({ error: 'No businesses found', detail: bizData, errorMessage: 'La cuenta de Meta conectada no tiene un Business Manager (WABA).' }, { status: 400 })
     }
 
     const bizId = bizData.data[0].id
@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
     console.log('[WA Embedded Signup] WABAs:', wabaData?.data?.map((w: any) => w.id))
 
     if (!wabaData.data || wabaData.data.length === 0) {
-      return NextResponse.json({ error: 'No WhatsApp Business Accounts found', detail: wabaData }, { status: 400 })
+      return NextResponse.json({ error: 'No WhatsApp Business Accounts found', detail: wabaData, errorMessage: 'El Business Manager no tiene ninguna cuenta de WhatsApp Business (WABA) vinculada.' }, { status: 400 })
     }
 
     const wabaId = wabaData.data[0].id
@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
     console.log('[WA Embedded Signup] Phones:', phoneData?.data?.map((p: any) => p.id))
 
     if (!phoneData.data || phoneData.data.length === 0) {
-      return NextResponse.json({ error: 'No phone numbers found in WABA', detail: phoneData }, { status: 400 })
+      return NextResponse.json({ error: 'No phone numbers found in WABA', detail: phoneData, errorMessage: 'La cuenta de WhatsApp Business no tiene ningún número de teléfono configurado.' }, { status: 400 })
     }
 
     const phoneId = phoneData.data[0].id
@@ -242,6 +242,6 @@ export async function POST(req: NextRequest) {
 
   } catch (err: any) {
     console.error('[WA Embedded Signup] Error:', err.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: err.message, errorMessage: 'Ocurrió un error inesperado al conectar WhatsApp.' }, { status: 500 })
   }
 }

@@ -96,6 +96,7 @@ export default function SettingsPage() {
   const [waIntegration, setWaIntegration] = useState<{ status: string } | null>(null)
   const [waLoading, setWaLoading] = useState(false)
   const [waFeedback, setWaFeedback] = useState<'success' | 'error' | null>(null)
+  const [waErrorMessage, setWaErrorMessage] = useState<string | null>(null)
 
   const loadIgStatus = useCallback(async () => {
     const integration = await getIntegrationStatus('meta_instagram')
@@ -313,11 +314,13 @@ export default function SettingsPage() {
             .then(data => {
               if (data.success) {
                 setWaFeedback('success')
+                setWaErrorMessage(null)
                 loadWaStatus()
                 loadProject()
               } else {
                 console.error('[WA Embedded Signup]', data)
                 setWaFeedback('error')
+                setWaErrorMessage(data.errorMessage || 'Hubo un error al conectar con WhatsApp.')
               }
             })
             .catch(() => setWaFeedback('error'))
@@ -820,6 +823,13 @@ export default function SettingsPage() {
               {igFeedback && (
                 <div className="mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 animate-in slide-in-from-top-2">
                   <CheckCircle2 size={14} /> {igFeedback === 'success' ? 'Éxito' : 'Error'} al conectar Instagram
+                </div>
+              )}
+
+              {waFeedback && (
+                <div className={`mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold animate-in slide-in-from-top-2 ${waFeedback === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                  {waFeedback === 'success' ? <CheckCircle2 size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />} 
+                  <span>{waFeedback === 'success' ? 'WhatsApp conectado exitosamente.' : waErrorMessage}</span>
                 </div>
               )}
 
