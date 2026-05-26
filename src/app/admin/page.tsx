@@ -5,8 +5,9 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getGlobalStats } from '@/app/actions/admin';
-import { compileKnowledgeWithAI } from '@/app/actions/settings';
+import { compileKnowledgeWithAI, saveAgentConfig } from '@/app/actions/settings';
 import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
+import { generateBotConfigFromFile, type GeneratedBotConfig } from '@/app/actions/bot-builder';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -50,9 +51,19 @@ export default function AdminPage() {
 
   // Modal / Tab state
   const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot' | 'usage' | 'subscription'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot' | 'usage' | 'subscription' | 'builder'>('dashboard');
   const [activeEditSubTab, setActiveEditSubTab] = useState<'info' | 'subscription' | 'danger'>('info');
   const [isRefreshingClient, setIsRefreshingClient] = useState(false);
+
+  // Bot Builder state
+  const [builderPhase, setBuilderPhase] = useState<'upload' | 'processing' | 'preview'>('upload');
+  const [builderFile, setBuilderFile] = useState<File | null>(null);
+  const [builderDragOver, setBuilderDragOver] = useState(false);
+  const [builderProcessingStep, setBuilderProcessingStep] = useState<string>('');
+  const [builderGenerated, setBuilderGenerated] = useState<GeneratedBotConfig | null>(null);
+  const [builderPreviewTab, setBuilderPreviewTab] = useState<'identity' | 'instructions' | 'knowledge' | 'faq' | 'handoff' | 'scoring'>('identity');
+  const [isSavingBuilder, setIsSavingBuilder] = useState(false);
+  const [builderError, setBuilderError] = useState<string | null>(null);
 
   const handleRefreshClient = async () => {
     if (!selectedClient) return;
@@ -1004,6 +1015,13 @@ export default function AdminPage() {
                   Dashboard
                 </button>
                 <button
+                  onClick={() => { setActiveTab('builder'); setBuilderPhase('upload'); setBuilderGenerated(null); setBuilderError(null); setBuilderFile(null); }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'builder' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                >
+                  <Sparkles size={18} />
+                  Bot Builder
+                </button>
+                <button
                   onClick={() => setActiveTab('bot')}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'bot' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
@@ -1278,6 +1296,293 @@ export default function AdminPage() {
                   </div>
                 )}
 
+
+                {/* --- TAB: BOT BUILDER --- */}
+                {activeTab === 'builder' && (
+                  <div className="h-full flex flex-col animate-in fade-in slide-in-from-bottom-4">
+
+                    {/* PHASE: UPLOAD */}
+                    {builderPhase === 'upload' && (
+                      <div className="flex flex-col gap-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                            <Sparkles size={20} className="text-orange-500" /> Bot Builder IA
+                          </h3>
+                          <p className="text-sm text-zinc-500 mt-1">Sube el documento del cliente y la IA configurará el bot completo automáticamente.</p>
+                        </div>
+
+                        <label
+                          htmlFor="bot-builder-file-input"
+                          onDragOver={(e) => { e.preventDefault(); setBuilderDragOver(true); }}
+                          onDragLeave={() => setBuilderDragOver(false)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setBuilderDragOver(false);
+                            const f = e.dataTransfer.files[0];
+                            if (f) setBuilderFile(f);
+                          }}
+                          className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
+                            builderDragOver
+                              ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
+                              : builderFile
+                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20'
+                              : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 hover:border-orange-400 hover:bg-orange-50/30 dark:hover:bg-orange-950/10'
+                          }`}
+                        >
+                          <input
+                            id="bot-builder-file-input"
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.csv,.md"
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) setBuilderFile(f); }}
+                          />
+                          {builderFile ? (
+                            <div className="flex flex-col items-center gap-2 text-center px-4">
+                              <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center">
+                                <CheckCircle2 size={24} className="text-emerald-600" />
+                              </div>
+                              <p className="font-bold text-zinc-900 dark:text-white text-sm">{builderFile.name}</p>
+                              <p className="text-xs text-zinc-500">{(builderFile.size / 1024).toFixed(1)} KB — Click para cambiar</p>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-2 text-center px-4">
+                              <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
+                                <Database size={24} className="text-zinc-400" />
+                              </div>
+                              <p className="font-semibold text-zinc-700 dark:text-zinc-300 text-sm">Arrastra el documento aquí</p>
+                              <p className="text-xs text-zinc-400">PDF · Word · Excel · TXT · CSV — máx. 15MB</p>
+                            </div>
+                          )}
+                        </label>
+
+                        {builderError && (
+                          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-2xl px-4 py-3 flex items-start gap-3">
+                            <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+                            <p className="text-sm text-red-700 dark:text-red-400">{builderError}</p>
+                          </div>
+                        )}
+
+                        <button
+                          disabled={!builderFile}
+                          onClick={async () => {
+                            if (!builderFile || !selectedClient) return;
+                            setBuilderError(null);
+                            setBuilderPhase('processing');
+                            try {
+                              setBuilderProcessingStep('Enviando documento a la IA...');
+                              const fd = new FormData();
+                              fd.append('file', builderFile);
+                              const generated = await generateBotConfigFromFile(fd, selectedClient.name);
+
+                              setBuilderGenerated(generated);
+                              setBuilderPreviewTab('identity');
+                              setBuilderPhase('preview');
+                            } catch (err: any) {
+                              setBuilderError(err.message || 'Error desconocido.');
+                              setBuilderPhase('upload');
+                            }
+                          }}
+                          className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/20"
+                        >
+                          <Sparkles size={16} /> Generar Configuración del Bot
+                        </button>
+                      </div>
+                    )}
+
+                    {/* PHASE: PROCESSING */}
+                    {builderPhase === 'processing' && (
+                      <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
+                        <div className="relative">
+                          <div className="h-20 w-20 rounded-full border-4 border-orange-100 dark:border-orange-900/30 flex items-center justify-center">
+                            <Loader2 size={36} className="animate-spin text-orange-600" />
+                          </div>
+                          <div className="absolute -top-1 -right-1 h-6 w-6 bg-orange-600 rounded-full flex items-center justify-center">
+                            <Sparkles size={12} className="text-white" />
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-bold text-zinc-900 dark:text-white text-lg">Procesando con IA</p>
+                          <p className="text-sm text-zinc-500 mt-2 max-w-xs">{builderProcessingStep}</p>
+                        </div>
+                        <div className="flex flex-col gap-2 w-full max-w-xs">
+                          {[
+                            'Extrayendo texto del documento',
+                            'Identificando datos del negocio',
+                            'Generando identidad del bot',
+                            'Creando knowledge base',
+                            'Formulando FAQs',
+                          ].map((step, i) => (
+                            <div key={i} className="flex items-center gap-3">
+                              <div className="h-4 w-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+                                <div className="h-2 w-2 rounded-full bg-orange-400 animate-pulse" style={{ animationDelay: `${i * 200}ms` }} />
+                              </div>
+                              <span className="text-xs text-zinc-500">{step}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PHASE: PREVIEW */}
+                    {builderPhase === 'preview' && builderGenerated && (
+                      <div className="flex flex-col gap-3 h-full min-h-0">
+                        <div className="flex items-center justify-between shrink-0">
+                          <div>
+                            <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                              <CheckCircle2 size={18} className="text-emerald-500" /> Configuración generada
+                            </p>
+                            <p className="text-xs text-zinc-500 mt-0.5">Revisa y edita cada campo antes de guardar.</p>
+                          </div>
+                          <button
+                            onClick={() => { setBuilderPhase('upload'); setBuilderFile(null); setBuilderGenerated(null); }}
+                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+                          >
+                            <RefreshCw size={12} /> Nuevo archivo
+                          </button>
+                        </div>
+
+                        {/* Preview Tabs */}
+                        <div className="flex items-center overflow-x-auto no-scrollbar bg-zinc-100 dark:bg-zinc-800/50 p-1 rounded-2xl shrink-0">
+                          {([
+                            { id: 'identity', label: 'Identidad', icon: <User size={13} /> },
+                            { id: 'instructions', label: 'Instrucciones', icon: <Edit3 size={13} /> },
+                            { id: 'knowledge', label: 'Knowledge', icon: <Database size={13} /> },
+                            { id: 'faq', label: 'FAQs', icon: <HelpCircle size={13} /> },
+                            { id: 'handoff', label: 'Handoff', icon: <User size={13} /> },
+                            { id: 'scoring', label: 'Scoring', icon: <Cpu size={13} /> },
+                          ] as const).map((tab) => (
+                            <button
+                              key={tab.id}
+                              onClick={() => setBuilderPreviewTab(tab.id)}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                                builderPreviewTab === tab.id
+                                  ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm'
+                                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                              }`}
+                            >
+                              {tab.icon} {tab.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Editable content */}
+                        <div className="flex-1 min-h-0">
+                          {builderPreviewTab === 'identity' && (
+                            <textarea
+                              value={builderGenerated.identity}
+                              onChange={(e) => setBuilderGenerated({ ...builderGenerated, identity: e.target.value })}
+                              className="w-full h-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed"
+                            />
+                          )}
+                          {builderPreviewTab === 'instructions' && (
+                            <textarea
+                              value={builderGenerated.instructions}
+                              onChange={(e) => setBuilderGenerated({ ...builderGenerated, instructions: e.target.value })}
+                              className="w-full h-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed"
+                            />
+                          )}
+                          {builderPreviewTab === 'knowledge' && (
+                            <textarea
+                              value={builderGenerated.knowledgeRaw}
+                              onChange={(e) => setBuilderGenerated({ ...builderGenerated, knowledgeRaw: e.target.value })}
+                              className="w-full h-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed"
+                            />
+                          )}
+                          {builderPreviewTab === 'faq' && (
+                            <textarea
+                              value={builderGenerated.faq}
+                              onChange={(e) => setBuilderGenerated({ ...builderGenerated, faq: e.target.value })}
+                              className="w-full h-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed"
+                            />
+                          )}
+                          {builderPreviewTab === 'handoff' && (
+                            <textarea
+                              value={builderGenerated.handoffRules}
+                              onChange={(e) => setBuilderGenerated({ ...builderGenerated, handoffRules: e.target.value })}
+                              className="w-full h-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed"
+                            />
+                          )}
+                          {builderPreviewTab === 'scoring' && (
+                            <textarea
+                              value={builderGenerated.leadScoringRules}
+                              onChange={(e) => setBuilderGenerated({ ...builderGenerated, leadScoringRules: e.target.value })}
+                              className="w-full h-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 resize-none font-mono leading-relaxed"
+                              placeholder='[{"condition": "...", "score": 10}]'
+                            />
+                          )}
+                        </div>
+
+                        {/* Save button */}
+                        <div className="shrink-0 flex gap-3 pt-1">
+                          <button
+                            disabled={isSavingBuilder}
+                            onClick={async () => {
+                              if (!builderGenerated || !selectedClient) return;
+                              const project = selectedClient.projects?.[0];
+                              const agentId = project?.agents?.[0]?.id;
+                              if (!agentId) { alert('El cliente no tiene agente configurado.'); return; }
+                              setIsSavingBuilder(true);
+                              try {
+                                // Compile knowledge to JSON too
+                                let knowledgeJson = '{}';
+                                try { knowledgeJson = await compileKnowledgeWithAI(builderGenerated.knowledgeRaw); } catch {}
+
+                                await saveAgentConfig(
+                                  agentId,
+                                  selectedClient.name + ' Bot',
+                                  'Configurado por Bot Builder',
+                                  builderGenerated.identity,
+                                  builderGenerated.instructions,
+                                  knowledgeJson,
+                                  builderGenerated.knowledgeRaw,
+                                  builderGenerated.faq,
+                                  builderGenerated.leadScoringRules,
+                                );
+
+                                // Also save handoffRules via updateBotConfig
+                                await updateBotConfig(project.id, {
+                                  handoffRules: builderGenerated.handoffRules,
+                                });
+
+                                // Refresh client
+                                const data = await getClients();
+                                setClients(data);
+                                const updated = data.find((c: any) => c.id === selectedClient.id);
+                                if (updated) {
+                                  setSelectedClient(updated);
+                                  // Sync configData
+                                  const ag = updated.projects?.[0]?.agents?.[0] || {};
+                                  setConfigData((prev: any) => ({
+                                    ...prev,
+                                    identity: ag.identity || '',
+                                    instructions: ag.instructions || '',
+                                    knowledgeData: ag.knowledgeData || '',
+                                    knowledgeRaw: ag.knowledgeRaw || '',
+                                    faq: ag.faq || '',
+                                    handoffRules: ag.handoffRules || '',
+                                    leadScoringRules: ag.leadScoringRules || '',
+                                  }));
+                                }
+
+                                alert('Bot configurado exitosamente. Puedes revisarlo en la tab "Bot Config".');
+                                setActiveTab('bot');
+                                setActiveBotSubTab('identity');
+                              } catch (err: any) {
+                                alert('Error al guardar: ' + err.message);
+                              } finally {
+                                setIsSavingBuilder(false);
+                              }
+                            }}
+                            className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/20"
+                          >
+                            {isSavingBuilder ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                            {isSavingBuilder ? 'Guardando...' : 'Guardar en Bot Config'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* --- TAB: BOT CONFIG --- */}
                 {activeTab === 'bot' && (
