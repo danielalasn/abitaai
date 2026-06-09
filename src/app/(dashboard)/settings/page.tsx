@@ -294,60 +294,80 @@ export default function SettingsPage() {
     }
   };
 
-  const handleConnectWhatsApp = async () => {
+  const handleConnectWhatsApp = () => {
     const FB = (window as any).FB
     if (!FB) { alert('Facebook SDK no cargado aún.'); return }
 
     setWaLoading(true)
     setWaFeedback(null)
 
-    const signupPromise = new Promise<{ waba_id?: string; phone_number_id?: string; business_id?: string }>((resolve) => {
-      const sessionInfoListener = (event: MessageEvent) => {
-        if (!event.data || typeof event.data !== 'object' || event.origin !== 'https://www.facebook.com') return
-        if (event.data.type === 'WA_EMBEDDED_SIGNUP' && event.data.event === 'FINISH') {
-          window.removeEventListener('message', sessionInfoListener)
-          resolve(event.data.data || {})
-        }
-      }
-      window.addEventListener('message', sessionInfoListener)
-      setTimeout(() => {
+    // Captura waba_id/phone_number_id del mensaje WA_EMBEDDED_SIGNUP.
+    // El mensaje puede llegar antes o después del callback de FB.login,
+    // así que escuchamos desde antes de abrir el popup y esperamos hasta 3s.
+    let embeddedSignupInfo: { waba_id?: string; phone_number_id?: string; business_id?: string } = {}
+    let loginCode: string | null = null
+    let sent = false
+
+    const sendToBackend = (code: string, info: typeof embeddedSignupInfo) => {
+      if (sent) return
+      sent = true
+      console.log('[WA Embedded Signup] Enviando al backend:', info)
+      fetch('/api/integrations/whatsapp/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          waba_id: info.waba_id,
+          phone_number_id: info.phone_number_id,
+          business_id: info.business_id,
+        }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setWaFeedback('success')
+            setWaErrorMessage(null)
+            loadWaStatus()
+            loadProject()
+          } else {
+            console.error('[WA Embedded Signup]', data)
+            setWaFeedback('error')
+            setWaErrorMessage(data.errorMessage || 'Hubo un error al conectar con WhatsApp.')
+          }
+        })
+        .catch(() => setWaFeedback('error'))
+        .finally(() => setWaLoading(false))
+    }
+
+    const sessionInfoListener = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== 'object' || event.origin !== 'https://www.facebook.com') return
+      if (event.data.type === 'WA_EMBEDDED_SIGNUP' && event.data.event === 'FINISH') {
         window.removeEventListener('message', sessionInfoListener)
-        resolve({})
-      }, 60000)
-    })
+        embeddedSignupInfo = event.data.data || {}
+        console.log('[WA Embedded Signup] sessionInfo recibido:', embeddedSignupInfo)
+        // Si el código ya llegó, enviamos de inmediato
+        if (loginCode) sendToBackend(loginCode, embeddedSignupInfo)
+      }
+    }
+    window.addEventListener('message', sessionInfoListener)
 
     FB.login(
-      async (response: any) => {
+      (response: any) => {
         if (response.authResponse) {
-          const code = response.authResponse.code
-          const signupData = await signupPromise
-          
-          fetch('/api/integrations/whatsapp/callback', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              code,
-              waba_id: signupData.waba_id,
-              phone_number_id: signupData.phone_number_id,
-              business_id: signupData.business_id,
-            }),
-          })
-            .then(res => res.json())
-            .then(data => {
-              if (data.success) {
-                setWaFeedback('success')
-                setWaErrorMessage(null)
-                loadWaStatus()
-                loadProject()
-              } else {
-                console.error('[WA Embedded Signup]', data)
-                setWaFeedback('error')
-                setWaErrorMessage(data.errorMessage || 'Hubo un error al conectar con WhatsApp.')
-              }
-            })
-            .catch(() => setWaFeedback('error'))
-            .finally(() => setWaLoading(false))
+          loginCode = response.authResponse.code
+          // Si el sessionInfo ya llegó, enviamos de inmediato.
+          // Si no, esperamos hasta 3s y enviamos con lo que haya.
+          if (embeddedSignupInfo.waba_id) {
+            window.removeEventListener('message', sessionInfoListener)
+            sendToBackend(loginCode!, embeddedSignupInfo)
+          } else {
+            setTimeout(() => {
+              window.removeEventListener('message', sessionInfoListener)
+              if (loginCode) sendToBackend(loginCode!, embeddedSignupInfo)
+            }, 3000)
+          }
         } else {
+          window.removeEventListener('message', sessionInfoListener)
           setWaLoading(false)
         }
       },
@@ -434,14 +454,13 @@ export default function SettingsPage() {
         src="https://connect.facebook.net/en_US/sdk.js" 
         strategy="lazyOnload" 
         onLoad={() => {
-          (window as any).fbAsyncInit = function() {
-            (window as any).FB.init({
-              appId: process.env.NEXT_PUBLIC_FB_APP_ID || '',
-              cookie: true,
-              xfbml: true,
-              version: 'v25.0'
-            });
-          };
+          // Llamar FB.init directamente — fbAsyncInit ya fue revisado por el SDK al cargar
+          ;(window as any).FB.init({
+            appId: process.env.NEXT_PUBLIC_FB_APP_ID || '',
+            cookie: true,
+            xfbml: true,
+            version: 'v25.0'
+          })
         }}
       />
       {/* Header */}
