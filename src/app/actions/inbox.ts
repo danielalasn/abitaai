@@ -6,6 +6,7 @@ import { sendWhatsAppMessage, sendWhatsAppTemplate, sendWhatsAppMedia, WaMediaTy
 import { getCurrentProject } from '@/lib/auth-server';
 import { updateLeadAISummaryInternal } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
+import { decrypt } from '@/lib/encryption';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats(_timestamp?: number) {
@@ -431,8 +432,9 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
     const phoneId = chat.lead.project?.whatsappPhoneId;
     const token = chat.lead.project?.whatsappToken;
 
-    if (phone && phoneId && token) {
-        const result = await sendWhatsAppMessage(phone, text, phoneId, token);
+    const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+    if (phone && phoneId && resolvedToken) {
+        const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
         waSendSuccess = result.success;
         waCategory = result.category;
         wamid = result.messageId;
@@ -501,9 +503,10 @@ export async function sendAgentMedia(
     const phoneId = chat.lead.project?.whatsappPhoneId;
     const token = chat.lead.project?.whatsappToken;
 
-    if (phone && phoneId && token) {
+    const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+    if (phone && phoneId && resolvedToken) {
       const result = await sendWhatsAppMedia(
-        phone, mediaUrl, mediaType, phoneId, token, caption, filename
+        phone, mediaUrl, mediaType, phoneId, resolvedToken, caption, filename
       );
       waSendSuccess = result.success;
       waCategory = result.category;

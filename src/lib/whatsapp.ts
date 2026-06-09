@@ -60,7 +60,8 @@ export async function sendWhatsAppMessage(
     return { success: false, messageId: null, category: null, raw: null }
   }
 
-  const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+  const API_VERSION = process.env.GRAPH_API_VERSION || 'v25.0'
+  const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`
   const cleanTo = to.replace(/[^0-9]/g, '');
 
   try {
@@ -127,7 +128,8 @@ export async function sendWhatsAppMedia(
     return { success: false, messageId: null, category: null, raw: null }
   }
 
-  const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+  const API_VERSION = process.env.GRAPH_API_VERSION || 'v25.0'
+  const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`
   const cleanTo = to.replace(/[^0-9]/g, '');
 
   const mediaPayload: any = { link: mediaUrl }
@@ -202,7 +204,8 @@ export async function sendWhatsAppTemplate(
     return { success: false, messageId: null, category: null, raw: null }
   }
 
-  const url = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+  const API_VERSION = process.env.GRAPH_API_VERSION || 'v25.0'
+  const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`
   const cleanTo = to.replace(/[^0-9]/g, '');
 
   const body = {
@@ -262,8 +265,9 @@ export async function getApprovedTemplates(
   if (!businessId || !accessToken) return []
 
   try {
+  const API_VERSION = process.env.GRAPH_API_VERSION || 'v25.0'
     const res = await fetch(
-      `https://graph.facebook.com/v22.0/${businessId}/message_templates?status=APPROVED&fields=name,components,language,category&limit=100`,
+      `https://graph.facebook.com/${API_VERSION}/${businessId}/message_templates?status=APPROVED&fields=name,components,language,category&limit=100`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: 'no-store',

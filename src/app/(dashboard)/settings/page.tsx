@@ -301,14 +301,36 @@ export default function SettingsPage() {
     setWaLoading(true)
     setWaFeedback(null)
 
+    // sessionInfoListener: captura waba_id, phone_number_id, business_id
+    // directamente del Embedded Signup sin llamadas adicionales al Graph API
+    let embeddedSignupInfo: { waba_id?: string; phone_number_id?: string; business_id?: string } = {}
+
+    const sessionInfoListener = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== 'object') return
+      if (event.origin !== 'https://www.facebook.com') return
+      const data = event.data
+      if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
+        const { waba_id, phone_number_id, business_id } = data.data || {}
+        embeddedSignupInfo = { waba_id, phone_number_id, business_id }
+        console.log('[WA Embedded Signup] sessionInfo:', embeddedSignupInfo)
+      }
+    }
+    window.addEventListener('message', sessionInfoListener)
+
     FB.login(
       (response: any) => {
+        window.removeEventListener('message', sessionInfoListener)
         if (response.authResponse) {
           const code = response.authResponse.code
           fetch('/api/integrations/whatsapp/callback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code }),
+            body: JSON.stringify({
+              code,
+              waba_id: embeddedSignupInfo.waba_id,
+              phone_number_id: embeddedSignupInfo.phone_number_id,
+              business_id: embeddedSignupInfo.business_id,
+            }),
           })
             .then(res => res.json())
             .then(data => {
@@ -333,7 +355,6 @@ export default function SettingsPage() {
         config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP,
         response_type: 'code',
         override_default_response_type: true,
-        scope: 'whatsapp_business_management,whatsapp_business_messaging',
       }
     )
   }
@@ -415,10 +436,10 @@ export default function SettingsPage() {
         onLoad={() => {
           (window as any).fbAsyncInit = function() {
             (window as any).FB.init({
-              appId: process.env.NEXT_PUBLIC_META_APP_ID || process.env.NEXT_PUBLIC_FB_APP_ID || '',
+              appId: process.env.NEXT_PUBLIC_FB_APP_ID || '',
               cookie: true,
               xfbml: true,
-              version: 'v22.0'
+              version: 'v25.0'
             });
           };
         }}

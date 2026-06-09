@@ -128,7 +128,8 @@ export function initWorker() {
             // 4. Enviar respuesta por el canal correspondiente
             if (channel === 'whatsapp') {
               const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
-              const projectToken = decrypt(chatDetails.lead.project?.whatsappToken);
+              const rawToken = chatDetails.lead.project?.whatsappToken;
+              const projectToken = rawToken ? decrypt(rawToken) : process.env.SYSTEM_USER_TOKEN;
               if (projectPhoneId && projectToken) {
                 const waResult = await sendWhatsAppMessage(from, botData.reply, projectPhoneId, projectToken);
                 waCategory = waResult.category || 'SERVICE';
