@@ -294,42 +294,42 @@ export default function SettingsPage() {
     }
   };
 
-  const handleConnectWhatsApp = () => {
+  const handleConnectWhatsApp = async () => {
     const FB = (window as any).FB
     if (!FB) { alert('Facebook SDK no cargado aún.'); return }
 
     setWaLoading(true)
     setWaFeedback(null)
 
-    // sessionInfoListener: captura waba_id, phone_number_id, business_id
-    // directamente del Embedded Signup sin llamadas adicionales al Graph API
-    let embeddedSignupInfo: { waba_id?: string; phone_number_id?: string; business_id?: string } = {}
-
-    const sessionInfoListener = (event: MessageEvent) => {
-      if (!event.data || typeof event.data !== 'object') return
-      if (event.origin !== 'https://www.facebook.com') return
-      const data = event.data
-      if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
-        const { waba_id, phone_number_id, business_id } = data.data || {}
-        embeddedSignupInfo = { waba_id, phone_number_id, business_id }
-        console.log('[WA Embedded Signup] sessionInfo:', embeddedSignupInfo)
+    const signupPromise = new Promise<{ waba_id?: string; phone_number_id?: string; business_id?: string }>((resolve) => {
+      const sessionInfoListener = (event: MessageEvent) => {
+        if (!event.data || typeof event.data !== 'object' || event.origin !== 'https://www.facebook.com') return
+        if (event.data.type === 'WA_EMBEDDED_SIGNUP' && event.data.event === 'FINISH') {
+          window.removeEventListener('message', sessionInfoListener)
+          resolve(event.data.data || {})
+        }
       }
-    }
-    window.addEventListener('message', sessionInfoListener)
+      window.addEventListener('message', sessionInfoListener)
+      setTimeout(() => {
+        window.removeEventListener('message', sessionInfoListener)
+        resolve({})
+      }, 60000)
+    })
 
     FB.login(
-      (response: any) => {
-        window.removeEventListener('message', sessionInfoListener)
+      async (response: any) => {
         if (response.authResponse) {
           const code = response.authResponse.code
+          const signupData = await signupPromise
+          
           fetch('/api/integrations/whatsapp/callback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               code,
-              waba_id: embeddedSignupInfo.waba_id,
-              phone_number_id: embeddedSignupInfo.phone_number_id,
-              business_id: embeddedSignupInfo.business_id,
+              waba_id: signupData.waba_id,
+              phone_number_id: signupData.phone_number_id,
+              business_id: signupData.business_id,
             }),
           })
             .then(res => res.json())
