@@ -855,22 +855,6 @@ export default function SettingsPage() {
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* ─── Instagram Card ─── */}
-                <div className="p-8 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[3rem] opacity-50 flex flex-col items-center text-center">
-                  <div className="mb-6 h-16 w-16 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center">
-                    <IgIcon size={32} />
-                  </div>
-
-                  <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">Instagram</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-8 max-w-[240px]">
-                    Automatiza respuestas a DMs y menciones con tus agentes de IA personalizados.
-                  </p>
-
-                  <div className="mt-auto w-full py-4 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-center border border-zinc-100 dark:border-zinc-800">
-                    Próximamente
-                  </div>
-                </div>
-
                 {/* ─── WhatsApp Card ─── */}
                 <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-emerald-500/40 ${
                   waIntegration?.status === 'active' ? 'border-emerald-500/20 ring-1 ring-emerald-500/20' : 'border-[#DEDAD0] dark:border-zinc-800'
@@ -905,6 +889,22 @@ export default function SettingsPage() {
                     >
                       {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <Wifi size={18} />}
                     </button>
+                  </div>
+                </div>
+
+                {/* ─── Instagram Card ─── */}
+                <div className="p-8 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800/60 rounded-[3rem] opacity-50 flex flex-col items-center text-center">
+                  <div className="mb-6 h-16 w-16 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center">
+                    <IgIcon size={32} />
+                  </div>
+
+                  <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">Instagram</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-8 max-w-[240px]">
+                    Automatiza respuestas a DMs y menciones con tus agentes de IA personalizados.
+                  </p>
+
+                  <div className="mt-auto w-full py-4 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-400 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] text-center border border-zinc-100 dark:border-zinc-800">
+                    Próximamente
                   </div>
                 </div>
 
