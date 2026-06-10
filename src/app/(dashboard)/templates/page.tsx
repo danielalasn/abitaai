@@ -164,9 +164,9 @@ function TemplateCard({ template, onDelete, onPreview }: { template: MetaTemplat
       )}
 
       {/* Body preview */}
-      {body?.text && (
-        <p className="text-[11px] text-[#6F6F6F] line-clamp-2 leading-relaxed">{body.text}</p>
-      )}
+      <p className="text-[11px] text-[#6F6F6F] line-clamp-2 leading-relaxed h-9">
+        {body?.text || ''}
+      </p>
 
       {hasButtons && (
         <div className="text-[9px] font-bold text-blue-500 bg-blue-500/5 px-2 py-1 rounded-lg">+ Botones incluidos</div>
