@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react'
 import { 
   Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, 
   BarChart3, LogOut, UserCheck, ChevronLeft, ChevronRight,
-  Sun, Moon
+  Sun, Moon, LayoutTemplate
 } from 'lucide-react'
 import ThemeSwitch from '@/components/ui/theme-switch'
 import { ProfileModal } from '@/components/ProfileModal'
@@ -48,12 +48,13 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden no-scrollbar">
         {[
           { icon: Inbox,             label: 'Bandeja',          href: '/inbox' },
+          { icon: Megaphone,         label: 'Campañas',         href: '/campaigns' },
+          { icon: LayoutTemplate,    label: 'Templates',        href: '/templates' },
           { icon: BarChart3,         label: 'Dashboard',        href: '/analytics' },
           { icon: UserCheck,         label: 'Leads',            href: '/leads' },
-          { icon: Megaphone,         label: 'Campañas',         href: '/campaigns' },
           { icon: BrainCircuit,      label: 'Aprendizaje',      href: '/learning' },
-          { icon: Settings,          label: 'Configuración',    href: '/settings' },
           { icon: MessageSquareCode, label: 'Simulador',        href: '/test-chat' },
+          { icon: Settings,          label: 'Configuración',    href: '/settings' },
         ].map((item) => {
           const isActive = pathname === item.href;
           return (
