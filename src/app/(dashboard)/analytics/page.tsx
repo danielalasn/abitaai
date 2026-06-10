@@ -5,6 +5,7 @@ import { BarChart3, Users, MessageSquareText, Megaphone, Flame, TrendingUp, Zap,
 import { getAnalyticsData } from '@/app/actions/analytics'
 import Link from 'next/link'
 import DateRangePicker from '@/components/ui/DateRangePicker'
+import { format, startOfMonth } from 'date-fns'
 
 type Analytics = {
   totalLeads: number;
@@ -22,12 +23,58 @@ type Analytics = {
   agentLeads: number;
 } | null
 
+const CACHE_KEY = 'analytics_date_range'
+const CACHE_DURATION_MS = 60 * 60 * 1000 // 60 minutos
+
+const getDefaultDateRange = () => {
+  const now = new Date()
+  return {
+    start: format(startOfMonth(now), 'yyyy-MM-dd'),
+    end: format(now, 'yyyy-MM-dd')
+  }
+}
+
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<Analytics>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  useEffect(() => { fetchData() }, [dateRange])
+  // Initialize date range from cache or default
+  useEffect(() => {
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        const now = Date.now()
+        if (now - parsed.timestamp < CACHE_DURATION_MS) {
+          setDateRange(parsed.range)
+          setIsInitialized(true)
+          return
+        }
+      } catch (e) {
+        // ignore parsing errors
+      }
+    }
+    setDateRange(getDefaultDateRange())
+    setIsInitialized(true)
+  }, [])
+
+  // Save to cache whenever dateRange changes
+  useEffect(() => {
+    if (isInitialized) {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        range: dateRange,
+        timestamp: Date.now()
+      }))
+    }
+  }, [dateRange, isInitialized])
+
+  useEffect(() => { 
+    if (isInitialized) {
+      fetchData() 
+    }
+  }, [dateRange, isInitialized])
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -59,7 +106,7 @@ export default function AnalyticsDashboard() {
             Resumen de Rendimiento
           </h1>
         </div>
-        <DateRangePicker value={dateRange} onChange={setDateRange} onClear={() => setDateRange({ start: '', end: '' })} />
+        <DateRangePicker value={dateRange} onChange={setDateRange} onClear={() => setDateRange(getDefaultDateRange())} />
       </header>
 
       {/* Content */}
