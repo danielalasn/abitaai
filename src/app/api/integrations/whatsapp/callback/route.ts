@@ -155,8 +155,13 @@ export async function POST(req: NextRequest) {
       update: { status: 'active', oauthState: null },
     })
 
-    console.log('[WA Embedded Signup] Credenciales guardadas. Project:', project.id, '| Phone:', phone_number_id, '| WABA:', waba_id)
-    return NextResponse.json({ success: true, phoneId: phone_number_id, wabaId: waba_id })
+    console.log('[WA Embedded Signup] Credenciales guardadas. Project:', project.id, '| Phone:', finalPhoneId, '| WABA:', finalWabaId)
+    
+    // Invalidate the cache for the settings page so loadProject fetches fresh data
+    const { revalidatePath } = require('next/cache');
+    revalidatePath('/settings');
+
+    return NextResponse.json({ success: true, phoneId: finalPhoneId, wabaId: finalWabaId })
 
   } catch (err: any) {
     console.error('[WA Embedded Signup] Error:', err.message)
