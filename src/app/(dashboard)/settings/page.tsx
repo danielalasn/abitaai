@@ -97,6 +97,7 @@ export default function SettingsPage() {
   const [waLoading, setWaLoading] = useState(false)
   const [waFeedback, setWaFeedback] = useState<'success' | 'error' | null>(null)
   const [waErrorMessage, setWaErrorMessage] = useState<string | null>(null)
+  const [waVerifyStatus, setWaVerifyStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   const loadIgStatus = useCallback(async () => {
     const integration = await getIntegrationStatus('meta_instagram')
@@ -300,6 +301,7 @@ export default function SettingsPage() {
 
     setWaLoading(true)
     setWaFeedback(null)
+    setWaVerifyStatus('idle')
 
     // Captura waba_id/phone_number_id del mensaje WA_EMBEDDED_SIGNUP.
     // El mensaje puede llegar antes o después del callback de FB.login,
@@ -338,9 +340,11 @@ export default function SettingsPage() {
         .catch(() => setWaFeedback('error'))
         .finally(() => setWaLoading(false))
     }
-
     const sessionInfoListener = (event: MessageEvent) => {
-      if (!event.data || typeof event.data !== 'object' || event.origin !== 'https://www.facebook.com') return
+      if (!event.data || typeof event.data !== 'object' || !event.origin.includes('facebook.com')) return
+      
+      console.log('[WA Message Event]', event.data);
+      
       if (event.data.type === 'WA_EMBEDDED_SIGNUP' && event.data.event === 'FINISH') {
         window.removeEventListener('message', sessionInfoListener)
         embeddedSignupInfo = event.data.data || {}
@@ -356,7 +360,7 @@ export default function SettingsPage() {
         if (response.authResponse) {
           loginCode = response.authResponse.code
           // Si el sessionInfo ya llegó, enviamos de inmediato.
-          // Si no, esperamos hasta 3s y enviamos con lo que haya.
+          // Si no, esperamos hasta 5s y enviamos con lo que haya.
           if (embeddedSignupInfo.waba_id) {
             window.removeEventListener('message', sessionInfoListener)
             sendToBackend(loginCode!, embeddedSignupInfo)
@@ -364,29 +368,36 @@ export default function SettingsPage() {
             setTimeout(() => {
               window.removeEventListener('message', sessionInfoListener)
               if (loginCode) sendToBackend(loginCode!, embeddedSignupInfo)
-            }, 3000)
+            }, 5000)
           }
         } else {
           window.removeEventListener('message', sessionInfoListener)
           setWaLoading(false)
+          setWaFeedback('error')
+          setWaErrorMessage('Autenticación cancelada o bloqueada por el navegador.')
         }
       },
       {
         config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP,
         response_type: 'code',
         override_default_response_type: true,
+        extras: {
+          setup: {} // Requerido para Embedded Signup
+        }
       }
     )
   }
 
   const handleVerifyWhatsApp = async () => {
-    setIsVerifying(true); setVerifyResult(null)
+    setIsVerifying(true); setVerifyResult(null); setWaVerifyStatus('idle')
     try {
       const r = await verifyWhatsappConnection(whatsappPhoneId || undefined, whatsappToken || undefined)
-      setVerifyResult(r); 
+      setVerifyResult(r)
+      setWaVerifyStatus(r.success ? 'success' : 'error')
       setTimeout(() => setVerifyResult(null), 10000)
     } catch {
       setVerifyResult({ success: false, message: "Error al conectar con el servidor." })
+      setWaVerifyStatus('error')
     }
     setIsVerifying(false)
   }
@@ -452,7 +463,7 @@ export default function SettingsPage() {
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
       <Script 
         src="https://connect.facebook.net/en_US/sdk.js" 
-        strategy="lazyOnload" 
+        strategy="afterInteractive" 
         onLoad={() => {
           // Llamar FB.init directamente — fbAsyncInit ya fue revisado por el SDK al cargar
           ;(window as any).FB.init({
@@ -904,7 +915,13 @@ export default function SettingsPage() {
                     <button 
                       onClick={handleVerifyWhatsApp}
                       disabled={isVerifying}
-                      className="px-5 py-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all duration-300"
+                      className={`px-5 py-4 border rounded-2xl transition-all duration-300 ${
+                        waVerifyStatus === 'success' 
+                          ? 'text-emerald-500 border-emerald-500/30 bg-emerald-50/50 hover:bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/20' 
+                          : waVerifyStatus === 'error'
+                          ? 'text-red-500 border-red-500/30 bg-red-50/50 hover:bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 dark:hover:bg-red-900/20'
+                          : 'text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
+                      }`}
                     >
                       {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <Wifi size={18} />}
                     </button>
