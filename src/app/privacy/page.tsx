@@ -24,23 +24,36 @@ export default function PrivacyPage() {
           <h1 className="text-5xl md:text-6xl font-display text-[#111111] leading-[1.1] mb-6">
             Política de <span className="italic text-[#F36A2D]">Privacidad</span>
           </h1>
-          <p className="text-[#6F6F6F] text-lg font-light">Última actualización: Abril 2026</p>
+          <p className="text-[#6F6F6F] text-lg font-light">Última actualización: Junio 2026</p>
         </div>
 
         <div className="space-y-12 text-[#111111] leading-relaxed">
           <section className="space-y-4">
-            <h2 className="text-2xl font-display">1. Recolección de Datos</h2>
-            <p className="text-[#6F6F6F]">Recopilamos números telefónicos e historial de mensajes exclusivamente para la operación técnica y contextual del bot. Estos datos se procesan a través de los servidores de Meta y los modelos de análisis (Claude) según la configuración elegida por el usuario de la plataforma.</p>
+            <h2 className="text-2xl font-display">1. Recolección de Datos y Credenciales</h2>
+            <p className="text-[#6F6F6F]">
+              Al utilizar el flujo de registro de WhatsApp (Meta Embedded Signup), recopilamos y almacenamos de forma encriptada las credenciales de acceso de su cuenta de Meta (tokens de acceso de larga duración, IDs de cuenta comercial de WhatsApp y números de teléfono vinculados). Asimismo, recolectamos números telefónicos, nombres de contactos e historial de mensajes exclusivamente para la operación técnica, la visualización en la bandeja de entrada y el entrenamiento y contexto del bot de Inteligencia Artificial.
+            </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-display">2. Uso de la Información</h2>
-            <p className="text-[#6F6F6F]">Sus datos y los datos de sus clientes <strong>nunca</strong> son vendidos, comercializados ni cedidos a terceros para fines publicitarios. Se utilizan estrictamente para facilitar la comunicación entre su empresa y sus clientes finales a través de WhatsApp Cloud API.</p>
+            <h2 className="text-2xl font-display">2. Procesamiento de Mensajes y Plantillas</h2>
+            <p className="text-[#6F6F6F]">
+              Los mensajes enviados y recibidos se procesan a través de los servidores de Meta Cloud API y los modelos de análisis avanzados de Inteligencia Artificial (por ejemplo, Claude) para generar respuestas automáticas. También administramos y almacenamos la estructura de sus plantillas de mensajes (templates) enviadas a revisión ante Meta para la correcta ejecución de campañas y flujos interactivos.
+            </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-display">3. Seguridad de Datos</h2>
-            <p className="text-[#6F6F6F]">Implementamos medidas de seguridad técnicas para proteger sus tokens de acceso y la base de datos de contactos. Todas las conversaciones entre el usuario final y la plataforma se benefician de la seguridad nativa proporcionada por WhatsApp.</p>
+            <h2 className="text-2xl font-display">3. Compartición e Integridad de la Información</h2>
+            <p className="text-[#6F6F6F]">
+              Sus datos comerciales, tokens de autenticación y los chats de sus clientes finales <strong>nunca</strong> son vendidos, compartidos con terceros con fines comerciales ni utilizados para publicidad externa. La información fluye estrictamente de manera segura entre su plataforma de WhatsApp vinculada, nuestra base de datos segura y los proveedores de infraestructura de IA indicados en su configuración de proyecto.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-display">4. Medidas de Seguridad</h2>
+            <p className="text-[#6F6F6F]">
+              Implementamos protocolos avanzados de cifrado y aislamiento de datos para salvaguardar sus credenciales de Meta. Todos los webhooks entrantes están validados con firmas oficiales para asegurar la procedencia y privacidad de cada interacción recibida de sus clientes.
+            </p>
           </section>
         </div>
       </main>

@@ -24,23 +24,36 @@ export default function TermsPage() {
           <h1 className="text-5xl md:text-6xl font-display text-[#111111] leading-[1.1] mb-6">
             Términos de <span className="italic text-[#F36A2D]">Servicio</span>
           </h1>
-          <p className="text-[#6F6F6F] text-lg font-light">Última actualización: Abril 2026</p>
+          <p className="text-[#6F6F6F] text-lg font-light">Última actualización: Junio 2026</p>
         </div>
 
         <div className="space-y-12 text-[#111111] leading-relaxed">
           <section className="space-y-4">
-            <h2 className="text-2xl font-display">1. Uso de la Plataforma</h2>
-            <p className="text-[#6F6F6F]">Abita AI proporciona herramientas de automatización de mensajería integradas con WhatsApp Cloud API. Al usar el servicio, aceptas no utilizarlo para spam, mensajes masivos no solicitados (sin opt-in) o contenido prohibido por las políticas de comercio de Meta.</p>
+            <h2 className="text-2xl font-display">1. Integración con Meta y Cuentas Vinculadas</h2>
+            <p className="text-[#6F6F6F]">
+              Abita AI ofrece capacidades de automatización conectándose directamente con la API de WhatsApp Cloud de Meta. Para utilizar el servicio, debe vincular su propia cuenta comercial de WhatsApp (WABA). Al vincularla, acepta cumplir con las políticas comerciales de Meta. Usted es el único responsable de cualquier costo o tarifa facturada por Meta en relación con el uso de su WABA.
+            </p>
           </section>
           
           <section className="space-y-4">
-            <h2 className="text-2xl font-display">2. Responsabilidad de Contenido</h2>
-            <p className="text-[#6F6F6F]">El usuario asume la responsabilidad total y exclusiva de todo el contenido enviado a través de la plataforma. Abita AI actúa como interfaz tecnológica y no asume responsabilidad por las respuestas generadas por los modelos de Inteligencia Artificial (LLMs) configurados por el usuario.</p>
+            <h2 className="text-2xl font-display">2. Envío de Campañas y Gestión de Plantillas</h2>
+            <p className="text-[#6F6F6F]">
+              Al utilizar el módulo de campañas y la creación de plantillas de mensajes, se compromete a enviar mensajes únicamente a usuarios que hayan proporcionado un consentimiento explícito (opt-in). No se permite el uso del servicio para spam, fraudes o envío de contenido inapropiado que infrinja las políticas de WhatsApp.
+            </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-display">3. Suspensión de Servicio</h2>
-            <p className="text-[#6F6F6F]">Nos reservamos el derecho de suspender o inhabilitar inmediatamente cualquier cuenta que viole las políticas comerciales de Meta, que acumule altos niveles de bloqueos por parte de los destinatarios, o que intente eludir las pausas de seguridad implementadas en la plataforma.</p>
+            <h2 className="text-2xl font-display">3. Responsabilidad de la Automatización con Inteligencia Artificial</h2>
+            <p className="text-[#6F6F6F]">
+              El usuario es responsable exclusivo de la configuración del agente de IA, los datos de entrenamiento cargados y las instrucciones del bot. Abita AI actúa como proveedor técnico de la interfaz y no asume responsabilidad alguna por las respuestas generadas de manera autónoma por los modelos de lenguaje (LLMs) ni por los compromisos acordados con sus clientes mediante el chat automatizado.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-display">4. Suspensión de la Cuenta</h2>
+            <p className="text-[#6F6F6F]">
+              Nos reservamos el derecho de suspender la cuenta de forma temporal o definitiva si detectamos un índice elevado de reportes de spam por parte de los destinatarios finales, si su WABA es inhabilitada por Meta, o ante cualquier acción que comprometa la estabilidad de nuestra plataforma de mensajería.
+            </p>
           </section>
         </div>
       </main>
