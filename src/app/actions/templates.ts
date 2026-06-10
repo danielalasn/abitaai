@@ -100,18 +100,33 @@ export async function createMetaTemplate(input: CreateTemplateInput): Promise<{ 
 
     // Header component
     if (input.header) {
-      const header: MetaTemplateComponent = {
+      const header: any = {
         type: 'HEADER',
         format: input.header.format,
       };
       if (input.header.format === 'TEXT' && input.header.text) {
         header.text = input.header.text;
+      } else if (input.header.format === 'IMAGE') {
+        header.example = { header_url: ['https://abitaai.com/favicon.ico'] };
+      } else if (input.header.format === 'DOCUMENT') {
+        header.example = { header_url: ['https://abitaai.com/privacy'] };
+      } else if (input.header.format === 'VIDEO') {
+        // Dummy video URL if needed, but we might just skip it or provide a generic one
       }
       components.push(header);
     }
 
     // Body component (required)
-    components.push({ type: 'BODY', text: input.body });
+    const varMatches = input.body.match(/\{\{(\d+)\}\}/g) || [];
+    const uniqueVars = [...new Set(varMatches.map(m => m.replace(/[{}]/g, '')))].sort((a, b) => Number(a) - Number(b));
+    
+    const bodyComponent: any = { type: 'BODY', text: input.body };
+    if (uniqueVars.length > 0) {
+      bodyComponent.example = {
+        body_text: [uniqueVars.map(v => `ejemplo_${v}`)]
+      };
+    }
+    components.push(bodyComponent);
 
     // Footer
     if (input.footer) {
