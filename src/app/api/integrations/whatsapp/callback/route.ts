@@ -43,6 +43,46 @@ export async function POST(req: NextRequest) {
     console.log('[WA Embedded Signup] code:', code?.substring(0, 20) + '...')
     console.log('[WA Embedded Signup] waba_id:', waba_id, '| phone_number_id:', phone_number_id)
 
+    // BACKEND FALLBACK: Si el frontend no pudo capturar waba_id o phone_number_id
+    let finalWabaId = waba_id;
+    let finalPhoneId = phone_number_id;
+
+    if (!finalWabaId || !finalPhoneId) {
+      console.log('[WA Embedded Signup] Fallback: Intentando recuperar IDs...');
+      if (!finalWabaId) {
+        // Buscar el webhook PARTNER_APP_INSTALLED más reciente (últimos 5 min)
+        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const recentWebhooks = await prisma.webhookEvent.findMany({
+          where: { provider: 'whatsapp', createdAt: { gte: fiveMinsAgo } },
+          orderBy: { createdAt: 'desc' },
+          take: 10
+        });
+        for (const wh of recentWebhooks) {
+          const payload = wh.payload as any;
+          const wabaInfo = payload?.entry?.[0]?.changes?.[0]?.value?.waba_info;
+          if (payload?.entry?.[0]?.changes?.[0]?.value?.event === 'PARTNER_APP_INSTALLED' && wabaInfo?.waba_id) {
+            finalWabaId = wabaInfo.waba_id;
+            console.log('[WA Embedded Signup] waba_id recuperado del webhook:', finalWabaId);
+            break;
+          }
+        }
+      }
+
+      if (finalWabaId && !finalPhoneId && SYSTEM_USER_TOKEN) {
+        try {
+          const phonesRes = await fetch(`https://graph.facebook.com/${API_VERSION}/${finalWabaId}/phone_numbers?access_token=${SYSTEM_USER_TOKEN}`);
+          const phonesData = await phonesRes.json();
+          if (phonesData.data && phonesData.data.length > 0) {
+            phonesData.data.sort((a: any, b: any) => new Date(b.last_onboarded_time || 0).getTime() - new Date(a.last_onboarded_time || 0).getTime());
+            finalPhoneId = phonesData.data[0].id;
+            console.log('[WA Embedded Signup] phone_number_id recuperado de la API:', finalPhoneId);
+          }
+        } catch (e) {
+          console.error('[WA Embedded Signup] Error recuperando phone_number_id:', e);
+        }
+      }
+    }
+
     // 1. Intercambiar code por short-lived token
     const tokenUrl = new URL(`https://graph.facebook.com/${API_VERSION}/oauth/access_token`)
     tokenUrl.searchParams.set('client_id', APP_ID)
@@ -76,8 +116,8 @@ export async function POST(req: NextRequest) {
 
     // 3. Suscribir la WABA del cliente a los webhooks de Abita
     //    Usamos el SYSTEM_USER_TOKEN (no el del cliente) para suscribir
-    if (waba_id && SYSTEM_USER_TOKEN) {
-      const subRes = await fetch(`https://graph.facebook.com/${API_VERSION}/${waba_id}/subscribed_apps`, {
+    if (finalWabaId && SYSTEM_USER_TOKEN) {
+      const subRes = await fetch(`https://graph.facebook.com/${API_VERSION}/${finalWabaId}/subscribed_apps`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${SYSTEM_USER_TOKEN}`,
@@ -104,8 +144,8 @@ export async function POST(req: NextRequest) {
       where: { id: project.id },
       data: {
         whatsappToken:      encrypt(longLivedToken),
-        whatsappPhoneId:    phone_number_id || '',
-        whatsappBusinessId: waba_id || business_id || '',
+        whatsappPhoneId:    finalPhoneId || '',
+        whatsappBusinessId: finalWabaId || business_id || '',
       },
     })
 
