@@ -107,13 +107,9 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   // Tasa de Autonomía real: Leads que el bot maneja vs el total
   const autonomyRate = totalLeads > 0 ? Math.round((botActiveLeads / totalLeads) * 100) : 0
 
-  // Métricas de consumo de tokens y costo IA (Claude Sonnet 4.5)
-  const AI_PRICING = {
-    inputPerMillion: 3.00,
-    outputPerMillion: 15.00,
-  }
-
-  const tokenAgg = await prisma.message.aggregate({
+  // Métricas de consumo de tokens y costo IA (Claude Sonnet 4.5 vs Gemini Fallback)
+  const tokenGroups = await prisma.message.groupBy({
+    by: ['agentName'],
     where: {
       role: 'assistant',
       chat: {
@@ -128,13 +124,34 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
       inputTokens: true,
       outputTokens: true,
     }
-  })
+  });
 
-  const totalInputTokens = tokenAgg._sum.inputTokens || 0
-  const totalOutputTokens = tokenAgg._sum.outputTokens || 0
-  const estimatedAiCostUsd = 
-    (totalInputTokens / 1_000_000) * AI_PRICING.inputPerMillion +
-    (totalOutputTokens / 1_000_000) * AI_PRICING.outputPerMillion
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let estimatedInputCostUsd = 0;
+  let estimatedOutputCostUsd = 0;
+
+  tokenGroups.forEach(group => {
+    const input = group._sum.inputTokens || 0;
+    const output = group._sum.outputTokens || 0;
+    
+    totalInputTokens += input;
+    totalOutputTokens += output;
+
+    const isGemini = group.agentName?.endsWith('(Gemini)') || false;
+    
+    if (isGemini) {
+      // Gemini 1.5 Flash: $0.075 / 1M input, $0.30 / 1M output
+      estimatedInputCostUsd += (input / 1_000_000) * 0.075;
+      estimatedOutputCostUsd += (output / 1_000_000) * 0.30;
+    } else {
+      // Claude Sonnet 4.5: $3.00 / 1M input, $15.00 / 1M output
+      estimatedInputCostUsd += (input / 1_000_000) * 3.00;
+      estimatedOutputCostUsd += (output / 1_000_000) * 15.00;
+    }
+  });
+
+  const estimatedAiCostUsd = estimatedInputCostUsd + estimatedOutputCostUsd;
 
   return {
     totalLeads,
@@ -160,7 +177,9 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     totalInputTokens,
     totalOutputTokens,
     estimatedAiCostUsd,
-    dailyTrends: [] // To be implemented if we want complex charts, or we can leave empty and add later
-  }
+    estimatedInputCostUsd,
+    estimatedOutputCostUsd,
+    dailyTrends: []
+  };
 }
 

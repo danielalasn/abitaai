@@ -31,6 +31,8 @@ type Analytics = {
   totalInputTokens: number;
   totalOutputTokens: number;
   estimatedAiCostUsd: number;
+  estimatedInputCostUsd: number;
+  estimatedOutputCostUsd: number;
 } | null
 
 const CACHE_KEY = 'analytics_date_range'
@@ -225,8 +227,8 @@ export default function AnalyticsDashboard() {
                 <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">
                   {formatCost(data?.estimatedAiCostUsd || 0)}
                 </h3>
-                <p className="text-xs text-[#6F6F6F] mt-2">
-                  In: {formatTokens(data?.totalInputTokens || 0)} | Out: {formatTokens(data?.totalOutputTokens || 0)}
+                <p className="text-[11px] text-[#6F6F6F] mt-2 font-medium">
+                  Entrada: {formatCost(data?.estimatedInputCostUsd || 0)} ({formatTokens(data?.totalInputTokens || 0)}) | Salida: {formatCost(data?.estimatedOutputCostUsd || 0)} ({formatTokens(data?.totalOutputTokens || 0)})
                 </p>
               </div>
             </div>
