@@ -20,6 +20,7 @@ async function getProjectWithCredentials() {
  * Fetch all Meta-approved templates for the project's WABID.
  */
 export async function fetchMetaTemplates() {
+  noStore();
   try {
     const project = await getProjectWithCredentials() as any;
     if (!project.whatsappBusinessId || !project.whatsappToken) {
