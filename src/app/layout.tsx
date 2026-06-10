@@ -5,6 +5,9 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 export const metadata: Metadata = {
   title: "abita.ai",
   description: "Plataforma de ventas y atención al cliente con Inteligencia Artificial",
+  other: {
+    "facebook-domain-verification": "iunrwlqy60te8rusq9asd8lxke9qf1",
+  },
 };
 
 export const viewport: Viewport = {
