@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import Anthropic from '@anthropic-ai/sdk'
 import { getCurrentProject } from '@/lib/auth-server'
 import { encrypt, decrypt } from '@/lib/encryption'
+import { AI_MODELS } from '@/lib/models'
 
 // ──────────────────────────────────────────────
 // Project-level: WhatsApp Config & Agents list
@@ -211,7 +212,7 @@ export async function compileKnowledgeWithAI(text: string) {
   });
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929", 
+    model: AI_MODELS.CLAUDE_MAIN, 
     max_tokens: 8192,
     system: `You are an expert Data Engineer. 
 Your ONLY job is to take the unstructured text provided by the user and convert it into a clean, highly structured JSON object. 

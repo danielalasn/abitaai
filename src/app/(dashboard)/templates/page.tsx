@@ -216,7 +216,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [headerText, setHeaderText] = useState('');
   const [body, setBody] = useState('');
   const [footer, setFooter] = useState('');
-  const [buttons, setButtons] = useState<Array<{ type: ButtonType; text: string; url?: string; phone?: string }>>([]);
+  const [buttons, setButtons] = useState<Array<{ type: ButtonType; text: string; url?: string; phone?: string; urlExample?: string }>>([]);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -245,6 +245,14 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
       setError('El nombre y el cuerpo son obligatorios.');
       return;
     }
+
+    for (const btn of buttons) {
+      if (btn.type === 'URL' && btn.url?.includes('{{') && !btn.urlExample?.trim()) {
+        setError(`El ejemplo de URL es obligatorio para el botón "${btn.text || 'URL'}" porque contiene variables.`);
+        return;
+      }
+    }
+
     setError(null);
     setIsSubmitting(true);
 
@@ -258,12 +266,16 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
         format: headerFormat as any,
         text: headerFormat === 'TEXT' ? headerText : undefined,
       } : undefined,
-      buttons: buttons.length > 0 ? buttons.map(b => ({
-        type: b.type,
-        text: b.text,
-        url: b.type === 'URL' ? b.url : undefined,
-        phone_number: b.type === 'PHONE_NUMBER' ? b.phone : undefined,
-      })) : undefined,
+      buttons: buttons.length > 0 ? buttons.map(b => {
+        const hasVariable = b.url?.includes('{{');
+        return {
+          type: b.type,
+          text: b.text,
+          url: b.type === 'URL' ? b.url : undefined,
+          phone_number: b.type === 'PHONE_NUMBER' ? b.phone : undefined,
+          example: (b.type === 'URL' && hasVariable && b.urlExample) ? [b.urlExample] : undefined,
+        };
+      }) : undefined,
     };
 
     const result = await createMetaTemplate(input);
@@ -493,19 +505,38 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                       </div>
 
                       {btn.type === 'URL' && (
-                        <div>
-                          <label className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-widest block mb-1">URL</label>
-                          <input
-                            type="url"
-                            value={btn.url || ''}
-                            onChange={e => {
-                              const copy = [...buttons];
-                              copy[i] = { ...copy[i], url: e.target.value };
-                              setButtons(copy);
-                            }}
-                            placeholder="https://..."
-                            className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D]"
-                          />
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-widest block mb-1">URL</label>
+                            <input
+                              type="url"
+                              value={btn.url || ''}
+                              onChange={e => {
+                                const copy = [...buttons];
+                                copy[i] = { ...copy[i], url: e.target.value };
+                                setButtons(copy);
+                              }}
+                              placeholder="https://..."
+                              className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D]"
+                            />
+                          </div>
+                          {btn.url?.includes('{{') && (
+                            <div className="space-y-1 animate-in slide-in-from-top-1 duration-200">
+                              <label className="text-[9px] font-black text-blue-500 uppercase tracking-widest block mb-1">Ejemplo de URL con variable *</label>
+                              <input
+                                type="url"
+                                value={btn.urlExample || ''}
+                                onChange={e => {
+                                  const copy = [...buttons];
+                                  copy[i] = { ...copy[i], urlExample: e.target.value };
+                                  setButtons(copy);
+                                }}
+                                placeholder="e.g. https://example.com/1234"
+                                className="w-full p-2 rounded-lg border border-blue-500/30 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-blue-500"
+                              />
+                              <p className="text-[8px] text-[#6F6F6F] mt-0.5">Meta requiere un ejemplo real de la URL con la variable reemplazada.</p>
+                            </div>
+                          )}
                         </div>
                       )}
 

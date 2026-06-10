@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Megaphone, UploadCloud, Users, FileText, Send, Loader2,
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
   Sparkles, Download, Clock, Search, X, AlertCircle
 } from 'lucide-react';
-import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign } from '@/app/actions/campaigns';
+import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign, updateCampaignStatus, prepareRetryFailed } from '@/app/actions/campaigns';
 import { uploadImageAction } from '@/app/actions/storage';
 
 // ──────────────────────────────────────────────
@@ -24,7 +24,23 @@ function extractBodyVars(template: MetaTemplate): string[] {
   return [...new Set(matches.map(m => m.replace(/[{}]/g, '')))].sort((a, b) => Number(a) - Number(b));
 }
 
-// ──────────────────────────────────────────────
+// Extract buttons with URL variables
+function extractButtonVars(template: MetaTemplate): { buttonIndex: number; label: string }[] {
+  const buttonsComp = template.components.find(c => c.type === 'BUTTONS');
+  if (!buttonsComp || !buttonsComp.buttons) return [];
+  
+  const vars: { buttonIndex: number; label: string }[] = [];
+  buttonsComp.buttons.forEach((btn, index) => {
+    if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
+      vars.push({
+        buttonIndex: index,
+        label: btn.text || `Enlace ${index + 1}`
+      });
+    }
+  });
+  return vars;
+}
+
 // Step badges
 // ──────────────────────────────────────────────
 function StepBadge({ n, label, active, done, onClick }: { n: number, label: string, active: boolean, done: boolean, onClick?: () => void }) {
@@ -87,6 +103,11 @@ export default function CampaignsPage() {
   const [activeLogs, setActiveLogs] = useState<any[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<any | null>(null);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  // Control de Pausa y Reanudación de Campañas
+  const isPausedRef = useRef(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [runningCampaignId, setRunningCampaignId] = useState<string | null>(null);
 
   useEffect(() => { loadCampaigns(); }, []);
 
@@ -164,20 +185,95 @@ export default function CampaignsPage() {
     setHeaderUrl(''); // Limpiar cualquier URL previa
 
     const vars = extractBodyVars(t);
+    const btnVars = extractButtonVars(t);
     const initial: Record<string, string> = {};
     vars.forEach(v => { initial[v] = ''; });
+    btnVars.forEach(bv => { initial[`button_${bv.buttonIndex}`] = ''; });
     setVariableMapping(initial);
   };
 
   const bodyVars = selectedTemplate ? extractBodyVars(selectedTemplate) : [];
+  const buttonVars = selectedTemplate ? extractButtonVars(selectedTemplate) : [];
   const bodyText = selectedTemplate?.components.find(c => c.type === 'BODY')?.text ?? '';
   const needsImageHeader = selectedTemplate?.components.find(c => c.type === 'HEADER' && (c as any).format === 'IMAGE');
+
+  const executeSendingLoop = async (
+    campaignId: string, 
+    leads: any[], 
+    processedPhones: Set<string>,
+    isBotActiveVal: boolean,
+    templateBodyText: string,
+    templateHeaderUrl: string,
+    dryRunVal: boolean
+  ) => {
+    setRunningCampaignId(campaignId);
+    isPausedRef.current = false;
+    setIsPaused(false);
+
+    try {
+      for (let i = 0; i < leads.length; i++) {
+        // Verificar si se solicitó pausa
+        if (isPausedRef.current) {
+          await updateCampaignStatus(campaignId, 'PAUSED');
+          loadCampaigns();
+          setRunningCampaignId(null);
+          return false; // loop interrumpido
+        }
+
+        const lead = leads[i];
+        const rawPhone = lead['#'];
+        if (rawPhone) {
+          let cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
+          if (cleanPhone.length === 8) {
+            cleanPhone = '503' + cleanPhone;
+          }
+          // Si ya se procesó con éxito, omitir
+          if (processedPhones.has(cleanPhone)) {
+            setProgress(p => ({ ...p, current: i + 1 }));
+            continue;
+          }
+        }
+
+        await processCampaignLead(campaignId, i, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
+        setProgress({ current: i + 1, total: leads.length });
+
+        // Retardo de seguridad entre mensajes
+        if (i < leads.length - 1) {
+          let delayTime = dryRunVal ? 50 : 500;
+          if ((i + 1) % 21 === 0) delayTime = dryRunVal ? 200 : 3000;
+          else if ((i + 1) % 3 === 0) delayTime = dryRunVal ? 100 : 1000;
+          
+          // Verificar pausa periódicamente durante la espera
+          const steps = Math.ceil(delayTime / 100);
+          for (let s = 0; s < steps; s++) {
+            if (isPausedRef.current) {
+              await updateCampaignStatus(campaignId, 'PAUSED');
+              loadCampaigns();
+              setRunningCampaignId(null);
+              return false;
+            }
+            await new Promise(r => setTimeout(r, 100));
+          }
+        }
+      }
+
+      await finalizeCampaign(campaignId);
+      loadCampaigns();
+      setRunningCampaignId(null);
+      return true; // completado
+    } catch (err) {
+      console.error("Error en loop de envíos:", err);
+      setRunningCampaignId(null);
+      throw err;
+    }
+  };
 
   const handleLaunch = async () => {
     if (!campaignName.trim() || !selectedTemplate) return;
     const missing = bodyVars.filter(v => !variableMapping[v]);
-    if (missing.length > 0) {
-      alert(`Asigna una columna CSV para cada variable: {{${missing.join('}}, {{')}}}`);
+    const missingButtons = buttonVars.filter(bv => !variableMapping[`button_${bv.buttonIndex}`]);
+    if (missing.length > 0 || missingButtons.length > 0) {
+      alert(`Asigna una columna CSV para cada variable del cuerpo y de los botones.`);
       return;
     }
 
@@ -198,23 +294,21 @@ export default function CampaignsPage() {
         isBotActive
       );
 
-      // Orchestrate the loop from the client-side to bypass Vercel timeouts
-      for (let i = 0; i < parsedLeads.length; i++) {
-        await processCampaignLead(campaignData.id, i, isBotActive, bodyText, headerUrl, isDryRun);
-        setProgress({ current: i + 1, total: parsedLeads.length });
-        
-        // Security Cadence (Delays) - Keep delays even in dry run to test actual loop timing
-        if (i < parsedLeads.length - 1) {
-          let delayTime = isDryRun ? 50 : 500; // MUCH faster in dry run, but keep 50ms for basic flow test
-          if ((i + 1) % 21 === 0) delayTime = isDryRun ? 200 : 3000;
-          else if ((i + 1) % 3 === 0) delayTime = isDryRun ? 100 : 1000;
-          await new Promise(r => setTimeout(r, delayTime));
-        }
+      const completed = await executeSendingLoop(
+        campaignData.id,
+        parsedLeads,
+        new Set<string>(), // sin envíos previos
+        isBotActive,
+        bodyText,
+        headerUrl || '',
+        isDryRun
+      );
+
+      if (completed) {
+        setSuccessStatus(`¡Campaña lanzada con éxito!`);
+      } else {
+        setSuccessStatus(`Campaña guardada en pausa.`);
       }
-
-      await finalizeCampaign(campaignData.id);
-
-      setSuccessStatus(`¡Campaña lanzada con éxito!`);
       setStep(1);
       setCampaignName('');
       setParsedLeads([]);
@@ -223,6 +317,100 @@ export default function CampaignsPage() {
       setTimeout(() => { loadCampaigns(); setSuccessStatus(null); }, 2000);
     } catch (err: any) {
       alert('Error: ' + err.message);
+    } finally {
+      setIsSending(false);
+      setProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handlePauseCampaign = async () => {
+    isPausedRef.current = true;
+    setIsPaused(true);
+  };
+
+  const handleResumeCampaign = async (campaign: any) => {
+    setIsSending(true);
+    setSuccessStatus(null);
+    setProgress({ current: 0, total: campaign.leadCount || 100 });
+    
+    try {
+      await updateCampaignStatus(campaign.id, 'RUNNING');
+      
+      const logs = await fetchCampaignLogs(campaign.id);
+      const processed = new Set<string>();
+      logs.forEach((l: any) => {
+        if (l.status !== 'FAILED') {
+          processed.add(l.phone);
+        }
+      });
+
+      const leads = JSON.parse(campaign.csvData || '[]');
+      setProgress({ current: processed.size, total: leads.length });
+
+      const completed = await executeSendingLoop(
+        campaign.id,
+        leads,
+        processed,
+        false,
+        '',
+        '',
+        false
+      );
+
+      if (completed) {
+        setSuccessStatus(`¡Campaña reanudada y completada con éxito!`);
+      } else {
+        setSuccessStatus(`Campaña pausada.`);
+      }
+      setTimeout(() => { loadCampaigns(); setSuccessStatus(null); }, 2000);
+    } catch (err: any) {
+      alert('Error al reanudar: ' + err.message);
+    } finally {
+      setIsSending(false);
+      setProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handleRetryFailedCampaign = async (campaign: any) => {
+    setIsSending(true);
+    setSuccessStatus(null);
+    setProgress({ current: 0, total: campaign.leadCount || 100 });
+    
+    try {
+      // 1. Eliminar fallidos en base de datos y poner estado en RUNNING
+      await prepareRetryFailed(campaign.id);
+      
+      // 2. Cargar logs exitosos restantes
+      const logs = await fetchCampaignLogs(campaign.id);
+      const processed = new Set<string>();
+      logs.forEach((l: any) => {
+        if (l.status !== 'FAILED') {
+          processed.add(l.phone);
+        }
+      });
+
+      const leads = JSON.parse(campaign.csvData || '[]');
+      setProgress({ current: processed.size, total: leads.length });
+
+      // 3. Lanzar loop
+      const completed = await executeSendingLoop(
+        campaign.id,
+        leads,
+        processed,
+        false,
+        '',
+        '',
+        false
+      );
+
+      if (completed) {
+        setSuccessStatus(`¡Re-envío completado con éxito!`);
+      } else {
+        setSuccessStatus(`Campaña pausada.`);
+      }
+      setTimeout(() => { loadCampaigns(); setSuccessStatus(null); }, 2000);
+    } catch (err: any) {
+      alert('Error al re-enviar fallidos: ' + err.message);
     } finally {
       setIsSending(false);
       setProgress({ current: 0, total: 0 });
@@ -399,6 +587,9 @@ export default function CampaignsPage() {
                           }`}>
                             {t.category}
                           </span>
+                          <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                            {t.language}
+                          </span>
                         </div>
                         <p className="text-xs text-[#6F6F6F] line-clamp-1">{t.components.find(c => c.type === 'BODY')?.text}</p>
                       </button>
@@ -523,6 +714,7 @@ export default function CampaignsPage() {
                       <div key={v} className="flex items-center gap-3">
                         <span className="text-xs font-mono font-bold w-12 text-emerald-500">{'{{'}{v}{'}}'}</span>
                         <select 
+                          value={variableMapping[v] || ''}
                           onChange={e => setVariableMapping(p => ({ ...p, [v]: e.target.value }))}
                           className="flex-1 p-2 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
                         >
@@ -532,6 +724,27 @@ export default function CampaignsPage() {
                       </div>
                     ))}
                   </div>
+
+                  {buttonVars.length > 0 && (
+                    <div className="space-y-3 mt-4 pt-4 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 animate-in slide-in-from-top-2 duration-300">
+                      <p className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest">Variables de Botones</p>
+                      {buttonVars.map(bv => (
+                        <div key={`button_${bv.buttonIndex}`} className="flex items-center gap-3">
+                          <span className="text-xs font-bold w-28 text-blue-500 truncate" title={`Botón: ${bv.label}`}>
+                            {bv.label}
+                          </span>
+                          <select 
+                            value={variableMapping[`button_${bv.buttonIndex}`] || ''}
+                            onChange={e => setVariableMapping(p => ({ ...p, [`button_${bv.buttonIndex}`]: e.target.value }))}
+                            className="flex-1 p-2 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
+                          >
+                            <option value="">— Seleccionar columna —</option>
+                            {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center justify-between p-4 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
@@ -635,14 +848,33 @@ export default function CampaignsPage() {
                     <div className="flex items-center gap-3">
                       <p className="text-[10px] text-[#6F6F6F]">{new Date(c.createdAt).toLocaleDateString()}</p>
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
-                        c.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        c.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                        c.status === 'PAUSED' ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300' :
+                        'bg-amber-100 text-amber-700'
                       }`}>
-                        {c.status === 'COMPLETED' ? 'Completado' : 'Ejecutando'}
+                        {c.status === 'COMPLETED' ? 'Completado' :
+                         c.status === 'PAUSED' ? 'Pausado' : 'Ejecutando'}
                       </span>
                       <span className="text-[10px] text-[#6F6F6F] font-bold">{c.leadCount} leads</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {(c.status === 'PAUSED' || c.status === 'RUNNING') && (
+                      <button 
+                        onClick={() => handleResumeCampaign(c)}
+                        className="px-3 py-1.5 bg-blue-500/10 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
+                      >
+                        Reanudar
+                      </button>
+                    )}
+                    {c.status === 'COMPLETED' && (
+                      <button 
+                        onClick={() => handleRetryFailedCampaign(c)}
+                        className="px-3 py-1.5 bg-amber-500/10 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all"
+                      >
+                        Reintentar Fallidos
+                      </button>
+                    )}
                     <button 
                       onClick={async () => {
                         setIsLoadingLogs(true);
@@ -812,6 +1044,43 @@ export default function CampaignsPage() {
                     CERRAR
                  </button>
               </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Progreso de Envío / Pausa */}
+      {isSending && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="bg-white dark:bg-[#111111] w-full max-w-md rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 p-8 flex flex-col items-center gap-6 animate-in zoom-in-95 duration-200">
+            <div className="h-16 w-16 bg-emerald-500/10 text-emerald-600 rounded-3xl flex items-center justify-center animate-pulse">
+              <Loader2 size={32} className="animate-spin" />
+            </div>
+            
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-[#111111] dark:text-[#EDE9E0]">
+                {isPaused ? 'Pausando envío...' : 'Procesando Difusión...'}
+              </h3>
+              <p className="text-sm text-[#6F6F6F]">
+                Enviando {progress.current} de {progress.total} mensajes
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 h-3 rounded-full overflow-hidden relative shadow-inner">
+              <div 
+                className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
+              />
+            </div>
+
+            <button
+              disabled={isPaused}
+              onClick={handlePauseCampaign}
+              className="mt-2 w-full py-3 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition-colors uppercase tracking-widest text-xs disabled:opacity-40"
+            >
+              {isPaused ? 'PAUSANDO...' : 'PAUSAR CAMPAÑA'}
+            </button>
           </div>
         </div>
       )}

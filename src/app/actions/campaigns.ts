@@ -74,7 +74,13 @@ export async function launchCampaignAction(
       csvData: JSON.stringify(leadsData),
       templateName,
       templateCategory,
-      variableMapping: JSON.stringify(variableMapping),
+      languageCode,
+      variableMapping: JSON.stringify({
+        ...variableMapping,
+        __headerUrl: headerUrl || '',
+        __templateText: templateText || '',
+        __botActive: botActive ? 'true' : 'false'
+      }),
     }
   });
 
@@ -120,10 +126,26 @@ export async function processCampaignLead(
 
   // Recurso: extraer variables en un formato seguro si ya no las pasan directo del form
   const templateName = campaign.templateName;
-  const templateText = customTemplateText || "Plantilla WhatsApp";
-  const languageCode = "es";
-  const variableMapping: Record<string, string> = JSON.parse(campaign.variableMapping || '{}');
-  const headerUrl = customHeaderUrl;
+  
+  const rawMapping = JSON.parse(campaign.variableMapping || '{}');
+  const variableMapping: Record<string, string> = {};
+  let headerUrl = customHeaderUrl;
+  let templateText = customTemplateText;
+  let realBotActive = botActive;
+  let realIsDryRun = isDryRun;
+
+  Object.entries(rawMapping).forEach(([k, v]) => {
+    if (k === '__headerUrl' && !headerUrl) headerUrl = v as string;
+    if (k === '__templateText' && !templateText) templateText = v as string;
+    if (k === '__botActive') realBotActive = v === 'true';
+    if (k === '__isDryRun') realIsDryRun = v === 'true';
+    if (!k.startsWith('__')) {
+      variableMapping[k] = v as string;
+    }
+  });
+
+  if (!templateText) templateText = "Plantilla WhatsApp";
+  const languageCode = campaign.languageCode || "es";
 
   try {
     const rawPhone = leadData['#'];
@@ -138,13 +160,40 @@ export async function processCampaignLead(
     }
 
     // 1. Build components y preview
-    const paramEntries = Object.entries(variableMapping).sort(([a], [b]) => Number(a) - Number(b));
-    const bodyParams = paramEntries.map(([, colName]) => ({
+    const bodyEntries = Object.entries(variableMapping)
+      .filter(([k]) => !k.startsWith('button_'))
+      .sort(([a], [b]) => Number(a) - Number(b));
+
+    const bodyParams = bodyEntries.map(([, colName]) => ({
       type: 'text' as const,
       text: String(leadData[colName] ?? ''),
     }));
 
     const components: any[] = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
+
+    // Process button URL parameters
+    const buttonParamsMap: Record<string, string> = {};
+    Object.entries(variableMapping).forEach(([k, colName]) => {
+      if (k.startsWith('button_')) {
+        const btnIdx = k.replace('button_', '');
+        buttonParamsMap[btnIdx] = String(leadData[colName] ?? '');
+      }
+    });
+
+    Object.entries(buttonParamsMap).forEach(([btnIdxStr, val]) => {
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index: btnIdxStr,
+        parameters: [
+          {
+            type: 'text',
+            text: val,
+          },
+        ],
+      });
+    });
+
     let realUrl: string | undefined = undefined;
     if (headerUrl) {
       const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
@@ -155,7 +204,7 @@ export async function processCampaignLead(
     }
 
     let previewText = templateText;
-    paramEntries.forEach(([k, col]) => {
+    bodyEntries.forEach(([k, col]) => {
         const val = leadData[col] ?? '';
         previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
     });
@@ -179,13 +228,13 @@ export async function processCampaignLead(
 
     const chat = await prisma.chat.upsert({
       where: { leadId: lead.id },
-      update: { botActive: botActive, lastActiveAt: new Date() },
-      create: { leadId: lead.id, botActive: botActive }
+      update: { botActive: realBotActive, lastActiveAt: new Date() },
+      create: { leadId: lead.id, botActive: realBotActive }
     });
 
     // 3. Envío Meta o Simulacro
     let waResult;
-    if (isDryRun) {
+    if (realIsDryRun) {
       console.log(`[DRY-RUN] Simulando envío a ${cleanPhone}`);
       waResult = { 
         success: true, 
@@ -319,4 +368,42 @@ export async function fetchCampaignLogs(campaignId: string) {
     where: { campaignId },
     orderBy: { createdAt: 'desc' }
   });
+}
+
+export async function updateCampaignStatus(campaignId: string, status: string) {
+  const project = await getCurrentProject();
+  if (!project) throw new Error("Unauthenticated");
+  
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign || campaign.projectId !== project.id) throw new Error("Acceso denegado");
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { status }
+  });
+  revalidatePath('/campaigns');
+}
+
+export async function prepareRetryFailed(campaignId: string) {
+  const project = await getCurrentProject();
+  if (!project) throw new Error("Unauthenticated");
+  
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign || campaign.projectId !== project.id) throw new Error("Acceso denegado");
+
+  // Eliminar los logs fallidos de esta campaña
+  await prisma.campaignLog.deleteMany({
+    where: {
+      campaignId,
+      status: 'FAILED'
+    }
+  });
+
+  // Poner el estado de la campaña en RUNNING
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { status: 'RUNNING' }
+  });
+
+  revalidatePath('/campaigns');
 }

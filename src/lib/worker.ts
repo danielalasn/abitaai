@@ -118,7 +118,8 @@ export function initWorker() {
             aiInputText,
             history.map(m => ({ role: m.role, content: m.content })),
             chatDetails.lead.name || metadata.profileName || 'Desconocido',
-            chatDetails.lead.projectId
+            chatDetails.lead.projectId,
+            chatDetails.lead.agentId ?? undefined
           );
 
           if (botData && botData.reply) {

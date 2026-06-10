@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 
 import { getCurrentProject } from '@/lib/auth-server'
+import { compileKnowledgeWithAI } from './settings'
 
 export async function getUnansweredQuestions() {
   const project = await getCurrentProject();
@@ -70,10 +71,26 @@ export async function answerAndTrain(id: string, answer: string) {
   const newFaqEntry = `\nP: ${questionRecord.question}\nR: ${answer}`;
   const updatedFaq = currentFaq + newFaqEntry;
 
-  // Actualizar FAQ del agente
+  // Actualizar base de conocimientos (raw y compilada) conservando la información anterior
+  const currentKnowledgeRaw = agent.knowledgeRaw || "";
+  const newKnowledgeEntry = `\n\nPregunta: ${questionRecord.question}\nRespuesta: ${answer}`;
+  const updatedKnowledgeRaw = currentKnowledgeRaw ? (currentKnowledgeRaw + newKnowledgeEntry) : newKnowledgeEntry.trim();
+
+  let updatedKnowledgeData = agent.knowledgeData || "";
+  try {
+    updatedKnowledgeData = await compileKnowledgeWithAI(updatedKnowledgeRaw);
+  } catch (error) {
+    console.error("Error al compilar knowledge base durante el entrenamiento:", error);
+  }
+
+  // Actualizar agente con FAQ, Knowledge Raw y Knowledge Data
   await prisma.agent.update({
     where: { id: agent.id },
-    data: { faq: updatedFaq }
+    data: { 
+      faq: updatedFaq,
+      knowledgeRaw: updatedKnowledgeRaw,
+      knowledgeData: updatedKnowledgeData
+    }
   });
 
   // Marcar como resuelta

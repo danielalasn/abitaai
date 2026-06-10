@@ -178,6 +178,7 @@ export default function InboxPage() {
   const pendingOptimistic = useRef<Set<string>>(new Set());
   const activeChatIdRef = useRef<string | null>(null);
   const lastRequestedId = useRef<string | null>(null);
+  const pollIntervalRef = useRef(3000);
 
   // Sincronizar el Ref con el ID activo
   useEffect(() => {
@@ -339,11 +340,18 @@ export default function InboxPage() {
           setChatsCache(prev => ({ ...prev, [currentId]: refreshed }));
         }
 
-        // DETECTAR NUEVOS MENSAJES PARA NOTIFICACIONES
+        // DETECTAR NUEVOS MENSAJES PARA NOTIFICACIONES Y BACKOFF
+        let hasNewMessages = false;
+
         setChats(prev => {
           latestChats.forEach(newChat => {
             const oldChat = prev.find(p => p.id === newChat.id);
             const lastMsg = newChat.messages?.[0];
+
+            // Si hay un chat nuevo o el último mensaje cambió, hay datos nuevos
+            if (!oldChat || lastMsg?.id !== oldChat.messages?.[0]?.id) {
+              hasNewMessages = true;
+            }
 
             // Si el bot está apagado Y el mensaje es nuevo Y es del usuario Y NO ha sido notificado
             if (oldChat && !newChat.botActive && lastMsg && lastMsg.id !== oldChat.messages?.[0]?.id && lastMsg.role === 'user' && !notifiedMessageIds.current.has(lastMsg.id)) {
@@ -366,6 +374,18 @@ export default function InboxPage() {
             }
           });
 
+          // Ajustar polling interval según si hay nuevos mensajes
+          if (hasNewMessages) {
+            pollIntervalRef.current = 3000;
+          } else {
+            // Incrementar progresivamente: 3s -> 5s -> 10s
+            if (pollIntervalRef.current === 3000) {
+              pollIntervalRef.current = 5000;
+            } else if (pollIntervalRef.current === 5000) {
+              pollIntervalRef.current = 10000;
+            }
+          }
+
           // FORZAMOS LOS DATOS DEL SERVIDOR SI NO HAY OPTIMISMO PENDIENTE
           if (pendingOptimistic.current.size === 0) {
             return latestChats;
@@ -376,18 +396,33 @@ export default function InboxPage() {
         // Silenciar errores de polling para no romper la app
       }
 
-      // Programar el siguiente ciclo DESPUÉS de que termine este (3 segundos para más velocidad)
+      // Programar el siguiente ciclo DESPUÉS de que termine este
       if (!cancelled) {
-        setTimeout(syncData, 3000);
+        setTimeout(syncData, pollIntervalRef.current);
       }
     };
 
     // Iniciar el primer ciclo después de 3 segundos
-    const initialTimeout = setTimeout(syncData, 3000);
+    const initialTimeout = setTimeout(syncData, pollIntervalRef.current);
 
     return () => {
       cancelled = true;
       clearTimeout(initialTimeout);
+    };
+  }, []);
+
+  // Reiniciar intervalo de polling a 3s cuando hay actividad del usuario
+  useEffect(() => {
+    const handleUserActivity = () => {
+      pollIntervalRef.current = 3000;
+    };
+    window.addEventListener('click', handleUserActivity);
+    window.addEventListener('keydown', handleUserActivity);
+    window.addEventListener('focus', handleUserActivity);
+    return () => {
+      window.removeEventListener('click', handleUserActivity);
+      window.removeEventListener('keydown', handleUserActivity);
+      window.removeEventListener('focus', handleUserActivity);
     };
   }, []);
 

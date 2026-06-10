@@ -161,6 +161,7 @@ model Campaign {
   csvData         String?
   templateName    String?  // nombre de la template aprobada en Meta
   templateCategory String?  // MARKETING o UTILITY
+  languageCode    String   @default("es")
   variableMapping String?  // JSON: { "1": "nombre", "2": "empresa" } etc.
   createdAt       DateTime @default(now())
 

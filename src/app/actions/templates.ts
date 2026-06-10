@@ -27,6 +27,7 @@ export interface MetaTemplateButton {
   text: string;
   url?: string;
   phone_number?: string;
+  example?: string[];
 }
 
 export interface MetaTemplate {
@@ -40,7 +41,6 @@ export interface MetaTemplate {
   rejected_reason?: string;
 }
 
-// ──────────────────────────────────────────────
 // Fetch ALL templates (all statuses)
 // ──────────────────────────────────────────────
 export async function fetchAllTemplates(): Promise<{ templates: MetaTemplate[]; error: string | null }> {

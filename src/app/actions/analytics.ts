@@ -46,6 +46,52 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     where: { projectId: project.id, ...dateFilter }
   })
 
+  // Nuevas métricas: Campañas y Mensajes Humanos
+  const campaignMessagesCount = await prisma.campaignLog.count({
+    where: { campaign: { projectId: project.id }, ...dateFilter }
+  })
+
+  // Mensajes enviados por agentes humanos que no pertenecen a una campaña
+  // Prisma doesn't have an easy NOT IN with a subquery on the same table, so we filter by role = 'agent'
+  // and we can assume manual agent messages either don't have wamid, or they aren't tracked in CampaignLog.
+  // Actually, we can just do a query to count 'agent' role where it's not a campaign.
+  // We'll approximate: we count messages with role 'agent'. Since campaign messages ALSO create a Message with role 'agent', 
+  // we subtract campaign messages count (assuming 1 log = 1 message). Or we can do a raw query for precision, but let's approximate.
+  const rawAgentMessages = await prisma.message.count({
+    where: { 
+      role: 'agent',
+      chat: { lead: { projectId: project.id } },
+      ...dateFilter
+    }
+  })
+  const humanMessagesCount = Math.max(0, rawAgentMessages - campaignMessagesCount)
+
+  const timeSavedMinutes = messagesSaved * 2
+
+  // Tasas de WhatsApp (Apertura / Entrega) para campañas
+  const logsStatusCount = await prisma.campaignLog.groupBy({
+    by: ['status'],
+    where: { campaign: { projectId: project.id }, ...dateFilter },
+    _count: true
+  })
+  
+  let totalLogs = 0;
+  let deliveredLogs = 0;
+  let readLogs = 0;
+  
+  logsStatusCount.forEach(l => {
+    totalLogs += l._count;
+    if (l.status === 'DELIVERED') deliveredLogs += l._count;
+    if (l.status === 'READ') readLogs += l._count;
+  });
+  // 'READ' implicitly means delivered too in WhatsApp
+  const whatsappDeliveryRate = totalLogs > 0 ? Math.round(((deliveredLogs + readLogs) / totalLogs) * 100) : 0;
+  const whatsappReadRate = totalLogs > 0 ? Math.round((readLogs / totalLogs) * 100) : 0;
+
+  // Channel Distribution
+  const whatsappLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'whatsapp', ...dateFilter } })
+  const instagramLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'instagram', ...dateFilter } })
+
   // Heatmap calculations
   const hotLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'CALIENTE', ...dateFilter } })
   const warmLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'TIBIO', ...dateFilter } })
@@ -61,12 +107,48 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   // Tasa de Autonomía real: Leads que el bot maneja vs el total
   const autonomyRate = totalLeads > 0 ? Math.round((botActiveLeads / totalLeads) * 100) : 0
 
+  // Métricas de consumo de tokens y costo IA (Claude Sonnet 4.5)
+  const AI_PRICING = {
+    inputPerMillion: 3.00,
+    outputPerMillion: 15.00,
+  }
+
+  const tokenAgg = await prisma.message.aggregate({
+    where: {
+      role: 'assistant',
+      chat: {
+        lead: {
+          projectId: project.id,
+          phone: { not: 'SIMULADOR_TEST' }
+        }
+      },
+      ...dateFilter
+    },
+    _sum: {
+      inputTokens: true,
+      outputTokens: true,
+    }
+  })
+
+  const totalInputTokens = tokenAgg._sum.inputTokens || 0
+  const totalOutputTokens = tokenAgg._sum.outputTokens || 0
+  const estimatedAiCostUsd = 
+    (totalInputTokens / 1_000_000) * AI_PRICING.inputPerMillion +
+    (totalOutputTokens / 1_000_000) * AI_PRICING.outputPerMillion
+
   return {
     totalLeads,
     handedOffLeads,
     messagesSaved,
     unresolvedQuestions,
     totalCampaigns,
+    campaignMessagesCount,
+    humanMessagesCount,
+    timeSavedMinutes,
+    whatsappDeliveryRate,
+    whatsappReadRate,
+    whatsappLeads,
+    instagramLeads,
     conversionRate,
     autonomyRate,
     hotLeads,
@@ -74,7 +156,11 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     coldLeads,
     botActiveLeads,
     needsAgentLeads,
-    agentLeads
+    agentLeads,
+    totalInputTokens,
+    totalOutputTokens,
+    estimatedAiCostUsd,
+    dailyTrends: [] // To be implemented if we want complex charts, or we can leave empty and add later
   }
 }
 

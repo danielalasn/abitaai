@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   Users, Download, Search, RefreshCw, Flame, Snowflake,
   Thermometer, MessageSquare, Clock, Calendar, ChevronUp,
-  ChevronDown, ChevronsUpDown, Loader2, Sparkles
+  ChevronDown, ChevronsUpDown, Loader2, Sparkles, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { getLeads } from '@/app/actions/leads';
 
@@ -79,6 +79,12 @@ export default function LeadsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset key parameters to page 1 on filter/sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortKey, sortDir]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -117,6 +123,10 @@ export default function LeadsPage() {
       const bv = b[sortKey] ? new Date(b[sortKey]!).getTime() : 0;
       return (av - bv) * dir;
     });
+
+  const itemsPerPage = 100;
+  const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+  const paginatedLeads = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const exportCSV = () => {
     const headers = ['Nombre', 'Correo', 'Número', 'Fecha Contacto', 'Último Mensaje', 'Temperatura', 'Score', 'Campaña Destino', 'Mensajes Enviados', 'Resumen IA'];
@@ -192,7 +202,7 @@ export default function LeadsPage() {
                 className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold bg-[#111111] dark:bg-[#EDE9E0] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:scale-100 text-white dark:text-[#111111] rounded-2xl shadow-xl shadow-black/10 transition-all"
               >
                 <Download size={14} />
-                Exportar CSV
+                Exportar Todo (CSV)
               </button>
             </div>
           </div>
@@ -250,7 +260,7 @@ export default function LeadsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#DEDAD0] dark:divide-zinc-800/60">
-                    {filtered.map((lead) => (
+                    {paginatedLeads.map((lead) => (
                       <tr
                         key={lead.id}
                         className="hover:bg-white dark:hover:bg-black/10 transition-colors group"
@@ -340,9 +350,31 @@ export default function LeadsPage() {
             {!isLoading && filtered.length > 0 && (
               <div className="px-6 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between bg-[#E9E4D8]/20 dark:bg-black/10">
                 <p className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">
-                  Mostrando <span className="text-[#111111] dark:text-[#EDE9E0]">{filtered.length}</span> de <span className="text-[#111111] dark:text-[#EDE9E0]">{leads.length}</span> leads
+                  Mostrando <span className="text-[#111111] dark:text-[#EDE9E0]">{(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filtered.length)}</span> de <span className="text-[#111111] dark:text-[#EDE9E0]">{filtered.length}</span> leads
                 </p>
-                <p className="text-[10px] text-[#6F6F6F] flex items-center gap-2 font-bold uppercase tracking-widest">
+
+                {/* Controles de Paginación */}
+                <div className="flex items-center gap-3">
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shadow-sm"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-widest">
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="p-1.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shadow-sm"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-[#6F6F6F] flex items-center gap-2 font-bold uppercase tracking-widest hidden md:flex">
                   <Sparkles size={11} className="text-[#F36A2D]" />
                   Resúmenes IA Autogenerados
                 </p>

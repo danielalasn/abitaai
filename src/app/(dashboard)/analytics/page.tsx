@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BarChart3, Users, MessageSquareText, Megaphone, Flame, TrendingUp, Zap, HelpCircle, Bot, AlertCircle, Loader2 } from 'lucide-react'
+import { BarChart3, Users, MessageSquareText, Megaphone, Flame, TrendingUp, Zap, HelpCircle, Bot, AlertCircle, Loader2, Clock, CheckCircle2, CheckCheck, Smartphone, Cpu } from 'lucide-react'
 import { getAnalyticsData } from '@/app/actions/analytics'
 import Link from 'next/link'
 import DateRangePicker from '@/components/ui/DateRangePicker'
@@ -13,6 +13,13 @@ type Analytics = {
   messagesSaved: number;
   unresolvedQuestions: number;
   totalCampaigns: number;
+  campaignMessagesCount: number;
+  humanMessagesCount: number;
+  timeSavedMinutes: number;
+  whatsappDeliveryRate: number;
+  whatsappReadRate: number;
+  whatsappLeads: number;
+  instagramLeads: number;
   conversionRate: number;
   autonomyRate: number;
   hotLeads: number;
@@ -21,6 +28,9 @@ type Analytics = {
   botActiveLeads: number;
   needsAgentLeads: number;
   agentLeads: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  estimatedAiCostUsd: number;
 } | null
 
 const CACHE_KEY = 'analytics_date_range'
@@ -32,6 +42,31 @@ const getDefaultDateRange = () => {
     start: format(startOfMonth(now), 'yyyy-MM-dd'),
     end: format(now, 'yyyy-MM-dd')
   }
+}
+
+const formatTimeSaved = (minutes: number) => {
+  if (!minutes) return { value: "0", unit: "MIN", sub: "Ahorrados" }
+  if (minutes < 60) return { value: minutes.toString(), unit: "MIN", sub: "Ahorrados" }
+  const hours = minutes / 60
+  if (hours < 8) return { value: hours.toFixed(1), unit: "HRS", sub: "Ahorradas" }
+  const days = hours / 8
+  return { value: days.toFixed(1), unit: "DÍAS", sub: "Laborables ahorrados" }
+}
+
+const formatTokens = (num: number) => {
+  if (num >= 1_000_000) {
+    return (num / 1_000_000).toFixed(1) + 'M'
+  }
+  if (num >= 1_000) {
+    return (num / 1_000).toFixed(0) + 'k'
+  }
+  return num.toString()
+}
+
+const formatCost = (cost: number) => {
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) return `$${cost.toFixed(4)}`
+  return `$${cost.toFixed(2)}`
 }
 
 export default function AnalyticsDashboard() {
@@ -94,6 +129,8 @@ export default function AnalyticsDashboard() {
     )
   }
 
+  const timeSaved = formatTimeSaved(data?.timeSavedMinutes || 0)
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* Header */}
@@ -113,113 +150,143 @@ export default function AnalyticsDashboard() {
       <div className="flex-1 overflow-auto p-8">
         <div className="max-w-6xl mx-auto space-y-8 pb-12">
 
-          {/* Top KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-            {/* KPI 1 — Total Leads */}
-            <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-[#111111]">
-                <Users size={100} />
-              </div>
-              <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="p-2 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg">
-                  <Users size={20} />
-                </div>
-              </div>
-              <div className="relative z-10">
-                <p className="text-sm font-medium text-[#6F6F6F]">Total Leads Procesados</p>
-                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.totalLeads}</h3>
-                <p className="text-xs text-[#6F6F6F] mt-2 flex items-center gap-1">
-                  <TrendingUp size={12} className="text-emerald-500" /> Clientes atendidos por el bot
-                </p>
-              </div>
-            </div>
-
-            {/* KPI 2 — Handoff */}
-            <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-rose-500">
-                <Flame size={100} />
-              </div>
-              <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="p-2 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-lg">
-                  <Flame size={20} />
-                </div>
-              </div>
-              <div className="relative z-10">
-                <p className="text-sm font-medium text-[#6F6F6F]">Consultas Calientes (Handoff)</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0]">{data?.handedOffLeads}</h3>
-                  <span className="text-sm font-medium text-[#F36A2D] bg-[#F36A2D]/10 px-2 py-0.5 rounded-full">
-                    {data?.conversionRate}%
-                  </span>
-                </div>
-                <p className="text-xs text-[#6F6F6F] mt-2">Leads que pidieron hablar con humanos</p>
-              </div>
-            </div>
-
-            {/* KPI 3 — Automatización */}
+          {/* Top KPIs - ROW 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            
+            {/* IA Automation */}
             <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-emerald-500">
                 <Zap size={100} />
               </div>
               <div className="flex justify-between items-start mb-4 relative z-10">
                 <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                  <Zap size={20} />
+                  <Bot size={20} />
                 </div>
                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/10 rounded-full">
-                  {Math.round((data?.messagesSaved || 0) / 60)} HRS AHORRADAS
+                  AUTOPILOT
                 </span>
               </div>
               <div className="relative z-10">
-                <p className="text-sm font-medium text-[#6F6F6F]">Automatización (Mensajes)</p>
+                <p className="text-sm font-medium text-[#6F6F6F]">Mensajes IA</p>
                 <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.messagesSaved}</h3>
-                <p className="text-xs text-[#6F6F6F] mt-2">Mensajes delegados al Agente Virtual</p>
+                <p className="text-xs text-[#6F6F6F] mt-2">Respuestas autónomas del bot</p>
               </div>
             </div>
 
-            {/* KPI 4 — Preguntas */}
+            {/* Campaign Messages */}
             <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-[#F36A2D]">
-                <HelpCircle size={100} />
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-indigo-500">
+                <Megaphone size={100} />
               </div>
               <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="p-2 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg">
-                  <HelpCircle size={20} />
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                  <Megaphone size={20} />
                 </div>
               </div>
               <div className="relative z-10">
-                <p className="text-sm font-medium text-[#6F6F6F]">Preguntas Pendientes</p>
-                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.unresolvedQuestions}</h3>
-                <p className="text-xs text-[#6F6F6F] mt-2">Temas que necesitan actualizarse en el Knowledge Base</p>
+                <p className="text-sm font-medium text-[#6F6F6F]">Mensajes de Campaña</p>
+                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.campaignMessagesCount}</h3>
+                <p className="text-xs text-[#6F6F6F] mt-2">Envíos masivos automatizados</p>
               </div>
             </div>
+
+            {/* Human Messages */}
+            <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-amber-500">
+                <Users size={100} />
+              </div>
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="p-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg">
+                  <MessageSquareText size={20} />
+                </div>
+              </div>
+              <div className="relative z-10">
+                <p className="text-sm font-medium text-[#6F6F6F]">Respuestas Humanas</p>
+                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.humanMessagesCount}</h3>
+                <p className="text-xs text-[#6F6F6F] mt-2">Enviados por agentes</p>
+              </div>
+            </div>
+
+            {/* AI Consumption Cost */}
+            <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-purple-500">
+                <Cpu size={100} />
+              </div>
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="p-2 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg">
+                  <Cpu size={20} />
+                </div>
+                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 px-2 py-0.5 bg-purple-100 dark:bg-purple-500/10 rounded-full">
+                  AI CONSUMPTION
+                </span>
+              </div>
+              <div className="relative z-10">
+                <p className="text-sm font-medium text-[#6F6F6F]">Costo IA Estimado</p>
+                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">
+                  {formatCost(data?.estimatedAiCostUsd || 0)}
+                </h3>
+                <p className="text-xs text-[#6F6F6F] mt-2">
+                  In: {formatTokens(data?.totalInputTokens || 0)} | Out: {formatTokens(data?.totalOutputTokens || 0)}
+                </p>
+              </div>
+            </div>
+
+            {/* Time Saved */}
+            <div className="bg-[#111111] dark:bg-zinc-800 border border-zinc-800 dark:border-zinc-700 p-6 rounded-2xl shadow-md hover:shadow-lg transition-all relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none text-[#F36A2D]">
+                <Clock size={100} />
+              </div>
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="p-2 bg-[#F36A2D]/20 text-[#F36A2D] rounded-lg shadow-sm">
+                  <Clock size={20} />
+                </div>
+              </div>
+              <div className="relative z-10">
+                <p className="text-sm font-medium text-zinc-400">Tiempo de Gestión</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <h3 className="text-3xl font-bold text-white">{timeSaved.value}</h3>
+                  <span className="text-lg font-bold text-[#F36A2D]">{timeSaved.unit}</span>
+                </div>
+                <p className="text-xs text-zinc-500 mt-2">{timeSaved.sub}</p>
+              </div>
+            </div>
+
           </div>
 
           {/* Detailed Sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-            {/* Autonomía */}
-            <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col space-y-4">
-              <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">Autonomía de IA</h3>
-              <div className="p-4 bg-[#E9E4D8]/60 dark:bg-[#111111]/60 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex-1 flex flex-col justify-center">
+            {/* Autonomía y Entrega */}
+            <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col space-y-4 lg:col-span-1">
+              <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">Métricas Clave</h3>
+              
+              {/* Autonomía */}
+              <div className="p-4 bg-[#E9E4D8]/60 dark:bg-[#111111]/60 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col justify-center">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0]">Tasa de Autonomía</span>
+                  <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0]">Tasa de Autonomía IA</span>
                   <span className="text-sm font-bold text-[#F36A2D]">{data?.autonomyRate}%</span>
                 </div>
                 <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
                   <div className="bg-[#F36A2D] h-2 rounded-full transition-all duration-700" style={{ width: `${data?.autonomyRate}%` }} />
                 </div>
-                <p className="text-[10px] text-[#6F6F6F] mt-3 leading-tight opacity-70">
-                  Porcentaje de chats que la IA gestiona sin necesidad de intervención humana.
-                </p>
               </div>
-              <div className="flex items-center justify-between p-4 bg-[#E9E4D8]/60 dark:bg-[#111111]/60 rounded-xl border border-[#DEDAD0] dark:border-zinc-800">
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-[#6F6F6F] uppercase tracking-wider">Campañas</span>
-                  <span className="text-lg font-bold text-[#111111] dark:text-[#EDE9E0]">{data?.totalCampaigns}</span>
+
+              {/* Entrega WhatsApp */}
+              <div className="p-4 bg-[#E9E4D8]/60 dark:bg-[#111111]/60 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col justify-center">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5"><CheckCircle2 size={14} className="text-emerald-500"/> Entregados</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{data?.whatsappDeliveryRate}%</span>
                 </div>
-                <div className="h-10 w-10 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
-                  <Megaphone size={18} />
+                <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2 mb-3">
+                  <div className="bg-emerald-500 h-2 rounded-full transition-all duration-700" style={{ width: `${data?.whatsappDeliveryRate}%` }} />
+                </div>
+
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5"><CheckCheck size={14} className="text-blue-500"/> Leídos</span>
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{data?.whatsappReadRate}%</span>
+                </div>
+                <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
+                  <div className="bg-blue-500 h-2 rounded-full transition-all duration-700" style={{ width: `${data?.whatsappReadRate}%` }} />
                 </div>
               </div>
             </div>
@@ -264,7 +331,7 @@ export default function AnalyticsDashboard() {
               </div>
             </div>
 
-            {/* Temperatura */}
+            {/* Temperatura e Interacciones */}
             <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
               <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] mb-4">Temperatura de Leads</h3>
               <div className="space-y-4">
@@ -302,9 +369,22 @@ export default function AnalyticsDashboard() {
                   </div>
                 </Link>
               </div>
+              
+              {/* Canales */}
+              <div className="mt-6 pt-6 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-[#6F6F6F] uppercase font-bold tracking-wider mb-1">WhatsApp</span>
+                  <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5"><Smartphone size={14} className="text-emerald-500"/> {data?.whatsappLeads || 0} leads</span>
+                </div>
+                <div className="flex flex-col text-right">
+                  <span className="text-[10px] text-[#6F6F6F] uppercase font-bold tracking-wider mb-1">Instagram</span>
+                  <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5 justify-end"><Smartphone size={14} className="text-rose-500"/> {data?.instagramLeads || 0} leads</span>
+                </div>
+              </div>
             </div>
 
           </div>
+          
         </div>
       </div>
     </div>
