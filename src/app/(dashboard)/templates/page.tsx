@@ -640,10 +640,10 @@ function PreviewModal({ template, onClose }: { template: MetaTemplate; onClose: 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white dark:bg-[#111111] w-full max-w-md rounded-[2rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 animate-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between">
+      <div className="bg-white dark:bg-[#111111] w-full max-w-md max-h-[90vh] rounded-[2rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 animate-in zoom-in-95 duration-200 flex flex-col">
+        <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div>
-            <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">{template.name}</h3>
+            <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] truncate max-w-[250px]" title={template.name}>{template.name}</h3>
             <div className="flex items-center gap-2 mt-1">
               <StatusBadge status={template.status} />
               <CategoryBadge category={template.category} />
@@ -655,7 +655,7 @@ function PreviewModal({ template, onClose }: { template: MetaTemplate; onClose: 
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <TemplatePreview template={template} />
 
           {/* Full body text */}
