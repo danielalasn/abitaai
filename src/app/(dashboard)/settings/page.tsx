@@ -14,7 +14,8 @@ import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
   createAgent, deleteAgent, saveAgentConfig, toggleAgent,
   compileKnowledgeWithAI, verifyWhatsappConnection,
-  updateUserProfile, updateUserPassword
+  updateUserProfile, updateUserPassword,
+  getNotificationEmails, saveNotificationEmails
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
 
@@ -99,6 +100,12 @@ export default function SettingsPage() {
   const [waErrorMessage, setWaErrorMessage] = useState<string | null>(null)
   const [waVerifyStatus, setWaVerifyStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
+  // Notification emails
+  const [notificationEmails, setNotificationEmails] = useState<string[]>([])
+  const [notificationEmailInput, setNotificationEmailInput] = useState('')
+  const [isSavingNotificationEmails, setIsSavingNotificationEmails] = useState(false)
+  const [notificationEmailsStatus, setNotificationEmailsStatus] = useState<'success' | 'error' | null>(null)
+
   const loadIgStatus = useCallback(async () => {
     const integration = await getIntegrationStatus('meta_instagram')
     setIgIntegration(integration as any)
@@ -153,6 +160,10 @@ export default function SettingsPage() {
       if (data.agents.length > 0) {
         selectAgent(data.agents[0] as AgentSummary)
       }
+
+      // Load notification emails
+      const emails = await getNotificationEmails()
+      setNotificationEmails(emails)
     } catch (e) { console.error(e) }
     setIsLoading(false)
   }
@@ -240,6 +251,19 @@ export default function SettingsPage() {
       setPasswordStatus('error')
     }
     setIsUpdatingPassword(false)
+  }
+
+  const handleSaveNotificationEmails = async () => {
+    setIsSavingNotificationEmails(true); setNotificationEmailsStatus(null)
+    try {
+      await saveNotificationEmails(notificationEmails)
+      setNotificationEmailsStatus('success')
+      setTimeout(() => setNotificationEmailsStatus(null), 3000)
+    } catch (e: any) {
+      alert(e.message || 'Error al guardar correos')
+      setNotificationEmailsStatus('error')
+    }
+    setIsSavingNotificationEmails(false)
   }
 
   const handleSaveWhatsApp = async () => {
@@ -800,8 +824,81 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Notification Emails Card */}
+              <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
+                    <MessageSquare className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones de Handoff</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Cuando el bot transfiera a un humano, se enviará un correo a estas direcciones.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {notificationEmails.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {notificationEmails.map((email) => (
+                        <div key={email} className="flex items-center gap-2 px-3 py-1.5 bg-[#F36A2D]/10 border border-[#F36A2D]/20 rounded-full text-xs font-medium text-[#F36A2D]">
+                          <span>{email}</span>
+                          <button
+                            onClick={() => setNotificationEmails(prev => prev.filter(e => e !== email))}
+                            className="hover:text-red-500 transition-colors"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <input
+                      id="notification-email-input"
+                      type="email"
+                      placeholder="correo@ejemplo.com"
+                      value={notificationEmailInput}
+                      onChange={e => setNotificationEmailInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const trimmed = notificationEmailInput.trim();
+                          if (trimmed && !notificationEmails.includes(trimmed)) {
+                            setNotificationEmails(prev => [...prev, trimmed]);
+                            setNotificationEmailInput('');
+                          }
+                        }
+                      }}
+                      className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100"
+                    />
+                    <button
+                      onClick={() => {
+                        const trimmed = notificationEmailInput.trim();
+                        if (trimmed && !notificationEmails.includes(trimmed)) {
+                          setNotificationEmails(prev => [...prev, trimmed]);
+                          setNotificationEmailInput('');
+                        }
+                      }}
+                      className="px-4 py-2.5 bg-[#F36A2D]/10 text-[#F36A2D] rounded-xl text-xs font-bold hover:bg-[#F36A2D] hover:text-white transition-all"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={handleSaveNotificationEmails}
+                    disabled={isSavingNotificationEmails}
+                    className="w-full mt-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSavingNotificationEmails ? <Loader2 size={16} className="animate-spin" /> : notificationEmailsStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar correos'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
+
 
           {/* BOT CONFIG SECTION */}
           {activeSection === 'botConfig' && (

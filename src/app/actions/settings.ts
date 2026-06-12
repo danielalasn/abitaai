@@ -371,3 +371,24 @@ export async function updateUserPassword(userId: string, oldPassword: string, ne
   });
   return { success: true };
 }
+
+// ──────────────────────────────────────────────
+// Notification Emails
+// ──────────────────────────────────────────────
+
+export async function getNotificationEmails(): Promise<string[]> {
+  const project = await getCurrentProject();
+  if (!project) return [];
+  return (project as any).notificationEmails || [];
+}
+
+export async function saveNotificationEmails(emails: string[]): Promise<{ success: boolean }> {
+  const project = await getCurrentProject();
+  if (!project) throw new Error('Proyecto no encontrado.');
+  await (prisma.project as any).update({
+    where: { id: project.id },
+    data: { notificationEmails: emails }
+  });
+  revalidatePath('/settings');
+  return { success: true };
+}

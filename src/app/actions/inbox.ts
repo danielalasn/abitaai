@@ -7,6 +7,7 @@ import { getCurrentProject } from '@/lib/auth-server';
 import { updateLeadAISummaryInternal } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
 import { decrypt } from '@/lib/encryption';
+import { sendHandoffNotification } from '@/lib/email';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats(_timestamp?: number) {
@@ -188,10 +189,23 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
   });
 
   if (chat?.leadId) {
-    await prisma.lead.update({
+    const lead = await prisma.lead.update({
       where: { id: chat.leadId },
-      data: { status: 'NEEDS_AGENT' }
+      data: { status: 'NEEDS_AGENT' },
+      include: { project: true }
     });
+
+    // Send email notifications
+    const notificationEmails = (lead.project as any).notificationEmails as string[] | undefined;
+    if (notificationEmails && notificationEmails.length > 0) {
+      sendHandoffNotification(notificationEmails, {
+        leadName: lead.name,
+        leadPhone: lead.phone,
+        leadScore: lead.score,
+        projectName: lead.project.name,
+        channel: lead.channel,
+      }).catch((e) => console.error('[Email] Error enviando notificación de handoff:', e));
+    }
   }
 
   try { revalidatePath('/') } catch (e) {};
