@@ -57,14 +57,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: 'ok', duplicated: true });
       }
       try {
-        await prisma.webhookEvent.create({
-          data: { id: eventId, provider: 'whatsapp', payload: body }
+        await prisma.webhookEvent.upsert({
+          where: { id: eventId },
+          update: {},
+          create: { id: eventId, provider: 'whatsapp', payload: body }
         });
       } catch (err: any) {
-        if (err.code === 'P2002') {
-          console.log(`[Webhook WhatsApp] Evento duplicado evitado por constraint en BD: ${eventId}`);
-          return NextResponse.json({ status: 'ok', duplicated: true });
-        }
         console.error('[Webhook WhatsApp] Error guardando evento de idempotencia:', err);
       }
     }
