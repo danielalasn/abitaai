@@ -27,15 +27,21 @@ Tu única tarea es analizar el documento de un cliente y extraer TODO el conteni
 
 REGLA CRÍTICA: NO OMITAS NINGÚN DATO. Si hay precios, horarios, reglas, productos, restricciones, beneficios, contactos — TODO debe aparecer en alguna sección.
 
+Debes incluir OBLIGATORIAMENTE en las instrucciones y en handoffRules que el bot use estas etiquetas cuando aplique:
+- [ACTION: HANDOFF] (para transferir a humano)
+- [ACTION: UNANSWERED_QUESTION "pregunta"] (si no sabe la respuesta)
+- [ACTION: SCORE_BUMP +X REASON: "razón"] (para sumar puntos al lead)
+- [ACTION: UPDATE_EMAIL "correo"] (si el cliente da su correo)
+
 Devuelve ÚNICAMENTE un JSON válido con exactamente estas 6 claves. Sin markdown, sin explicaciones.
 
 ESTRUCTURA EXACTA:
 {
   "identity": "string — Quién es el bot: nombre del negocio, giro, tono de voz, cómo debe presentarse. Si el documento menciona una persona de contacto o imagen de marca, inclúyela.",
-  "instructions": "string — Instrucciones de comportamiento del bot: qué debe hacer, qué no debe hacer, cómo manejar objeciones, qué pasos seguir en una conversación, cómo cerrar una venta. Incluye TODAS las reglas operativas detectadas.",
+  "instructions": "string — Instrucciones de comportamiento del bot: qué debe hacer, cómo manejar objeciones. DEBES INCLUIR LAS ETIQUETAS DEL SISTEMA ([ACTION: SCORE_BUMP...], [ACTION: UPDATE_EMAIL...], [ACTION: UNANSWERED_QUESTION...]) explicando cuándo usarlas. Para el scoring (SCORE_BUMP), DEBES INCLUIR LA REGLA: 'Solo sumar puntos si es la primera vez que el cliente realiza esa acción en la conversación, si ya se sumaron puntos por eso antes, no lo repitas para evitar duplicados'.",
   "knowledgeRaw": "string — TODO el conocimiento del negocio: productos, servicios, precios, especificaciones, áreas de servicio, equipo, historia, sucursales, horarios, métodos de pago, garantías, políticas. SIN OMITIR NADA.",
   "faq": "string — Todas las preguntas y respuestas que el bot debe saber, en formato:\\nP: [pregunta]\\nR: [respuesta]\\n\\nP: [pregunta]\\nR: [respuesta]\\n\\nGenera al menos 10 FAQs basadas en lo que un cliente típico preguntaría.",
-  "handoffRules": "string — Lista detallada de cuándo y cómo transferir la conversación a un humano. Incluye condiciones específicas como: solicitud de precio especial, queja formal, pedido mayor a X, preguntas sin respuesta, etc.",
+  "handoffRules": "string — Lista detallada de cuándo y cómo transferir la conversación a un humano. DEBES INCLUIR explícitamente que el bot debe usar la etiqueta [ACTION: HANDOFF] cuando se cumplan las condiciones.",
   "leadScoringRules": "string — JSON array de reglas de scoring. Ejemplo: [{\\"condition\\": \\"Pregunta por precio\\", \\"score\\": 20}, {\\"condition\\": \\"Pide una cita\\", \\"score\\": 40}]. Genera al menos 8 reglas basadas en el tipo de negocio."
 }`;
 
