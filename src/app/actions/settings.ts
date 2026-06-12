@@ -15,11 +15,29 @@ export async function getProjectConfig() {
   const project = await getCurrentProject();
   if (!project) throw new Error('Project not found for current session.');
 
+  let whatsappToken = decrypt(project.whatsappToken) || '';
+  let whatsappBusinessId = project.whatsappBusinessId || '';
+
+  if (!whatsappToken || !whatsappBusinessId) {
+    const adminClient = await prisma.client.findFirst({
+      where: { email: 'info@abitaai.com' },
+      include: { projects: true }
+    });
+    const masterProject = adminClient?.projects?.[0];
+    
+    if (!whatsappToken) {
+      whatsappToken = decrypt(masterProject?.whatsappToken) || process.env.SYSTEM_USER_TOKEN || '';
+    }
+    if (!whatsappBusinessId) {
+      whatsappBusinessId = masterProject?.whatsappBusinessId || '2178386092973067';
+    }
+  }
+
   return {
     projectId: project.id,
-    whatsappToken: decrypt(project.whatsappToken) || '',
+    whatsappToken,
     whatsappPhoneId: project.whatsappPhoneId || '',
-    whatsappBusinessId: project.whatsappBusinessId || '',
+    whatsappBusinessId,
     defaultBotActive: project.defaultBotActive,
     agents: project.agents || [],
     client: project.client,

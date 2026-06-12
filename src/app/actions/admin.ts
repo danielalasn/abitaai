@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
+import { encrypt } from '@/lib/encryption';
 
 export async function getClients() {
   const clients = await prisma.client.findMany({
@@ -80,6 +81,15 @@ export async function getClients() {
 export async function createClient(data: { name: string, email: string, password?: string, templateGroup?: string }) {
   const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : null;
   
+  // Obtener las credenciales master de Abita por defecto
+  const adminClient = await prisma.client.findFirst({
+    where: { email: 'info@abitaai.com' },
+    include: { projects: true }
+  });
+  const masterProject = adminClient?.projects?.[0];
+  const defaultToken = masterProject?.whatsappToken || (process.env.SYSTEM_USER_TOKEN ? encrypt(process.env.SYSTEM_USER_TOKEN) : null);
+  const defaultBusinessId = masterProject?.whatsappBusinessId || '2178386092973067';
+
   const client = await prisma.client.create({
     data: {
       name: data.name,
@@ -89,6 +99,8 @@ export async function createClient(data: { name: string, email: string, password
       projects: {
         create: {
           name: 'Proyecto Principal',
+          whatsappToken: defaultToken,
+          whatsappBusinessId: defaultBusinessId,
           agents: {
             create: {
               name: 'Agente Principal',
