@@ -101,8 +101,9 @@ export async function buildSystemPrompt(params: {
   metadata?: any;
   scoringText?: string;
   leadScoringEnabled?: boolean;
+  previouslyRewarded?: string[];
 }) {
-  const { agentConfig, clientName, projectName, metadata, scoringText, leadScoringEnabled } = params;
+  const { agentConfig, clientName, projectName, metadata, scoringText, leadScoringEnabled, previouslyRewarded } = params;
 
   await ensureBlocksExist();
   const blocks = await prisma.promptBlock.findMany({
@@ -116,7 +117,7 @@ export async function buildSystemPrompt(params: {
     let content = '';
 
     if (block.source === 'runtime') {
-      content = buildRuntimeBlock(block.key, { clientName, projectName, metadata, scoringText, leadScoringEnabled });
+      content = buildRuntimeBlock(block.key, { clientName, projectName, metadata, scoringText, leadScoringEnabled, previouslyRewarded });
       if (!content) continue;
     } else if (block.source === 'agent') {
       const fieldValue = block.agentField ? agentConfig?.[block.agentField] : null;
@@ -143,9 +144,14 @@ function buildRuntimeBlock(key: string, ctx: any): string {
       return out;
     }
 
-    case 'client_scoring':
+    case 'client_scoring': {
       if (!ctx.leadScoringEnabled) return '';
-      return `Reglas de calificación de interés del lead (definidas por el negocio):\n${ctx.scoringText || 'No hay reglas de calificación configuradas.'}`;
+      let text = `Reglas de calificación de interés del lead (definidas por el negocio):\n${ctx.scoringText || 'No hay reglas de calificación configuradas.'}`;
+      if (ctx.previouslyRewarded && ctx.previouslyRewarded.length > 0) {
+        text += `\n\n[IMPORTANTE: REGLAS YA PREMIADAS EN ESTA CONVERSACIÓN - NO VOLVER A PREMIAR ESTAS MISMAS RAZONES]:\n- ` + ctx.previouslyRewarded.join('\n- ');
+      }
+      return text;
+    }
 
     // Legacy keys por compatibilidad
     case 'heatmap_scoring':

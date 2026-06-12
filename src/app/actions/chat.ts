@@ -14,7 +14,7 @@ const anthropic = new Anthropic({
 
 export async function sendTestMessage(
   message: string,
-  history: { role: string, content: string }[],
+  history: { role: string, content: string, scoreReason?: string | null }[],
   clientName?: string,
   projectId?: string,
   agentId?: string,
@@ -82,6 +82,18 @@ export async function sendTestMessage(
   const isRealName = clientName && !clientName.startsWith('+');
   const finalName = isRealName ? clientName : 'Desconocido';
 
+  // Extraer razones ya premiadas del historial
+  const rewardedSet = new Set<string>();
+  for (const msg of history) {
+    if (msg.scoreReason) {
+      msg.scoreReason.split(';').forEach(r => {
+        const trimmed = r.trim();
+        if (trimmed && trimmed !== 'AI_ERROR') rewardedSet.add(trimmed);
+      });
+    }
+  }
+  const previouslyRewarded = Array.from(rewardedSet);
+
   // Build the system prompt dynamically from PromptBlocks in DB
   const systemPrompt = await buildSystemPrompt({
     agentConfig: config,
@@ -90,6 +102,7 @@ export async function sendTestMessage(
     metadata: metadata || null,
     scoringText,
     leadScoringEnabled: project?.leadScoringEnabled ?? true,
+    previouslyRewarded
   });
 
   // Logs eliminados para limpiar consola
@@ -367,7 +380,7 @@ export async function sendSimulatorMessage(
   // 4. Llamar a la lógica de IA existente
   const result = await sendTestMessage(
     message,
-    history.map(m => ({ role: m.role, content: m.content })),
+    history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason })),
     "Usuario de Prueba",
     projectId,
     agentId,
