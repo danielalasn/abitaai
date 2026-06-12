@@ -256,7 +256,14 @@ export default function SettingsPage() {
   const handleSaveNotificationEmails = async () => {
     setIsSavingNotificationEmails(true); setNotificationEmailsStatus(null)
     try {
-      await saveNotificationEmails(notificationEmails)
+      let finalEmails = [...notificationEmails]
+      const trimmedInput = notificationEmailInput.trim()
+      if (trimmedInput && !finalEmails.includes(trimmedInput)) {
+        finalEmails.push(trimmedInput)
+        setNotificationEmails(finalEmails)
+        setNotificationEmailInput('')
+      }
+      await saveNotificationEmails(finalEmails)
       setNotificationEmailsStatus('success')
       setTimeout(() => setNotificationEmailsStatus(null), 3000)
     } catch (e: any) {
