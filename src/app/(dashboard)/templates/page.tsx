@@ -131,7 +131,7 @@ function TemplateCard({ template, onDelete, onPreview }: { template: MetaTemplat
   const hasButtons = template.components.some(c => c.type === 'BUTTONS');
 
   return (
-    <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md hover:border-[#F36A2D]/30 transition-all group">
+    <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md hover:border-[#F36A2D]/30 transition-all group h-full">
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -146,7 +146,7 @@ function TemplateCard({ template, onDelete, onPreview }: { template: MetaTemplat
       {/* Status */}
       <div className="flex items-center justify-between">
         <StatusBadge status={template.status} />
-        {template.rejected_reason && (
+        {template.status === 'REJECTED' && template.rejected_reason && template.rejected_reason.trim().toLowerCase() !== 'none' && (
           <span className="text-[9px] text-red-400 italic max-w-[60%] truncate" title={template.rejected_reason}>
             {template.rejected_reason}
           </span>
@@ -173,7 +173,7 @@ function TemplateCard({ template, onDelete, onPreview }: { template: MetaTemplat
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-1 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40">
+      <div className="flex items-center gap-2 pt-1 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 mt-auto">
         <button
           onClick={onPreview}
           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-[#6F6F6F] hover:bg-[#F36A2D]/10 hover:text-[#F36A2D] transition-all"
@@ -658,17 +658,7 @@ function PreviewModal({ template, onClose }: { template: MetaTemplate; onClose: 
         <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <TemplatePreview template={template} />
 
-          {/* Full body text */}
-          {body?.text && (
-            <div className="space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-[#6F6F6F]">Cuerpo completo</p>
-              <p className="text-sm text-[#111111] dark:text-[#EDE9E0] whitespace-pre-wrap leading-relaxed bg-zinc-50 dark:bg-black/20 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800">
-                {body.text}
-              </p>
-            </div>
-          )}
-
-          {template.rejected_reason && (
+          {template.status === 'REJECTED' && template.rejected_reason && template.rejected_reason.trim().toLowerCase() !== 'none' && (
             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-500">
               <span className="font-black block mb-1">Razón de rechazo:</span>
               {template.rejected_reason}
@@ -868,7 +858,7 @@ export default function TemplatesPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filtered.map(t => (
-                <div key={t.id} className={`transition-all ${deletingId === t.id ? 'opacity-40 pointer-events-none scale-95' : ''}`}>
+                <div key={t.id} className={`h-full transition-all ${deletingId === t.id ? 'opacity-40 pointer-events-none scale-95' : ''}`}>
                   <TemplateCard
                     template={t}
                     onDelete={() => handleDelete(t)}

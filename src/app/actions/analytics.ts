@@ -26,6 +26,21 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     where: { projectId: project.id, status: 'NEEDS_AGENT', ...dateFilter }
   })
 
+  // Uso del plan de todo el tiempo: Mensajes de IA (assistant) + Mensajes de plantilla proactivos (MARKETING/UTILITY)
+  const planUsageAllTime = await prisma.message.count({
+    where: {
+      chat: {
+        lead: {
+          projectId: project.id
+        }
+      },
+      OR: [
+        { role: 'assistant' },
+        { role: 'agent', waCategory: { in: ['MARKETING', 'UTILITY'] } }
+      ]
+    }
+  })
+
   const messagesSaved = await prisma.message.count({
     where: { 
       role: 'assistant',
@@ -51,12 +66,16 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     where: { campaign: { projectId: project.id }, ...dateFilter }
   })
 
-  // Mensajes enviados por agentes humanos que no pertenecen a una campaña
-  // Prisma doesn't have an easy NOT IN with a subquery on the same table, so we filter by role = 'agent'
-  // and we can assume manual agent messages either don't have wamid, or they aren't tracked in CampaignLog.
-  // Actually, we can just do a query to count 'agent' role where it's not a campaign.
-  // We'll approximate: we count messages with role 'agent'. Since campaign messages ALSO create a Message with role 'agent', 
-  // we subtract campaign messages count (assuming 1 log = 1 message). Or we can do a raw query for precision, but let's approximate.
+  // Mensajes iniciales (proactivos): todas las plantillas (campañas + WhatsApp Directo)
+  const proactiveMessagesCount = await prisma.message.count({
+    where: {
+      role: 'agent',
+      waCategory: { in: ['MARKETING', 'UTILITY'] },
+      chat: { lead: { projectId: project.id } },
+      ...dateFilter
+    }
+  })
+
   const rawAgentMessages = await prisma.message.count({
     where: { 
       role: 'agent',
@@ -64,7 +83,7 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
       ...dateFilter
     }
   })
-  const humanMessagesCount = Math.max(0, rawAgentMessages - campaignMessagesCount)
+  const humanMessagesCount = Math.max(0, rawAgentMessages - proactiveMessagesCount)
 
   const timeSavedMinutes = messagesSaved * 2
 
@@ -179,6 +198,9 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     estimatedAiCostUsd,
     estimatedInputCostUsd,
     estimatedOutputCostUsd,
+    sentByUsCount: rawAgentMessages,
+    proactiveMessagesCount,
+    planUsageAllTime,
     dailyTrends: []
   };
 }

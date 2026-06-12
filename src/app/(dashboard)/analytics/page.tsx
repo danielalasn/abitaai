@@ -33,6 +33,9 @@ type Analytics = {
   estimatedAiCostUsd: number;
   estimatedInputCostUsd: number;
   estimatedOutputCostUsd: number;
+  sentByUsCount: number;
+  proactiveMessagesCount: number;
+  planUsageAllTime: number;
 } | null
 
 const CACHE_KEY = 'analytics_date_range'
@@ -133,6 +136,12 @@ export default function AnalyticsDashboard() {
 
   const timeSaved = formatTimeSaved(data?.timeSavedMinutes || 0)
 
+  const totalLimit = 1000
+  const usage = data?.planUsageAllTime || 0
+  const usagePct = Math.max(0, Math.min(100, Math.round((usage / totalLimit) * 100)))
+  const remaining = Math.max(0, totalLimit - usage)
+  const remainingPct = Math.max(0, Math.min(100, Math.round((remaining / totalLimit) * 100)))
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* Header */}
@@ -151,6 +160,30 @@ export default function AnalyticsDashboard() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-8">
         <div className="max-w-6xl mx-auto space-y-8 pb-12">
+
+          {/* Límite de Mensajes Enviados */}
+          <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-4 rounded-2xl shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-red-500" />
+                <span className="text-[10px] font-black tracking-widest text-[#6F6F6F] uppercase">
+                  Consumo: {usage.toLocaleString()} / 1,000 ({usagePct}%)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black tracking-widest text-[#6F6F6F] uppercase">
+                  Disponible: {remaining.toLocaleString()} ({remainingPct}%)
+                </span>
+                <div className="h-2 w-2 rounded-full bg-emerald-500" />
+              </div>
+            </div>
+            <div className="w-full h-2.5 bg-emerald-500/15 dark:bg-emerald-950/40 rounded-full overflow-hidden border border-emerald-500/10">
+              <div 
+                className="h-full bg-gradient-to-r from-red-500 to-rose-400 rounded-full transition-all duration-1000"
+                style={{ width: `${usagePct}%` }}
+              />
+            </div>
+          </div>
 
           {/* Top KPIs - ROW 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -186,9 +219,9 @@ export default function AnalyticsDashboard() {
                 </div>
               </div>
               <div className="relative z-10">
-                <p className="text-sm font-medium text-[#6F6F6F]">Mensajes de Campaña</p>
-                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.campaignMessagesCount}</h3>
-                <p className="text-xs text-[#6F6F6F] mt-2">Envíos masivos automatizados</p>
+                <p className="text-sm font-medium text-[#6F6F6F]">Contactos Iniciales</p>
+                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.proactiveMessagesCount}</h3>
+                <p className="text-xs text-[#6F6F6F] mt-2">Campañas e inicios de chat</p>
               </div>
             </div>
 
@@ -205,7 +238,7 @@ export default function AnalyticsDashboard() {
               <div className="relative z-10">
                 <p className="text-sm font-medium text-[#6F6F6F]">Respuestas Humanas</p>
                 <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.humanMessagesCount}</h3>
-                <p className="text-xs text-[#6F6F6F] mt-2">Enviados por agentes</p>
+                <p className="text-xs text-[#6F6F6F] mt-2">Enviados por agentes en chats activos</p>
               </div>
             </div>
 
@@ -227,9 +260,10 @@ export default function AnalyticsDashboard() {
                 <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">
                   {formatCost(data?.estimatedAiCostUsd || 0)}
                 </h3>
-                <p className="text-[11px] text-[#6F6F6F] mt-2 font-medium">
-                  Entrada: {formatCost(data?.estimatedInputCostUsd || 0)} ({formatTokens(data?.totalInputTokens || 0)}) | Salida: {formatCost(data?.estimatedOutputCostUsd || 0)} ({formatTokens(data?.totalOutputTokens || 0)})
-                </p>
+                <div className="text-[11px] text-[#6F6F6F] mt-2 font-medium space-y-0.5">
+                  <p>Entrada: {formatCost(data?.estimatedInputCostUsd || 0)} ({formatTokens(data?.totalInputTokens || 0)})</p>
+                  <p>Salida: {formatCost(data?.estimatedOutputCostUsd || 0)} ({formatTokens(data?.totalOutputTokens || 0)})</p>
+                </div>
               </div>
             </div>
 

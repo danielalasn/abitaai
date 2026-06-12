@@ -706,6 +706,11 @@ export async function startIndividualChatAction(
       chat = await prisma.chat.create({ data: { leadId: lead.id } });
     }
 
+    const resolvedToken = project.whatsappToken ? decrypt(project.whatsappToken) : null;
+    if (!resolvedToken) {
+      return { success: false, error: 'Token de WhatsApp inválido o no configurado.' };
+    }
+
     // 3. Enviar vía WhatsApp Cloud API
     const waResult = await sendWhatsAppTemplate(
       cleanPhone,
@@ -713,7 +718,7 @@ export async function startIndividualChatAction(
       languageCode,
       components as any,
       project.whatsappPhoneId!,
-      project.whatsappToken!,
+      resolvedToken,
       (templateCategory as any) || 'MARKETING'
     );
 
