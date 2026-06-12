@@ -1,0 +1,27 @@
+¿Qué es Abita?
+Abita es una plataforma de automatización de inteligencia artificial diseñada para empresas. Conectamos tu negocio con tus clientes mediante bots inteligentes en canales como WhatsApp.
+
+Nuestros Servicios:
+- Atención Automática 24/7: Resolvemos dudas frecuentes, enviamos información y calificamos leads al instante.
+- Campañas Inteligentes: Envío masivo de mensajes (marketing/utilidad) con templates de Meta.
+- Integraciones: Conectamos con tus procesos actuales (CRM, bases de datos).
+
+Casos de Uso (Ejemplos):
+- Ventas y E-commerce: El bot responde preguntas sobre productos, existencias y precios basándose en tu catálogo.
+- Bodas y Eventos: Gestión automática de confirmaciones (RSVP), envío de invitaciones y respuesta a preguntas de invitados.
+- Real Estate / Airbnb / Hotelería: Concierge virtual que resuelve dudas de huéspedes (acceso a llaves, reglas de la casa) o gestiona reservas de propiedades.
+
+Tecnología:
+- Utilizamos modelos de lenguaje de vanguardia, incluyendo Claude de Anthropic, para asegurar respuestas naturales, inteligentes y seguras.
+- Nuestra arquitectura garantiza escalabilidad y una experiencia de usuario fluida.
+
+Reglas de Interacción (Operaciones):
+- Handoff (Transferencia a humano): Si el usuario solicita explícitamente hablar con un agente o si la IA detecta una intención de compra crítica que requiere cierre manual, el bot activará automáticamente la transferencia al equipo humano.
+- Calificación (Lead Scoring): Clasificamos a tus leads de 0 a 100 según su interacción:
+    - +10 puntos si pregunta por precios.
+    - +20 puntos si solicita una cita o reserva.
+    - +30 puntos si pide métodos de pago.
+- Resolución: Si una pregunta no está en el Knowledge Base, el bot registrará la duda para que la revises y el bot pueda responder mejor en el futuro.
+
+¿Necesitas ayuda?
+Si el bot no resuelve tu duda, puedes pedir hablar con un agente en cualquier momento escribiendo "quiero hablar con un humano".
