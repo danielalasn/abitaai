@@ -119,7 +119,7 @@ export async function sendTestMessage(
     const rawReply = response.content[0].type === 'text' ? response.content[0].text : "No hubo respuesta de texto";
 
     // Clean up reply from tags early so we can store it
-    const reply = rawReply.replace(/\[ACTION: .+?\]/g, "").trim();
+    const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
 
     // Check if the AI generated the handoff tag
     const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
@@ -219,7 +219,7 @@ export async function sendTestMessage(
       console.log(`[GEMINI TOKENS] Input: ${inputTokens} | Output: ${outputTokens}`);
 
       // Clean up reply from tags
-      const reply = rawReply.replace(/\[ACTION: .+?\]/g, "").trim();
+      const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
       const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
 
       let scoreBump = 0;
