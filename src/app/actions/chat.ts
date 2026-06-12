@@ -138,7 +138,7 @@ export async function sendTestMessage(
     const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
 
     // Check for Unanswered Questions
-    const unansweredMatch = rawReply.match(/\[ACTION: UNANSWERED_QUESTION "(.*?)"\]/);
+    const unansweredMatch = rawReply.match(/\[ACTION:\s*UNANSWERED_QUESTION\s*["']?([^"\]]+)["']?\]/i);
     if (unansweredMatch && unansweredMatch[1]) {
       const question = unansweredMatch[1].trim();
 
@@ -234,6 +234,20 @@ export async function sendTestMessage(
       // Clean up reply from tags
       const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
       const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
+
+      // Check for Unanswered Questions
+      const unansweredMatch = rawReply.match(/\[ACTION:\s*UNANSWERED_QUESTION\s*["']?([^"\]]+)["']?\]/i);
+      if (unansweredMatch && unansweredMatch[1]) {
+        const question = unansweredMatch[1].trim();
+        const existing = await prisma.unansweredQuestion.findFirst({
+          where: { projectId: project.id, question: question, createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) } }
+        });
+        if (!existing) {
+          await prisma.unansweredQuestion.create({
+            data: { projectId: project.id, agentId: config.id, question: question, botAnswer: reply || rawReply }
+          });
+        }
+      }
 
       let scoreBump = 0;
       let scoreReason = "";
