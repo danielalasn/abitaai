@@ -23,7 +23,10 @@ export async function fetchMetaTemplates() {
   noStore();
   try {
     const project = await getProjectWithCredentials() as any;
+    console.log("[fetchMetaTemplates] Project fetched:", project.id, "WABA ID:", project.whatsappBusinessId);
+    
     if (!project.whatsappBusinessId || !project.whatsappToken) {
+      console.log("[fetchMetaTemplates] Missing credentials, returning empty.");
       return { error: 'Configura el WhatsApp Business ID y el Access Token en Configuración.', templates: [] };
     }
     const decryptedToken = decrypt(project.whatsappToken);

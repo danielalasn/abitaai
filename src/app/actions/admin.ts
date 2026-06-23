@@ -78,29 +78,24 @@ export async function getClients() {
   return clients;
 }
 
-export async function createClient(data: { name: string, email: string, password?: string, templateGroup?: string }) {
+export async function createClient(data: { name: string, email: string, password?: string, templateGroup?: string, numberType?: 'abita' | 'embedded' }) {
   const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : null;
   
-  // Obtener las credenciales master de Abita por defecto
-  const adminClient = await prisma.client.findFirst({
-    where: { email: 'info@abitaai.com' },
-    include: { projects: true }
-  });
-  const masterProject = adminClient?.projects?.[0];
-  const defaultToken = masterProject?.whatsappToken || (process.env.SYSTEM_USER_TOKEN ? encrypt(process.env.SYSTEM_USER_TOKEN) : null);
-  const defaultBusinessId = masterProject?.whatsappBusinessId || '2178386092973067';
+  // Si es número de abita, asignamos las credenciales globales, de lo contrario quedan null
+  const defaultToken = data.numberType === 'abita' && process.env.SYSTEM_USER_TOKEN ? encrypt(process.env.SYSTEM_USER_TOKEN) : null;
+  const defaultBusinessId = data.numberType === 'abita' ? (process.env.WHATSAPP_BUSINESS_ID || '2178386092973067') : null;
 
   const client = await prisma.client.create({
     data: {
       name: data.name,
       email: data.email,
       password: hashedPassword,
-      templateGroup: data.templateGroup || null,
+      templateGroup: data.numberType === 'abita' ? (data.templateGroup || null) : null,
       projects: {
         create: {
           name: 'Proyecto Principal',
-          whatsappToken: null,
-          whatsappBusinessId: null,
+          whatsappToken: defaultToken,
+          whatsappBusinessId: defaultBusinessId,
           whatsappPhoneId: null,
           agents: {
             create: {
@@ -356,30 +351,18 @@ export async function fetchAvailableTemplateGroups() {
   console.log("--------------------------------------------------");
   console.log("[Groups] INICIANDO ESCANEO DE PLANTILLAS...");
   
-  const adminClient = await prisma.client.findFirst({
-    where: { email: 'info@abitaai.com' },
-    include: { projects: { include: { agents: true } } }
-  });
+  const wabaId = process.env.WHATSAPP_BUSINESS_ID;
+  const token = process.env.SYSTEM_USER_TOKEN;
 
-  if (!adminClient) {
-    console.error("[Groups] ERROR: No se encontró el usuario info@abitaai.com");
+  if (!wabaId || !token) {
+    console.warn("[Groups] ADVERTENCIA: Faltan credenciales en .env (WHATSAPP_BUSINESS_ID o SYSTEM_USER_TOKEN).");
     return [];
   }
 
-  const project = adminClient?.projects?.[0];
-  const config = project; // Ahora las credenciales están en el Proyecto
-
-  if (!config?.whatsappBusinessId || !config?.whatsappToken) {
-    console.warn("[Groups] ADVERTENCIA: Faltan credenciales en la Configuración Global.");
-    console.log("[Groups] WABA ID:", config?.whatsappBusinessId ? "PRESENT" : "MISSING");
-    console.log("[Groups] Token:", config?.whatsappToken ? "PRESENT" : "MISSING");
-    return [];
-  }
-
-  console.log("[Groups] Usando WABA ID:", config.whatsappBusinessId);
+  console.log("[Groups] Usando WABA ID:", wabaId);
 
   try {
-    const templates = await getApprovedTemplates(config.whatsappBusinessId, config.whatsappToken);
+    const templates = await getApprovedTemplates(wabaId, token);
     
     console.log(`[Groups] Meta devolvió ${templates.length} plantillas.`);
     if (templates.length > 0) {
@@ -407,54 +390,17 @@ export async function fetchAvailableTemplateGroups() {
 }
 
 export async function getMasterConfig() {
-  const adminClient = await prisma.client.findFirst({
-    where: { email: 'info@abitaai.com' },
-    include: { projects: true }
-  });
-
-  const project = adminClient?.projects?.[0];
   return {
-    whatsappBusinessId: project?.whatsappBusinessId || '',
-    whatsappToken: project?.whatsappToken ? (decrypt(project.whatsappToken) || '') : '',
-    projectId: project?.id || null
+    whatsappBusinessId: process.env.WHATSAPP_BUSINESS_ID || '',
+    whatsappToken: process.env.SYSTEM_USER_TOKEN || '',
+    projectId: null
   };
 }
 
 export async function updateMasterConfig(data: { whatsappBusinessId: string, whatsappToken: string }) {
-  let adminClient = await prisma.client.findFirst({
-    where: { email: 'info@abitaai.com' },
-    include: { projects: true }
-  });
-
-  if (!adminClient) throw new Error("No se encontró el usuario administrador info@abitaai.com");
-
-  let project = adminClient.projects?.[0];
-  
-  // Si el admin no tiene proyecto, crearlo ahora
-  if (!project) {
-    console.log("[Admin] Creando proyecto faltante para el administrador...");
-    project = await prisma.project.create({
-      data: {
-        name: 'Admin Master Project',
-        client: { connect: { id: adminClient.id } },
-        agents: {
-          create: {
-            name: 'Master Agent',
-            identity: 'Master Admin Agent',
-            instructions: 'System configuration agent'
-          }
-        }
-      },
-      include: { agents: true }
-    });
-  }
-
-  const projectId = project.id;
-  
-  // Reusar la función existente para actualizar la config del bot
-  return updateBotConfig(projectId, {
-    whatsappBusinessId: data.whatsappBusinessId,
-    whatsappToken: data.whatsappToken
-  });
+  // Ahora la configuración maestra se lee de las variables de entorno,
+  // por lo que no se actualiza en la base de datos de info@abitaai.com.
+  console.log("[Admin] updateMasterConfig llamado. La configuración se maneja vía .env, ignorando actualización.");
+  return { success: true };
 }
 

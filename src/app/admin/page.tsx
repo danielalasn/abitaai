@@ -27,6 +27,7 @@ export default function AdminPage() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserTemplateGroup, setNewUserTemplateGroup] = useState('');
+  const [newUserNumberType, setNewUserNumberType] = useState<'abita' | 'embedded'>('abita');
   const [isCreating, setIsCreating] = useState(false);
 
   // Global Config state
@@ -275,12 +276,14 @@ export default function AdminPage() {
         name: newUserName,
         email: newUserEmail,
         password: newUserPassword,
-        templateGroup: newUserTemplateGroup
+        templateGroup: newUserTemplateGroup,
+        numberType: newUserNumberType
       });
       setNewUserName('');
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserTemplateGroup('');
+      setNewUserNumberType('abita');
       setShowCreate(false);
       loadClients();
       alert('Usuario creado con éxito');
@@ -842,19 +845,33 @@ export default function AdminPage() {
                   <input required type="text" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} placeholder="Escribe una contraseña segura" className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 text-zinc-900 dark:text-zinc-100" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
-                    <select
-                      value={newUserTemplateGroup}
-                      onChange={e => setNewUserTemplateGroup(e.target.value)}
-                      className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
-                    >
-                      <option value="">Inactivo / Ninguno</option>
-                      {availableGroups.map(g => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
-                  <p className="text-[10px] text-zinc-500 mt-1 pl-1">Selecciona el grupo de plantillas autorizado para este cliente.</p>
+                  <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Tipo de Número</label>
+                  <select
+                    value={newUserNumberType}
+                    onChange={(e: any) => setNewUserNumberType(e.target.value)}
+                    className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                  >
+                    <option value="abita">Número Abita</option>
+                    <option value="embedded">Embedded Signup</option>
+                  </select>
                 </div>
+
+                {newUserNumberType === 'abita' && (
+                  <div>
+                    <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
+                      <select
+                        value={newUserTemplateGroup}
+                        onChange={e => setNewUserTemplateGroup(e.target.value)}
+                        className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                      >
+                        <option value="">Inactivo / Ninguno</option>
+                        {availableGroups.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    <p className="text-[10px] text-zinc-500 mt-1 pl-1">Selecciona el grupo de plantillas autorizado para este cliente.</p>
+                  </div>
+                )}
                 <button disabled={isCreating} type="submit" className="w-full py-3 h-12 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-sm font-bold tracking-wide shadow-sm flex items-center justify-center gap-2 mt-4 transition-all">
                   {isCreating ? <Loader2 size={18} className="animate-spin" /> : 'Registrar Cliente'}
                 </button>

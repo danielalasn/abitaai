@@ -8,9 +8,9 @@ export function resolveProjectCredentials<T extends { whatsappToken?: string | n
 
   const masterWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
 
-  // Si el proyecto no tiene WABA ID, o si usa el WABA ID por defecto de Abita, forzamos usar las credenciales de .env
-  if (!project.whatsappBusinessId || project.whatsappBusinessId === masterWabaId) {
-    project.whatsappBusinessId = masterWabaId;
+  // Solo forzamos las credenciales de Abita si el proyecto explícitamente usa el WABA ID de Abita.
+  // Si no tiene (null), es un Embedded Signup en proceso y no debe tomar credenciales ajenas.
+  if (project.whatsappBusinessId === masterWabaId) {
     if (process.env.SYSTEM_USER_TOKEN) {
       project.whatsappToken = encrypt(process.env.SYSTEM_USER_TOKEN);
     }
