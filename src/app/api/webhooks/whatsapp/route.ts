@@ -7,6 +7,7 @@ import { downloadAndUploadMetaMedia } from '@/app/actions/storage';
 import crypto from 'crypto';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { enqueueMessage, redisConnection } from '@/lib/queue';
+import { resolveProjectCredentials } from '@/lib/auth-server';
 // Lógica de procesamiento movida al Worker en src/lib/worker.ts
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -106,8 +107,16 @@ export async function POST(req: NextRequest) {
     const mediaTypes = ['image', 'document', 'audio', 'video', 'voice'];
     if (mediaTypes.includes(message.type)) {
       const mediaObj = message[message.type];
-      const project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
-      const decryptedToken = decrypt(project?.whatsappToken);
+      let project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
+      if (!project && phoneId === (process.env.WHATSAPP_PHONE_ID || '1087380634460356')) {
+        project = await prisma.project.findFirst({
+          where: { client: { email: 'abita@abitaai.com' } }
+        }) || await prisma.project.findFirst({
+          where: { client: { email: 'info@abitaai.com' } }
+        });
+      }
+      const resolvedProject = resolveProjectCredentials(project);
+      const decryptedToken = decrypt(resolvedProject?.whatsappToken);
       if (decryptedToken) {
         const file = await downloadAndUploadMetaMedia(mediaObj.id, decryptedToken, mediaObj.mime_type, mediaObj.filename);
         if (file) mediaData = { mediaUrl: file.url, mediaType: file.mediaType, mediaFilename: file.filename };
@@ -118,20 +127,28 @@ export async function POST(req: NextRequest) {
     // ─── CHECK BOT ACTIVE STATUS ───
     let isBotActive = true;
     if (phoneId) {
-      const project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
-      if (project) {
+      let project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
+      if (!project && phoneId === (process.env.WHATSAPP_PHONE_ID || '1087380634460356')) {
+        project = await prisma.project.findFirst({
+          where: { client: { email: 'abita@abitaai.com' } }
+        }) || await prisma.project.findFirst({
+          where: { client: { email: 'info@abitaai.com' } }
+        });
+      }
+      const resolvedProject = resolveProjectCredentials(project);
+      if (resolvedProject) {
         const possiblePhones = [from];
         if (from.startsWith('503') && from.length === 11) {
           possiblePhones.push(from.substring(3));
         }
         const lead = await prisma.lead.findFirst({
-          where: { projectId: project.id, phone: { in: possiblePhones } },
+          where: { projectId: resolvedProject.id, phone: { in: possiblePhones } },
           include: { chat: true }
         });
         if (lead?.chat) {
           isBotActive = lead.chat.botActive;
         } else {
-          isBotActive = project.defaultBotActive ?? true;
+          isBotActive = resolvedProject.defaultBotActive ?? true;
         }
       }
     }

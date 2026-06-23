@@ -8,6 +8,7 @@ import { sendInstagramMessage } from '@/lib/instagram';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
 import { transcribeAudioWithGemini } from './transcribe';
+import { resolveProjectCredentials } from '@/lib/auth-server';
 
 /**
  * WORKER DE PROCESAMIENTO
@@ -93,6 +94,10 @@ export function initWorker() {
           messages: { orderBy: { createdAt: 'asc' }, take: 15 } 
         }
       });
+
+      if (chatDetails?.lead?.project) {
+        resolveProjectCredentials(chatDetails.lead.project);
+      }
 
       if (chatDetails?.botActive) {
         // Determinar un texto para la IA si finalCombinedText está vacío (pero hay media)

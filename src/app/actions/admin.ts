@@ -99,8 +99,9 @@ export async function createClient(data: { name: string, email: string, password
       projects: {
         create: {
           name: 'Proyecto Principal',
-          whatsappToken: defaultToken,
-          whatsappBusinessId: defaultBusinessId,
+          whatsappToken: null,
+          whatsappBusinessId: null,
+          whatsappPhoneId: null,
           agents: {
             create: {
               name: 'Agente Principal',

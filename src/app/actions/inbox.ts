@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { sendWhatsAppMessage, sendWhatsAppTemplate, sendWhatsAppMedia, WaMediaType } from '@/lib/whatsapp';
-import { getCurrentProject } from '@/lib/auth-server';
+import { getCurrentProject, resolveProjectCredentials } from '@/lib/auth-server';
 import { updateLeadAISummaryInternal } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
 import { decrypt } from '@/lib/encryption';
@@ -227,6 +227,13 @@ export async function simulateIncomingMessage(
 
   if (phoneId) {
     project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
+    if (!project && phoneId === (process.env.WHATSAPP_PHONE_ID || '1087380634460356')) {
+      project = await prisma.project.findFirst({
+        where: { client: { email: 'abita@abitaai.com' } }
+      }) || await prisma.project.findFirst({
+        where: { client: { email: 'info@abitaai.com' } }
+      });
+    }
   }
 
   if (!project && fallbackProjectId) {
@@ -237,6 +244,8 @@ export async function simulateIncomingMessage(
     console.error(`[Inbox] No se encontró el proyecto para PhoneID: ${phoneId}. El mensaje será ignorado para evitar asignación incorrecta.`);
     throw new Error("Proyecto no encontrado para el PhoneID proporcionado.");
   }
+
+  project = resolveProjectCredentials(project);
 
   // Buscar todos los agentes activos del proyecto para decidir si auto-asignar
   const activeAgents = await prisma.agent.findMany({
