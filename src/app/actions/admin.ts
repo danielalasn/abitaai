@@ -3,7 +3,7 @@
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
-import { encrypt } from '@/lib/encryption';
+import { encrypt, decrypt } from '@/lib/encryption';
 
 export async function getClients() {
   const clients = await prisma.client.findMany({
@@ -129,7 +129,7 @@ export async function updateBotConfig(projectId: string, configData: any) {
     await prisma.project.update({
       where: { id: projectId },
       data: {
-        whatsappToken,
+        whatsappToken: whatsappToken !== undefined ? encrypt(whatsappToken) : undefined,
         whatsappPhoneId,
         whatsappBusinessId,
         ...(leadScoringEnabled !== undefined ? { leadScoringEnabled } : {}),
@@ -414,7 +414,7 @@ export async function getMasterConfig() {
   const project = adminClient?.projects?.[0];
   return {
     whatsappBusinessId: project?.whatsappBusinessId || '',
-    whatsappToken: project?.whatsappToken || '',
+    whatsappToken: project?.whatsappToken ? (decrypt(project.whatsappToken) || '') : '',
     projectId: project?.id || null
   };
 }
