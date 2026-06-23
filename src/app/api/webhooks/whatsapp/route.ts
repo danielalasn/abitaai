@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const appSecret = process.env.META_APP_SECRET;
 
     // ─── RATE LIMITING (Redis) ───
-    const ip = req.headers.get('x-forwarded-for') || req.ip || 'unknown-ip';
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown-ip';
     const rateLimitKey = `rate-limit:webhook:whatsapp:${ip}`;
     const currentReqs = await redisConnection.incr(rateLimitKey);
     if (currentReqs === 1) {
