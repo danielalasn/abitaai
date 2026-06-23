@@ -36,6 +36,9 @@ type Analytics = {
   sentByUsCount: number;
   proactiveMessagesCount: number;
   planUsageAllTime: number;
+  tierLimit: number;
+  tierName: string;
+  tierUsage: number;
 } | null
 
 const CACHE_KEY = 'analytics_date_range'
@@ -162,31 +165,17 @@ export default function AnalyticsDashboard() {
         <div className="max-w-6xl mx-auto space-y-8 pb-12">
 
           {/* Límite de Mensajes Enviados */}
-          <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-4 rounded-2xl shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full bg-red-500" />
-                <span className="text-[10px] font-black tracking-widest text-[#6F6F6F] uppercase">
-                  Consumo: {usage.toLocaleString()} / 1,000 ({usagePct}%)
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black tracking-widest text-[#6F6F6F] uppercase">
-                  Disponible: {remaining.toLocaleString()} ({remainingPct}%)
-                </span>
-                <div className="h-2 w-2 rounded-full bg-emerald-500" />
-              </div>
-            </div>
-            <div className="w-full h-2.5 bg-emerald-500/15 dark:bg-emerald-950/40 rounded-full overflow-hidden border border-emerald-500/10">
-              <div 
-                className="h-full bg-gradient-to-r from-red-500 to-rose-400 rounded-full transition-all duration-1000"
-                style={{ width: `${usagePct}%` }}
-              />
-            </div>
+          <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
+            <span className="block text-lg font-bold text-[#111111] dark:text-[#EDE9E0]">
+              {data?.tierName || 'Tier 1'}
+            </span>
+            <span className="block text-sm text-[#6F6F6F] mt-1">
+              {data?.tierUsage || 0} / {data?.tierLimit || 250}
+            </span>
           </div>
 
           {/* Top KPIs - ROW 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             
             {/* IA Automation */}
             <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
@@ -239,31 +228,6 @@ export default function AnalyticsDashboard() {
                 <p className="text-sm font-medium text-[#6F6F6F]">Respuestas Humanas</p>
                 <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.humanMessagesCount}</h3>
                 <p className="text-xs text-[#6F6F6F] mt-2">Enviados por agentes en chats activos</p>
-              </div>
-            </div>
-
-            {/* AI Consumption Cost */}
-            <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-purple-500">
-                <Cpu size={100} />
-              </div>
-              <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="p-2 bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg">
-                  <Cpu size={20} />
-                </div>
-                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 px-2 py-0.5 bg-purple-100 dark:bg-purple-500/10 rounded-full">
-                  AI CONSUMPTION
-                </span>
-              </div>
-              <div className="relative z-10">
-                <p className="text-sm font-medium text-[#6F6F6F]">Costo IA Estimado</p>
-                <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">
-                  {formatCost(data?.estimatedAiCostUsd || 0)}
-                </h3>
-                <div className="text-[11px] text-[#6F6F6F] mt-2 font-medium space-y-0.5">
-                  <p>Entrada: {formatCost(data?.estimatedInputCostUsd || 0)} ({formatTokens(data?.totalInputTokens || 0)})</p>
-                  <p>Salida: {formatCost(data?.estimatedOutputCostUsd || 0)} ({formatTokens(data?.totalOutputTokens || 0)})</p>
-                </div>
               </div>
             </div>
 
@@ -331,7 +295,7 @@ export default function AnalyticsDashboard() {
             <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
               <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] mb-4">Estado de Atención</h3>
               <div className="space-y-4">
-                <Link href="/?status=BOT" className="block group">
+                <Link href="/inbox?status=BOT" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-bold text-[#F36A2D] bg-[#F36A2D]/10 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
                       <Bot size={10} /> BOT
@@ -342,7 +306,7 @@ export default function AnalyticsDashboard() {
                     <div className="bg-[#F36A2D] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.botActiveLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                   </div>
                 </Link>
-                <Link href="/?status=NEEDS_AGENT" className="block group">
+                <Link href="/inbox?status=NEEDS_AGENT" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
                       <AlertCircle size={10} /> ALERTA
@@ -353,7 +317,7 @@ export default function AnalyticsDashboard() {
                     <div className="bg-red-500 h-2 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]" style={{ width: `${data?.totalLeads ? Math.round(((data?.needsAgentLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                   </div>
                 </Link>
-                <Link href="/?status=AGENT" className="block group">
+                <Link href="/inbox?status=AGENT" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
                       <Users size={10} /> HUMANO
@@ -371,7 +335,7 @@ export default function AnalyticsDashboard() {
             <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
               <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] mb-4">Temperatura de Leads</h3>
               <div className="space-y-4">
-                <Link href="/?heat=CALIENTE" className="block group">
+                <Link href="/inbox?heat=CALIENTE" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
                       <Flame size={10} /> CALIENTE
@@ -382,7 +346,7 @@ export default function AnalyticsDashboard() {
                     <div className="bg-rose-500 h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.hotLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                   </div>
                 </Link>
-                <Link href="/?heat=TIBIO" className="block group">
+                <Link href="/inbox?heat=TIBIO" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-bold text-[#F36A2D] bg-[#F36A2D]/10 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
                       <TrendingUp size={10} /> TIBIO
@@ -393,7 +357,7 @@ export default function AnalyticsDashboard() {
                     <div className="bg-[#F36A2D] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.warmLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                   </div>
                 </Link>
-                <Link href="/?heat=FRIO" className="block group">
+                <Link href="/inbox?heat=FRIO" className="block group">
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
                       ❄️ FRÍO

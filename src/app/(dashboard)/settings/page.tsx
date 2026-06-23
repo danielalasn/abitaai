@@ -903,6 +903,74 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </div>
+
+              {/* PRIVACY & COMPLIANCE SECTION */}
+              <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-red-500/30 transition-all duration-500">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-red-500/10 rounded-xl">
+                    <ShieldX className="text-red-500" size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Privacidad y Datos</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Gestión de tus datos de acuerdo con las políticas de privacidad.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                    <div className="flex flex-col gap-1 pr-4">
+                      <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Exportar Datos</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                        Descarga una copia de todos tus datos personales, configuraciones y leads en formato JSON.
+                      </span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { exportUserData } = await import('@/app/actions/compliance');
+                          const data = await exportUserData();
+                          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `abitaai-data-${new Date().toISOString()}.json`;
+                          a.click();
+                        } catch (e: any) {
+                          alert(e.message || 'Error al exportar datos');
+                        }
+                      }}
+                      className="px-4 py-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl text-xs font-bold hover:bg-[#F36A2D] transition-colors whitespace-nowrap"
+                    >
+                      Exportar Datos
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl">
+                    <div className="flex flex-col gap-1 pr-4">
+                      <span className="text-sm font-bold text-red-600 dark:text-red-400">Eliminar Cuenta</span>
+                      <span className="text-xs text-red-500/80 dark:text-red-400/80 leading-relaxed">
+                        Elimina permanentemente tu cuenta y todos tus datos. Esta acción no se puede deshacer.
+                      </span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (confirm('¿Estás SEGURO de que quieres eliminar tu cuenta? TODOS tus datos, configuraciones, y leads serán borrados PERMANENTEMENTE.')) {
+                          try {
+                            const { deleteUserAccount } = await import('@/app/actions/compliance');
+                            await deleteUserAccount();
+                            window.location.href = '/login';
+                          } catch (e: any) {
+                            alert(e.message || 'Error al eliminar cuenta');
+                          }
+                        }
+                      }}
+                      className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-colors whitespace-nowrap"
+                    >
+                      Eliminar Cuenta
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

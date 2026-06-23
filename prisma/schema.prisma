@@ -28,6 +28,7 @@ model Client {
   
   projects     Project[]
   integrations Integration[]
+  auditLogs    AuditLog[]
 }
 
 model Integration {
@@ -243,4 +244,17 @@ model WebhookEvent {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  clientId  String?
+  action    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
 }

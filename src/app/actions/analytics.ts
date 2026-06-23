@@ -2,9 +2,49 @@
 
 import { prisma } from '@/lib/prisma'
 import { getCurrentProject } from '@/lib/auth-server'
+import { decrypt } from '@/lib/encryption'
 export async function getAnalyticsData(dateRange?: { start?: string, end?: string }) {
   const project = await getCurrentProject()
   if (!project) return null
+
+  const botConfig = await prisma.botConfig.findUnique({
+    where: { projectId: project.id }
+  })
+
+  let tierLimit = 250;
+  let tierName = "Tier 1";
+  if (botConfig?.whatsappPhoneId && botConfig?.whatsappToken) {
+    try {
+      const decryptedToken = decrypt(botConfig.whatsappToken);
+      const res = await fetch(`https://graph.facebook.com/v20.0/${botConfig.whatsappPhoneId}?fields=whatsapp_business_manager_messaging_limit`, {
+        headers: { Authorization: `Bearer ${decryptedToken}` }
+      })
+      const data = await res.json()
+      if (data && data.whatsapp_business_manager_messaging_limit) {
+        const t = data.whatsapp_business_manager_messaging_limit;
+        if (t.messaging_limit) tierLimit = t.messaging_limit;
+        if (t.tier) {
+          tierName = t.tier.replace('_', ' ').toLowerCase();
+          tierName = tierName.charAt(0).toUpperCase() + tierName.slice(1);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching WA limit", e)
+    }
+  }
+
+  const yesterday24h = new Date()
+  yesterday24h.setHours(yesterday24h.getHours() - 24)
+  const uniqueChats24h = await prisma.message.findMany({
+    where: {
+      createdAt: { gte: yesterday24h },
+      role: { in: ['agent', 'assistant'] },
+      chat: { lead: { projectId: project.id, channel: 'whatsapp' } }
+    },
+    select: { chatId: true },
+    distinct: ['chatId']
+  })
+  const tierUsage = uniqueChats24h.length
 
   // Construir filtro de fecha si se proporciona
   const dateQuery: any = {}
@@ -18,12 +58,12 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   const dateFilter = Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {}
 
   const totalLeads = await prisma.lead.count({
-    where: { projectId: project.id, ...dateFilter }
+    where: { projectId: project.id }
   })
 
   // Leads handed off to human
   const handedOffLeads = await prisma.lead.count({
-    where: { projectId: project.id, status: 'NEEDS_AGENT', ...dateFilter }
+    where: { projectId: project.id, status: 'NEEDS_AGENT' }
   })
 
   // Uso del plan de todo el tiempo: Mensajes de IA (assistant) + Mensajes de plantilla proactivos (MARKETING/UTILITY)
@@ -107,18 +147,19 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   const whatsappDeliveryRate = totalLogs > 0 ? Math.round(((deliveredLogs + readLogs) / totalLogs) * 100) : 0;
   const whatsappReadRate = totalLogs > 0 ? Math.round((readLogs / totalLogs) * 100) : 0;
 
-  // Channel Distribution
-  const whatsappLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'whatsapp', ...dateFilter } })
-  const instagramLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'instagram', ...dateFilter } })
+  // Channel Distribution (Current state, not filtered by date)
+  const whatsappLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'whatsapp' } })
+  const instagramLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'instagram' } })
 
-  // Heatmap calculations
-  const hotLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'CALIENTE', ...dateFilter } })
-  const warmLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'TIBIO', ...dateFilter } })
-  const coldLeads = await prisma.lead.count({ where: { projectId: project.id, heat: { in: ['FRIO', ''] }, ...dateFilter } })
+  // Heatmap calculations (Current state, not filtered by date)
+  const hotLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'CALIENTE' } })
+  const warmLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'TIBIO' } })
+  const coldLeads = await prisma.lead.count({ where: { projectId: project.id, heat: { in: ['FRIO', ''] } } })
 
-  const botActiveLeads = await prisma.chat.count({ where: { lead: { projectId: project.id }, botActive: true, ...dateFilter } })
-  const needsAgentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: 'NEEDS_AGENT' }, botActive: false, ...dateFilter } })
-  const agentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: { not: 'NEEDS_AGENT' } }, botActive: false, ...dateFilter } })
+  // Bot Active / Agent status (Current state, not filtered by date)
+  const botActiveLeads = await prisma.chat.count({ where: { lead: { projectId: project.id }, botActive: true } })
+  const needsAgentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: 'NEEDS_AGENT' }, botActive: false } })
+  const agentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: { not: 'NEEDS_AGENT' } }, botActive: false } })
 
   // Calculamos la tasa de conversión (handoff)
   const conversionRate = totalLeads > 0 ? Math.round((handedOffLeads / totalLeads) * 100) : 0
@@ -201,7 +242,10 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     sentByUsCount: rawAgentMessages,
     proactiveMessagesCount,
     planUsageAllTime,
-    dailyTrends: []
+    dailyTrends: [],
+    tierLimit,
+    tierName,
+    tierUsage
   };
 }
 

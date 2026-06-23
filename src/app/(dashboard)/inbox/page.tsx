@@ -49,12 +49,23 @@ function WaitTimer({ startTime }: { startTime: string | Date }) {
       const now = new Date().getTime();
       const diff = Math.floor((now - start) / 1000); // seconds
 
-      if (diff < 60) setElapsed(`${diff}s`);
-      else if (diff < 3600) setElapsed(`${Math.floor(diff / 60)}m`);
-      else {
+      if (diff < 60) {
+        setElapsed(`${diff}s`);
+      } else if (diff < 3600) {
+        setElapsed(`${Math.floor(diff / 60)}m`);
+      } else if (diff < 86400) {
         const h = Math.floor(diff / 3600);
         const m = Math.floor((diff % 3600) / 60);
         setElapsed(`${h}h ${m}m`);
+      } else if (diff < 2592000) { // 30 dias aprox
+        const d = Math.floor(diff / 86400);
+        setElapsed(`${d}d`);
+      } else if (diff < 31536000) { // 365 dias aprox
+        const m = Math.floor(diff / 2592000);
+        setElapsed(`${m} mes${m > 1 ? 'es' : ''}`);
+      } else {
+        const y = Math.floor(diff / 31536000);
+        setElapsed(`${y} año${y > 1 ? 's' : ''}`);
       }
     };
 

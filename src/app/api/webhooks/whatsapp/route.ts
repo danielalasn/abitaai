@@ -5,8 +5,8 @@ import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { prisma } from '@/lib/prisma';
 import { downloadAndUploadMetaMedia } from '@/app/actions/storage';
 import crypto from 'crypto';
-import { decrypt } from '@/lib/encryption';
-import { enqueueMessage } from '@/lib/queue';
+import { encrypt, decrypt } from '@/lib/encryption';
+import { enqueueMessage, redisConnection } from '@/lib/queue';
 // Lógica de procesamiento movida al Worker en src/lib/worker.ts
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -23,6 +23,18 @@ export async function POST(req: NextRequest) {
     const signature = req.headers.get('x-hub-signature-256');
     const rawBody = await req.text();
     const appSecret = process.env.META_APP_SECRET;
+
+    // ─── RATE LIMITING (Redis) ───
+    const ip = req.headers.get('x-forwarded-for') || req.ip || 'unknown-ip';
+    const rateLimitKey = `rate-limit:webhook:whatsapp:${ip}`;
+    const currentReqs = await redisConnection.incr(rateLimitKey);
+    if (currentReqs === 1) {
+      await redisConnection.expire(rateLimitKey, 60); // 1 minuto
+    }
+    if (currentReqs > 1000) {
+      console.warn(`[Rate Limit] IP ${ip} bloqueada por exceso de peticiones.`);
+      return new NextResponse('Too many requests', { status: 429 });
+    }
 
     // ─── VERIFICACIÓN DE FIRMA (HMAC-SHA256) ───
     if (appSecret && signature) {

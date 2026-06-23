@@ -350,6 +350,10 @@ export async function updateUserProfile(userId: string, name: string, email: str
     where: { id: userId },
     data: { name, email }
   });
+
+  const { createAuditLog } = await import('@/app/actions/compliance');
+  await createAuditLog('PROFILE_UPDATED', `Nombre/Correo actualizado a ${name} / ${email}`);
+
   revalidatePath('/settings');
   return { success: true };
 }
@@ -369,6 +373,10 @@ export async function updateUserPassword(userId: string, oldPassword: string, ne
     where: { id: userId },
     data: { password: hashedPassword }
   });
+
+  const { createAuditLog } = await import('@/app/actions/compliance');
+  await createAuditLog('PASSWORD_UPDATED', 'El usuario actualizó su contraseña.');
+
   return { success: true };
 }
 
