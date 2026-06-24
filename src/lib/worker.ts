@@ -23,6 +23,33 @@ export function initWorker() {
 
   console.log('🤖 [Worker] Iniciando motor de procesamiento BullMQ...');
 
+  // --- Internal Cron para Auto-Wake ---
+  setInterval(async () => {
+    try {
+      const projects = await prisma.project.findMany({ where: { botAutoWakeHours: { not: null } } });
+      for (const project of projects) {
+        const hours = project.botAutoWakeHours;
+        if (!hours) continue;
+        const cutoffDate = new Date(Date.now() - hours * 60 * 60 * 1000);
+        const chatsToWake = await prisma.chat.findMany({
+          where: { lead: { projectId: project.id }, botActive: false, autoWakeBot: true, lastActiveAt: { lt: cutoffDate } }
+        });
+        if (chatsToWake.length === 0) continue;
+        const chatIds = chatsToWake.map(c => c.id);
+        await prisma.chat.updateMany({ where: { id: { in: chatIds } }, data: { botActive: true } });
+        const timeStr = hours < 1 ? `${Math.round(hours * 60)} minutos` : `${hours} horas`;
+        await prisma.message.createMany({
+          data: chatIds.map(chatId => ({
+            chatId, role: 'system', content: `El bot se ha reactivado automáticamente tras ${timeStr} de inactividad.`, status: 'DELIVERED'
+          }))
+        });
+        console.log(`[Internal Cron] Reactivados ${chatIds.length} bots para el proyecto ${project.id}`);
+      }
+    } catch (e) {
+      console.error('[Internal Cron] Error en wake-bots:', e);
+    }
+  }, 60 * 1000); // Ejecutar cada 1 minuto
+
   globalAny.messageWorker = new Worker('whatsapp-messages', async (job: Job) => {
     console.log(`🤖 [Worker] Picked up job: ${job.id} for lead: ${job.data.from}`);
     const { from } = job.data;
