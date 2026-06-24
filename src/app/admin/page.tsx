@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown } from 'lucide-react';
+import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Globe } from 'lucide-react';
 import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getGlobalStats } from '@/app/actions/admin';
 import { compileKnowledgeWithAI, saveAgentConfig } from '@/app/actions/settings';
 import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
-import { generateBotConfigFromFile, type GeneratedBotConfig } from '@/app/actions/bot-builder';
+import { generateBotConfigFromFile, generateBotConfigFromUrl, type GeneratedBotConfig } from '@/app/actions/bot-builder';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -58,7 +58,9 @@ export default function AdminPage() {
 
   // Bot Builder state
   const [builderPhase, setBuilderPhase] = useState<'upload' | 'processing' | 'preview'>('upload');
+  const [builderMode, setBuilderMode] = useState<'file' | 'url'>('file');
   const [builderFile, setBuilderFile] = useState<File | null>(null);
+  const [builderUrl, setBuilderUrl] = useState('');
   const [builderDragOver, setBuilderDragOver] = useState(false);
   const [builderProcessingStep, setBuilderProcessingStep] = useState<string>('');
   const [builderGenerated, setBuilderGenerated] = useState<GeneratedBotConfig | null>(null);
@@ -1032,7 +1034,7 @@ export default function AdminPage() {
                   Dashboard
                 </button>
                 <button
-                  onClick={() => { setActiveTab('builder'); setBuilderPhase('upload'); setBuilderGenerated(null); setBuilderError(null); setBuilderFile(null); }}
+                  onClick={() => { setActiveTab('builder'); setBuilderPhase('upload'); setBuilderGenerated(null); setBuilderError(null); setBuilderFile(null); setBuilderUrl(''); setBuilderMode('file'); }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'builder' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
                   <Sparkles size={18} />
@@ -1325,52 +1327,103 @@ export default function AdminPage() {
                           <h3 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                             <Sparkles size={20} className="text-orange-500" /> Bot Builder IA
                           </h3>
-                          <p className="text-sm text-zinc-500 mt-1">Sube el documento del cliente y la IA configurará el bot completo automáticamente.</p>
+                          <p className="text-sm text-zinc-500 mt-1">La IA analizará la información y configurará el bot completo automáticamente.</p>
                         </div>
 
-                        <label
-                          htmlFor="bot-builder-file-input"
-                          onDragOver={(e) => { e.preventDefault(); setBuilderDragOver(true); }}
-                          onDragLeave={() => setBuilderDragOver(false)}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            setBuilderDragOver(false);
-                            const f = e.dataTransfer.files[0];
-                            if (f) setBuilderFile(f);
-                          }}
-                          className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
-                            builderDragOver
-                              ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
-                              : builderFile
-                              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20'
-                              : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 hover:border-orange-400 hover:bg-orange-50/30 dark:hover:bg-orange-950/10'
-                          }`}
-                        >
-                          <input
-                            id="bot-builder-file-input"
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.csv,.md"
-                            onChange={(e) => { const f = e.target.files?.[0]; if (f) setBuilderFile(f); }}
-                          />
-                          {builderFile ? (
-                            <div className="flex flex-col items-center gap-2 text-center px-4">
-                              <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center">
-                                <CheckCircle2 size={24} className="text-emerald-600" />
+                        {/* Mode Toggle */}
+                        <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-2xl">
+                          <button
+                            onClick={() => { setBuilderMode('file'); setBuilderUrl(''); }}
+                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                              builderMode === 'file'
+                                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                            }`}
+                          >
+                            <Database size={15} /> Documento
+                          </button>
+                          <button
+                            onClick={() => { setBuilderMode('url'); setBuilderFile(null); }}
+                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                              builderMode === 'url'
+                                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                            }`}
+                          >
+                            <Globe size={15} /> Página Web
+                          </button>
+                        </div>
+
+                        {/* FILE MODE */}
+                        {builderMode === 'file' && (
+                          <label
+                            htmlFor="bot-builder-file-input"
+                            onDragOver={(e) => { e.preventDefault(); setBuilderDragOver(true); }}
+                            onDragLeave={() => setBuilderDragOver(false)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setBuilderDragOver(false);
+                              const f = e.dataTransfer.files[0];
+                              if (f) setBuilderFile(f);
+                            }}
+                            className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
+                              builderDragOver
+                                ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
+                                : builderFile
+                                ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20'
+                                : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 hover:border-orange-400 hover:bg-orange-50/30 dark:hover:bg-orange-950/10'
+                            }`}
+                          >
+                            <input
+                              id="bot-builder-file-input"
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.csv,.md"
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) setBuilderFile(f); }}
+                            />
+                            {builderFile ? (
+                              <div className="flex flex-col items-center gap-2 text-center px-4">
+                                <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center">
+                                  <CheckCircle2 size={24} className="text-emerald-600" />
+                                </div>
+                                <p className="font-bold text-zinc-900 dark:text-white text-sm">{builderFile.name}</p>
+                                <p className="text-xs text-zinc-500">{(builderFile.size / 1024).toFixed(1)} KB — Click para cambiar</p>
                               </div>
-                              <p className="font-bold text-zinc-900 dark:text-white text-sm">{builderFile.name}</p>
-                              <p className="text-xs text-zinc-500">{(builderFile.size / 1024).toFixed(1)} KB — Click para cambiar</p>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center gap-2 text-center px-4">
-                              <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
-                                <Database size={24} className="text-zinc-400" />
+                            ) : (
+                              <div className="flex flex-col items-center gap-2 text-center px-4">
+                                <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
+                                  <Database size={24} className="text-zinc-400" />
+                                </div>
+                                <p className="font-semibold text-zinc-700 dark:text-zinc-300 text-sm">Arrastra el documento aquí</p>
+                                <p className="text-xs text-zinc-400">PDF · Word · Excel · TXT · CSV — máx. 15MB</p>
                               </div>
-                              <p className="font-semibold text-zinc-700 dark:text-zinc-300 text-sm">Arrastra el documento aquí</p>
-                              <p className="text-xs text-zinc-400">PDF · Word · Excel · TXT · CSV — máx. 15MB</p>
+                            )}
+                          </label>
+                        )}
+
+                        {/* URL MODE */}
+                        {builderMode === 'url' && (
+                          <div className="flex flex-col gap-3">
+                            <div className="relative">
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
+                                <Globe size={18} />
+                              </div>
+                              <input
+                                type="url"
+                                value={builderUrl}
+                                onChange={(e) => setBuilderUrl(e.target.value)}
+                                placeholder="https://ejemplo.com"
+                                className="w-full pl-11 pr-4 py-4 border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                              />
                             </div>
-                          )}
-                        </label>
+                            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 rounded-xl px-4 py-3 flex items-start gap-3">
+                              <Globe size={15} className="text-blue-500 shrink-0 mt-0.5" />
+                              <p className="text-xs text-blue-700 dark:text-blue-400">
+                                La IA leerá y analizará el contenido público de esa página. Funciona mejor con sitios estáticos o con SSR. Si el sitio usa React/Vue sin SSR, puede que el contenido sea limitado.
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         {builderError && (
                           <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-2xl px-4 py-3 flex items-start gap-3">
@@ -1380,18 +1433,24 @@ export default function AdminPage() {
                         )}
 
                         <button
-                          disabled={!builderFile}
+                          disabled={builderMode === 'file' ? !builderFile : !builderUrl.trim()}
                           onClick={async () => {
-                            if (!builderFile || !selectedClient) return;
+                            if (!selectedClient) return;
                             setBuilderError(null);
                             setBuilderPhase('processing');
                             try {
-                              setBuilderProcessingStep('Enviando documento a la IA...');
-                              const fd = new FormData();
-                              fd.append('file', builderFile);
-                              const generated = await generateBotConfigFromFile(fd, selectedClient.name);
-
-                              setBuilderGenerated(generated);
+                              if (builderMode === 'file') {
+                                if (!builderFile) return;
+                                setBuilderProcessingStep('Enviando documento a la IA...');
+                                const fd = new FormData();
+                                fd.append('file', builderFile);
+                                const generated = await generateBotConfigFromFile(fd, selectedClient.name);
+                                setBuilderGenerated(generated);
+                              } else {
+                                setBuilderProcessingStep('Analizando página web...');
+                                const generated = await generateBotConfigFromUrl(builderUrl.trim(), selectedClient.name);
+                                setBuilderGenerated(generated);
+                              }
                               setBuilderPreviewTab('identity');
                               setBuilderPhase('preview');
                             } catch (err: any) {
