@@ -52,8 +52,41 @@ ESTRUCTURA EXACTA:
   
   "handoffRules": "string — Lista específica de situaciones donde el bot debe transferir a un humano, basada en el tipo de negocio. Incluye: cuando el cliente quiere negociar precio directamente, cuando requiere una cotización personalizada, cuando hay una queja o problema serio, cuando la consulta es muy técnica o específica, cuando el cliente ha demostrado alto interés de compra. Sé muy específico al negocio.",
   
-  "leadScoringRules": "string — JSON array con mínimo 10 reglas de scoring muy específicas al sector y tipo de negocio. Cada regla debe tener 'condition' (descripción de la acción del lead que activa la regla) y 'score' (puntos a asignar, entre 5 y 50 según importancia). Ejemplo: [{\"condition\": \"Pregunta por disponibilidad o fechas específicas\", \"score\": 25}, {\"condition\": \"Menciona que tiene presupuesto definido\", \"score\": 35}]. Las condiciones deben ser lo más específicas posible al negocio."
+  "leadScoringRules": "string — JSON array con reglas de scoring muy específicas al sector y tipo de negocio. REGLA CRÍTICA: Los puntos de todas las reglas deben sumar EXACTAMENTE 100. El sistema usa escala de 0-100 donde: 0-30 = frío, 31-70 = tibio, 71-100 = caliente. Diseña las reglas con ese contexto: acciones de bajo interés (5-10 pts), interés medio (15-25 pts), alto interés (30-45 pts). La suma total debe ser exactamente 100. Cada regla debe tener 'condition' (descripción de la acción del lead) y 'score' (puntos). Ejemplo válido con suma=100: [{\"condition\": \"Pregunta qué servicios ofreces\", \"score\": 10}, {\"condition\": \"Pregunta por precios\", \"score\": 15}, {\"condition\": \"Pide disponibilidad o fechas\", \"score\": 25}, {\"condition\": \"Menciona que tiene presupuesto definido\", \"score\": 30}, {\"condition\": \"Solicita iniciar el proceso o firmar\", \"score\": 20}]. Suma=100. Genera entre 6 y 12 reglas proporcionales al tipo de negocio."
 }`;
+
+// ─────────────────────────────────────────────────────────────
+// NORMALIZE SCORING RULES → always sum to exactly 100
+// ─────────────────────────────────────────────────────────────
+
+function normalizeScoringRules(raw: string | any[]): string {
+  try {
+    const rules: { condition: string; score: number }[] = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(rules) || rules.length === 0) return '[]';
+
+    const total = rules.reduce((sum, r) => sum + (Number(r.score) || 0), 0);
+    if (total === 0) return JSON.stringify(rules);
+
+    if (total === 100) return JSON.stringify(rules);
+
+    // Scale proportionally so the sum is exactly 100
+    let normalized = rules.map(r => ({
+      condition: r.condition,
+      score: Math.round((Number(r.score) / total) * 100),
+    }));
+
+    // Fix rounding drift — add/subtract from the highest-score rule
+    const drift = 100 - normalized.reduce((s, r) => s + r.score, 0);
+    if (drift !== 0) {
+      const maxIdx = normalized.reduce((best, r, i, arr) => r.score > arr[best].score ? i : best, 0);
+      normalized[maxIdx].score += drift;
+    }
+
+    return JSON.stringify(normalized);
+  } catch {
+    return typeof raw === 'string' ? raw : '[]';
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // PARSE JSON response from Claude
@@ -68,7 +101,7 @@ function parseClaudeJson(text: string): GeneratedBotConfig {
     knowledgeRaw: parsed.knowledgeRaw || '',
     faq: parsed.faq || '',
     handoffRules: parsed.handoffRules || '',
-    leadScoringRules: parsed.leadScoringRules || '[]',
+    leadScoringRules: normalizeScoringRules(parsed.leadScoringRules || '[]'),
   };
 }
 
