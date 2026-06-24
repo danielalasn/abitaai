@@ -171,8 +171,8 @@ export async function sendTestMessage(
     let scoreBump = 0;
     let scoreReason = "";
     
-    // Regex para capturar [ACTION: SCORE_BUMP +10 REASON: "Razón"]
-    const scoreMatches = Array.from(rawReply.matchAll(/\[ACTION: SCORE_BUMP ([+-]?\d+)(?:\s+REASON:\s*"([^"]+)")?\]/gi));
+    // Regex para capturar [ACTION: SCORE_BUMP +10 REASON: "Razón"] (soporta comillas simples o dobles)
+    const scoreMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SCORE_BUMP\s+([+-]?\d+)(?:\s+REASON:\s*["']([^"']+)["'])?\s*\]/gi));
     
     if (scoreMatches.length > 0) {
       const reasons: string[] = [];
@@ -185,7 +185,7 @@ export async function sendTestMessage(
     }
 
     // Check for Email extraction
-    const emailMatch = rawReply.match(/\[ACTION: UPDATE_EMAIL "(.*?)"\]/);
+    const emailMatch = rawReply.match(/\[ACTION:\s*UPDATE_EMAIL\s+["'](.*?)["']\s*\]/i);
     const extractedEmail = emailMatch ? emailMatch[1].trim() : null;
 
     return { 
@@ -251,7 +251,7 @@ export async function sendTestMessage(
 
       let scoreBump = 0;
       let scoreReason = "";
-      const scoreMatches = Array.from(rawReply.matchAll(/\[ACTION: SCORE_BUMP ([+-]?\d+)(?:\s+REASON:\s*"([^"]+)")?\]/gi));
+      const scoreMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SCORE_BUMP\s+([+-]?\d+)(?:\s+REASON:\s*["']([^"']+)["'])?\s*\]/gi));
       if (scoreMatches.length > 0) {
         const reasons: string[] = [];
         scoreMatches.forEach(match => {
@@ -262,7 +262,7 @@ export async function sendTestMessage(
         console.log(`Heatmap Score Detectado (Gemini): +${scoreBump} (${scoreReason})`);
       }
 
-      const emailMatch = rawReply.match(/\[ACTION: UPDATE_EMAIL "(.*?)"\]/);
+      const emailMatch = rawReply.match(/\[ACTION:\s*UPDATE_EMAIL\s+["'](.*?)["']\s*\]/i);
       const extractedEmail = emailMatch ? emailMatch[1].trim() : null;
 
       return { 
