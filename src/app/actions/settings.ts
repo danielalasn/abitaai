@@ -39,6 +39,7 @@ export async function getProjectConfig() {
     whatsappPhoneId: project.whatsappPhoneId || '',
     whatsappBusinessId,
     defaultBotActive: project.defaultBotActive,
+    botAutoWakeHours: project.botAutoWakeHours,
     agents: project.agents || [],
     client: project.client,
   };
@@ -66,6 +67,15 @@ export async function updateDefaultBotActive(projectId: string, defaultBotActive
   await prisma.project.update({
     where: { id: projectId },
     data: { defaultBotActive }
+  });
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function updateBotAutoWakeHours(projectId: string, botAutoWakeHours: number | null) {
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { botAutoWakeHours }
   });
   revalidatePath('/settings');
   return { success: true };

@@ -45,9 +45,10 @@ export default function SettingsPage() {
   const [whatsappPhoneId, setWhatsappPhoneId] = useState("")
   const [whatsappBusinessId, setWhatsappBusinessId] = useState("")
   const [showToken, setShowToken] = useState(false)
+  const [defaultBotActive, setDefaultBotActive] = useState(true)
+  const [botAutoWakeHours, setBotAutoWakeHours] = useState<number | null>(168)
   const [isVerifying, setIsVerifying] = useState(false)
   const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null)
-  const [defaultBotActive, setDefaultBotActive] = useState(true)
 
   // Agent list
   const [agents, setAgents] = useState<AgentSummary[]>([])
@@ -149,6 +150,7 @@ export default function SettingsPage() {
       setWhatsappPhoneId(data.whatsappPhoneId)
       setWhatsappBusinessId(data.whatsappBusinessId)
       setDefaultBotActive(data.defaultBotActive ?? true)
+      setBotAutoWakeHours(data.botAutoWakeHours ?? null)
       setAgents(data.agents as AgentSummary[])
       
       // Load user profile from data
@@ -448,8 +450,9 @@ export default function SettingsPage() {
   const handleSaveBotConfig = async () => {
     setIsSaving(true); setSaveStatus(null)
     try {
-      const { updateDefaultBotActive } = await import('@/app/actions/settings')
+      const { updateDefaultBotActive, updateBotAutoWakeHours } = await import('@/app/actions/settings')
       await updateDefaultBotActive(projectId, defaultBotActive)
+      await updateBotAutoWakeHours(projectId, botAutoWakeHours)
       setSaveStatus('success'); setTimeout(() => setSaveStatus(null), 3000)
     } catch (e: any) {
       alert(e.message)
@@ -1015,6 +1018,27 @@ export default function SettingsPage() {
                         <span className="sr-only">Habilitar bot por defecto</span>
                         <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${defaultBotActive ? 'translate-x-5' : 'translate-x-0'}`} />
                       </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                      <div className="flex flex-col gap-1 pr-4">
+                        <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Reactivación Automática (Auto-Wake)</span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                          Si un humano apaga el bot para tomar una conversación, ¿después de cuánto tiempo de inactividad debe reactivarse automáticamente el bot?
+                        </span>
+                      </div>
+                      <select
+                        value={botAutoWakeHours === null ? 'null' : botAutoWakeHours}
+                        onChange={(e) => setBotAutoWakeHours(e.target.value === 'null' ? null : Number(e.target.value))}
+                        className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm rounded-xl px-4 py-2 text-zinc-900 dark:text-[#EDE9E0] focus:ring-2 focus:ring-[#F36A2D] focus:outline-none shrink-0"
+                      >
+                        <option value="null">Nunca (Manual)</option>
+                        <option value="12">12 Horas</option>
+                        <option value="24">24 Horas</option>
+                        <option value="48">48 Horas</option>
+                        <option value="168">7 Días</option>
+                        <option value="336">14 Días</option>
+                      </select>
                     </div>
 
                     <div className="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800/40">
