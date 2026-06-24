@@ -23,10 +23,10 @@ export function Sidebar() {
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col pt-6 pb-4 px-4 shrink-0 transition-[width] duration-300 ease-in-out relative overflow-hidden`}>
+    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col pt-6 pb-4 px-4 shrink-0 transition-[width] duration-300 ease-in-out relative z-50`}>
       
       {/* Header Container */}
-      <div className="flex flex-col mb-8 overflow-hidden shrink-0">
+      <div className="flex flex-col mb-8 shrink-0 overflow-hidden">
         <div className="flex items-center gap-4 px-2.5">
           <div className="h-9 w-9 bg-[#111111] dark:bg-[#E9E4D8] rounded-xl flex items-center justify-center shadow-md shrink-0 transition-transform hover:rotate-12">
             <span className="text-[#F36A2D] font-bold text-base tracking-tight">a</span>
@@ -45,7 +45,7 @@ export function Sidebar() {
         </button>
       </div>
       
-      <nav className="flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden no-scrollbar">
+      <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar relative">
         {[
           { icon: Inbox,             label: 'Bandeja',          href: '/inbox' },
           { icon: Megaphone,         label: 'Campañas',         href: '/campaigns' },
@@ -97,9 +97,14 @@ export function Sidebar() {
               <ThemeSwitch />
             </div>
           </div>
-          <span className={`text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest transition-all duration-300 whitespace-nowrap ml-6 ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none' : 'opacity-100'}`}>
+          <span className={`text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest transition-all duration-300 whitespace-nowrap ml-6 ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none absolute' : 'opacity-100'}`}>
             Tema
           </span>
+          {isCollapsed && (
+            <div className="absolute left-16 bg-zinc-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[100] shadow-xl border border-zinc-800">
+              Tema
+            </div>
+          )}
         </div>
 
         {/* Logout */}
@@ -111,9 +116,14 @@ export function Sidebar() {
           <div className="w-6 flex items-center justify-center shrink-0">
             <LogOut size={18} className="opacity-70 group-hover:scale-110 transition-transform" />
           </div>
-          <span className={`transition-all duration-300 whitespace-nowrap ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none' : 'opacity-100'}`}>
+          <span className={`transition-all duration-300 whitespace-nowrap ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none absolute' : 'opacity-100'}`}>
             Cerrar Sesión
           </span>
+          {isCollapsed && (
+            <div className="absolute left-16 bg-zinc-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[100] shadow-xl border border-zinc-800">
+              Cerrar Sesión
+            </div>
+          )}
         </button>
       </div>
 
@@ -126,7 +136,7 @@ export function Sidebar() {
           <div className="h-9 w-9 rounded-xl bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-sm font-bold shadow-sm shrink-0 group-hover:scale-105 transition-transform ml-0.5">
             {userInitial}
           </div>
-          <div className={`flex flex-col text-left overflow-hidden transition-all duration-300 ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none' : 'opacity-100'}`}>
+          <div className={`flex flex-col text-left transition-all duration-300 ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none absolute' : 'opacity-100'}`}>
             <span className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0] truncate whitespace-nowrap">
               {session?.user?.name?.split(' ')[0] || 'Usuario'}
             </span>
@@ -134,6 +144,11 @@ export function Sidebar() {
               {session?.user?.email}
             </span>
           </div>
+          {isCollapsed && (
+            <div className="absolute left-16 bg-zinc-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[100] shadow-xl border border-zinc-800">
+              Perfil
+            </div>
+          )}
         </button>
       </div>
 
