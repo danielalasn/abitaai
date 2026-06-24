@@ -49,10 +49,11 @@ export async function GET(req: Request) {
       });
 
       // 4. Agregar mensaje interno de sistema para que el agente sepa qué pasó
+      const timeStr = hours < 1 ? `${Math.round(hours * 60)} minutos` : `${hours} horas`;
       const systemMessages = chatIds.map(chatId => ({
         chatId,
         role: 'system',
-        content: `El bot se ha reactivado automáticamente tras ${hours} horas de inactividad.`,
+        content: `El bot se ha reactivado automáticamente tras ${timeStr} de inactividad.`,
         status: 'DELIVERED',
       }));
 

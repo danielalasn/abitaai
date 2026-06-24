@@ -63,7 +63,7 @@ model Project {
   
   // Opción general para deshabilitar el bot por defecto para nuevos leads
   defaultBotActive     Boolean  @default(false)
-  botAutoWakeHours     Int?     @default(168) // Horas de inactividad para que el bot despierte solo. null = apagado.
+  botAutoWakeHours     Float?     @default(168) // Horas de inactividad para que el bot despierte solo. null = apagado.
   leadScoringEnabled   Boolean  @default(true)
   notificationEmails   String[] @default([])
 

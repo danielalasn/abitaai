@@ -1033,6 +1033,7 @@ export default function SettingsPage() {
                         className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm rounded-xl px-4 py-2 text-zinc-900 dark:text-[#EDE9E0] focus:ring-2 focus:ring-[#F36A2D] focus:outline-none shrink-0"
                       >
                         <option value="null">Nunca (Manual)</option>
+                        <option value="0.0833">5 Minutos</option>
                         <option value="12">12 Horas</option>
                         <option value="24">24 Horas</option>
                         <option value="48">48 Horas</option>
