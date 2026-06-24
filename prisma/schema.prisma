@@ -63,6 +63,7 @@ model Project {
   
   // Opción general para deshabilitar el bot por defecto para nuevos leads
   defaultBotActive     Boolean  @default(false)
+  botAutoWakeHours     Int?     @default(168) // Horas de inactividad para que el bot despierte solo. null = apagado.
   leadScoringEnabled   Boolean  @default(true)
   notificationEmails   String[] @default([])
 
@@ -123,6 +124,7 @@ model Chat {
   leadId       String   @unique
   channel      String   @default("whatsapp") // "whatsapp" | "instagram"
   botActive    Boolean  @default(true)
+  autoWakeBot  Boolean  @default(true) // Si es true, el bot puede reactivarse tras inactividad
   isArchived   Boolean  @default(false)
   lastActiveAt DateTime @default(now())
   createdAt    DateTime @default(now())

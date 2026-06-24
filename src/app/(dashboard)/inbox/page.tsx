@@ -1393,9 +1393,31 @@ export default function InboxPage() {
                 const isBot = msg.role === 'assistant';
                 const isAgent = msg.role === 'agent';
 
+                const isSystem = msg.role === 'system';
+
                 const currentMsgDate = new Date(msg.createdAt);
                 const prevMsgDate = idx > 0 ? new Date(activeChat.messages[idx - 1].createdAt) : null;
                 const showDateHeader = !prevMsgDate || currentMsgDate.toDateString() !== prevMsgDate.toDateString();
+
+                if (isSystem) {
+                  return (
+                    <div key={msg.id} id={`msg-${msg.id}`} className="transition-all duration-500 rounded-2xl">
+                      {showDateHeader && (
+                        <div className="flex justify-center my-6">
+                          <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700/50">
+                            {formatDateLabel(currentMsgDate)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-center my-4">
+                        <span className="px-3 py-1.5 text-[11px] font-medium text-[#6F6F6F] bg-zinc-100 dark:bg-zinc-800/50 rounded-lg flex items-center gap-1.5 border border-zinc-200/50 dark:border-zinc-700/30">
+                          <Bot size={12} className="text-[#F36A2D]" />
+                          {msg.content}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div key={msg.id} id={`msg-${msg.id}`} className="transition-all duration-500 rounded-2xl">

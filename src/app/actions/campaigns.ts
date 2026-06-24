@@ -231,8 +231,8 @@ export async function processCampaignLead(
 
     const chat = await prisma.chat.upsert({
       where: { leadId: lead.id },
-      update: { botActive: realBotActive, lastActiveAt: new Date() },
-      create: { leadId: lead.id, botActive: realBotActive }
+      update: { botActive: realBotActive, autoWakeBot: realBotActive, lastActiveAt: new Date() },
+      create: { leadId: lead.id, botActive: realBotActive, autoWakeBot: realBotActive }
     });
 
     // 3. Envío Meta o Simulacro

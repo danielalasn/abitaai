@@ -298,7 +298,8 @@ export async function simulateIncomingMessage(
       data: { 
         leadId: currentLead.id, 
         channel,
-        botActive: project.defaultBotActive ?? true
+        botActive: project.defaultBotActive ?? true,
+        autoWakeBot: project.defaultBotActive ?? true
       }
     });
   }
@@ -726,7 +727,18 @@ export async function startIndividualChatAction(
     // 2. Upsert Chat
     let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
     if (!chat) {
-      chat = await prisma.chat.create({ data: { leadId: lead.id } });
+      chat = await prisma.chat.create({ 
+        data: { 
+          leadId: lead.id,
+          botActive: botActive,
+          autoWakeBot: botActive
+        } 
+      });
+    } else {
+      chat = await prisma.chat.update({
+        where: { id: chat.id },
+        data: { botActive: botActive, autoWakeBot: botActive }
+      });
     }
 
     const resolvedToken = project.whatsappToken ? decrypt(project.whatsappToken) : null;
