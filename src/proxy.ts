@@ -14,6 +14,6 @@ export const config = {
      * - /api/webhooks/* (webhooks externos de WhatsApp)
      * - Archivos estáticos (_next, favicon, etc.)
      */
-    '/((?!login|terms|privacy|api/auth|api/webhooks|api/seed|_next/static|_next/image|favicon.ico|$).*)',
+    '/((?!login|terms|privacy|api/auth|api/webhooks|api/cron|api/seed|_next/static|_next/image|favicon.ico|$).*)',
   ],
 }
