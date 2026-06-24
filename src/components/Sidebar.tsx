@@ -45,7 +45,7 @@ export function Sidebar() {
         </button>
       </div>
       
-      <nav className="flex-1 space-y-1.5 overflow-y-auto no-scrollbar relative">
+      <nav className={`flex-1 space-y-1.5 no-scrollbar ${isCollapsed ? 'overflow-visible' : 'overflow-y-auto overflow-x-hidden'}`}>
         {[
           { icon: Inbox,             label: 'Bandeja',          href: '/inbox' },
           { icon: Megaphone,         label: 'Campañas',         href: '/campaigns' },
@@ -91,7 +91,7 @@ export function Sidebar() {
       {/* Actions */}
       <div className="space-y-1 mt-4 border-t border-[#DEDAD0]/50 dark:border-zinc-800/50 pt-4 shrink-0">
         {/* Theme Toggle */}
-        <div className="flex items-center gap-4 px-3 py-2">
+        <div className="flex items-center gap-4 px-3 py-2 group relative">
           <div className="w-6 flex items-center justify-center shrink-0">
             <div className="scale-[0.7] transition-none origin-center">
               <ThemeSwitch />
@@ -110,8 +110,7 @@ export function Sidebar() {
         {/* Logout */}
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-4 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-[#6F6F6F] hover:bg-rose-500/10 hover:text-rose-600 transition-all group"
-          title={isCollapsed ? "Cerrar Sesión" : undefined}
+          className="flex items-center gap-4 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-[#6F6F6F] hover:bg-rose-500/10 hover:text-rose-600 transition-all group relative"
         >
           <div className="w-6 flex items-center justify-center shrink-0">
             <LogOut size={18} className="opacity-70 group-hover:scale-110 transition-transform" />
@@ -131,7 +130,7 @@ export function Sidebar() {
       <div className="mt-4 pt-2 shrink-0">
         <button 
           onClick={() => setIsProfileOpen(true)}
-          className="flex items-center gap-4 p-2 w-full rounded-xl hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left group"
+          className="flex items-center gap-4 p-2 w-full rounded-xl hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left group relative"
         >
           <div className="h-9 w-9 rounded-xl bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-sm font-bold shadow-sm shrink-0 group-hover:scale-105 transition-transform ml-0.5">
             {userInitial}
