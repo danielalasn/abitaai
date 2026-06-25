@@ -160,7 +160,7 @@ export async function toggleBotActive(chatId: string, botActive: boolean) {
 
   const chat = await prisma.chat.update({
     where: { id: chatId },
-    data: { botActive },
+    data: { botActive, lastActiveAt: new Date() },
     select: { leadId: true }
   });
   
@@ -171,6 +171,21 @@ export async function toggleBotActive(chatId: string, botActive: boolean) {
       data: { status: 'PENDING' }
     });
   }
+}
+
+export async function toggleAutoWakeBot(chatId: string, autoWakeBot: boolean) {
+  const project = await getCurrentProject();
+  if (!project) throw new Error("No project found");
+  
+  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) {
+    throw new Error("Chat not found or project mismatch");
+  }
+
+  await prisma.chat.update({
+    where: { id: chatId },
+    data: { autoWakeBot }
+  });
 }
 
 // Apaga la IA automáticamente y marca como prioridad roja
@@ -184,7 +199,7 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
 
   const chat = await prisma.chat.update({
     where: { id: chatId },
-    data: { botActive: false },
+    data: { botActive: false, lastActiveAt: new Date() },
     select: { leadId: true }
   });
 

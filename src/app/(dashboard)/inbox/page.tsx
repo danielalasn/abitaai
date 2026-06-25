@@ -30,7 +30,7 @@ const WaIcon = ({ size = 24, className = '' }: { size?: number; className?: stri
 const SimIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
   <Sparkles size={size} className={className} />
 );
-import { getActiveChats, getChatMessages, getChatMessagesPaginated, loadMoreMessages, toggleBotActive, requestHandoff, simulateIncomingMessage, saveAssistantReply, saveAgentMessage, sendAgentMedia, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
+import { getActiveChats, getChatMessages, getChatMessagesPaginated, loadMoreMessages, toggleBotActive, toggleAutoWakeBot, requestHandoff, simulateIncomingMessage, saveAssistantReply, saveAgentMessage, sendAgentMedia, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
 import { updateLeadAISummary } from "@/app/actions/leads";
 import { uploadFileAction } from "@/app/actions/storage";
 import { sendTestMessage } from "@/app/actions/chat";
@@ -540,6 +540,29 @@ export default function InboxPage() {
       // Desbloqueamos el polling después de un pequeño delay para asegurar consistencia
       setTimeout(() => {
         pendingOptimistic.current.delete('toggle-' + chatId);
+      }, 2000);
+    }
+  };
+
+  const handleToggleAutoWake = async () => {
+    if (!activeChat) return;
+    const newStatus = !activeChat.autoWakeBot;
+    const chatId = activeChat.id;
+
+    setActiveChat((prev: any) => prev?.id === chatId ? { ...prev, autoWakeBot: newStatus } : prev);
+    setChats(prev => prev.map(c => c.id === chatId ? { ...c, autoWakeBot: newStatus } : c));
+    pendingOptimistic.current.add('toggle-autowake-' + chatId);
+
+    try {
+      await toggleAutoWakeBot(chatId, newStatus);
+    } catch (error: any) {
+      console.error(error);
+      alert('Error al cambiar la reactivación automática: ' + (error?.message || 'Error desconocido'));
+      setActiveChat((prev: any) => prev?.id === chatId ? { ...prev, autoWakeBot: !newStatus } : prev);
+      setChats(prev => prev.map(c => c.id === chatId ? { ...c, autoWakeBot: !newStatus } : c));
+    } finally {
+      setTimeout(() => {
+        pendingOptimistic.current.delete('toggle-autowake-' + chatId);
       }, 2000);
     }
   };
@@ -1826,6 +1849,25 @@ export default function InboxPage() {
                         {(!activeChat.lead.heat || activeChat.lead.heat === 'FRIO') && <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Frío ❄️</span>}
                         <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
                       </div>
+                    </div>
+
+                    {/* Switch de Auto-Wake Bot */}
+                    <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
+                      <div>
+                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Auto-Reactivar IA</span>
+                        <span className="text-[10px] text-[#888888] dark:text-[#A0A0A0] leading-tight">Tras inactividad</span>
+                      </div>
+                      <button
+                        onClick={handleToggleAutoWake}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                          activeChat.autoWakeBot ? 'bg-[#F36A2D]' : 'bg-[#DEDAD0] dark:bg-zinc-700'
+                        }`}
+                        title={activeChat.autoWakeBot ? "Desactivar reactivación automática" : "Activar reactivación automática"}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                          activeChat.autoWakeBot ? 'translate-x-[18px]' : 'translate-x-1'
+                        }`} />
+                      </button>
                     </div>
 
                     {/* Triggers de Score */}
