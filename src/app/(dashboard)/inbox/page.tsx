@@ -1853,10 +1853,7 @@ export default function InboxPage() {
 
                     {/* Switch de Auto-Wake Bot */}
                     <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
-                      <div>
-                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Auto-Reactivar IA</span>
-                        <span className="text-[10px] text-[#888888] dark:text-[#A0A0A0] leading-tight">Tras inactividad</span>
-                      </div>
+                      <span className="text-[10px] text-[#6F6F6F] font-bold uppercase">Auto-Reactivar IA</span>
                       <button
                         onClick={handleToggleAutoWake}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
