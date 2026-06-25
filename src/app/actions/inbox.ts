@@ -355,7 +355,8 @@ export async function saveAssistantReply(
   agentName?: string,
   scoreReason?: string,
   wamid?: string,
-  extractedEmail?: string | null
+  extractedEmail?: string | null,
+  sendError?: string | null
 ) {
   // Forzar valores explícitos para evitar undefined/null que Prisma convierte a NULL
   const safeInputTokens = inputTokens ?? 0;
@@ -383,7 +384,9 @@ export async function saveAssistantReply(
       agentName: agentName || null,
       scoreBump: scoreBump > 0 ? scoreBump : null,
       scoreReason: scoreReason || null,
-      wamid: wamid || null
+      wamid: wamid || null,
+      status: wamid ? "SENT" : "failed",
+      sendError: sendError || null
     }
   });
   

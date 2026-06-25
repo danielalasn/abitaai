@@ -157,6 +157,7 @@ export function initWorker() {
           if (botData && botData.reply) {
             let waMessageId;
             let waCategory = 'SERVICE';
+            let sendErrorStr = null;
 
             // 4. Enviar respuesta por el canal correspondiente
             if (channel === 'whatsapp') {
@@ -167,6 +168,9 @@ export function initWorker() {
                 const waResult = await sendWhatsAppMessage(from, botData.reply, projectPhoneId, projectToken);
                 waCategory = waResult.category || 'SERVICE';
                 waMessageId = waResult.messageId;
+                if (!waResult.success) sendErrorStr = waResult.friendlyError || 'Error desconocido';
+              } else {
+                sendErrorStr = 'Credenciales de WhatsApp no configuradas en el proyecto.';
               }
             } else if (channel === 'instagram') {
               const integration = await prisma.integration.findFirst({
@@ -176,17 +180,20 @@ export function initWorker() {
               if (accessToken) {
                 const igResult = await sendInstagramMessage(from, botData.reply, accessToken);
                 waMessageId = igResult.messageId;
+                if (!igResult.success) sendErrorStr = 'Error al enviar mensaje de Instagram';
+              } else {
+                sendErrorStr = 'Credenciales de Instagram no configuradas.';
               }
             }
 
-            // 5. DESACTIVAR BOT SI HAY HANDOFF
+            // 5. DESACTIVAR BOT SI HAY HANDOFF O SI FALLÓ EL ENVÍO
             // Reforzamos con detección de texto por si la IA olvida el tag
             // Phrases that indicate an ACTIVE handoff action (declarative, not questions)
             const handoffKeywords = ['transfiriendo al equipo', 'conectando al equipo', 'conectando con el equipo', 'te paso con', 'pasándote con', 'connecting our team', 'connecting the team', 'transferring you'];
             const hasHandoffKeyword = handoffKeywords.some(k => botData.reply.toLowerCase().includes(k));
 
-            if (botData.isHandoff || hasHandoffKeyword) {
-              console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}`);
+            if (botData.isHandoff || hasHandoffKeyword || sendErrorStr) {
+              console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}${sendErrorStr ? ' por error de conexión' : ''}`);
               await requestHandoff(chatId, true);
             }
 
@@ -200,7 +207,9 @@ export function initWorker() {
               waCategory,
               botData.agentName,
               botData.scoreReason,
-              waMessageId || undefined
+              waMessageId || undefined,
+              undefined,
+              sendErrorStr
             );
           }
         }

@@ -150,6 +150,7 @@ model Message {
   mediaUrl     String?  // URL de cualquier archivo adjunto
   mediaFilename String? // Nombre original del archivo
   mediaType    String?  // image, document, video, audio
+  sendError    String?  // Error de envío devuelto por la API (WhatsApp/Meta)
   createdAt    DateTime @default(now())
 
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)

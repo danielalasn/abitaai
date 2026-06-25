@@ -144,8 +144,8 @@ export async function POST(req: NextRequest) {
       where: { id: project.id },
       data: {
         whatsappToken:      encrypt(longLivedToken),
-        whatsappPhoneId:    finalPhoneId || '',
-        whatsappBusinessId: finalWabaId || business_id || '',
+        whatsappPhoneId:    finalPhoneId || project.whatsappPhoneId || '',
+        whatsappBusinessId: finalWabaId || business_id || project.whatsappBusinessId || '',
       },
     })
 
