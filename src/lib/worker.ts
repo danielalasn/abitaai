@@ -118,7 +118,7 @@ export function initWorker() {
         where: { id: chatId },
         include: { 
           lead: { include: { project: true } }, 
-          messages: { orderBy: { createdAt: 'asc' }, take: 15 } 
+          messages: { orderBy: { createdAt: 'desc' }, take: 15 } 
         }
       });
 
@@ -145,7 +145,7 @@ export function initWorker() {
           console.warn('⚠️ [Worker] Saltando llamada a IA porque el texto está vacío y no hay media.');
         } else {
           // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
-          const history = chatDetails.messages.slice(0, -1);
+          const history = chatDetails.messages.slice(1).reverse();
           const botData = await sendTestMessage(
             aiInputText,
             history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason })),

@@ -385,11 +385,14 @@ export async function sendSimulatorMessage(
   });
 
   // 3. Obtener historial para la IA
-  const history = await prisma.message.findMany({
+  const rawHistory = await prisma.message.findMany({
     where: { chatId },
-    orderBy: { createdAt: 'asc' },
-    take: 20 // últimos 20 para contexto
+    orderBy: { createdAt: 'desc' },
+    take: 21 // últimos para contexto, incluyendo el recién creado
   });
+  
+  // El mensaje recién creado está en la posición 0, lo ignoramos para no enviarlo duplicado
+  const history = rawHistory.slice(1).reverse();
 
   // 4. Llamar a la lógica de IA existente
   const result = await sendTestMessage(
