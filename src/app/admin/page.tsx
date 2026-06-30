@@ -322,6 +322,7 @@ export default function AdminPage() {
       leadScoringRules: initialConfig.leadScoringRules || '',
       leadScoringEnabled: project?.leadScoringEnabled ?? true,
       defaultBotActive: project?.defaultBotActive ?? false,
+      botAutoWakeHours: project?.botAutoWakeHours ?? null,
       whatsappToken: project?.whatsappToken || '',
       whatsappPhoneId: project?.whatsappPhoneId || '',
       whatsappBusinessId: project?.whatsappBusinessId || '',
@@ -1703,22 +1704,43 @@ export default function AdminPage() {
 
                       <div className="bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm h-[320px] flex flex-col overflow-hidden">
                         {activeBotSubTab === 'api' && (
-                          <div className="space-y-6 animate-in fade-in duration-200 overflow-y-auto pr-2">
-                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
-                              <div>
-                                <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Respuesta Automática del Bot</h4>
-                                <p className="text-[11px] text-zinc-500 mt-0.5">Si está apagado, los mensajes nuevos requerirán atención humana.</p>
+                            <div className="space-y-4 animate-in fade-in duration-200 overflow-y-auto pr-2">
+                              <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
+                                <div>
+                                  <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Respuesta Automática del Bot</h4>
+                                  <p className="text-[11px] text-zinc-500 mt-0.5">Si está apagado, los mensajes nuevos requerirán atención humana.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input 
+                                    type="checkbox" 
+                                    className="sr-only peer" 
+                                    checked={configData.defaultBotActive ?? false}
+                                    onChange={e => {
+                                      if (window.confirm(`¿Estás seguro de que quieres ${e.target.checked ? 'activar' : 'desactivar'} el bot por defecto para este usuario?`)) {
+                                        setConfigData({ ...configData, defaultBotActive: e.target.checked })
+                                      }
+                                    }}
+                                  />
+                                  <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                                </label>
                               </div>
-                              <label className="relative inline-flex items-center cursor-pointer">
+                              <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
+                                <div>
+                                  <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Auto-Reactivación (Horas)</h4>
+                                  <p className="text-[11px] text-zinc-500 mt-0.5">Horas de inactividad antes de que el bot se encienda solo. (0 o vacío = Nunca)</p>
+                                </div>
                                 <input 
-                                  type="checkbox" 
-                                  className="sr-only peer" 
-                                  checked={configData.defaultBotActive ?? false}
-                                  onChange={e => setConfigData({ ...configData, defaultBotActive: e.target.checked })}
+                                  type="number" 
+                                  min="0"
+                                  placeholder="Ej: 2"
+                                  className="w-20 text-[13px] px-3 py-2 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 font-mono text-center"
+                                  value={configData.botAutoWakeHours || ''}
+                                  onChange={e => {
+                                    const val = e.target.value ? parseInt(e.target.value) : null;
+                                    setConfigData({ ...configData, botAutoWakeHours: val })
+                                  }}
                                 />
-                                <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
-                              </label>
-                            </div>
+                              </div>
                             <div>
                               <h4 className="font-bold text-zinc-900 dark:text-white uppercase text-[10px] tracking-widest text-zinc-400 mb-4 flex items-center gap-2">
                                 <Key size={14} /> Credenciales Meta (WhatsApp API)

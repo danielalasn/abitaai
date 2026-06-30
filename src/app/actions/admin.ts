@@ -116,12 +116,12 @@ export async function createClient(data: { name: string, email: string, password
 export async function updateBotConfig(projectId: string, configData: any) {
   // Separar datos para Agente y Proyecto
   const { 
-    whatsappToken, whatsappPhoneId, whatsappBusinessId, leadScoringEnabled, defaultBotActive,
+    whatsappToken, whatsappPhoneId, whatsappBusinessId, leadScoringEnabled, defaultBotActive, botAutoWakeHours,
     ...agentData 
   } = configData;
 
   // 1. Actualizar el Proyecto (WhatsApp Config)
-  if (whatsappToken !== undefined || whatsappPhoneId !== undefined || whatsappBusinessId !== undefined || leadScoringEnabled !== undefined || defaultBotActive !== undefined) {
+  if (whatsappToken !== undefined || whatsappPhoneId !== undefined || whatsappBusinessId !== undefined || leadScoringEnabled !== undefined || defaultBotActive !== undefined || botAutoWakeHours !== undefined) {
     await prisma.project.update({
       where: { id: projectId },
       data: {
@@ -129,7 +129,8 @@ export async function updateBotConfig(projectId: string, configData: any) {
         whatsappPhoneId,
         whatsappBusinessId,
         ...(leadScoringEnabled !== undefined ? { leadScoringEnabled } : {}),
-        ...(defaultBotActive !== undefined ? { defaultBotActive } : {})
+        ...(defaultBotActive !== undefined ? { defaultBotActive } : {}),
+        ...(botAutoWakeHours !== undefined ? { botAutoWakeHours } : {})
       }
     });
   }
