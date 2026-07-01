@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Globe } from 'lucide-react';
+import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Globe, TestTube, Play } from 'lucide-react';
 import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getGlobalStats } from '@/app/actions/admin';
 import { compileKnowledgeWithAI, saveAgentConfig } from '@/app/actions/settings';
 import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
 import { generateBotConfigFromFile, generateBotConfigFromUrl, type GeneratedBotConfig } from '@/app/actions/bot-builder';
+import { runTestSimulation, getTestSuiteStatus, getTestSuiteResults } from '@/app/actions/testing';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -52,7 +53,7 @@ export default function AdminPage() {
 
   // Modal / Tab state
   const [selectedClient, setSelectedClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot' | 'usage' | 'subscription' | 'builder'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'edit' | 'bot' | 'usage' | 'subscription' | 'builder' | 'testing'>('dashboard');
   const [activeEditSubTab, setActiveEditSubTab] = useState<'info' | 'subscription' | 'danger'>('info');
   const [isRefreshingClient, setIsRefreshingClient] = useState(false);
 
@@ -67,6 +68,11 @@ export default function AdminPage() {
   const [builderPreviewTab, setBuilderPreviewTab] = useState<'identity' | 'instructions' | 'knowledge' | 'faq' | 'handoff' | 'scoring'>('identity');
   const [isSavingBuilder, setIsSavingBuilder] = useState(false);
   const [builderError, setBuilderError] = useState<string | null>(null);
+
+  // Testing / Simulator state
+  const [isTesting, setIsTesting] = useState(false);
+  const [testData, setTestData] = useState<any | null>(null);
+  const [testProgress, setTestProgress] = useState<string>('');
 
   const handleRefreshClient = async () => {
     if (!selectedClient) return;
@@ -88,6 +94,58 @@ export default function AdminPage() {
       console.error("Error refreshing client info:", err);
     } finally {
       setIsRefreshingClient(false);
+    }
+  };
+
+  const handleRunTest = async () => {
+    const project = selectedClient?.projects?.[0];
+    if (!project) return;
+    
+    setIsTesting(true);
+    setTestData(null);
+    setTestProgress('Iniciando simulación...');
+
+    try {
+      const res = await runTestSimulation(project.id, 5);
+      if (!res.success || !res.suiteId) {
+        alert("Error al iniciar los tests: " + (res.error || "No se obtuvo ID del suite"));
+        setIsTesting(false);
+        return;
+      }
+
+      const suiteId = res.suiteId;
+
+      // Iniciar el polling
+      const interval = setInterval(async () => {
+        try {
+          const statusRes = await getTestSuiteStatus(suiteId);
+          if (statusRes.success && statusRes.suite) {
+            setTestProgress(statusRes.suite.progress || 'Procesando...');
+
+            if (statusRes.suite.status === 'COMPLETED') {
+              clearInterval(interval);
+              // Fetch results
+              const resultsRes = await getTestSuiteResults(suiteId);
+              if (resultsRes.success) {
+                setTestData(resultsRes);
+              } else {
+                alert("Error al obtener resultados: " + resultsRes.error);
+              }
+              setIsTesting(false);
+            } else if (statusRes.suite.status === 'FAILED') {
+              clearInterval(interval);
+              alert("La simulación falló: " + statusRes.suite.progress);
+              setIsTesting(false);
+            }
+          }
+        } catch (pollErr: any) {
+          console.error("Polling error:", pollErr);
+        }
+      }, 1500);
+
+    } catch (err: any) {
+      alert("Error: " + err.message);
+      setIsTesting(false);
     }
   };
 
@@ -1049,6 +1107,13 @@ export default function AdminPage() {
                   Bot Config
                 </button>
                 <button
+                  onClick={() => setActiveTab('testing')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'testing' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
+                >
+                  <TestTube size={18} />
+                  Testing & Eval
+                </button>
+                <button
                   onClick={() => setActiveTab('usage')}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'usage' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
                 >
@@ -1916,6 +1981,147 @@ export default function AdminPage() {
                 )}
 
                 {/* --- TAB: USAGE / CONSUMO --- */}
+                {activeTab === 'testing' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Testing Automático del Bot</h3>
+                        <p className="text-zinc-500 text-sm mt-1">Evalúa cómo responde tu bot frente a clientes simulados (MVP).</p>
+                      </div>
+                      <button 
+                        onClick={handleRunTest} 
+                        disabled={isTesting}
+                        className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-md flex items-center gap-2 transition-all disabled:opacity-50"
+                      >
+                        {isTesting ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                        {isTesting ? 'Corriendo Tests...' : 'Correr 5 Tests'}
+                      </button>
+                    </div>
+
+                    {isTesting && (
+                      <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center space-y-4 py-12">
+                        <Loader2 size={36} className="text-orange-600 animate-spin" />
+                        <div className="text-center">
+                          <p className="font-bold text-zinc-800 dark:text-zinc-200 text-lg">Ejecutando suite de pruebas...</p>
+                          <p className="text-zinc-500 text-sm mt-1 font-semibold text-orange-600 dark:text-orange-400">{testProgress}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {testData && (
+                      <div className="space-y-6 mt-6">
+                        
+                        {/* Resumen de Evaluación */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm text-center">
+                            <p className="text-sm text-zinc-500 mb-1">Score Promedio</p>
+                            <p className={`text-3xl font-black ${testData.averageScore >= 8 ? 'text-green-500' : testData.averageScore >= 6 ? 'text-yellow-500' : 'text-red-500'}`}>
+                              {(testData.averageScore || 0).toFixed(1)} <span className="text-lg text-zinc-400">/ 10</span>
+                            </p>
+                          </div>
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm text-center">
+                            <p className="text-sm text-zinc-500 mb-1">Issues Críticos</p>
+                            <p className={`text-3xl font-black ${testData.criticalIssues > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                              {testData.criticalIssues}
+                            </p>
+                          </div>
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm text-center">
+                            <p className="text-sm text-zinc-500 mb-1">Conversaciones</p>
+                            <p className="text-3xl font-black text-zinc-900 dark:text-white">
+                              {testData.results?.length || 0}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Mejoras Sugeridas */}
+                        {testData.suggestedImprovements && testData.suggestedImprovements.suggested_changes?.length > 0 && (
+                          <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/30 rounded-2xl p-5 shadow-sm">
+                            <h4 className="font-bold text-orange-800 dark:text-orange-300 flex items-center gap-2 mb-2">
+                              <Sparkles size={18} />
+                              Sugerencias de Mejora (IA)
+                            </h4>
+                            <p className="text-sm text-orange-700 dark:text-orange-200 mb-4">{testData.suggestedImprovements.summary}</p>
+                            <ul className="space-y-3">
+                              {testData.suggestedImprovements.suggested_changes.map((change: any, i: number) => (
+                                <li key={i} className="bg-white dark:bg-zinc-900 p-3 rounded-lg border border-orange-100 dark:border-zinc-800 text-sm">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${change.priority === 'high' ? 'bg-red-100 text-red-700' : change.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
+                                      {change.priority}
+                                    </span>
+                                    <span className="font-semibold text-zinc-900 dark:text-white">{change.change_type.toUpperCase()}</span>
+                                  </div>
+                                  <p className="text-zinc-600 dark:text-zinc-400 mb-2">{change.problem_addressed}</p>
+                                  <div className="bg-zinc-100 dark:bg-zinc-800 p-2 rounded text-xs font-mono text-zinc-800 dark:text-zinc-300">
+                                    + {change.specific_text_to_add}
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        <h4 className="font-bold text-lg text-zinc-900 dark:text-white pt-4">Detalle de Conversaciones</h4>
+                        <div className="space-y-6">
+                          {testData.results?.map((resItem: any, idx: number) => {
+                            const res = resItem.conversation;
+                            const ev = resItem.evaluation;
+                            return (
+                              <div key={idx} className="bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+                                <div className="flex justify-between items-start mb-4 pb-4 border-b border-zinc-100 dark:border-zinc-800/50">
+                                  <div>
+                                    <span className="text-xs font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-lg uppercase tracking-wider">Test {idx + 1}</span>
+                                    <h5 className="font-bold text-zinc-900 dark:text-white mt-2">Perfil: {res.profile}</h5>
+                                    <p className="text-sm text-zinc-500">Intención: {res.intent}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className={`text-xl font-black ${ev?.overall_score >= 8 ? 'text-green-500' : ev?.overall_score >= 6 ? 'text-yellow-500' : 'text-red-500'}`}>
+                                      {ev?.overall_score || 0}/10
+                                    </div>
+                                    <p className="text-xs text-zinc-500 mt-1 max-w-[200px] truncate" title={ev?.summary}>{ev?.summary}</p>
+                                  </div>
+                                </div>
+                                
+                                {ev?.critical_issues?.length > 0 && (
+                                  <div className="mb-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-3 rounded-xl">
+                                    <h6 className="text-xs font-bold text-red-600 dark:text-red-400 mb-2 uppercase">Issues Detectados</h6>
+                                    <ul className="text-sm text-red-700 dark:text-red-300 space-y-1 list-disc pl-4">
+                                      {ev.critical_issues.map((iss: any, i: number) => (
+                                        <li key={i}>Turno {iss.turn}: {iss.issue}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                <div className="space-y-4 pl-2 border-l-2 border-zinc-100 dark:border-zinc-800">
+                                  {res.turns.map((turn: any, tIdx: number) => (
+                                    <div key={tIdx} className="space-y-2">
+                                      <div className="flex flex-col items-start">
+                                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Cliente Simulado</span>
+                                        <div className="bg-zinc-100 dark:bg-zinc-800/50 px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm text-zinc-800 dark:text-zinc-200 max-w-[85%]">
+                                          {turn.client_said}
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-col items-end">
+                                        <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mr-1">Bot</span>
+                                        <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm text-orange-900 dark:text-orange-100 max-w-[85%] text-right whitespace-pre-wrap">
+                                          {turn.bot_responded || <span className="italic opacity-50">Sin respuesta / Error</span>}
+                                        </div>
+                                        {turn.metadata?.isHandoff && (
+                                          <span className="text-[10px] font-bold text-purple-500 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-full mt-1">HANDOFF TRIGGERED</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {activeTab === 'usage' && (
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                     <div>

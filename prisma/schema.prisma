@@ -73,6 +73,7 @@ model Project {
   leads               Lead[]
   campaigns           Campaign[]
   unansweredQuestions UnansweredQuestion[]
+  botTestSuites       BotTestSuite[]
 }
 
 model BotConfig {
@@ -260,4 +261,18 @@ model AuditLog {
   client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
+}
+
+model BotTestSuite {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id])
+  totalConversations Int
+  averageScore    Float?
+  criticalIssues  Int?
+  status          String   // RUNNING, COMPLETED, FAILED
+  progress        String?  // Ej: "Generando conversaciones...", "Ejecutando Test 2/5..."
+  resultsRaw      String?  @db.Text // JSON con las conversaciones evaluadas
+  suggestedPrompt String?  @db.Text
+  createdAt       DateTime @default(now())
 }
