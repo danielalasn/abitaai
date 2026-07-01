@@ -29,6 +29,21 @@ async function runTestSimulationBackground(
     });
     const suite = await generateTestSuite(projectId, { name: projectName }, numConversations);
 
+    // Construir el prompt real del agente UNA VEZ para usarlo como fuente de verdad en la evaluación
+    const agentConfig = project.agents?.[0];
+    let systemPrompt = "";
+    if (agentConfig) {
+      systemPrompt = await buildSystemPrompt({
+        agentConfig,
+        clientName: "Cliente Simulado",
+        projectName: project.name,
+        metadata: null,
+        scoringText: "",
+        leadScoringEnabled: false,
+        previouslyRewarded: []
+      });
+    }
+
     const results = [];
     let totalScore = 0;
     let criticalIssuesCount = 0;
@@ -46,8 +61,8 @@ async function runTestSimulationBackground(
       // 3.1 Ejecutar
       const executed = await runConversationWithBot(projectId, conversation);
       
-      // 3.2 Evaluar
-      const evaluation = await evaluateConversation(executed, { name: projectName });
+      // 3.2 Evaluar — le pasamos el system prompt real como fuente de verdad
+      const evaluation = await evaluateConversation(executed, { name: projectName, systemPrompt });
       
       results.push({
         conversation: executed,
@@ -66,21 +81,9 @@ async function runTestSimulationBackground(
       data: { progress: 'Generando sugerencias de mejora al prompt...' }
     });
     
-    const agentConfig = project.agents?.[0]; // Usar agente por defecto
     let suggestedImprovements = null;
-    if (agentConfig) {
-      // Recreamos el prompt actual base
-      const currentPrompt = await buildSystemPrompt({
-        agentConfig,
-        clientName: "Cliente Simulado",
-        projectName: project.name,
-        metadata: null,
-        scoringText: "",
-        leadScoringEnabled: false,
-        previouslyRewarded: []
-      });
-      
-      suggestedImprovements = await suggestPromptImprovements(results, currentPrompt);
+    if (systemPrompt) {
+      suggestedImprovements = await suggestPromptImprovements(results, systemPrompt);
     }
 
     // 5. Guardar resultados

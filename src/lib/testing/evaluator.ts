@@ -20,22 +20,28 @@ export async function evaluateConversation(
   executedConversation: any,
   businessInfo: any
 ) {
+  const systemPromptSection = businessInfo.systemPrompt
+    ? `\nSISTEMA/PROMPT REAL DEL BOT (fuente de verdad absoluta de lo que el bot puede y no puede decir):\n---\n${businessInfo.systemPrompt.substring(0, 4000)}\n---\n\nREGLA CRÍTICA: Si el bot dice algo que ESTÁ en el sistema prompt de arriba, NO es una alucinación. Solo marqués como alucinación cosas que el bot dice y que claramente NO están respaldadas por el sistema prompt. Cuando tengas duda, NO marques como error.`
+    : '';
+
   const evaluatorPrompt = `
 Sos un evaluador experto de bots conversacionales para negocios por WhatsApp.
 Tu trabajo es analizar UNA conversación y darle un score riguroso.
 
-Información del negocio:
-${JSON.stringify(businessInfo, null, 2)}
+Negocio evaluado: ${businessInfo.name}
+${systemPromptSection}
 
 Criterios de evaluación (cada uno se puntúa del 1 al 10):
 ${JSON.stringify(EVALUATION_CRITERIA, null, 2)}
 
 También identificá:
-- Problemas críticos (alucinaciones, información incorrecta, tono inapropiado, ignorar al usuario, fallar handoff).
+- Problemas críticos (alucinaciones REALES, información que NO está en el sistema prompt del bot, tono inapropiado, ignorar al usuario, fallar handoff).
 - Oportunidades de mejora (cosas que podría hacer mejor o más fluidamente).
 - Lo que hizo bien (para mantener).
 
-Sé RIGUROSO. No infles los scores. Un score de 7 es "bueno", 8 es "muy bueno", 9-10 es "excelente". Muestra tendencia a bajar la nota ante el menor error.
+Sé RIGUROSO pero JUSTO. No infles los scores. Un score de 7 es "bueno", 8 es "muy bueno", 9-10 es "excelente".
+NO marques como hallucination algo que el bot dijo si eso está en su prompt o knowledge base.
+Solo baja puntos en "accuracy" y "no_hallucination" si el bot inventó datos que claramente no tiene de ninguna fuente.
 
 Formato de respuesta (JSON estricto):
 {
@@ -46,7 +52,7 @@ Formato de respuesta (JSON estricto):
     ...
   },
   "critical_issues": [
-    { "turn": 2, "issue": "Inventó el precio del producto X", "severity": "high" },
+    { "turn": 2, "issue": "Inventó el precio del producto X que no está en el sistema prompt", "severity": "high" },
     { "turn": 3, "issue": "Mensaje demasiado largo", "severity": "medium" }
   ],
   "improvement_opportunities": [
