@@ -8,13 +8,18 @@ export function resolveProjectCredentials<T extends { whatsappToken?: string | n
 
   const masterWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
 
-  // Solo forzamos las credenciales de Abita si el proyecto explícitamente usa el WABA ID de Abita.
-  // Si no tiene (null), es un Embedded Signup en proceso y no debe tomar credenciales ajenas.
-  if (project.whatsappBusinessId === masterWabaId) {
+  // Solo forzamos las credenciales de Abita si el proyecto explícitamente usa el WABA ID de Abita,
+  // o si es la cuenta maestra (abita@abitaai.com) que perdió sus credenciales en BD.
+  const isMasterAccount = (project as any).client?.email === 'abita@abitaai.com';
+  
+  if (project.whatsappBusinessId === masterWabaId || isMasterAccount) {
     if (process.env.SYSTEM_USER_TOKEN) {
       project.whatsappToken = encrypt(process.env.SYSTEM_USER_TOKEN);
     }
     project.whatsappPhoneId = project.whatsappPhoneId || process.env.WHATSAPP_PHONE_ID || '1087380634460356';
+    if (!project.whatsappBusinessId) {
+      project.whatsappBusinessId = masterWabaId;
+    }
   }
 
   return project;

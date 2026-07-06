@@ -60,7 +60,8 @@ export async function launchCampaignAction(
   leadsData: any[],
   templateCategory: string, // MARKETING o UTILITY
   headerUrl?: string, // Nuevo: URL de imagen o nombre de columna CSV
-  botActive: boolean = true
+  botActive: boolean = true,
+  headerMediaType?: string // NEW: 'IMAGE' | 'VIDEO' | 'DOCUMENT'
 ) {
   const project = await getProjectWithCredentials();
 
@@ -81,6 +82,7 @@ export async function launchCampaignAction(
       variableMapping: JSON.stringify({
         ...variableMapping,
         __headerUrl: headerUrl || '',
+        __headerMediaType: headerMediaType || 'IMAGE',
         __templateText: templateText || '',
         __botActive: botActive ? 'true' : 'false'
       }),
@@ -198,11 +200,21 @@ export async function processCampaignLead(
     });
 
     let realUrl: string | undefined = undefined;
+    // Detect header media type from variableMapping
+    const headerMediaTypeStored = rawMapping.__headerMediaType as string | undefined;
     if (headerUrl) {
       const isMapping = headerUrl.startsWith('{{') && headerUrl.endsWith('}}');
       realUrl = isMapping ? String(leadData[headerUrl.replace(/[{}]/g, '')] ?? '') : headerUrl;
       if (realUrl && realUrl.startsWith('http')) {
-        components.unshift({ type: 'header', parameters: [{ type: 'image', image: { link: realUrl } }] });
+        // Determine the media type: default to 'image' for backward compat
+        const mediaType = headerMediaTypeStored === 'VIDEO' ? 'video' :
+                          headerMediaTypeStored === 'DOCUMENT' ? 'document' : 'image';
+        const mediaParam: any = mediaType === 'video'
+          ? { type: 'video', video: { link: realUrl } }
+          : mediaType === 'document'
+            ? { type: 'document', document: { link: realUrl } }
+            : { type: 'image', image: { link: realUrl } };
+        components.unshift({ type: 'header', parameters: [mediaParam] });
       }
     }
 

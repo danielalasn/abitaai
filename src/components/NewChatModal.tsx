@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Send, Loader2, Phone, Sparkles, AlertTriangle, Bot, CheckCircle2, User, UploadCloud, ChevronRight, Users } from 'lucide-react';
+import { X, Send, Loader2, Phone, Sparkles, AlertTriangle, Bot, CheckCircle2, User, UploadCloud, ChevronRight, Users, FileText } from 'lucide-react';
 import { fetchMetaTemplates } from '@/app/actions/campaigns';
 import { startIndividualChatAction } from '@/app/actions/inbox';
 import { uploadImageAction } from '@/app/actions/storage';
@@ -29,7 +29,9 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<MetaTemplate | null>(null);
   const [variables, setVariables] = useState<Record<string, string>>({});
-  const [headerImageUrl, setHeaderImageUrl] = useState('');
+  const [buttonVars, setButtonVars] = useState<Record<string, string>>({});
+  const [headerMediaUrl, setHeaderMediaUrl] = useState('');
+  const [headerMediaType, setHeaderMediaType] = useState<'IMAGE' | 'VIDEO' | 'DOCUMENT' | null>(null);
   const [templatePrefix, setTemplatePrefix] = useState<string | null>(null);
   const [botActive, setBotActive] = useState(true);
   const [isSending, setIsSending] = useState(false);
@@ -44,7 +46,9 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
       setStep(initialPhone ? 2 : 1);
       setSelectedTemplate(null);
       setVariables({});
-      setHeaderImageUrl('');
+      setButtonVars({});
+      setHeaderMediaUrl('');
+      setHeaderMediaType(null);
       setBotActive(true);
       setError(null);
     }
@@ -69,15 +73,37 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
     return [...new Set(matches.map((m: string) => m.replace(/[{}]/g, '')))].sort((a, b) => Number(a) - Number(b));
   };
 
+  const extractButtonVarsLocal = (template: MetaTemplate): { buttonIndex: number; label: string }[] => {
+    const buttonsComp = template.components.find((c: any) => c.type === 'BUTTONS');
+    if (!buttonsComp || !buttonsComp.buttons) return [];
+    const vars: { buttonIndex: number; label: string }[] = [];
+    buttonsComp.buttons.forEach((btn: any, index: number) => {
+      if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
+        vars.push({ buttonIndex: index, label: btn.text || `Enlace ${index + 1}` });
+      }
+    });
+    return vars;
+  };
+
   const handleSelectTemplate = (t: MetaTemplate) => {
     setSelectedTemplate(t);
     const vars = extractVars(t);
     const initial: Record<string, string> = {};
-    vars.forEach((v: string) => { 
-      initial[v] = ''; 
-    });
+    vars.forEach((v: string) => { initial[v] = ''; });
     setVariables(initial);
-    setHeaderImageUrl('');
+    // Init button vars
+    const bVars = extractButtonVarsLocal(t);
+    const initBvars: Record<string, string> = {};
+    bVars.forEach(bv => { initBvars[`button_${bv.buttonIndex}`] = ''; });
+    setButtonVars(initBvars);
+    // Detect header media type
+    const hComp = t.components.find((c: any) => c.type === 'HEADER') as any;
+    if (hComp && (hComp.format === 'IMAGE' || hComp.format === 'VIDEO' || hComp.format === 'DOCUMENT')) {
+      setHeaderMediaType(hComp.format as 'IMAGE' | 'VIDEO' | 'DOCUMENT');
+    } else {
+      setHeaderMediaType(null);
+    }
+    setHeaderMediaUrl('');
     setStep(3);
   };
 
@@ -92,9 +118,9 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
 
     const result = await uploadImageAction(formData);
     if (result.success && result.url) {
-      setHeaderImageUrl(result.url);
+      setHeaderMediaUrl(result.url);
     } else {
-      setError(result.error || 'Error al subir la imagen');
+      setError(result.error || 'Error al subir el archivo');
     }
     setIsUploading(false);
   };
@@ -106,16 +132,19 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
     setError(null);
     try {
       const bodyText = selectedTemplate.components.find((c: any) => c.type === 'BODY')?.text ?? '';
+      // Merge body vars + button vars into a single variables map with button_ prefix
+      const allVars = { ...variables, ...buttonVars };
       const result = await startIndividualChatAction(
         phone,
         selectedTemplate.name,
         selectedTemplate.language,
-        variables,
+        allVars,
         bodyText,
         selectedTemplate.category,
-        headerImageUrl,
+        headerMediaUrl,
         botActive,
-        leadName
+        leadName,
+        headerMediaType || undefined
       );
 
       if (result.success && result.chatId) {
@@ -287,71 +316,110 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                       </div>
                     ))}
 
-                    {extractVars(selectedTemplate).length === 0 && (
+                    {extractVars(selectedTemplate).length === 0 && extractButtonVarsLocal(selectedTemplate).length === 0 && !headerMediaType && (
                       <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-900/40 rounded-3xl border border-dashed border-[#DEDAD0] dark:border-zinc-800">
                         <Sparkles size={24} className="mx-auto text-zinc-300 mb-2" />
                         <p className="text-xs text-[#6F6F6F] font-medium">Esta plantilla no tiene variables de texto.</p>
                       </div>
                     )}
+
+                    {/* Button URL variables */}
+                    {extractButtonVarsLocal(selectedTemplate).map(bv => (
+                      <div key={`btn_${bv.buttonIndex}`} className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 ml-1">
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-md">Botón: {bv.label}</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={buttonVars[`button_${bv.buttonIndex}`] || ''}
+                          onChange={e => setButtonVars(prev => ({ ...prev, [`button_${bv.buttonIndex}`]: e.target.value }))}
+                          placeholder={`URL para botón "${bv.label}"...`}
+                          className="w-full bg-white dark:bg-[#111111] border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-5 py-3.5 outline-none focus:border-blue-500 transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0]"
+                        />
+                      </div>
+                    ))}
                  </div>
 
-                {/* Header Image Upload if needed */}
-                {selectedTemplate.components.some((c: any) => c.type === 'HEADER' && c.format === 'IMAGE') && (
+                {/* Header Media — IMAGE, VIDEO, or DOCUMENT */}
+                {headerMediaType && (
                    <div className="space-y-4 pt-6 border-t border-[#DEDAD0] dark:border-zinc-800">
                     <label className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
-                       Imagen Requerida <Sparkles size={12} className="text-emerald-500" />
+                       {headerMediaType === 'IMAGE' ? 'Imagen Requerida' : headerMediaType === 'VIDEO' ? 'Video Requerido' : 'Documento Requerido'} <Sparkles size={12} className="text-emerald-500" />
                     </label>
                     
                     <div className="flex flex-col gap-3">
-                      {headerImageUrl ? (
-                        <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-xl group animate-in zoom-in-95 duration-300">
-                           <img src={headerImageUrl} alt="Preview" className="w-full h-40 object-cover" />
-                           <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
-                              <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2 scale-110">
-                                 <CheckCircle2 size={16} className="text-emerald-500" />
-                                 <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">¡Subida Exitosa!</span>
-                              </div>
-                           </div>
-                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <button 
-                                onClick={(e) => { e.preventDefault(); setHeaderImageUrl(''); }}
-                                className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
-                              >
-                                <X size={20} />
-                              </button>
-                           </div>
-                        </div>
-                      ) : (
-                        <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-                          isUploading ? 'bg-zinc-50 border-zinc-200' : 'bg-white dark:bg-zinc-900/40 border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500 hover:bg-emerald-500/5'
-                        }`}>
-                          {isUploading ? (
-                              <>
-                                <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
-                                <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo imagen...</span>
-                              </>
+                      {/* Media: allow file upload for all types (up to 20MB) */}
+                      {headerMediaType && (
+                        <>
+                          {headerMediaUrl && headerMediaUrl.startsWith('http') ? (
+                            <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-xl group animate-in zoom-in-95 duration-300">
+                               {headerMediaType === 'VIDEO' ? (
+                                  <video src={headerMediaUrl} className="w-full h-40 object-cover" />
+                               ) : headerMediaType === 'DOCUMENT' ? (
+                                  <div className="w-full h-40 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                    <FileText size={40} className="text-zinc-400" />
+                                  </div>
+                               ) : (
+                                  <img src={headerMediaUrl} alt="Preview" className="w-full h-40 object-cover" />
+                               )}
+                               <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
+                                  <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2 scale-110">
+                                     <CheckCircle2 size={16} className="text-emerald-500" />
+                                     <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">¡Subida Exitosa!</span>
+                                  </div>
+                               </div>
+                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button 
+                                    onClick={(e) => { e.preventDefault(); setHeaderMediaUrl(''); }}
+                                    className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
+                                  >
+                                    <X size={20} />
+                                  </button>
+                               </div>
+                            </div>
                           ) : (
-                              <>
-                                <Sparkles size={24} className="text-emerald-500/50 mb-2" />
-                                <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Seleccionar o Arrastrar Imagen</span>
-                                <span className="text-[10px] text-[#6F6F6F] mt-1">PNG, JPG hasta 5MB</span>
-                              </>
+                            <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                              isUploading ? 'bg-zinc-50 border-zinc-200' : 'bg-white dark:bg-zinc-900/40 border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500 hover:bg-emerald-500/5'
+                            }`}>
+                              {isUploading ? (
+                                  <>
+                                    <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
+                                    <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
+                                  </>
+                              ) : (
+                                  <>
+                                    <Sparkles size={24} className="text-emerald-500/50 mb-2" />
+                                    <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Seleccionar o Arrastrar {headerMediaType === 'VIDEO' ? 'Video' : headerMediaType === 'DOCUMENT' ? 'Documento' : 'Imagen'}</span>
+                                    <span className="text-[10px] text-[#6F6F6F] mt-1">Hasta 20MB</span>
+                                  </>
+                              )}
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept={headerMediaType === 'VIDEO' ? 'video/mp4' : headerMediaType === 'DOCUMENT' ? 'application/pdf' : 'image/*'} 
+                                onChange={handleFileChange} 
+                                disabled={isUploading} 
+                              />
+                            </label>
                           )}
-                          <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={isUploading} />
-                        </label>
+                          
+                          <div className="relative flex items-center gap-2">
+                            <div className="flex-1 h-[1px] bg-[#DEDAD0] dark:border-zinc-800" />
+                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">o usa una URL</span>
+                            <div className="flex-1 h-[1px] bg-[#DEDAD0] dark:border-zinc-800" />
+                          </div>
+                        </>
                       )}
-                      
-                      <div className="relative flex items-center gap-2">
-                        <div className="flex-1 h-[1px] bg-[#DEDAD0] dark:border-zinc-800" />
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">o usa una URL</span>
-                        <div className="flex-1 h-[1px] bg-[#DEDAD0] dark:border-zinc-800" />
-                      </div>
 
                       <input
                         type="text"
-                        value={headerImageUrl}
-                        onChange={e => setHeaderImageUrl(e.target.value)}
-                        placeholder="Pegar URL de la imagen..."
+                        value={headerMediaUrl}
+                        onChange={e => setHeaderMediaUrl(e.target.value)}
+                        placeholder={
+                          headerMediaType === 'IMAGE' ? 'Pegar URL de la imagen...' :
+                          headerMediaType === 'VIDEO' ? 'URL del video (mp4 público)...' :
+                          'URL del documento (PDF público)...'
+                        }
                         className="w-full bg-white dark:bg-[#111111] border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-2 text-xs font-medium text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-emerald-500"
                       />
                     </div>

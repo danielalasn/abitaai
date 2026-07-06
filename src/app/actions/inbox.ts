@@ -680,9 +680,10 @@ export async function startIndividualChatAction(
   variables: Record<string, string>,
   templateText: string,
   templateCategory: string, // MARKETING o UTILITY
-  headerImageUrl?: string,
+  headerMediaUrl?: string,
   botActive: boolean = true,
-  leadName?: string
+  leadName?: string,
+  headerMediaType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT'
 ): Promise<{ success: boolean; error?: string; chatId?: string }> {
   try {
     const project = await getCurrentProject();
@@ -695,30 +696,47 @@ export async function startIndividualChatAction(
     const cleanPhone = phone.replace(/[^0-9]/g, '');
     if (cleanPhone.length < 7) return { success: false, error: 'El número de teléfono es demasiado corto.' };
 
-    // Construir parámetros del cuerpo
-    const paramEntries = Object.entries(variables).sort(([a], [b]) => Number(a) - Number(b));
-    const bodyParams = paramEntries.map(([, val]) => ({
+    // Construir parámetros del cuerpo (body vars, excluding button_ vars)
+    const bodyVarEntries = Object.entries(variables)
+      .filter(([k]) => !k.startsWith('button_'))
+      .sort(([a], [b]) => Number(a) - Number(b));
+    const bodyParams = bodyVarEntries.map(([, val]) => ({
       type: 'text' as const,
       text: val,
     }));
 
-    const components: any[] = bodyParams.length > 0
-      ? [{ type: 'body' as const, parameters: bodyParams }]
-      : [];
+    // Construir parámetros de botones (button_ prefix)
+    const buttonComponents: any[] = Object.entries(variables)
+      .filter(([k]) => k.startsWith('button_'))
+      .map(([k, val]) => ({
+        type: 'button',
+        sub_type: 'url',
+        index: k.replace('button_', ''),
+        parameters: [{ type: 'text', text: val }]
+      }));
 
-    // Añadir imagen si se proporcionó
-    if (headerImageUrl && headerImageUrl.startsWith('http')) {
-      components.unshift({
-        type: 'header',
-        parameters: [
-          { type: 'image', image: { link: headerImageUrl } }
-        ]
-      });
+    const components: any[] = [
+      ...(bodyParams.length > 0 ? [{ type: 'body' as const, parameters: bodyParams }] : []),
+      ...buttonComponents,
+    ];
+
+    // Añadir media header si se proporcionó
+    if (headerMediaUrl && headerMediaUrl.startsWith('http')) {
+      const mType = headerMediaType || 'IMAGE';
+      let headerParam: any;
+      if (mType === 'VIDEO') {
+        headerParam = { type: 'video', video: { link: headerMediaUrl } };
+      } else if (mType === 'DOCUMENT') {
+        headerParam = { type: 'document', document: { link: headerMediaUrl } };
+      } else {
+        headerParam = { type: 'image', image: { link: headerMediaUrl } };
+      }
+      components.unshift({ type: 'header', parameters: [headerParam] });
     }
 
     // Texto amigable para el historial del chat
     let previewText = templateText;
-    paramEntries.forEach(([k, val]) => {
+    bodyVarEntries.forEach(([k, val]) => {
       previewText = previewText.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), val);
     });
 
@@ -787,7 +805,9 @@ export async function startIndividualChatAction(
         role: 'agent', 
         content: previewText,
         waCategory: waResult.category || 'MARKETING',
-        imageUrl: headerImageUrl
+        imageUrl: (headerMediaType === 'IMAGE' || !headerMediaType) ? headerMediaUrl : null,
+        mediaUrl: headerMediaUrl || null,
+        mediaType: headerMediaType ? headerMediaType.toLowerCase() : null
       }
     });
 

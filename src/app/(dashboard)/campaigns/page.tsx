@@ -89,6 +89,7 @@ export default function CampaignsPage() {
 
   // Launch
   const [headerUrl, setHeaderUrl] = useState('');
+  const [headerMediaType, setHeaderMediaType] = useState<'IMAGE' | 'VIDEO' | 'DOCUMENT' | null>(null);
   const [isBotActive, setIsBotActive] = useState(false);
   const [isDryRun, setIsDryRun] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -184,6 +185,14 @@ export default function CampaignsPage() {
     setSelectedTemplate(t);
     setHeaderUrl(''); // Limpiar cualquier URL previa
 
+    // Detectar tipo de media del header
+    const hComp = t.components.find(c => c.type === 'HEADER') as any;
+    if (hComp && (hComp.format === 'IMAGE' || hComp.format === 'VIDEO' || hComp.format === 'DOCUMENT')) {
+      setHeaderMediaType(hComp.format as 'IMAGE' | 'VIDEO' | 'DOCUMENT');
+    } else {
+      setHeaderMediaType(null);
+    }
+
     const vars = extractBodyVars(t);
     const btnVars = extractButtonVars(t);
     const initial: Record<string, string> = {};
@@ -195,7 +204,8 @@ export default function CampaignsPage() {
   const bodyVars = selectedTemplate ? extractBodyVars(selectedTemplate) : [];
   const buttonVars = selectedTemplate ? extractButtonVars(selectedTemplate) : [];
   const bodyText = selectedTemplate?.components.find(c => c.type === 'BODY')?.text ?? '';
-  const needsImageHeader = selectedTemplate?.components.find(c => c.type === 'HEADER' && (c as any).format === 'IMAGE');
+  const headerComp = selectedTemplate?.components.find(c => c.type === 'HEADER') as any;
+  const needsMediaHeader = headerComp && (headerComp.format === 'IMAGE' || headerComp.format === 'VIDEO' || headerComp.format === 'DOCUMENT');
 
   const executeSendingLoop = async (
     campaignId: string, 
@@ -291,7 +301,8 @@ export default function CampaignsPage() {
         parsedLeads,
         selectedTemplate.category,
         headerUrl,
-        isBotActive
+        isBotActive,
+        headerMediaType || undefined
       );
 
       const completed = await executeSendingLoop(
@@ -615,12 +626,14 @@ export default function CampaignsPage() {
                     className="w-full p-3 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/50"
                   />
 
-                  {needsImageHeader && (
+                  {needsMediaHeader && (
                     <div className="space-y-4 p-5 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-3xl border border-emerald-500/20">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2 text-emerald-500">
                           <Sparkles size={14} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Cabecera Multimedia</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest">
+                            Cabecera {headerMediaType === 'IMAGE' ? 'Imagen' : headerMediaType === 'VIDEO' ? 'Video' : 'Documento'}
+                          </span>
                         </div>
                         
                         {/* Selector de modo: Fijo o Variables de CSV */}
@@ -632,7 +645,7 @@ export default function CampaignsPage() {
                           }}
                           className="bg-transparent text-[9px] font-bold text-emerald-600 focus:outline-none uppercase tracking-tighter cursor-pointer"
                         >
-                          <option value="FIXED">Imagen Fija</option>
+                          <option value="FIXED">URL Fija</option>
                           <option value="CSV">Desde CSV</option>
                         </select>
                       </div>
@@ -651,54 +664,77 @@ export default function CampaignsPage() {
                           </div>
                         ) : (
                           <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
-                            {headerUrl && headerUrl.startsWith('http') ? (
-                               <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-xl group aspect-video">
-                                  <img src={headerUrl} alt="Preview" className="w-full h-full object-cover" />
-                                  <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
-                                     <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2">
-                                        <CheckCircle2 size={16} className="text-emerald-500" />
-                                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Imagen Lista</span>
-                                     </div>
-                                  </div>
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                     <button 
-                                        onClick={() => setHeaderUrl('')}
-                                        className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
-                                     >
-                                        <X size={20} />
-                                     </button>
-                                  </div>
-                               </div>
-                            ) : (
-                               <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-                                  isUploadingImage ? 'bg-zinc-50 border-zinc-200' : 'border-emerald-500/30 bg-white dark:bg-zinc-900/40 hover:border-emerald-500 hover:bg-emerald-500/5'
-                               }`}>
-                                  {isUploadingImage ? (
-                                     <>
-                                        <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
-                                        <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
-                                     </>
-                                  ) : (
-                                     <>
-                                        <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-2">
-                                           <UploadCloud size={20} />
-                                        </div>
-                                        <span className="text-[10px] font-black text-[#111111] dark:text-[#EDE9E0] tracking-widest uppercase">Subir Imagen</span>
-                                        <span className="text-[8px] text-zinc-400 font-bold">PDF, JPG o PNG</span>
-                                     </>
-                                  )}
-                                  <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploadingImage} />
-                               </label>
+                            {/* Media upload para todos (IMAGE, VIDEO, DOCUMENT) */}
+                            {headerMediaType && (
+                              <>
+                                {headerUrl && headerUrl.startsWith('http') ? (
+                                   <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-xl group aspect-video">
+                                      {headerMediaType === 'VIDEO' ? (
+                                          <video src={headerUrl} className="w-full h-full object-cover" />
+                                      ) : headerMediaType === 'DOCUMENT' ? (
+                                          <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                            <FileText size={40} className="text-zinc-400" />
+                                          </div>
+                                      ) : (
+                                          <img src={headerUrl} alt="Preview" className="w-full h-full object-cover" />
+                                      )}
+                                      <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
+                                         <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2">
+                                            <CheckCircle2 size={16} className="text-emerald-500" />
+                                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Listo</span>
+                                         </div>
+                                      </div>
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                         <button 
+                                            onClick={() => setHeaderUrl('')}
+                                            className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
+                                         >
+                                            <X size={20} />
+                                         </button>
+                                      </div>
+                                   </div>
+                                ) : (
+                                   <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                                      isUploadingImage ? 'bg-zinc-50 border-zinc-200' : 'border-emerald-500/30 bg-white dark:bg-zinc-900/40 hover:border-emerald-500 hover:bg-emerald-500/5'
+                                   }`}>
+                                      {isUploadingImage ? (
+                                         <>
+                                            <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
+                                            <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
+                                         </>
+                                      ) : (
+                                         <>
+                                            <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-2">
+                                               <UploadCloud size={20} />
+                                            </div>
+                                            <span className="text-[10px] font-black text-[#111111] dark:text-[#EDE9E0] tracking-widest uppercase">Subir {headerMediaType === 'VIDEO' ? 'Video' : headerMediaType === 'DOCUMENT' ? 'Documento' : 'Imagen'}</span>
+                                            <span className="text-[8px] text-zinc-400 font-bold">Hasta 20MB</span>
+                                         </>
+                                      )}
+                                      <input 
+                                        type="file" 
+                                        className="hidden" 
+                                        accept={headerMediaType === 'VIDEO' ? 'video/mp4' : headerMediaType === 'DOCUMENT' ? 'application/pdf' : 'image/*'} 
+                                        onChange={handleImageUpload} 
+                                        disabled={isUploadingImage} 
+                                      />
+                                   </label>
+                                )}
+                              </>
                             )}
 
-                            {/* URL como secundario */}
+                            {/* URL input — para todos los tipos */}
                             <div className="relative group">
                               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
                                 <Link2 size={14} />
                               </div>
                               <input 
                                 type="text" 
-                                placeholder="O pega una URL directa..." 
+                                placeholder={
+                                  headerMediaType === 'IMAGE' ? 'O pega una URL de imagen...' :
+                                  headerMediaType === 'VIDEO' ? 'URL del video (mp4)...' :
+                                  'URL del documento (PDF)...'
+                                }
                                 value={headerUrl && headerUrl.startsWith('http') ? headerUrl : ''} 
                                 onChange={e => setHeaderUrl(e.target.value)}
                                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-[10px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-400 font-medium"

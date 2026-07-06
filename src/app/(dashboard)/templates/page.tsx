@@ -5,8 +5,9 @@ import {
   LayoutTemplate, Plus, RefreshCw, Search, X, CheckCircle2, Clock,
   XCircle, AlertTriangle, Loader2, ChevronDown, Trash2, Eye,
   MessageSquare, FileText, Image, Video, Film, Link2, Phone, Copy, Zap,
-  Globe, Info, Filter, PauseCircle
+  Globe, Info, Filter, PauseCircle, UploadCloud, Sparkles
 } from 'lucide-react';
+import { uploadFileAction } from '@/app/actions/storage';
 import {
   fetchAllTemplates,
   createMetaTemplate,
@@ -85,16 +86,28 @@ function TemplatePreview({ template }: { template: MetaTemplate }) {
             {header.format === 'TEXT' && (
               <p className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">{header.text}</p>
             )}
-            {(header.format === 'IMAGE' || header.format === 'VIDEO') && (
+            {header.format === 'IMAGE' && (
               <div className="h-20 bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center gap-2 text-zinc-400">
-                {header.format === 'IMAGE' ? <Image size={20} /> : <Film size={20} />}
-                <span className="text-[10px] font-bold uppercase">{header.format}</span>
+                <Image size={20} />
+                <span className="text-[10px] font-bold uppercase">Imagen</span>
+              </div>
+            )}
+            {header.format === 'VIDEO' && (
+              <div className="h-20 bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center gap-2 text-zinc-400">
+                <Film size={20} />
+                <span className="text-[10px] font-bold uppercase">Video</span>
               </div>
             )}
             {header.format === 'DOCUMENT' && (
               <div className="h-12 bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center gap-2 text-zinc-400">
                 <FileText size={16} />
                 <span className="text-[10px] font-bold uppercase">Documento</span>
+              </div>
+            )}
+            {(header.format as string) === 'LOCATION' && (
+              <div className="h-16 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center gap-2 text-blue-500">
+                <Globe size={18} />
+                <span className="text-[10px] font-bold uppercase">Ubicación</span>
               </div>
             )}
           </div>
@@ -212,13 +225,38 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
   const [name, setName] = useState('');
   const [category, setCategory] = useState<'MARKETING' | 'UTILITY' | 'AUTHENTICATION'>('MARKETING');
   const [language, setLanguage] = useState('es');
-  const [headerFormat, setHeaderFormat] = useState<'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT'>('NONE');
+  const [headerFormat, setHeaderFormat] = useState<'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION'>('NONE');
   const [headerText, setHeaderText] = useState('');
+  const [headerExampleUrl, setHeaderExampleUrl] = useState('');
   const [body, setBody] = useState('');
   const [footer, setFooter] = useState('');
   const [buttons, setButtons] = useState<Array<{ type: ButtonType; text: string; url?: string; phone?: string; urlExample?: string }>>([]);
+  const [isUploadingHeader, setIsUploadingHeader] = useState(false);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const headerRef = useRef<HTMLInputElement>(null);
+
+  const handleHeaderFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingHeader(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const result = await uploadFileAction(formData);
+      if (result.success && result.url) {
+        setHeaderExampleUrl(result.url);
+      } else {
+        alert(result.error || 'Error al subir el archivo');
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsUploadingHeader(false);
+    }
+  };
 
   const insertVariable = () => {
     const ta = bodyRef.current;
@@ -229,6 +267,17 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
     const newVal = body.slice(0, start) + `{{${varNum}}}` + body.slice(end);
     setBody(newVal);
     setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 5, start + 5); }, 0);
+  };
+
+  const insertHeaderVariable = () => {
+    const inp = headerRef.current;
+    if (!inp) return;
+    if (headerText.includes('{{1}}')) return; // Meta solo permite 1 variable en header
+    const start = inp.selectionStart || headerText.length;
+    const end = inp.selectionEnd || headerText.length;
+    const newVal = headerText.slice(0, start) + '{{1}}' + headerText.slice(end);
+    setHeaderText(newVal);
+    setTimeout(() => { inp.focus(); inp.setSelectionRange(start + 5, start + 5); }, 0);
   };
 
   const addButton = () => {
@@ -265,6 +314,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
       header: headerFormat !== 'NONE' ? {
         format: headerFormat as any,
         text: headerFormat === 'TEXT' ? headerText : undefined,
+        exampleUrl: (headerFormat === 'IMAGE' || headerFormat === 'VIDEO' || headerFormat === 'DOCUMENT') ? (headerExampleUrl || undefined) : undefined,
       } : undefined,
       buttons: buttons.length > 0 ? buttons.map(b => {
         const hasVariable = b.url?.includes('{{');
@@ -366,14 +416,14 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
               <div className="space-y-3">
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#6F6F6F]">Encabezado (opcional)</label>
                 <div className="flex flex-wrap gap-2">
-                  {(['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'] as const).map(fmt => {
-                    const icons: Record<string, any> = { NONE: X, TEXT: FileText, IMAGE: Image, VIDEO: Film, DOCUMENT: FileText };
+                  {(['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'] as const).map(fmt => {
+                    const icons: Record<string, any> = { NONE: X, TEXT: FileText, IMAGE: Image, VIDEO: Film, DOCUMENT: FileText, LOCATION: Globe };
                     const Icon = icons[fmt];
-                    const labels: Record<string, string> = { NONE: 'Sin encabezado', TEXT: 'Texto', IMAGE: 'Imagen', VIDEO: 'Video', DOCUMENT: 'Documento' };
+                    const labels: Record<string, string> = { NONE: 'Sin encabezado', TEXT: 'Texto', IMAGE: 'Imagen', VIDEO: 'Video', DOCUMENT: 'Documento', LOCATION: 'Ubicación' };
                     return (
                       <button
                         key={fmt}
-                        onClick={() => setHeaderFormat(fmt)}
+                        onClick={() => { setHeaderFormat(fmt); setHeaderExampleUrl(''); }}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${headerFormat === fmt ? 'border-[#F36A2D] bg-[#F36A2D]/10 text-[#F36A2D]' : 'border-[#DEDAD0] dark:border-zinc-800 text-[#6F6F6F] hover:border-[#F36A2D]/50'}`}
                       >
                         <Icon size={10} /> {labels[fmt]}
@@ -382,19 +432,99 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   })}
                 </div>
                 {headerFormat === 'TEXT' && (
-                  <input
-                    type="text"
-                    value={headerText}
-                    onChange={e => setHeaderText(e.target.value)}
-                    placeholder="Texto del encabezado..."
-                    maxLength={60}
-                    className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors"
-                  />
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[#6F6F6F]">Texto del encabezado</label>
+                      <button
+                        onClick={insertHeaderVariable}
+                        disabled={headerText.includes('{{1}}')}
+                        className="flex items-center gap-1 text-[9px] font-black text-[#F36A2D] hover:opacity-70 transition-opacity uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Zap size={10} /> + Variable
+                      </button>
+                    </div>
+                    <input
+                      ref={headerRef}
+                      type="text"
+                      value={headerText}
+                      onChange={e => setHeaderText(e.target.value)}
+                      placeholder="Texto del encabezado..."
+                      maxLength={60}
+                      className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors"
+                    />
+                  </div>
                 )}
                 {(headerFormat === 'IMAGE' || headerFormat === 'VIDEO' || headerFormat === 'DOCUMENT') && (
-                  <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-[10px] text-amber-600 flex items-start gap-2">
+                  <div className="space-y-2">
+                    <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl text-[10px] text-amber-600 flex items-start gap-2">
+                      <Info size={12} className="mt-0.5 shrink-0" />
+                      El archivo real se envía en la campaña. Meta requiere una <strong>imagen/video/documento de ejemplo</strong> para aprobación.
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black uppercase tracking-widest text-[#6F6F6F]">
+                        Subir Ejemplo {headerFormat === 'IMAGE' ? '(imagen)' : headerFormat === 'VIDEO' ? '(video mp4)' : '(PDF)'} <span className="text-[#F36A2D]">*</span>
+                      </label>
+                      
+                      {headerExampleUrl ? (
+                         <div className="relative rounded-2xl overflow-hidden border-2 border-[#F36A2D] shadow-xl group aspect-video">
+                            {headerFormat === 'VIDEO' ? (
+                                <video src={headerExampleUrl} className="w-full h-full object-cover" />
+                            ) : headerFormat === 'DOCUMENT' ? (
+                                <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                  <FileText size={40} className="text-zinc-400" />
+                                </div>
+                            ) : (
+                                <img src={headerExampleUrl} alt="Preview" className="w-full h-full object-cover" />
+                            )}
+                            <div className="absolute inset-0 bg-[#F36A2D]/10 flex items-center justify-center">
+                               <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-[#F36A2D] flex items-center gap-2">
+                                  <CheckCircle2 size={16} className="text-[#F36A2D]" />
+                                  <span className="text-[10px] font-black text-[#F36A2D] uppercase tracking-widest">Ejemplo Subido</span>
+                               </div>
+                            </div>
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                               <button 
+                                  onClick={() => setHeaderExampleUrl('')}
+                                  className="bg-red-500 text-white p-2 rounded-full hover:scale-110 transition-transform"
+                               >
+                                  <X size={20} />
+                               </button>
+                            </div>
+                         </div>
+                      ) : (
+                         <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                            isUploadingHeader ? 'bg-zinc-50 border-zinc-200' : 'border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-[#F36A2D] hover:bg-[#F36A2D]/5'
+                         }`}>
+                            {isUploadingHeader ? (
+                               <>
+                                  <Loader2 size={24} className="animate-spin text-[#F36A2D] mb-2" />
+                                  <span className="text-xs font-bold text-[#F36A2D] animate-pulse">Subiendo...</span>
+                               </>
+                            ) : (
+                               <>
+                                  <div className="h-10 w-10 bg-[#F36A2D]/10 text-[#F36A2D] rounded-full flex items-center justify-center mb-2">
+                                     <UploadCloud size={20} />
+                                  </div>
+                                  <span className="text-[10px] font-black text-[#111111] dark:text-[#EDE9E0] tracking-widest uppercase">Subir {headerFormat === 'IMAGE' ? 'Imagen' : headerFormat === 'VIDEO' ? 'Video' : 'Documento'} de Ejemplo</span>
+                                  <span className="text-[8px] text-zinc-400 font-bold mt-1">Obligatorio para la revisión de Meta</span>
+                               </>
+                            )}
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept={headerFormat === 'VIDEO' ? 'video/mp4' : headerFormat === 'DOCUMENT' ? 'application/pdf' : 'image/*'} 
+                              onChange={handleHeaderFileUpload} 
+                              disabled={isUploadingHeader} 
+                            />
+                         </label>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {headerFormat === 'LOCATION' && (
+                  <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-[10px] text-blue-600 flex items-start gap-2">
                     <Info size={12} className="mt-0.5 shrink-0" />
-                    El archivo multimedia se provee al momento de usar la plantilla en una campaña.
+                    El header de ubicación se enviará con coordenadas al usar la plantilla en una campaña.
                   </div>
                 )}
               </div>
@@ -599,6 +729,20 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
               <button
                 onClick={() => {
                   if (!name.trim() || !body.trim()) { setError('El nombre y el cuerpo son obligatorios.'); return; }
+                  
+                  const bodyTrimmed = body.trim();
+                  const headerTrimmed = headerText.trim();
+                  
+                  if (bodyTrimmed.match(/^\{\{\d+\}\}/) || bodyTrimmed.match(/\{\{\d+\}\}$/)) {
+                    setError('Meta no permite que el cuerpo del mensaje empiece o termine con una variable. Añade un punto o texto.');
+                    return;
+                  }
+                  
+                  if (headerFormat === 'TEXT' && (headerTrimmed.match(/^\{\{\d+\}\}/) || headerTrimmed.match(/\{\{\d+\}\}$/))) {
+                    setError('Meta no permite que el encabezado empiece o termine con una variable. Añade un punto o texto.');
+                    return;
+                  }
+
                   setError(null);
                   setStep(2);
                 }}

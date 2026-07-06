@@ -182,10 +182,12 @@ export async function sendWhatsAppMedia(
 export interface TemplateComponent {
   type: 'body' | 'header' | 'button'
   sub_type?: string
-  index?: number
+  index?: number | string
   parameters: (
     | { type: 'text'; text: string }
     | { type: 'image'; image: { link: string } }
+    | { type: 'video'; video: { link: string } }
+    | { type: 'document'; document: { link: string; filename?: string } }
   )[]
 }
 
