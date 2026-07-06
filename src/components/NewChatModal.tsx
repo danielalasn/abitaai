@@ -128,6 +128,11 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
   const handleSend = async () => {
     if (!phone || !selectedTemplate) return;
     
+    if (headerMediaType && !headerMediaUrl?.trim()) {
+      setError('Debes subir un archivo o ingresar una URL para el encabezado de la plantilla.');
+      return;
+    }
+    
     setIsSending(true);
     setError(null);
     try {
