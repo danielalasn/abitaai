@@ -78,7 +78,6 @@ async function uploadExampleMediaToWhatsApp(url: string, token: string): Promise
     const fileRes = await fetch(url);
     if (!fileRes.ok) return null;
     const blob = await fileRes.blob();
-    const buffer = await blob.arrayBuffer();
     
     const appId = process.env.META_APP_ID;
     if (!appId) throw new Error("META_APP_ID not configured");
@@ -100,7 +99,7 @@ async function uploadExampleMediaToWhatsApp(url: string, token: string): Promise
         Authorization: `OAuth ${token}`,
         file_offset: '0'
       },
-      body: buffer
+      body: blob
     });
     
     const uploadData = await uploadRes.json();
@@ -136,6 +135,9 @@ export async function createMetaTemplate(input: CreateTemplateInput): Promise<{ 
     }
 
     const token = decrypt(project.whatsappToken);
+    if (!token) {
+      return { success: false, error: 'Credenciales inválidas (token nulo).' };
+    }
     const url = `https://graph.facebook.com/${API_VERSION}/${project.whatsappBusinessId}/message_templates`;
 
     const components: MetaTemplateComponent[] = [];
