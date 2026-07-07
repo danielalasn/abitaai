@@ -33,7 +33,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
   const [headerMediaUrl, setHeaderMediaUrl] = useState('');
   const [headerMediaType, setHeaderMediaType] = useState<'IMAGE' | 'VIDEO' | 'DOCUMENT' | null>(null);
   const [templatePrefix, setTemplatePrefix] = useState<string | null>(null);
-  const [botActive, setBotActive] = useState(true);
+  const [botActive, setBotActive] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

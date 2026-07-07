@@ -681,7 +681,7 @@ export async function startIndividualChatAction(
   templateText: string,
   templateCategory: string, // MARKETING o UTILITY
   headerMediaUrl?: string,
-  botActive: boolean = true,
+  botActive: boolean = false,
   leadName?: string,
   headerMediaType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT'
 ): Promise<{ success: boolean; error?: string; chatId?: string }> {
