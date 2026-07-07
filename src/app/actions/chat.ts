@@ -405,19 +405,21 @@ export async function sendSimulatorMessage(
   );
 
   // 5. Guardar respuesta de la IA (solo si no hubo error)
-  if (result.reply) {
-    await prisma.message.create({
-      data: {
-        chatId,
-        role: 'assistant',
-        content: result.reply,
-        agentName: result.agentName, 
-        scoreBump: result.scoreBump > 0 ? result.scoreBump : null,
-        scoreReason: result.scoreReason || null,
-        inputTokens: result.inputTokens,
-        outputTokens: result.outputTokens
-      }
-    });
+  if (result.reply !== null) {
+    if (result.reply.trim()) {
+      await prisma.message.create({
+        data: {
+          chatId,
+          role: 'assistant',
+          content: result.reply,
+          agentName: result.agentName, 
+          scoreBump: result.scoreBump > 0 ? result.scoreBump : null,
+          scoreReason: result.scoreReason || null,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens
+        }
+      });
+    }
   } else {
     // Desactivar bot si falla la IA
     await prisma.chat.update({

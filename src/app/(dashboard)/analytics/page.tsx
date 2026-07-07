@@ -6,6 +6,7 @@ import { getAnalyticsData } from '@/app/actions/analytics'
 import Link from 'next/link'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { format, startOfMonth } from 'date-fns'
+import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
 type Analytics = {
   totalLeads: number;
@@ -146,6 +147,7 @@ export default function AnalyticsDashboard() {
   const remainingPct = Math.max(0, Math.min(100, Math.round((remaining / totalLimit) * 100)))
 
   return (
+    <DesktopOnlyGuard>
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* Header */}
       <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-50 sticky top-0">
@@ -388,5 +390,6 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
     </div>
+    </DesktopOnlyGuard>
   )
 }

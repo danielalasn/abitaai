@@ -154,35 +154,37 @@ export function initWorker() {
             chatDetails.lead.agentId ?? undefined
           );
 
-          if (botData && botData.reply) {
+          if (botData && botData.reply !== null) {
             let waMessageId;
             let waCategory = 'SERVICE';
             let sendErrorStr = null;
 
-            // 4. Enviar respuesta por el canal correspondiente
-            if (channel === 'whatsapp') {
-              const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
-              const rawToken = chatDetails.lead.project?.whatsappToken;
-              const projectToken = rawToken ? decrypt(rawToken) : process.env.SYSTEM_USER_TOKEN;
-              if (projectPhoneId && projectToken) {
-                const waResult = await sendWhatsAppMessage(from, botData.reply, projectPhoneId, projectToken);
-                waCategory = waResult.category || 'SERVICE';
-                waMessageId = waResult.messageId;
-                if (!waResult.success) sendErrorStr = waResult.friendlyError || 'Error desconocido';
-              } else {
-                sendErrorStr = 'Credenciales de WhatsApp no configuradas en el proyecto.';
-              }
-            } else if (channel === 'instagram') {
-              const integration = await prisma.integration.findFirst({
-                where: { instagramAccountId: metadata.phoneId, provider: 'meta_instagram', status: 'active' }
-              });
-              const accessToken = decrypt(integration?.accessToken);
-              if (accessToken) {
-                const igResult = await sendInstagramMessage(from, botData.reply, accessToken);
-                waMessageId = igResult.messageId;
-                if (!igResult.success) sendErrorStr = 'Error al enviar mensaje de Instagram';
-              } else {
-                sendErrorStr = 'Credenciales de Instagram no configuradas.';
+            // 4. Enviar respuesta por el canal correspondiente (SOLO SI HAY TEXTO QUE ENVIAR)
+            if (botData.reply.trim()) {
+              if (channel === 'whatsapp') {
+                const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
+                const rawToken = chatDetails.lead.project?.whatsappToken;
+                const projectToken = rawToken ? decrypt(rawToken) : process.env.SYSTEM_USER_TOKEN;
+                if (projectPhoneId && projectToken) {
+                  const waResult = await sendWhatsAppMessage(from, botData.reply, projectPhoneId, projectToken);
+                  waCategory = waResult.category || 'SERVICE';
+                  waMessageId = waResult.messageId;
+                  if (!waResult.success) sendErrorStr = waResult.friendlyError || 'Error desconocido';
+                } else {
+                  sendErrorStr = 'Credenciales de WhatsApp no configuradas en el proyecto.';
+                }
+              } else if (channel === 'instagram') {
+                const integration = await prisma.integration.findFirst({
+                  where: { instagramAccountId: metadata.phoneId, provider: 'meta_instagram', status: 'active' }
+                });
+                const accessToken = decrypt(integration?.accessToken);
+                if (accessToken) {
+                  const igResult = await sendInstagramMessage(from, botData.reply, accessToken);
+                  waMessageId = igResult.messageId;
+                  if (!igResult.success) sendErrorStr = 'Error al enviar mensaje de Instagram';
+                } else {
+                  sendErrorStr = 'Credenciales de Instagram no configuradas.';
+                }
               }
             }
 
@@ -190,7 +192,7 @@ export function initWorker() {
             // Reforzamos con detección de texto por si la IA olvida el tag
             // Phrases that indicate an ACTIVE handoff action (declarative, not questions)
             const handoffKeywords = ['transfiriendo al equipo', 'conectando al equipo', 'conectando con el equipo', 'te paso con', 'pasándote con', 'connecting our team', 'connecting the team', 'transferring you'];
-            const hasHandoffKeyword = handoffKeywords.some(k => botData.reply.toLowerCase().includes(k));
+            const hasHandoffKeyword = botData.reply ? handoffKeywords.some(k => botData.reply.toLowerCase().includes(k)) : false;
 
             if (botData.isHandoff || hasHandoffKeyword || sendErrorStr) {
               console.log(`[HANDOFF] Desactivando bot automático para lead: ${from}${sendErrorStr ? ' por error de conexión' : ''}`);
@@ -198,19 +200,21 @@ export function initWorker() {
             }
 
             // 6. Guardar respuesta en el inbox
-            await saveAssistantReply(
-              chatId,
-              botData.reply,
-              botData.scoreBump,
-              botData.inputTokens,
-              botData.outputTokens,
-              waCategory,
-              botData.agentName,
-              botData.scoreReason,
-              waMessageId || undefined,
-              undefined,
-              sendErrorStr
-            );
+            if (botData.reply.trim() || sendErrorStr) {
+              await saveAssistantReply(
+                chatId,
+                botData.reply || "[Error enviando mensaje]",
+                botData.scoreBump,
+                botData.inputTokens,
+                botData.outputTokens,
+                waCategory,
+                botData.agentName,
+                botData.scoreReason,
+                waMessageId || undefined,
+                undefined,
+                sendErrorStr
+              );
+            }
           }
         }
       }

@@ -17,6 +17,7 @@ import {
   type MetaTemplateButton,
   type CreateTemplateInput,
 } from '@/app/actions/templates';
+import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
 
 // ──────────────────────────────────────────────
 // Constants
@@ -873,6 +874,7 @@ export default function TemplatesPage() {
   };
 
   return (
+    <DesktopOnlyGuard>
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
       {/* Header */}
       <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
@@ -1034,5 +1036,6 @@ export default function TemplatesPage() {
         />
       )}
     </div>
+    </DesktopOnlyGuard>
   );
 }

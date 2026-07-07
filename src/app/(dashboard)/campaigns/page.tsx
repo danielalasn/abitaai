@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign, updateCampaignStatus, prepareRetryFailed } from '@/app/actions/campaigns';
 import { uploadImageAction } from '@/app/actions/storage';
+import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
 
 // ──────────────────────────────────────────────
 // Types
@@ -481,6 +482,7 @@ export default function CampaignsPage() {
   });
 
   return (
+    <DesktopOnlyGuard>
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
       <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-3">
@@ -1131,5 +1133,6 @@ export default function CampaignsPage() {
         </div>
       )}
     </div>
+    </DesktopOnlyGuard>
   );
 }

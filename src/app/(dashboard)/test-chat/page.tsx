@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { sendSimulatorMessage, getSimulatorChat, resetSimulatorChat } from '@/app/actions/chat';
 import { getProjectConfig } from '@/app/actions/settings';
 import { Send, Bot, User, Sparkles, ChevronDown, RotateCcw, Flame, Loader2 } from 'lucide-react';
+import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
 
 export default function TestChatPage() {
   const [messages, setMessages] = useState<{
@@ -136,6 +137,7 @@ export default function TestChatPage() {
   );
 
   return (
+    <DesktopOnlyGuard>
     <div className="flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* Header con Selector de Agente y Score */}
       <header className="px-8 py-5 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md sticky top-0 z-10 transition-all">
@@ -309,5 +311,6 @@ export default function TestChatPage() {
         </p>
       </div>
     </div>
+    </DesktopOnlyGuard>
   );
 }

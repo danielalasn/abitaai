@@ -169,6 +169,8 @@ export default function InboxPage() {
   const [isRefreshingSummary, setIsRefreshingSummary] = useState(false);
   const [isInboxSidebarOpen, setIsInboxSidebarOpen] = useState(true);
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(true);
+  // Vista móvil: 'list' muestra la lista de chats, 'chat' muestra la conversación
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   const [notifications, setNotifications] = useState<any[]>([]);
   const [readMessageIds, setReadMessageIds] = useState<Record<string, string>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -439,6 +441,8 @@ export default function InboxPage() {
 
   // Cargar detalle de un chat con CACHE para respuesta instantánea (paginado)
   const loadChatDetails = async (chatId: string) => {
+    // En móvil, al seleccionar un chat cambiar a vista de conversación
+    setMobileView('chat');
     // 0. Registrar el ID solicitado inmediatamente para evitar condiciones de carrera
     lastRequestedId.current = chatId;
     activeChatIdRef.current = chatId;
@@ -1083,7 +1087,11 @@ export default function InboxPage() {
   return (
     <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714] min-w-0">
       {/* 1. SIDEBAR DE CHATS */}
-      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out ${isInboxSidebarOpen ? 'w-[300px]' : 'w-0 opacity-0 pointer-events-none'}`}>
+      {/* Desktop: controlado por isInboxSidebarOpen | Móvil: pantalla completa solo si mobileView === 'list' */}
+      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out
+        ${isInboxSidebarOpen ? 'md:w-[300px]' : 'md:w-0 md:opacity-0 md:pointer-events-none'}
+        ${mobileView === 'list' ? 'flex w-full md:w-auto' : 'hidden md:flex'}
+      `}>
         <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#DEDAD0]/50 dark:bg-[#141210] min-w-[300px]">
           {selectedIds.size > 0 ? (
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-200">
@@ -1333,7 +1341,10 @@ export default function InboxPage() {
       </div>
 
       {/* 2. VENTANA DE CHAT CENTRAL */}
-      <div className="flex-1 min-w-0 flex flex-col bg-white dark:bg-[#1A1714] relative">
+      {/* Desktop: siempre visible | Móvil: solo si mobileView === 'chat' */}
+      <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#1A1714] relative
+        ${mobileView === 'chat' ? 'flex w-full' : 'hidden md:flex'}
+      `}>
         {/* Loader de transición rápida */}
         {isChatLoading && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#E9E4D8]/30 dark:bg-[#1A1714]/30 backdrop-blur-[2px] animate-in fade-in">
@@ -1351,11 +1362,20 @@ export default function InboxPage() {
           </div>
         ) : (
           <>
-            <header className="h-16 px-6 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-[#E9E4D8]/80 dark:bg-[#111111]/10 backdrop-blur-md">
-              <div className="flex items-center gap-4">
+            <header className="h-16 px-4 md:px-6 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-[#E9E4D8]/80 dark:bg-[#111111]/10 backdrop-blur-md">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                {/* Botón volver: solo en móvil */}
+                <button
+                  onClick={() => setMobileView('list')}
+                  className="md:hidden p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors shrink-0"
+                  title="Volver"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                {/* Toggle panel izquierdo: solo en desktop */}
                 <button
                   onClick={() => setIsInboxSidebarOpen(!isInboxSidebarOpen)}
-                  className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors"
+                  className="hidden md:block p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors"
                 >
                   {isInboxSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
                 </button>
@@ -1392,10 +1412,11 @@ export default function InboxPage() {
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeChat.botActive ? 'translate-x-[22px]' : 'translate-x-1'
                     }`} />
                 </button>
-                <div className="w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
+                {/* Botón perfil: solo en desktop */}
+                <div className="hidden md:block w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
                 <button
                   onClick={() => setIsProfileSidebarOpen(!isProfileSidebarOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border ${isProfileSidebarOpen
+                  className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border ${isProfileSidebarOpen
                     ? 'bg-[#F36A2D] text-white border-[#F36A2D] shadow-sm shadow-[#F36A2D]/20'
                     : 'bg-white dark:bg-zinc-900 text-[#6F6F6F] border-[#DEDAD0] dark:border-zinc-800 hover:border-[#F36A2D] hover:text-[#F36A2D]'
                     }`}
@@ -1823,9 +1844,9 @@ export default function InboxPage() {
         )}
       </div>
 
-      {/* 3. SIDEBAR DE PERFIL DE CONTACTO */}
+      {/* 3. SIDEBAR DE PERFIL DE CONTACTO — solo en desktop */}
       <div
-        className={`shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'w-[300px]' : 'w-0 opacity-0 pointer-events-none border-l-0'
+        className={`hidden md:flex shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'md:w-[300px]' : 'md:w-0 opacity-0 pointer-events-none border-l-0'
           }`}
       >
         {activeChat && isProfileSidebarOpen && (

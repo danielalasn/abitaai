@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { BrainCircuit, CheckCircle2, MessageSquare, Plus, Clock, Trash2, Loader2, Eye, X } from 'lucide-react'
 import { getUnansweredQuestions, deleteQuestion, answerAndTrain } from '@/app/actions/learning'
 import { useRouter } from 'next/navigation'
+import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
 type Question = {
   id: string;
@@ -73,6 +74,7 @@ export default function LearningPage() {
   }
 
   return (
+    <DesktopOnlyGuard>
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
       {/* Header */}
       <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
@@ -245,5 +247,6 @@ export default function LearningPage() {
         </div>
       )}
     </div>
+    </DesktopOnlyGuard>
   )
 }

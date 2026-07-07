@@ -18,6 +18,7 @@ import {
   getNotificationEmails, saveNotificationEmails
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
+import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
 // Instagram logo SVG (lucide doesn't include it)
 const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -494,6 +495,7 @@ export default function SettingsPage() {
   const selectedAgent = agents.find(a => a.id === selectedAgentId)
 
   return (
+    <DesktopOnlyGuard>
     <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
       <Script 
         src="https://connect.facebook.net/en_US/sdk.js" 
@@ -1304,5 +1306,6 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+    </DesktopOnlyGuard>
   )
 }
