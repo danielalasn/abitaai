@@ -220,6 +220,10 @@ export default function CampaignsPage() {
     isPausedRef.current = false;
     setIsPaused(false);
 
+    let sentInThisSession = 0;
+    const targetCount = leads.length - processedPhones.size;
+    setProgress({ current: 0, total: targetCount });
+
     try {
       for (let i = 0; i < leads.length; i++) {
         // Verificar si se solicitó pausa
@@ -239,13 +243,13 @@ export default function CampaignsPage() {
           }
           // Si ya se procesó con éxito, omitir
           if (processedPhones.has(cleanPhone)) {
-            setProgress(p => ({ ...p, current: i + 1 }));
             continue;
           }
         }
 
         await processCampaignLead(campaignId, i, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
-        setProgress({ current: i + 1, total: leads.length });
+        sentInThisSession++;
+        setProgress({ current: sentInThisSession, total: targetCount });
 
         // Retardo de seguridad entre mensajes
         if (i < leads.length - 1) {
@@ -401,7 +405,8 @@ export default function CampaignsPage() {
       });
 
       const leads = JSON.parse(campaign.csvData || '[]');
-      setProgress({ current: processed.size, total: leads.length });
+      const failedCount = leads.length - processed.size;
+      setProgress({ current: 0, total: failedCount });
 
       // 3. Lanzar loop
       const completed = await executeSendingLoop(
