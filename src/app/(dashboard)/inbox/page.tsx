@@ -1471,7 +1471,7 @@ export default function InboxPage() {
                         : isBot
                           ? 'bg-[#F36A2D] text-white rounded-tr-sm shadow-md'
                           : 'bg-[#1A1714] text-white dark:bg-[#EDE9E0] dark:text-[#111111] rounded-tr-sm shadow-md'
-                        } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${msg.status === 'failed' ? 'ring-2 ring-red-500/50' : ''}`}>
+                        } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${(msg.status === 'failed' || msg.status === 'FAILED') ? 'ring-2 ring-red-500/50 bg-red-950/20 text-red-100' : ''}`}>
 
                         {(isBot || isAgent) && msg.agentName && (
                           <div className={`absolute -top-5 ${isBot ? 'right-1' : 'left-1'} flex items-center gap-1`}>
@@ -1565,7 +1565,7 @@ export default function InboxPage() {
                               hour12: true
                             })}
                           </span>
-                          {(isAgent || isBot) && msg.status === 'failed' && (
+                          {(isAgent || isBot) && (msg.status === 'failed' || msg.status === 'FAILED') && (
                             <AlertCircle size={10} className="text-red-400" />
                           )}
                           {(isAgent || isBot) && msg.status === 'pending' && (
@@ -1580,13 +1580,13 @@ export default function InboxPage() {
                           {(isAgent || isBot) && msg.status === 'READ' && (
                             <CheckCheck size={10} className="text-blue-400 opacity-100 dark:text-blue-400" />
                           )}
-                          {(isAgent || isBot) && !['failed', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
+                          {(isAgent || isBot) && !['failed', 'FAILED', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
                             <Check size={10} className="opacity-60" />
                           )}
                         </div>
                       </div>
                       {/* Error banner debajo de la burbuja */}
-                      {msg.status === 'failed' && msg.sendError && (
+                      {(msg.status === 'failed' || msg.status === 'FAILED') && msg.sendError && (
                         <div className="mt-1 px-3 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl max-w-full">
                           <p className="text-[10px] font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
                             <AlertCircle size={10} /> No se envió por WhatsApp
