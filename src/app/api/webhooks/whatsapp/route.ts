@@ -58,7 +58,12 @@ export async function POST(req: NextRequest) {
     const phoneId = value?.metadata?.phone_number_id;
 
     // ─── IDEMPOTENCIA ───
-    let eventId = message?.id || status?.id;
+    let eventId = message?.id;
+    if (!eventId && status?.id) {
+      // Para estados, el ID viene siendo el WAMID del mensaje. Como un mensaje pasa por varios estados (sent, delivered, read),
+      // debemos combinarlos para que no se omitan los cambios subsecuentes.
+      eventId = `${status.id}-${status.status}`;
+    }
     if (!eventId && body.entry?.[0]?.id) {
       // Para eventos a nivel app (ej. PARTNER_APP_INSTALLED), el ID es el del App, por lo que agregamos el time para que sea único
       eventId = `${body.entry[0].id}-${body.entry[0].time || Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
