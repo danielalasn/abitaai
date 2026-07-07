@@ -1013,8 +1013,13 @@ export default function CampaignsPage() {
                              <div className={`h-8 w-8 rounded-full flex items-center justify-center ${badgeColor}`}>
                                 <Icon size={16} />
                              </div>
-                             <div>
-                                <p className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0]">{log.phone}</p>
+                             <div className="flex flex-col">
+                                <span className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0]">
+                                   {log.leadName ? log.leadName : log.phone}
+                                </span>
+                                {log.leadName && (
+                                  <span className="text-[10px] text-[#6F6F6F] mt-0.5">{log.phone}</span>
+                                )}
                                 {log.error && <p className="text-[10px] text-red-500 font-medium">{log.error}</p>}
                              </div>
                           </div>

@@ -379,10 +379,23 @@ export async function fetchCampaignLogs(campaignId: string) {
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
   if (!campaign || campaign.projectId !== project.id) return [];
 
-  return await prisma.campaignLog.findMany({
+  const logs = await prisma.campaignLog.findMany({
     where: { campaignId },
     orderBy: { createdAt: 'desc' }
   });
+
+  const phones = logs.map(l => l.phone);
+  const leads = await prisma.lead.findMany({
+    where: { projectId: project.id, phone: { in: phones } },
+    select: { phone: true, name: true }
+  });
+
+  const leadMap = new Map(leads.map(l => [l.phone, l.name]));
+
+  return logs.map(l => ({
+    ...l,
+    leadName: leadMap.get(l.phone) || null
+  }));
 }
 
 export async function updateCampaignStatus(campaignId: string, status: string) {
