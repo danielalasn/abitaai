@@ -49,7 +49,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
       setButtonVars({});
       setHeaderMediaUrl('');
       setHeaderMediaType(null);
-      setBotActive(true);
+      setBotActive(false);
       setError(null);
     }
   }, [isOpen, initialPhone, initialLeadName]);
