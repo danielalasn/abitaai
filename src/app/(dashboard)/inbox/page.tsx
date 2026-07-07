@@ -1273,9 +1273,28 @@ export default function InboxPage() {
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        <p className={`text-xs line-clamp-1 ${isNewMessage || isUnanswered || isHandoff ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
-                          {lastMsg ? lastMsg.content : <span className="italic opacity-50 text-[10px]">Sin mensajes</span>}
-                        </p>
+                        <div className={`flex items-center gap-1 text-xs line-clamp-1 ${isNewMessage || isUnanswered || isHandoff ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
+                          {lastMsg && (lastMsg.role === 'agent' || lastMsg.role === 'assistant') && (
+                            <div className="shrink-0">
+                              {(lastMsg.status === 'failed' || lastMsg.status === 'FAILED') ? (
+                                <AlertCircle size={12} className="text-red-500" />
+                              ) : lastMsg.status === 'pending' ? (
+                                <Clock size={12} className="opacity-60" />
+                              ) : (lastMsg.status === 'SENT' || lastMsg.status === 'sent') ? (
+                                <Check size={12} className="opacity-60 text-zinc-500" />
+                              ) : lastMsg.status === 'DELIVERED' ? (
+                                <CheckCheck size={12} className="opacity-60 text-zinc-500" />
+                              ) : lastMsg.status === 'READ' ? (
+                                <CheckCheck size={12} className="text-blue-500" />
+                              ) : (
+                                <Check size={12} className="opacity-60" />
+                              )}
+                            </div>
+                          )}
+                          <span className="truncate">
+                            {lastMsg ? lastMsg.content : <span className="italic opacity-50 text-[10px]">Sin mensajes</span>}
+                          </span>
+                        </div>
 
                         <div className="flex items-center gap-1 shrink-0">
                           {isBot ? (
