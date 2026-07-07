@@ -139,6 +139,14 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
       const bodyText = selectedTemplate.components.find((c: any) => c.type === 'BODY')?.text ?? '';
       // Merge body vars + button vars into a single variables map with button_ prefix
       const allVars = { ...variables, ...buttonVars };
+      
+      const hasEmptyVar = Object.values(allVars).some(val => !val.trim());
+      if (hasEmptyVar) {
+        setIsSending(false);
+        setError('Por favor completa todos los campos de las variables requeridas por la plantilla.');
+        return;
+      }
+      
       const result = await startIndividualChatAction(
         phone,
         selectedTemplate.name,
