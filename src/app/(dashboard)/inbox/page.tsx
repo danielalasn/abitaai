@@ -284,14 +284,12 @@ export default function InboxPage() {
     }
   }, [activeChat]);
 
-  // Efecto inicial y selección automática por primera vez
+  // Efecto inicial sin selección automática
   useEffect(() => {
     const initialLoad = async () => {
       const data = await getActiveChats(Date.now());
       setChats(data);
-      if (data.length > 0) {
-        loadChatDetails(data[0].id);
-      }
+      // Ya no seleccionamos el primer chat por defecto para que inicie en la bandeja vacía
       setIsLoading(false);
     };
     initialLoad();
@@ -1390,9 +1388,12 @@ export default function InboxPage() {
         )}
 
         {!activeChat ? (
-          <div className="h-full flex flex-col items-center justify-center text-zinc-400">
-            <MessageSquare size={48} className="mb-4 opacity-20" />
-            <p>Selecciona un chat para ver la conversación</p>
+          <div className="h-full flex flex-col items-center justify-center bg-[#E9E4D8]/30 dark:bg-black/20 text-[#6F6F6F]">
+            <div className="bg-[#111111] dark:bg-[#E9E4D8] p-4 rounded-3xl shadow-xl mb-6 flex items-center justify-center">
+              <MessageSquare size={36} className="text-[#F36A2D]" strokeWidth={2.5} />
+            </div>
+            <h3 className="text-lg font-bold text-[#111111] dark:text-[#EDE9E0] mb-2">Bandeja de Entrada</h3>
+            <p className="text-sm">Selecciona una conversación para comenzar</p>
           </div>
         ) : (
           <>
