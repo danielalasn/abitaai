@@ -27,7 +27,8 @@ export async function getActiveChats(_timestamp?: number) {
     include: { 
       lead: {
         include: {
-          project: { select: { leadScoringEnabled: true } }
+          project: { select: { leadScoringEnabled: true } },
+          latestCampaign: { select: { name: true } }
         }
       },
       messages: {
@@ -51,7 +52,10 @@ export async function getChatMessages(chatId: string) {
     where: { id: chatId },
     include: {
       lead: {
-        include: { project: true }
+        include: { 
+          project: true,
+          latestCampaign: { select: { name: true } }
+        }
       }
     }
   });
@@ -80,7 +84,14 @@ export async function getChatMessagesPaginated(chatId: string, limit = 30) {
 
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
-    include: { lead: { include: { project: true } } }
+    include: { 
+      lead: { 
+        include: { 
+          project: true,
+          latestCampaign: { select: { name: true } }
+        } 
+      } 
+    }
   });
 
   if (!chat || chat.lead.projectId !== project.id) return null;

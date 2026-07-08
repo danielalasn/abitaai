@@ -1937,6 +1937,15 @@ export default function InboxPage() {
                         <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
                       </div>
                     </div>
+                    {activeChat.lead.latestCampaign && (
+                      <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800">
+                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Campaña de Origen</span>
+                        <div className="flex items-center gap-2 bg-[#F36A2D]/10 text-[#F36A2D] px-2.5 py-1.5 rounded-lg border border-[#F36A2D]/20">
+                          <MessageSquare size={12} className="shrink-0" />
+                          <span className="text-[11px] font-bold leading-tight">{activeChat.lead.latestCampaign.name}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Switch de Auto-Wake Bot */}
                     <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
