@@ -1937,16 +1937,6 @@ export default function InboxPage() {
                         <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
                       </div>
                     </div>
-                    {activeChat.lead.latestCampaign && (
-                      <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800">
-                        <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Campaña de Origen</span>
-                        <div className="flex items-center gap-2 bg-[#F36A2D]/10 text-[#F36A2D] px-2.5 py-1.5 rounded-lg border border-[#F36A2D]/20">
-                          <MessageSquare size={12} className="shrink-0" />
-                          <span className="text-[11px] font-bold leading-tight">{activeChat.lead.latestCampaign.name}</span>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Switch de Auto-Wake Bot */}
                     <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
                       <span className="text-[10px] text-[#6F6F6F] font-bold uppercase">Auto-Reactivar IA</span>
@@ -2047,13 +2037,22 @@ export default function InboxPage() {
               </div>
 
               {/* Metadata Variables (Ej: De CSV de Campañas) */}
-              {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && (
+              {((activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object') || activeChat.lead.latestCampaign) && (
                 <div className="space-y-3">
                   <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2">
                     <FileText size={12} /> Datos de Campaña / Extra
                   </h3>
                   <div className="space-y-2">
-                    {Object.entries(activeChat.lead.metadata).map(([key, val]) => (
+                    {/* Mostrar primero la campaña si existe */}
+                    {activeChat.lead.latestCampaign && (
+                      <div className="bg-[#F36A2D]/10 px-3 py-2.5 rounded-lg border border-[#F36A2D]/20 flex flex-col gap-0.5">
+                        <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-wider">Campaña de Origen</span>
+                        <span className="text-xs font-bold text-[#F36A2D] truncate">{activeChat.lead.latestCampaign.name}</span>
+                      </div>
+                    )}
+
+                    {/* Luego los demás datos de metadata */}
+                    {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && Object.entries(activeChat.lead.metadata).map(([key, val]) => (
                       <div key={key} className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 px-3 py-2.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 flex flex-col gap-0.5">
                         <span className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-wider">{key}</span>
                         <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0] truncate">{String(val)}</span>
