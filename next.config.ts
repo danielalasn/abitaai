@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '15mb',
+    },
+  },
   // @ts-ignore
   allowedDevOrigins: ["frostbite-bakery-lustily.ngrok-free.dev"],
   async headers() {
