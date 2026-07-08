@@ -1110,7 +1110,7 @@ export default function InboxPage() {
       {/* Desktop: controlado por isInboxSidebarOpen | Móvil: pantalla completa solo si mobileView === 'list' */}
       <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out
         ${isInboxSidebarOpen ? 'md:w-[300px]' : 'md:w-0 md:opacity-0 md:pointer-events-none'}
-        ${mobileView === 'list' ? 'flex w-full md:w-auto' : 'hidden md:flex'}
+        ${mobileView === 'list' ? 'flex w-full' : 'hidden md:flex'}
       `}>
         <div className="h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#DEDAD0]/50 dark:bg-[#141210] min-w-[300px]">
           {selectedIds.size > 0 ? (
