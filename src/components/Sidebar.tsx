@@ -32,7 +32,7 @@ export function Sidebar() {
             <span className="text-[#F36A2D] font-bold text-base tracking-tight">a</span>
           </div>
           <span className={`font-semibold text-xl tracking-tight text-[#111111] dark:text-[#EDE9E0] whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none' : 'opacity-100'}`}>
-            abita.ai
+            Abita <span className="text-[#F36A2D]">AI</span>
           </span>
         </div>
 

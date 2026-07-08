@@ -105,6 +105,7 @@ export default function CampaignsPage() {
   const [activeLogs, setActiveLogs] = useState<any[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<any | null>(null);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [logStatusFilter, setLogStatusFilter] = useState('ALL');
 
   // Control de Pausa y Reanudación de Campañas
   const isPausedRef = useRef(false);
@@ -957,23 +958,30 @@ export default function CampaignsPage() {
                 <div>
                    <h3 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Reporte de Entrega</h3>
                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-[#6F6F6F]">Estado detallado por contacto</p>
+                      <select
+                        value={logStatusFilter}
+                        onChange={(e) => setLogStatusFilter(e.target.value)}
+                        className="bg-zinc-100 dark:bg-zinc-800 text-xs text-[#111111] dark:text-[#EDE9E0] rounded-md px-2 py-1 outline-none border border-transparent focus:border-emerald-500 transition-colors"
+                      >
+                        <option value="ALL">Todos</option>
+                        <option value="SENT">Enviado</option>
+                        <option value="DELIVERED">Recibido</option>
+                        <option value="READ">Leído</option>
+                        <option value="FAILED">Fallido</option>
+                      </select>
                       <button 
                         onClick={async () => {
                           setIsLoadingLogs(true);
-                          // Encontrando la campaña activa de alguna forma si no la tenemos a mano
-                          // pero por ahora activeLogs viene de una campaña específica.
-                          // Reusando el ID que ya tenemos en los logs previos.
                           if (activeLogs.length > 0) {
                             const logs = await fetchCampaignLogs(activeLogs[0].campaignId);
                             setActiveLogs(logs);
                           }
                           setIsLoadingLogs(false);
                         }}
-                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-emerald-600"
+                        className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-emerald-600"
                         title="Actualizar estados"
                       >
-                        <RefreshCw size={12} className={isLoadingLogs ? 'animate-spin' : ''} />
+                        <RefreshCw size={14} className={isLoadingLogs ? 'animate-spin' : ''} />
                       </button>
                    </div>
                 </div>
@@ -996,7 +1004,20 @@ export default function CampaignsPage() {
                        <p className="text-sm">No hay registros disponibles para esta campaña.</p>
                     </div>
                 ) : (
-                    activeLogs.map((log: any) => {
+                    activeLogs.filter((log: any) => {
+                      if (logStatusFilter === 'ALL') return true;
+                      if (logStatusFilter === 'FAILED') return log.status !== 'SENT' && log.status !== 'DELIVERED' && log.status !== 'READ';
+                      return log.status === logStatusFilter;
+                    }).length === 0 ? (
+                      <div className="text-center py-12 opacity-50">
+                         <p className="text-sm">No hay registros con este estado.</p>
+                      </div>
+                    ) : (
+                      activeLogs.filter((log: any) => {
+                        if (logStatusFilter === 'ALL') return true;
+                        if (logStatusFilter === 'FAILED') return log.status !== 'SENT' && log.status !== 'DELIVERED' && log.status !== 'READ';
+                        return log.status === logStatusFilter;
+                      }).map((log: any) => {
                        let badgeColor = 'bg-red-500/10 text-red-600';
                        let badgeText = 'Fallido';
                        let Icon = AlertCircle;
@@ -1036,6 +1057,7 @@ export default function CampaignsPage() {
                        </div>
                        );
                     })
+                    )
                 )}
              </div>
              

@@ -1115,7 +1115,7 @@ export default function InboxPage() {
         <div className="relative h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#DEDAD0]/50 dark:bg-[#141210] min-w-[300px]">
           {/* Logo centrado en móvil */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none md:hidden">
-            <span className="font-black text-lg tracking-widest text-[#111111] dark:text-[#EDE9E0]">abita<span className="text-[#F36A2D]">.ai</span></span>
+            <span className="font-black text-lg tracking-widest text-[#111111] dark:text-[#EDE9E0]">Abita <span className="text-[#F36A2D]">AI</span></span>
           </div>
           {selectedIds.size > 0 ? (
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-200">
