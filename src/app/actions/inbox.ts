@@ -15,7 +15,7 @@ export async function getActiveChats(_timestamp?: number) {
   const project = await getCurrentProject();
   if (!project) return [];
 
-  // 1. Obtener los chats activos
+  // 1. Obtener los chats activos con el último mensaje incluido
   const chats = await prisma.chat.findMany({
     where: {
       isArchived: false,
@@ -29,26 +29,16 @@ export async function getActiveChats(_timestamp?: number) {
         include: {
           project: { select: { leadScoringEnabled: true } }
         }
-      } 
+      },
+      messages: {
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      }
     },
     orderBy: { lastActiveAt: 'desc' }
   });
 
-  if (chats.length === 0) return [];
-
-  // 2. Obtener el último mensaje de cada chat de forma eficiente
-  const chatsWithMessages = await Promise.all(chats.map(async chat => {
-    const lastMessage = await prisma.message.findFirst({
-      where: { chatId: chat.id },
-      orderBy: { createdAt: 'desc' }
-    });
-    return {
-      ...chat,
-      messages: lastMessage ? [lastMessage] : []
-    };
-  }));
-
-  return chatsWithMessages;
+  return chats;
 }
 
 export async function getChatMessages(chatId: string) {
