@@ -675,8 +675,19 @@ export default function InboxPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const MAX_FILE_SIZE_MB = 10;
+  const MAX_VOICE_SIZE_MB = 5;
+
   const handleSendVoiceNote = async (blob: Blob) => {
     if (!activeChat) return;
+
+    // Validar tamaño antes de subir
+    const sizeMB = blob.size / (1024 * 1024);
+    if (sizeMB > MAX_VOICE_SIZE_MB) {
+      alert(`La nota de voz es muy larga (${sizeMB.toFixed(1)} MB). El límite es ${MAX_VOICE_SIZE_MB} MB. Graba un mensaje más corto.`);
+      return;
+    }
+
     setIsUploadingMedia(true);
     try {
       const fileName = `voice-note-${Date.now()}.webm`;
@@ -692,6 +703,7 @@ export default function InboxPage() {
       }
     } catch (err) {
       console.error("Error enviando nota de voz:", err);
+      alert('Error al enviar la nota de voz. Por favor intenta de nuevo.');
     } finally {
       setIsUploadingMedia(false);
     }
@@ -945,6 +957,15 @@ export default function InboxPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validar tamaño antes de aceptar el archivo
+    const sizeMB = file.size / (1024 * 1024);
+    if (sizeMB > MAX_FILE_SIZE_MB) {
+      alert(`El archivo "${file.name}" es demasiado grande (${sizeMB.toFixed(1)} MB). El límite es ${MAX_FILE_SIZE_MB} MB. Por favor elige un archivo más pequeño.`);
+      e.target.value = '';
+      return;
+    }
+
     setPendingFile(file);
     if (file.type.startsWith('image/')) {
       setPendingFilePreview(URL.createObjectURL(file));

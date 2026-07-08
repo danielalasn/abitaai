@@ -107,9 +107,19 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
     setStep(3);
   };
 
+  const MAX_MEDIA_SIZE_MB = 14;
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validar tamaño antes de subir
+    const sizeMB = file.size / (1024 * 1024);
+    if (sizeMB > MAX_MEDIA_SIZE_MB) {
+      setError(`El archivo "${file.name}" es demasiado grande (${sizeMB.toFixed(1)} MB). El límite es ${MAX_MEDIA_SIZE_MB} MB.`);
+      e.target.value = '';
+      return;
+    }
 
     setIsUploading(true);
     setError(null);
@@ -403,7 +413,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                                   <>
                                     <Sparkles size={24} className="text-emerald-500/50 mb-2" />
                                     <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Seleccionar o Arrastrar {headerMediaType === 'VIDEO' ? 'Video' : headerMediaType === 'DOCUMENT' ? 'Documento' : 'Imagen'}</span>
-                                    <span className="text-[10px] text-[#6F6F6F] mt-1">Hasta 20MB</span>
+                                    <span className="text-[10px] text-[#6F6F6F] mt-1">Hasta {MAX_MEDIA_SIZE_MB}MB</span>
                                   </>
                               )}
                               <input 
