@@ -8,7 +8,7 @@ import {
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
-  Mic, Square
+  Mic, Square, ChevronDown
 } from "lucide-react";
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
@@ -170,7 +170,8 @@ export default function InboxPage() {
   const [isInboxSidebarOpen, setIsInboxSidebarOpen] = useState(true);
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(true);
   // Vista móvil: 'list' muestra la lista de chats, 'chat' muestra la conversación
-  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [mobileView, setMobileView] = useState<'list' | 'chat' | 'profile'>('list');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [readMessageIds, setReadMessageIds] = useState<Record<string, string>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -1184,39 +1185,51 @@ export default function InboxPage() {
         </div>
 
         <div className="px-4 py-3 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col gap-2 bg-[#E9E4D8]/60 dark:bg-[#1A1714]">
-          <select
-            value={filterHeat}
-            onChange={(e) => setFilterHeat(e.target.value as any)}
-            className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
+          <button 
+            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            className="flex items-center justify-between w-full text-xs font-bold text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors"
           >
-            <option value="ALL">Todas las temperaturas</option>
-            <option value="CALIENTE">Caliente</option>
-            <option value="TIBIO">Tibio</option>
-            <option value="FRIO">Frío</option>
-          </select>
+            <span className="flex items-center gap-2"><Search size={14} /> Filtros y Búsqueda</span>
+            <ChevronDown size={14} className={`transition-transform ${isFiltersOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {isFiltersOpen && (
+            <div className="flex flex-col gap-2 mt-2 animate-in slide-in-from-top-2 duration-200">
+              <select
+                value={filterHeat}
+                onChange={(e) => setFilterHeat(e.target.value as any)}
+                className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
+              >
+                <option value="ALL">Todas las temperaturas</option>
+                <option value="CALIENTE">Caliente</option>
+                <option value="TIBIO">Tibio</option>
+                <option value="FRIO">Frío</option>
+              </select>
 
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
-          >
-            <option value="ALL">Todos los estados</option>
-            <option value="BOT">IA Gestionando</option>
-            <option value="NEEDS_AGENT">Necesita Humano</option>
-            <option value="AGENT">En Atención Humana</option>
-            <option value="UNANSWERED">No Contestados</option>
-          </select>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
+                className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
+              >
+                <option value="ALL">Todos los estados</option>
+                <option value="BOT">IA Gestionando</option>
+                <option value="NEEDS_AGENT">Necesita Humano</option>
+                <option value="AGENT">En Atención Humana</option>
+                <option value="UNANSWERED">No Contestados</option>
+              </select>
 
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6F6F6F]" />
-            <input
-              type="text"
-              placeholder="Buscar nombre o tel..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg pl-9 pr-3 py-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 shadow-sm"
-            />
-          </div>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6F6F6F]" />
+                <input
+                  type="text"
+                  placeholder="Buscar nombre o tel..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg pl-9 pr-3 py-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 shadow-sm"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto w-full p-2 space-y-1 relative">
@@ -1404,14 +1417,19 @@ export default function InboxPage() {
                   {activeChat.lead.name?.[0]?.toUpperCase() || 'a'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2 min-w-0">
+                  <h2 
+                    className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => { if (window.innerWidth < 768) setMobileView('profile'); }}
+                  >
                     <span className="truncate">{activeChat.lead.name}</span>
-                     <span className="text-[10px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded-md font-mono border border-[#DEDAD0] dark:border-zinc-700 flex items-center gap-1 shrink-0">
-                      {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : activeChat.lead.channel === 'simulator' ? <SimIcon size={10} /> : <WaIcon size={10} />}
-                      {activeChat.lead.channel === 'instagram' ? 'Instagram' : activeChat.lead.channel === 'simulator' ? 'Simulador' : 'WhatsApp'}
-                    </span>
                   </h2>
-                  <p className="text-xs text-[#6F6F6F] truncate">{activeChat.lead.phone}</p>
+                  <p className="text-xs text-[#6F6F6F] truncate flex items-center gap-2 mt-0.5">
+                     <span>{activeChat.lead.phone}</span>
+                     <span className="text-[9px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 font-mono border border-[#DEDAD0] dark:border-zinc-700">
+                      {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : activeChat.lead.channel === 'simulator' ? <SimIcon size={10} /> : <WaIcon size={10} />}
+                      <span className="hidden md:inline">{activeChat.lead.channel === 'instagram' ? 'Instagram' : activeChat.lead.channel === 'simulator' ? 'Simulador' : 'WhatsApp'}</span>
+                    </span>
+                  </p>
                 </div>
               </div>
 
@@ -1867,12 +1885,20 @@ export default function InboxPage() {
 
       {/* 3. SIDEBAR DE PERFIL DE CONTACTO — solo en desktop */}
       <div
-        className={`hidden md:flex shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'md:w-[300px]' : 'md:w-0 opacity-0 pointer-events-none border-l-0'
+        className={`${mobileView === 'profile' ? 'flex w-full absolute inset-0 z-50' : 'hidden'} md:flex shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'md:w-[300px]' : 'md:w-0 opacity-0 pointer-events-none border-l-0'
           }`}
       >
-        {activeChat && isProfileSidebarOpen && (
-          <div className="flex-1 w-[300px] overflow-y-auto no-scrollbar pb-6 absolute inset-0">
+        {activeChat && (isProfileSidebarOpen || mobileView === 'profile') && (
+          <div className="flex-1 w-full md:w-[300px] overflow-y-auto no-scrollbar pb-6 absolute inset-0">
             {/* Cabecera del perfil */}
+            {mobileView === 'profile' && (
+               <div className="md:hidden sticky top-0 bg-[#E9E4D8]/80 dark:bg-black/80 backdrop-blur-md px-4 py-3 z-10 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center gap-2">
+                 <button onClick={() => setMobileView('chat')} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#111111] dark:text-[#EDE9E0] transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                 </button>
+                 <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">Perfil del Contacto</span>
+               </div>
+            )}
             <div className="px-6 py-8 flex flex-col items-center justify-center border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/30 dark:bg-black/20">
               <div className="h-20 w-20 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-black text-3xl shadow-xl mb-4 relative">
                 {activeChat.lead.name?.[0]?.toUpperCase() || 'A'}
