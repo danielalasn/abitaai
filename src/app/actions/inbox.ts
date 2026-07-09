@@ -806,6 +806,8 @@ export async function startIndividualChatAction(
         role: 'agent', 
         content: previewText,
         waCategory: waResult.category || 'MARKETING',
+        wamid: waResult.messageId,
+        status: "SENT",
         imageUrl: (headerMediaType === 'IMAGE' || !headerMediaType) ? headerMediaUrl : null,
         mediaUrl: headerMediaUrl || null,
         mediaType: headerMediaType ? headerMediaType.toLowerCase() : null
