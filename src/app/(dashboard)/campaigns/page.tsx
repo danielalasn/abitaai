@@ -1067,15 +1067,17 @@ export default function CampaignsPage() {
              
              <div className="p-8 bg-zinc-50 dark:bg-black/10 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
                  <button 
-                    onClick={() => {
+                    onClick={async () => {
                         if (!activeCampaign?.csvData) return;
                         try {
+                           // Obtener los logs más frescos directamente de la base de datos
+                           const latestLogs = await fetchCampaignLogs(activeCampaign.id);
                            const originalData = JSON.parse(activeCampaign.csvData);
                            if (!Array.isArray(originalData)) return;
 
                            // Mapear logs por telefono para busqueda rapida
                            const logsMap: Record<string, any> = {};
-                           activeLogs.forEach(l => {
+                           latestLogs.forEach(l => {
                              logsMap[l.phone] = l;
                            });
 
