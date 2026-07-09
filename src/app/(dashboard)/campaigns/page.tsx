@@ -509,8 +509,8 @@ export default function CampaignsPage() {
       <div className="flex-1 overflow-auto p-8">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
           
-          <div className="space-y-6">
-            <div className="flex items-center gap-4 px-1">
+          <div className="space-y-6 flex flex-col lg:h-[600px]">
+            <div className="flex items-center gap-4 px-1 shrink-0">
               <StepBadge n={1} label="CSV" active={step === 1} done={step > 1} onClick={() => setStep(1)} />
               <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-800" />
               <StepBadge n={2} label="Plantilla" active={step === 2} done={step > 2} onClick={() => (step > 2) ? setStep(2) : undefined} />
@@ -518,9 +518,9 @@ export default function CampaignsPage() {
               <StepBadge n={3} label="Mapeo" active={step === 3} done={false} />
             </div>
 
-            <div className="bg-white dark:bg-[#111111]/40 rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#111111]/40 rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden">
               {step === 1 && (
-                <div className="p-6 space-y-5">
+                <div className="p-6 space-y-5 flex-1 overflow-y-auto">
                   <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">1. Subir contactos</h2>
                   <div className={`border-2 border-dashed rounded-3xl p-10 text-center transition-all ${parsedLeads.length > 0 ? 'border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10' : 'border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5'}`}>
                     {parsedLeads.length > 0 ? (
@@ -583,12 +583,13 @@ export default function CampaignsPage() {
               )}
 
               {step === 2 && (
-                <div className="p-6 space-y-5">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">2. Plantilla de Meta</h2>
-                    <button onClick={loadTemplates} className="text-xs text-emerald-500 font-bold hover:opacity-70 transition-opacity">Cargar</button>
-                  </div>
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                <div className="p-6 flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
+                  <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <div className="flex items-center justify-between mb-4 shrink-0">
+                      <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">2. Plantilla de Meta</h2>
+                      <button onClick={loadTemplates} className="text-xs text-emerald-500 font-bold hover:opacity-70 transition-opacity">Cargar</button>
+                    </div>
+                    <div className="space-y-2 flex-1 min-y-0 overflow-y-auto pr-1">
                     {templates.map(t => (
                       <button 
                         key={t.name} 
@@ -614,7 +615,8 @@ export default function CampaignsPage() {
                       </button>
                     ))}
                   </div>
-                  <div className="flex gap-3">
+                  </div>
+                  <div className="flex gap-3 pt-4 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 shrink-0">
                     <button onClick={() => setStep(1)} className="px-4 py-2 text-sm font-bold text-[#6F6F6F] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">Volver</button>
                     <button onClick={() => setStep(3)} disabled={!selectedTemplate} className="flex-1 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl font-bold disabled:opacity-30">
                       Configurar
@@ -624,8 +626,9 @@ export default function CampaignsPage() {
               )}
 
               {step === 3 && selectedTemplate && (
-                <div className="p-6 space-y-5">
-                  <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">3. Mapear Variables</h2>
+                <div className="p-6 flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
+                  <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pr-1 pb-4">
+                    <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">3. Mapear Variables</h2>
                   <input 
                     type="text" 
                     placeholder="Nombre de campaña" 
@@ -825,8 +828,9 @@ export default function CampaignsPage() {
                       </button>
                     </div>
                   </div>
+                  </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 pt-4 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 shrink-0">
                     <button onClick={() => setStep(2)} className="px-4 py-2 text-sm font-bold text-[#6F6F6F] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">Volver</button>
                     <button 
                       onClick={handleLaunch} 
@@ -851,8 +855,8 @@ export default function CampaignsPage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="space-y-6 flex flex-col lg:h-[600px]">
+            <div className="flex items-center justify-between mb-4 shrink-0">
               <h3 className="text-lg font-medium flex items-center gap-2 text-[#111111] dark:text-[#EDE9E0]">
                 <FileText size={20} /> Historial
               </h3>
@@ -876,7 +880,7 @@ export default function CampaignsPage() {
               </div>
             </div>
 
-            <div className="space-y-3 max-h-[calc(100vh-320px)] overflow-y-auto p-4 border border-[#DEDAD0] dark:border-zinc-800 rounded-[2rem] bg-[#DEDAD0]/20 dark:bg-black/10 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
+            <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4 border border-[#DEDAD0] dark:border-zinc-800 rounded-[2rem] bg-[#DEDAD0]/20 dark:bg-black/10 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
               {filteredCampaigns.length === 0 && (
                 <div className="p-8 text-center border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-3xl opacity-50">
                   <Clock size={32} className="mx-auto mb-2 text-[#6F6F6F]" />
