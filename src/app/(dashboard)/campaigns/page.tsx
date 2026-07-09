@@ -509,7 +509,7 @@ export default function CampaignsPage() {
       <div className="flex-1 overflow-auto p-8">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
           
-          <div className="space-y-6 flex flex-col lg:h-[600px]">
+          <div className="space-y-6 flex flex-col lg:h-[calc(100vh-180px)]">
             <div className="flex items-center gap-4 px-1 shrink-0">
               <StepBadge n={1} label="CSV" active={step === 1} done={step > 1} onClick={() => setStep(1)} />
               <ChevronRight size={14} className="text-zinc-300 dark:text-zinc-800" />
@@ -855,7 +855,7 @@ export default function CampaignsPage() {
             </div>
           </div>
 
-          <div className="space-y-6 flex flex-col lg:h-[600px]">
+          <div className="space-y-6 flex flex-col lg:h-[calc(100vh-180px)]">
             <div className="flex items-center justify-between mb-4 shrink-0">
               <h3 className="text-lg font-medium flex items-center gap-2 text-[#111111] dark:text-[#EDE9E0]">
                 <FileText size={20} /> Historial
