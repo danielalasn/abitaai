@@ -39,7 +39,27 @@ export async function getActiveChats(_timestamp?: number) {
     orderBy: { lastActiveAt: 'desc' }
   });
 
-  return chats;
+  // 2. Obtener los logs de campaña para los teléfonos de los leads
+  const phones = chats.map(c => c.lead.phone).filter(Boolean);
+  const logs = await prisma.campaignLog.findMany({
+    where: { phone: { in: phones }, campaign: { projectId: project.id } },
+    select: { phone: true, campaign: { select: { id: true, name: true } } },
+    distinct: ['phone', 'campaignId']
+  });
+
+  // 3. Mapear campañas a cada chat
+  const campaignsByPhone: Record<string, { id: string, name: string }[]> = {};
+  logs.forEach(log => {
+    if (!campaignsByPhone[log.phone]) campaignsByPhone[log.phone] = [];
+    campaignsByPhone[log.phone].push(log.campaign);
+  });
+
+  const finalChats = chats.map(chat => {
+    (chat.lead as any).allCampaigns = campaignsByPhone[chat.lead.phone] || [];
+    return chat;
+  });
+
+  return finalChats;
 }
 
 export async function getChatMessages(chatId: string) {
@@ -64,11 +84,20 @@ export async function getChatMessages(chatId: string) {
 
   if (!chat) return null;
 
-  // 2. Obtener TODAS las conversaciones de este chat (Bypass de cache de include)
+  // 2. Obtener TODAS las conversaciones de este chat
   const messages = await prisma.message.findMany({
     where: { chatId },
     orderBy: { createdAt: 'asc' }
   });
+
+  // 3. Obtener todas las campañas de las que ha sido parte
+  const campaignLogs = await prisma.campaignLog.findMany({
+    where: { phone: chat.lead.phone, campaign: { projectId: project.id } },
+    select: { campaign: { select: { id: true, name: true } } },
+    distinct: ['campaignId']
+  });
+  
+  (chat.lead as any).allCampaigns = campaignLogs.map(l => l.campaign);
 
   return {
     ...chat,
@@ -98,14 +127,21 @@ export async function getChatMessagesPaginated(chatId: string, limit = 30) {
 
   if (!chat) return null;
 
-  const [total, messages] = await Promise.all([
+  const [total, messages, campaignLogs] = await Promise.all([
     prisma.message.count({ where: { chatId } }),
     prisma.message.findMany({
       where: { chatId },
       orderBy: { createdAt: 'desc' },
       take: limit
+    }),
+    prisma.campaignLog.findMany({
+      where: { phone: chat.lead.phone, campaign: { projectId: project.id } },
+      select: { campaign: { select: { id: true, name: true } } },
+      distinct: ['campaignId']
     })
   ]);
+
+  (chat.lead as any).allCampaigns = campaignLogs.map(l => l.campaign);
 
   // Devolvemos en orden cronológico (asc) para renderizar correctamente
   return {

@@ -159,6 +159,7 @@ export default function InboxPage() {
   // States para filtros de inbox
   const [filterHeat, setFilterHeat] = useState<'ALL' | 'FRIO' | 'TIBIO' | 'CALIENTE'>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'BOT' | 'NEEDS_AGENT' | 'AGENT' | 'UNANSWERED'>('ALL');
+  const [filterCampaign, setFilterCampaign] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
@@ -1060,6 +1061,19 @@ export default function InboxPage() {
     }
   };
 
+  // Extraer todas las campañas disponibles para el filtro
+  const availableCampaigns = useMemo(() => {
+    const campaignsMap = new Map<string, string>();
+    chats.forEach(chat => {
+      if (chat.lead?.allCampaigns) {
+        chat.lead.allCampaigns.forEach((camp: any) => {
+          campaignsMap.set(camp.id, camp.name);
+        });
+      }
+    });
+    return Array.from(campaignsMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [chats]);
+
   // Filtrado de chats
   const filteredChats = chats.filter(chat => {
     // Filtrar por temperatura (heat)
@@ -1078,6 +1092,12 @@ export default function InboxPage() {
         const isUnanswered = !chat.botActive && lastMsg?.role === 'user';
         if (!isUnanswered) return false;
       }
+    }
+
+    // Filtrar por campaña
+    if (filterCampaign !== 'ALL') {
+      const inCampaign = chat.lead?.allCampaigns?.some((camp: any) => camp.id === filterCampaign);
+      if (!inCampaign) return false;
     }
 
     // Búsqueda por nombre o teléfono
@@ -1218,6 +1238,17 @@ export default function InboxPage() {
                 <option value="NEEDS_AGENT">Necesita Humano</option>
                 <option value="AGENT">En Atención Humana</option>
                 <option value="UNANSWERED">No Contestados</option>
+              </select>
+
+              <select
+                value={filterCampaign}
+                onChange={(e) => setFilterCampaign(e.target.value)}
+                className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
+              >
+                <option value="ALL">Todas las campañas</option>
+                {availableCampaigns.map((camp) => (
+                  <option key={camp.id} value={camp.id}>{camp.name}</option>
+                ))}
               </select>
 
               <div className="relative">
@@ -2078,13 +2109,25 @@ export default function InboxPage() {
                     <FileText size={12} /> Datos de Campaña / Extra
                   </h3>
                   <div className="space-y-2">
-                    {/* Mostrar primero la campaña si existe */}
-                    {activeChat.lead.latestCampaign && (
+                    {/* Mostrar primero las campañas si existen */}
+                    {activeChat.lead.allCampaigns && activeChat.lead.allCampaigns.length > 0 ? (
+                      <div className="bg-[#F36A2D]/10 px-3 py-2.5 rounded-lg border border-[#F36A2D]/20 flex flex-col gap-1.5">
+                        <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-wider">Campañas de Origen</span>
+                        <div className="flex flex-col gap-1">
+                          {activeChat.lead.allCampaigns.map((camp: any) => (
+                            <span key={camp.id} className="text-[11px] font-bold text-[#F36A2D] flex items-center gap-1.5">
+                              <span className="w-1 h-1 rounded-full bg-[#F36A2D]"></span>
+                              {camp.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : activeChat.lead.latestCampaign ? (
                       <div className="bg-[#F36A2D]/10 px-3 py-2.5 rounded-lg border border-[#F36A2D]/20 flex flex-col gap-0.5">
                         <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-wider">Campaña de Origen</span>
                         <span className="text-xs font-bold text-[#F36A2D] truncate">{activeChat.lead.latestCampaign.name}</span>
                       </div>
-                    )}
+                    ) : null}
 
                     {/* Luego los demás datos de metadata */}
                     {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && Object.entries(activeChat.lead.metadata).map(([key, val]) => (
