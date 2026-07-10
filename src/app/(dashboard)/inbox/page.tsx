@@ -1339,7 +1339,10 @@ export default function InboxPage() {
 
                     <div className="flex-1 min-w-0 flex flex-col gap-0.5 text-left">
                       <div className="flex justify-between items-center w-full gap-2">
-                        <span className={`truncate text-sm ${isNewMessage || isUnanswered || isHandoff ? 'font-black text-[#111111] dark:text-[#EDE9E0]' : 'font-semibold text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}>
+                        <span 
+                          className={`truncate text-sm ${isNewMessage || isUnanswered || isHandoff ? 'font-black text-[#111111] dark:text-[#EDE9E0]' : 'font-semibold text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}
+                          title={chat.lead.name || chat.lead.phone}
+                        >
                           {chat.lead.name || chat.lead.phone}
                         </span>
                         <span className="text-[10px] text-[#6F6F6F] font-medium shrink-0">
