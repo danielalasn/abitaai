@@ -296,10 +296,60 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
       return;
     }
 
-    for (const btn of buttons) {
-      if (btn.type === 'URL' && btn.url?.includes('{{') && !btn.urlExample?.trim()) {
-        setError(`El ejemplo de URL es obligatorio para el botón "${btn.text || 'URL'}" porque contiene variables.`);
+    // Validaciones de botones
+    if (buttons.length > 0) {
+      const quickReplies = buttons.filter(b => b.type === 'QUICK_REPLY');
+      const ctaButtons   = buttons.filter(b => b.type === 'URL' || b.type === 'PHONE_NUMBER');
+
+      // Meta no permite mezclar Quick Reply con URL/Phone en la misma plantilla
+      if (quickReplies.length > 0 && ctaButtons.length > 0) {
+        setError('Meta no permite mezclar botones de "Respuesta Rápida" con botones de "URL" o "Teléfono" en la misma plantilla. Usa solo un tipo.');
         return;
+      }
+
+      // Límites de Meta
+      if (quickReplies.length > 10) {
+        setError('Meta permite máximo 10 botones de Respuesta Rápida.');
+        return;
+      }
+      if (ctaButtons.length > 2) {
+        setError('Meta permite máximo 2 botones de acción (URL + Teléfono).');
+        return;
+      }
+      const urlBtns = buttons.filter(b => b.type === 'URL');
+      const phoneBtns = buttons.filter(b => b.type === 'PHONE_NUMBER');
+      if (urlBtns.length > 2) {
+        setError('Meta permite máximo 2 botones de URL.');
+        return;
+      }
+      if (phoneBtns.length > 1) {
+        setError('Meta permite máximo 1 botón de Teléfono.');
+        return;
+      }
+
+      for (const btn of buttons) {
+        if (!btn.text.trim()) {
+          setError('Todos los botones deben tener un texto.');
+          return;
+        }
+        if (btn.type === 'URL' && !btn.url?.trim()) {
+          setError(`El botón "${btn.text || 'URL'}" necesita una URL.`);
+          return;
+        }
+        if (btn.type === 'URL' && btn.url?.includes('{{') && !btn.urlExample?.trim()) {
+          setError(`El ejemplo de URL es obligatorio para el botón "${btn.text || 'URL'}" porque contiene variables.`);
+          return;
+        }
+        if (btn.type === 'PHONE_NUMBER') {
+          if (!btn.phone?.trim()) {
+            setError(`El botón "${btn.text || 'Teléfono'}" necesita un número de teléfono.`);
+            return;
+          }
+          if (!btn.phone.startsWith('+')) {
+            setError(`El número de teléfono del botón "${btn.text}" debe incluir el código de país (ej. +50288887777).`);
+            return;
+          }
+        }
       }
     }
 
@@ -340,6 +390,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
     onCreated();
     onClose();
   };
+
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -592,6 +643,14 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                     Sin botones (opcional). Puedes agregar hasta 10.
                   </div>
                 )}
+
+                {buttons.length > 0 && (
+                  <div className="p-2.5 bg-blue-500/5 border border-blue-500/20 rounded-xl text-[10px] text-blue-500 flex items-start gap-2">
+                    <Info size={12} className="mt-0.5 shrink-0" />
+                    <span>Meta <strong>no permite mezclar</strong> Respuestas Rápidas con botones de URL o Teléfono. Usa solo un tipo por plantilla. Máx: 10 Quick Reply, o 2 CTA (URL/Teléfono).</span>
+                  </div>
+                )}
+
 
                 <div className="space-y-3">
                   {buttons.map((btn, i) => (
