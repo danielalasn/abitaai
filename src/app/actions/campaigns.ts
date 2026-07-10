@@ -138,12 +138,14 @@ export async function processCampaignLead(
   let templateText = customTemplateText;
   let realBotActive = botActive;
   let realIsDryRun = isDryRun;
+  let buttonsConfigJson: string | undefined = undefined;
 
   Object.entries(rawMapping).forEach(([k, v]) => {
     if (k === '__headerUrl' && !headerUrl) headerUrl = v as string;
     if (k === '__templateText' && !templateText) templateText = v as string;
     if (k === '__botActive') realBotActive = v === 'true';
     if (k === '__isDryRun') realIsDryRun = v === 'true';
+    if (k === '__buttonsConfig') buttonsConfigJson = v as string;
     if (!k.startsWith('__')) {
       variableMapping[k] = v as string;
     }
@@ -279,7 +281,8 @@ export async function processCampaignLead(
       data: { 
         chatId: chat.id, role: 'agent', content: previewText, 
         waCategory: waResult.category || 'MARKETING', imageUrl: realUrl,
-        wamid: waResult.messageId // Rastreo de estado para el inbox
+        wamid: waResult.messageId, // Rastreo de estado para el inbox
+        buttonsConfig: buttonsConfigJson || null
       }
     });
 

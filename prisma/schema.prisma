@@ -8,35 +8,28 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum SubscriptionStatus {
-  ACTIVE
-  INACTIVE
-  BLOCKED
-}
-
 model Client {
   id                 String             @id @default(cuid())
   name               String
   email              String             @unique
+  createdAt          DateTime           @default(now())
   password           String?
   theme              String             @default("light")
-  role               String             @default("CLIENT") // Enum: ADMIN o CLIENT
-  templateGroup      String?            // Prefijo para filtrar plantillas de Meta
+  role               String             @default("CLIENT")
+  templateGroup      String?
+  subscriptionEndsAt DateTime?
   subscriptionStatus SubscriptionStatus @default(ACTIVE)
-  subscriptionEndsAt DateTime?          // null means lifetime/unlimited for now, or you can set a date
-  createdAt          DateTime           @default(now())
-  
-  projects     Project[]
-  integrations Integration[]
-  auditLogs    AuditLog[]
+  auditLogs          AuditLog[]
+  integrations       Integration[]
+  projects           Project[]
 }
 
 model Integration {
   id                 String    @id @default(cuid())
   clientId           String
-  provider           String    // "meta_instagram"
-  status             String    @default("pending") // pending | active | error | disconnected
-  oauthState         String?   // CSRF token temporal
+  provider           String
+  status             String    @default("pending")
+  oauthState         String?
   accessToken        String?
   tokenExpiresAt     DateTime?
   pageId             String?
@@ -44,207 +37,188 @@ model Integration {
   businessId         String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
-
-  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client             Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, provider])
 }
 
 model Project {
-  id        String   @id @default(cuid())
-  clientId  String
-  name      String
-  createdAt DateTime @default(now())
-
-  // WhatsApp Configuration (migrado desde BotConfig)
-  whatsappToken      String?
-  whatsappPhoneId    String?
-  whatsappBusinessId String?
-  
-  // Opción general para deshabilitar el bot por defecto para nuevos leads
-  defaultBotActive     Boolean  @default(false)
-  botAutoWakeHours     Float?     @default(168) // Horas de inactividad para que el bot despierte solo. null = apagado.
-  leadScoringEnabled   Boolean  @default(true)
-  notificationEmails   String[] @default([])
-
-  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  botConfig BotConfig?
-  agents    Agent[]
-  leads               Lead[]
-  campaigns           Campaign[]
-  unansweredQuestions UnansweredQuestion[]
+  id                  String               @id @default(cuid())
+  clientId            String
+  name                String
+  createdAt           DateTime             @default(now())
+  whatsappBusinessId  String?
+  whatsappPhoneId     String?
+  whatsappToken       String?
+  defaultBotActive    Boolean              @default(false)
+  leadScoringEnabled  Boolean              @default(true)
+  notificationEmails  String[]             @default([])
+  botAutoWakeHours    Float?               @default(168)
+  agents              Agent[]
+  botConfig           BotConfig?
   botTestSuites       BotTestSuite[]
+  campaigns           Campaign[]
+  leads               Lead[]
+  client              Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  unansweredQuestions UnansweredQuestion[]
 }
 
 model BotConfig {
-  id               String  @id @default(cuid())
-  projectId        String  @unique
-  identity         String?
-  instructions     String?
-  knowledgeData    String?
-  knowledgeRaw     String?
-  faq              String?
-  handoffRules     String? // Reglas específicas de cuándo transferir a humano
-  leadScoringRules String? // Reglas de puntuación en texto natural
-  
-  // WhatsApp Configuration
+  id                 String  @id @default(cuid())
+  projectId          String  @unique
+  identity           String?
+  instructions       String?
+  knowledgeData      String?
+  knowledgeRaw       String?
+  faq                String?
+  leadScoringRules   String?
   whatsappToken      String?
   whatsappPhoneId    String?
   whatsappBusinessId String?
-  
-  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  handoffRules       String?
+  project            Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Lead {
-  id        String   @id @default(cuid())
-  projectId String
-  agentId   String?
-  phone     String
-  channel   String   @default("whatsapp") // "whatsapp" | "instagram"
-  name      String?
-  email     String?
-  status    String   @default("PENDING")
-  score     Int      @default(0) // Puntuación de interés del cliente
-  heat      String   @default("FRIO") // FRIO, TIBIO, CALIENTE
-  aiSummary String?  // Resumen IA de la conversación, se actualiza automáticamente
-  metadata  Json?    @default("{}") // Información extra del CRM / Campañas
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id               String    @id @default(cuid())
+  projectId        String
+  phone            String
+  name             String?
+  status           String    @default("PENDING")
+  score            Int       @default(0)
+  heat             String    @default("FRIO")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  aiSummary        String?
   latestCampaignId String?
-
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  agent          Agent?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  latestCampaign Campaign? @relation(fields: [latestCampaignId], references: [id], onDelete: SetNull)
-  chat           Chat?
+  agentId          String?
+  metadata         Json?     @default("{}")
+  channel          String    @default("whatsapp")
+  email            String?
+  chat             Chat?
+  agent            Agent?    @relation(fields: [agentId], references: [id])
+  latestCampaign   Campaign? @relation(fields: [latestCampaignId], references: [id])
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([phone, projectId])
 }
 
 model Chat {
-  id           String   @id @default(cuid())
-  leadId       String   @unique
-  channel      String   @default("whatsapp") // "whatsapp" | "instagram"
-  botActive    Boolean  @default(true)
-  autoWakeBot  Boolean  @default(true) // Si es true, el bot puede reactivarse tras inactividad
-  isArchived   Boolean  @default(false)
-  lastActiveAt DateTime @default(now())
-  createdAt    DateTime @default(now())
-
+  id           String    @id @default(cuid())
+  leadId       String    @unique
+  botActive    Boolean   @default(true)
+  lastActiveAt DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  isArchived   Boolean   @default(false)
+  channel      String    @default("whatsapp")
+  autoWakeBot  Boolean   @default(true)
   lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
   messages     Message[]
 }
 
 model Message {
-  id           String   @id @default(cuid())
-  chatId       String
-  role         String
-  content      String
-  inputTokens  Int?     // Tokens de entrada (prompt + historia)
-  outputTokens Int?     // Tokens de salida (la respuesta generada)
-  waCategory   String?  // Categoría de WhatsApp: MARKETING, UTILITY, SERVICE, etc.
-  wamid        String?  @unique // ID devuelto por Meta para rastreo de estado
-  status       String   @default("SENT") // SENT, DELIVERED, READ, FAILED
-  agentName    String?  // Nombre del agente que respondió (para auditoría/simulador)
-  scoreBump    Int?     // Puntos sumados/restados en este mensaje
-  scoreReason  String?  // Razón de la calificación (ej: "Preguntó por precios")
-  imageUrl     String?  // URL de imagen adjunta (ej: de una campaña)
-  mediaUrl     String?  // URL de cualquier archivo adjunto
-  mediaFilename String? // Nombre original del archivo
-  mediaType    String?  // image, document, video, audio
-  sendError    String?  // Error de envío devuelto por la API (WhatsApp/Meta)
-  buttonsConfig String?  // JSON: array de botones quick-reply de la template enviada
-  createdAt    DateTime @default(now())
-
-  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  chatId        String
+  role          String
+  content       String
+  createdAt     DateTime @default(now())
+  inputTokens   Int?
+  outputTokens  Int?
+  waCategory    String?
+  agentName     String?
+  scoreBump     Int?
+  scoreReason   String?
+  imageUrl      String?
+  status        String   @default("SENT")
+  wamid         String?  @unique
+  mediaFilename String?
+  mediaType     String?
+  mediaUrl      String?
+  sendError     String?
+  buttonsConfig String?
+  chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 
 model Campaign {
-  id              String   @id @default(cuid())
-  projectId       String
-  agentId         String?
-  name            String
-  status          String   @default("DRAFT")
-  leadCount       Int      @default(0)
-  csvData         String?
-  templateName    String?  // nombre de la template aprobada en Meta
-  templateCategory String?  // MARKETING o UTILITY
-  languageCode    String   @default("es")
-  variableMapping String?  // JSON: { "1": "nombre", "2": "empresa" } etc.
-  createdAt       DateTime @default(now())
-
-  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  agent          Agent?   @relation(fields: [agentId], references: [id], onDelete: SetNull)
-  leadsGenerated Lead[]
-  logs           CampaignLog[]
+  id               String        @id @default(cuid())
+  projectId        String
+  name             String
+  status           String        @default("DRAFT")
+  leadCount        Int           @default(0)
+  csvData          String?
+  templateName     String?
+  variableMapping  String?
+  createdAt        DateTime      @default(now())
+  agentId          String?
+  templateCategory String?
+  languageCode     String        @default("es")
+  agent            Agent?        @relation(fields: [agentId], references: [id])
+  project          Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs             CampaignLog[]
+  leadsGenerated   Lead[]
 }
 
 model CampaignLog {
   id         String   @id @default(cuid())
   campaignId String
-  wamid      String?  @unique // ID devuelto por Meta para rastreo
   phone      String
-  status     String   @default("SENT") // SENT, FAILED, DELIVERED, READ
+  status     String   @default("SENT")
   error      String?
   createdAt  DateTime @default(now())
-
+  wamid      String?  @unique
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 }
 
 model UnansweredQuestion {
   id        String   @id @default(cuid())
   projectId String
-  agentId   String?
   question  String
-  botAnswer String?
   resolved  Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  botAnswer String?
+  agentId   String?
   agent     Agent?   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Agent {
-  id               String  @id @default(cuid())
-  projectId        String  
-  name             String  @default("Agente Principal")
-  description      String? 
-  isActive         Boolean @default(true)
-  
-  identity         String?
-  instructions     String?
-  knowledgeData    String?
-  knowledgeRaw     String?
-  faq              String?
-  handoffRules     String? // Reglas específicas de cuándo transferir a humano
-  leadScoringRules String?
-  
+  id                  String               @id @default(cuid())
+  projectId           String
+  name                String               @default("Agente Principal")
+  description         String?
+  isActive            Boolean              @default(true)
+  identity            String?
+  instructions        String?
+  knowledgeData       String?
+  knowledgeRaw        String?
+  faq                 String?
+  leadScoringRules    String?
+  handoffRules        String?
   project             Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  leads               Lead[]
   campaigns           Campaign[]
+  leads               Lead[]
   unansweredQuestions UnansweredQuestion[]
 }
 
-
-
 model PromptBlock {
   id          String   @id @default(cuid())
-  order       Int      // Posición en el prompt (1, 2, 3...)
-  key         String   @unique // Identificador único inmutable del bloque
-  label       String   // Nombre legible para el admin
-  description String?  // Texto de ayuda visible en la UI
-  xmlTag      String   // Tag XML que envuelve el contenido en el prompt final
-  content     String   @default("") // Contenido editable por el admin
-  source      String   // "global" | "agent" | "runtime"
-  agentField  String?  // Si source="agent": campo en Agent que sobreescribe el content
+  order       Int
+  key         String   @unique
+  label       String
+  description String?
+  xmlTag      String
+  content     String   @default("")
+  source      String
+  agentField  String?
   isEnabled   Boolean  @default(true)
-  isDeletable Boolean  @default(true) // false = bloque del sistema, no se puede borrar
+  isDeletable Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model WebhookEvent {
-  id        String   @id // El ID que manda Meta (wamid o id de evento)
-  provider  String   // "whatsapp" | "instagram"
+  id        String   @id
+  provider  String
   payload   Json
   createdAt DateTime @default(now())
 
@@ -258,22 +232,27 @@ model AuditLog {
   details   String?
   ipAddress String?
   createdAt DateTime @default(now())
-
   client    Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
 }
 
 model BotTestSuite {
-  id              String   @id @default(cuid())
-  projectId       String
-  project         Project  @relation(fields: [projectId], references: [id])
+  id                 String   @id @default(cuid())
+  projectId          String
   totalConversations Int
-  averageScore    Float?
-  criticalIssues  Int?
-  status          String   // RUNNING, COMPLETED, FAILED
-  progress        String?  // Ej: "Generando conversaciones...", "Ejecutando Test 2/5..."
-  resultsRaw      String?  @db.Text // JSON con las conversaciones evaluadas
-  suggestedPrompt String?  @db.Text
-  createdAt       DateTime @default(now())
+  averageScore       Float?
+  criticalIssues     Int?
+  status             String
+  resultsRaw         String?
+  suggestedPrompt    String?
+  createdAt          DateTime @default(now())
+  progress           String?
+  project            Project  @relation(fields: [projectId], references: [id])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
 }
