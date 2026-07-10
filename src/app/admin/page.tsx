@@ -1025,6 +1025,10 @@ export default function AdminPage() {
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Mensajes (Nosotros)</span>
                     <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.agentMessagesCount || 0}</span>
                   </div>
+                  <div className="flex flex-col col-span-2">
+                    <span className="text-[9px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-tighter">Total Automáticos</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.automatedMessagesCount || 0}</span>
+                  </div>
                 </div>
               </div>
             </button>
@@ -1185,6 +1189,20 @@ export default function AdminPage() {
                           <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
                             {selectedClient.projects?.[0]?.agentMessagesCount || 0}
                           </p>
+                        </div>
+                      </div>
+
+                      {/* Fila 3: Total Automáticos */}
+                      <div className="bg-white dark:bg-zinc-900 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-5 shadow-sm flex items-center gap-4 sm:col-span-2">
+                        <div className="h-14 w-14 bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-2xl flex items-center justify-center shadow-inner">
+                          <Bot size={28} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest">Total Automáticos (IA + Campañas)</p>
+                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
+                            {selectedClient.projects?.[0]?.automatedMessagesCount || 0}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 mt-1">Excluye mensajes manuales del equipo</p>
                         </div>
                       </div>
                     </div>

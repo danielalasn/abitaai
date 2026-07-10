@@ -387,15 +387,37 @@ export async function fetchCampaignLogs(campaignId: string) {
   const phones = logs.map(l => l.phone);
   const leads = await prisma.lead.findMany({
     where: { projectId: project.id, phone: { in: phones } },
-    select: { phone: true, name: true }
+    select: { 
+      phone: true, 
+      name: true,
+      chat: {
+        select: {
+          messages: {
+            where: {
+              role: 'user',
+              createdAt: { gt: campaign.createdAt }
+            },
+            orderBy: { createdAt: 'asc' },
+            take: 1
+          }
+        }
+      }
+    }
   });
 
-  const leadMap = new Map(leads.map(l => [l.phone, l.name]));
+  const leadMap = new Map(leads.map(l => [l.phone, {
+    name: l.name,
+    firstReply: l.chat?.messages?.[0]?.content || null
+  }]));
 
-  return logs.map(l => ({
-    ...l,
-    leadName: leadMap.get(l.phone) || null
-  }));
+  return logs.map(l => {
+    const leadInfo = leadMap.get(l.phone);
+    return {
+      ...l,
+      leadName: leadInfo?.name || null,
+      userReply: leadInfo?.firstReply || null
+    };
+  });
 }
 
 export async function updateCampaignStatus(campaignId: string, status: string) {

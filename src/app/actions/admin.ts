@@ -56,6 +56,22 @@ export async function getClients() {
           }
         });
 
+        // Mensajes AUTOMÁTICOS (AI + Campañas + Templates) excluyendo respuestas manuales del agente
+        project.automatedMessagesCount = await prisma.message.count({
+          where: {
+            OR: [
+              { role: 'assistant' },
+              { waCategory: { in: ['MARKETING', 'UTILITY'] } }
+            ],
+            chat: { 
+              lead: { 
+                projectId: project.id,
+                phone: { not: 'SIMULADOR_TEST' }
+              } 
+            }
+          }
+        });
+
         // Fecha de ÚLTIMO USO (último mensaje nuestro real)
         const lastMsg = await prisma.message.findFirst({
           where: {

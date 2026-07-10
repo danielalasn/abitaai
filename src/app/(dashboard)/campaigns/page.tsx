@@ -298,12 +298,18 @@ export default function CampaignsPage() {
     setProgress({ current: 0, total: parsedLeads.length });
 
     try {
+      const buttonsConfig = selectedTemplate.components.find(c => c.type === 'BUTTONS')?.buttons || [];
+      const enhancedMapping = {
+        ...variableMapping,
+        __buttonsConfig: JSON.stringify(buttonsConfig)
+      };
+
       const campaignData = await launchCampaignAction(
         campaignName,
         selectedTemplate.name,
         bodyText,
         selectedTemplate.language,
-        variableMapping,
+        enhancedMapping,
         parsedLeads,
         selectedTemplate.category,
         headerUrl,
@@ -1081,17 +1087,41 @@ export default function CampaignsPage() {
                              logsMap[l.phone] = l;
                            });
 
+                           const mapping = JSON.parse(activeCampaign.variableMapping || '{}');
+                           const buttonsConfig = mapping.__buttonsConfig ? JSON.parse(mapping.__buttonsConfig) : [];
+
                            const originalHeaders = Object.keys(originalData[0] || {});
-                           const headers = [...originalHeaders, "WhatsApp_Status", "WhatsApp_Error"];
+                           const headers = [...originalHeaders, "WhatsApp_Status", "WhatsApp_Error", "Respuesta_Contacto"];
+                           if (buttonsConfig.length > 0) {
+                              headers.push("Botones_Enviados");
+                           }
                            
                            const rows = originalData.map((row: any) => {
                                const phone = row['#'];
                                const log = logsMap[phone];
-                               return [
+                               
+                               const rowData = [
                                    ...originalHeaders.map(h => row[h]),
                                    log?.status || "NO_INTENTADO",
-                                   log?.error || ""
+                                   log?.error || "",
+                                   log?.userReply || ""
                                ];
+
+                               if (buttonsConfig.length > 0) {
+                                  const buttonTexts = buttonsConfig.map((btn: any, idx: number) => {
+                                      if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
+                                          const csvCol = mapping[`button_${idx}`];
+                                          const val = csvCol ? row[csvCol] : '';
+                                          return `[${btn.text} -> ${btn.url.replace('{{1}}', val)}]`;
+                                      }
+                                      if (btn.type === 'URL' && btn.url) {
+                                          return `[${btn.text} -> ${btn.url}]`;
+                                      }
+                                      return `[${btn.text}]`;
+                                  }).join(" ");
+                                  rowData.push(buttonTexts);
+                               }
+                               return rowData;
                            });
                            
                            const csvContent = [headers, ...rows].map(e => e.map(val => `"${val}"`).join(",")).join("\n");
