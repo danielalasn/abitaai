@@ -832,6 +832,7 @@ export default function TemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'MARKETING' | 'UTILITY' | 'AUTHENTICATION'>('ALL');
   const [showCreate, setShowCreate] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<MetaTemplate | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -850,8 +851,9 @@ export default function TemplatesPage() {
 
   const filtered = templates.filter(t => {
     const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter;
+    const matchesCategory = categoryFilter === 'ALL' || t.category === categoryFilter;
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesCategory && matchesSearch;
   });
 
   const counts: Record<string, number> = templates.reduce((acc, t) => {
@@ -946,6 +948,23 @@ export default function TemplatesPage() {
                 onChange={e => setSearch(e.target.value)}
                 className="pl-9 pr-4 py-2 text-sm rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/60 dark:bg-white/5 text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors w-48 placeholder:text-[#6F6F6F]/60"
               />
+            </div>
+
+            {/* Category Filter */}
+            <div className="relative">
+              <select
+                value={categoryFilter}
+                onChange={e => setCategoryFilter(e.target.value as any)}
+                className="pl-4 pr-9 py-2 text-sm rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/60 dark:bg-white/5 text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors appearance-none cursor-pointer"
+              >
+                <option value="ALL">Todas las categorías</option>
+                <option value="MARKETING">Marketing</option>
+                <option value="UTILITY">Utilidad</option>
+                <option value="AUTHENTICATION">Autenticación</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#6F6F6F]">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
             </div>
 
             {/* Status filter tabs */}
