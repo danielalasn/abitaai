@@ -441,21 +441,57 @@ export default function CampaignsPage() {
     }
   };
 
-  const handleDownloadCsv = (campaign: any) => {
+  const handleDownloadCsv = async (campaign: any) => {
     if (!campaign.csvData) return;
     try {
-      const data = JSON.parse(campaign.csvData);
-      const headers = Object.keys(data[0]);
-      const csvRows = [
-        headers.join(','),
-        ...data.map((row: any) => headers.map(h => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(','))
-      ].join('\n');
-      
-      const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
+      const latestLogs = await fetchCampaignLogs(campaign.id);
+      const originalData = JSON.parse(campaign.csvData);
+      if (!Array.isArray(originalData)) return;
+
+      const logsMap: Record<string, any> = {};
+      latestLogs.forEach((l: any) => {
+        logsMap[l.phone] = l;
+        if (l.phone.startsWith('503') && l.phone.length === 11) {
+          logsMap[l.phone.substring(3)] = l;
+        }
+      });
+
+      const mapping = JSON.parse(campaign.variableMapping || '{}');
+      const allButtons: any[] = mapping.__buttonsConfig ? JSON.parse(mapping.__buttonsConfig) : [];
+      const quickReplyButtons = allButtons.filter((btn: any) => btn.type === 'QUICK_REPLY');
+
+      const originalHeaders = Object.keys(originalData[0] || {});
+      const buttonHeaders = quickReplyButtons.map((btn: any) => btn.text);
+      const headers = [...originalHeaders, 'WhatsApp_Status', 'WhatsApp_Error', ...buttonHeaders];
+
+      const statusES: Record<string, string> = {
+        SENT: 'ENVIADO', DELIVERED: 'ENTREGADO', READ: 'LEIDO', FAILED: 'FALLIDO',
+        NO_INTENTADO: 'NO_INTENTADO'
+      };
+
+      const rows = originalData.map((row: any) => {
+        const rawPhone = String(row['#'] || '').replace(/[^0-9]/g, '');
+        const phone = rawPhone.length === 8 ? '503' + rawPhone : rawPhone;
+        const log = logsMap[phone] || logsMap[rawPhone];
+        const buttonReplies: string[] = log?.buttonReplies || [];
+
+        return [
+          ...originalHeaders.map(h => row[h]),
+          statusES[log?.status] || 'NO_INTENTADO',
+          log?.error || '',
+          ...quickReplyButtons.map((btn: any) =>
+            buttonReplies.includes(btn.text) ? btn.text : ''
+          )
+        ];
+      });
+
+      const csvContent = [headers, ...rows].map(e => e.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', `${campaign.name.replace(/\s+/g, '_')}_leads.csv`);
+      link.setAttribute('download', `Reporte_${campaign.name.replace(/\s+/g, '_')}.csv`);
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1083,44 +1119,43 @@ export default function CampaignsPage() {
 
                            // Mapear logs por telefono para busqueda rapida
                            const logsMap: Record<string, any> = {};
-                           latestLogs.forEach(l => {
+                           latestLogs.forEach((l: any) => {
+                             // Normalize phone: try to match with or without 503 prefix
                              logsMap[l.phone] = l;
+                             if (l.phone.startsWith('503') && l.phone.length === 11) {
+                               logsMap[l.phone.substring(3)] = l;
+                             }
                            });
 
                            const mapping = JSON.parse(activeCampaign.variableMapping || '{}');
-                           const buttonsConfig = mapping.__buttonsConfig ? JSON.parse(mapping.__buttonsConfig) : [];
+                           // Buttons from the template (QUICK_REPLY type buttons - not URL)
+                           const allButtons: any[] = mapping.__buttonsConfig ? JSON.parse(mapping.__buttonsConfig) : [];
+                           const quickReplyButtons = allButtons.filter((btn: any) => btn.type === 'QUICK_REPLY');
 
                            const originalHeaders = Object.keys(originalData[0] || {});
-                           const headers = [...originalHeaders, "WhatsApp_Status", "WhatsApp_Error", "Respuesta_Contacto"];
-                           if (buttonsConfig.length > 0) {
-                              headers.push("Botones_Enviados");
-                           }
+                           // One extra column per quick reply button, named after the button text
+                           const buttonHeaders = quickReplyButtons.map((btn: any) => btn.text);
+                           const headers = [...originalHeaders, "WhatsApp_Status", "WhatsApp_Error", ...buttonHeaders];
                            
                            const rows = originalData.map((row: any) => {
-                               const phone = row['#'];
-                               const log = logsMap[phone];
+                               const rawPhone = String(row['#'] || '').replace(/[^0-9]/g, '');
+                               const phone = rawPhone.length === 8 ? '503' + rawPhone : rawPhone;
+                               const log = logsMap[phone] || logsMap[rawPhone];
+                               const buttonReplies: string[] = log?.buttonReplies || [];
                                
+                               const statusES: Record<string, string> = {
+                                   SENT: 'ENVIADO', DELIVERED: 'ENTREGADO', READ: 'LEIDO', FAILED: 'FALLIDO',
+                                   NO_INTENTADO: 'NO_INTENTADO'
+                               };
+
                                const rowData = [
                                    ...originalHeaders.map(h => row[h]),
-                                   log?.status || "NO_INTENTADO",
-                                   log?.error || "",
-                                   log?.userReply || ""
+                                   statusES[log?.status] || 'NO_INTENTADO',
+                                   log?.error || '',
+                                   ...quickReplyButtons.map((btn: any) =>
+                                       buttonReplies.includes(btn.text) ? btn.text : ""
+                                   )
                                ];
-
-                               if (buttonsConfig.length > 0) {
-                                  const buttonTexts = buttonsConfig.map((btn: any, idx: number) => {
-                                      if (btn.type === 'URL' && btn.url && btn.url.includes('{{1}}')) {
-                                          const csvCol = mapping[`button_${idx}`];
-                                          const val = csvCol ? row[csvCol] : '';
-                                          return `[${btn.text} -> ${btn.url.replace('{{1}}', val)}]`;
-                                      }
-                                      if (btn.type === 'URL' && btn.url) {
-                                          return `[${btn.text} -> ${btn.url}]`;
-                                      }
-                                      return `[${btn.text}]`;
-                                  }).join(" ");
-                                  rowData.push(buttonTexts);
-                               }
                                return rowData;
                            });
                            

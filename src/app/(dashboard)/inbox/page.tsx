@@ -1640,6 +1640,36 @@ export default function InboxPage() {
                             {msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()}
                           </div>
                         )}
+
+                        {/* 6. Badge de respuesta de botón (mensajes entrantes del usuario) */}
+                        {isUser && msg.mediaType === 'button_reply' && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-white/20 dark:bg-black/20 rounded-full text-[10px] font-bold border border-white/30 dark:border-white/10">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                              Botón presionado
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 7. Botones quick-reply de la template (mensajes salientes) */}
+                        {(isAgent || isBot) && msg.buttonsConfig && (() => {
+                          try {
+                            const buttons: { text: string; type: string }[] = JSON.parse(msg.buttonsConfig);
+                            if (buttons.length === 0) return null;
+                            return (
+                              <div className="mt-3 pt-2 border-t border-white/20 flex flex-col gap-1.5">
+                                {buttons.map((btn, i) => (
+                                  <div
+                                    key={i}
+                                    className="px-3 py-1.5 text-center text-[11px] font-bold rounded-xl border border-white/30 bg-white/10 text-inherit opacity-80"
+                                  >
+                                    {btn.text}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          } catch { return null; }
+                        })()}
                         <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
                           }`}>
                           <span className="opacity-60">

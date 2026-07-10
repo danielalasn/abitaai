@@ -237,7 +237,8 @@ export async function simulateIncomingMessage(
   fallbackProjectId?: string,
   mediaUrl?: string,
   mediaFilename?: string,
-  mediaType?: string
+  mediaType?: string,
+  messageType?: string
 ) {
   let project: any = null;
 
@@ -322,6 +323,8 @@ export async function simulateIncomingMessage(
 
   // Guardar mensaje entrante
   const isImage = mediaType === 'image';
+  // Si el tipo de mensaje es 'button', marcar como button_reply para reportes de campaña
+  const effectiveMediaType = messageType === 'button' ? 'button_reply' : mediaType;
   
   await prisma.message.create({
     data: {
@@ -331,7 +334,7 @@ export async function simulateIncomingMessage(
       imageUrl: isImage && mediaUrl ? mediaUrl : null,
       mediaUrl,
       mediaFilename,
-      mediaType
+      mediaType: effectiveMediaType
     }
   });
 
@@ -684,7 +687,8 @@ export async function startIndividualChatAction(
   headerMediaUrl?: string,
   botActive: boolean = false,
   leadName?: string,
-  headerMediaType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT'
+  headerMediaType?: 'IMAGE' | 'VIDEO' | 'DOCUMENT',
+  buttonsConfig?: string // JSON string of quick-reply buttons
 ): Promise<{ success: boolean; error?: string; chatId?: string }> {
   try {
     const project = await getCurrentProject();
@@ -810,7 +814,8 @@ export async function startIndividualChatAction(
         status: "SENT",
         imageUrl: (headerMediaType === 'IMAGE' || !headerMediaType) ? headerMediaUrl : null,
         mediaUrl: headerMediaUrl || null,
-        mediaType: headerMediaType ? headerMediaType.toLowerCase() : null
+        mediaType: headerMediaType ? headerMediaType.toLowerCase() : null,
+        buttonsConfig: buttonsConfig || null
       }
     });
 

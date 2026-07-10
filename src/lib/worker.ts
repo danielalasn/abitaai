@@ -110,7 +110,8 @@ export function initWorker() {
         projectId,
         firstMedia?.mediaUrl,
         firstMedia?.mediaFilename,
-        firstMedia?.mediaType
+        firstMedia?.mediaType,
+        messages[0]?.messageType
       );
 
       // 2. Obtener contexto del chat

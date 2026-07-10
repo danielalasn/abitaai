@@ -157,6 +157,12 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
         return;
       }
       
+      // Extract quick-reply buttons from template to store in the message
+      const quickReplyButtons = selectedTemplate.components
+        .find((c: any) => c.type === 'BUTTONS')?.buttons
+        ?.filter((b: any) => b.type === 'QUICK_REPLY') || [];
+      const buttonsConfigJson = quickReplyButtons.length > 0 ? JSON.stringify(quickReplyButtons) : undefined;
+
       const result = await startIndividualChatAction(
         phone,
         selectedTemplate.name,
@@ -167,7 +173,8 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
         headerMediaUrl,
         botActive,
         leadName,
-        headerMediaType || undefined
+        headerMediaType || undefined,
+        buttonsConfigJson
       );
 
       if (result.success && result.chatId) {

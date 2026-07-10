@@ -100,7 +100,13 @@ export async function POST(req: NextRequest) {
 
     const from = message.from;
     const profileName = value?.contacts?.[0]?.profile?.name;
-    let text = message.text?.body || message.button?.text || message.interactive?.button_reply?.title || message.interactive?.list_reply?.title;
+    let text = message.text?.body || 
+               message.button?.text || 
+               message.interactive?.button_reply?.title || 
+               message.interactive?.list_reply?.title ||
+               (message.type === 'reaction' ? `Reaccionó con ${message.reaction?.emoji || 'un emoji'}` : null) ||
+               (message.type === 'sticker' ? '🎪 [Sticker]' : null);
+    const messageType = message.type; // 'text', 'button', 'interactive', 'image', etc.
 
     // Handle reply context
     if (message.context?.id) {
@@ -165,7 +171,8 @@ export async function POST(req: NextRequest) {
     await enqueueMessage(from, { 
       text, 
       profileName, 
-      phoneId, 
+      phoneId,
+      messageType,
       ...mediaData 
     }, isBotActive);
 

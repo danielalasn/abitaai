@@ -395,10 +395,10 @@ export async function fetchCampaignLogs(campaignId: string) {
           messages: {
             where: {
               role: 'user',
+              mediaType: 'button_reply',
               createdAt: { gt: campaign.createdAt }
             },
-            orderBy: { createdAt: 'asc' },
-            take: 1
+            orderBy: { createdAt: 'asc' }
           }
         }
       }
@@ -407,7 +407,7 @@ export async function fetchCampaignLogs(campaignId: string) {
 
   const leadMap = new Map(leads.map(l => [l.phone, {
     name: l.name,
-    firstReply: l.chat?.messages?.[0]?.content || null
+    buttonReplies: l.chat?.messages?.map(m => m.content) || []
   }]));
 
   return logs.map(l => {
@@ -415,7 +415,7 @@ export async function fetchCampaignLogs(campaignId: string) {
     return {
       ...l,
       leadName: leadInfo?.name || null,
-      userReply: leadInfo?.firstReply || null
+      buttonReplies: leadInfo?.buttonReplies || []
     };
   });
 }
