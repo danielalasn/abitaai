@@ -113,6 +113,20 @@ export async function buildSystemPrompt(params: {
 
   const parts: string[] = [];
 
+  // Inject current date/time at the top of every prompt
+  const now = new Date();
+  const dateTimeStr = now.toLocaleString('es-GT', {
+    timeZone: 'America/Guatemala',
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+  parts.push(`<fecha_y_hora_actual>\n${dateTimeStr}\nUSA ESTA INFORMACIÓN para entender referencias temporales como "hoy", "esta noche", "a las 8", "mañana", etc. Si alguien dice que quiere algo "para hoy" o "a las 8" interpreta eso en el contexto de la hora actual.\n</fecha_y_hora_actual>`);
+
   for (const block of blocks) {
     let content = '';
 
