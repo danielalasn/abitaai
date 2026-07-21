@@ -19,6 +19,7 @@ import {
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
+import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
 
 // Instagram logo SVG (lucide doesn't include it)
 const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -102,6 +103,9 @@ export default function SettingsPage() {
   const [waErrorMessage, setWaErrorMessage] = useState<string | null>(null)
   const [waVerifyStatus, setWaVerifyStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
+  // Nango integrations
+  const [gcalConnected, setGcalConnected] = useState(false)
+
   // Notification emails
   const [notificationEmails, setNotificationEmails] = useState<string[]>([])
   const [notificationEmailInput, setNotificationEmailInput] = useState('')
@@ -167,6 +171,15 @@ export default function SettingsPage() {
       // Load notification emails
       const emails = await getNotificationEmails()
       setNotificationEmails(emails)
+
+      // Load Nango connections for this project
+      if (data.projectId) {
+        const res = await fetch(`/api/integrations/status?projectId=${data.projectId}&provider=google-calendar`)
+        if (res.ok) {
+          const json = await res.json()
+          setGcalConnected(json.connected === true)
+        }
+      }
     } catch (e) { console.error(e) }
     setIsLoading(false)
   }
@@ -1083,7 +1096,7 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              <div className="max-w-md mx-auto w-full">
+              <div className="space-y-6 max-w-md mx-auto w-full">
                 {/* ─── WhatsApp Card ─── */}
                 <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-emerald-500/40 ${
                   waIntegration?.status === 'active' ? 'border-emerald-500/20 ring-1 ring-emerald-500/20' : 'border-[#DEDAD0] dark:border-zinc-800'
@@ -1125,6 +1138,18 @@ export default function SettingsPage() {
                       {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <Wifi size={18} />}
                     </button>
                   </div>
+                </div>
+
+                {/* ─── Sección: Herramientas Externas ─── */}
+                <div>
+                  <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-3 px-1">Herramientas Externas</p>
+                  {projectId && (
+                    <GoogleCalendarConnect
+                      projectId={projectId}
+                      isConnected={gcalConnected}
+                      onStatusChange={(connected) => setGcalConnected(connected)}
+                    />
+                  )}
                 </div>
               </div>
             </div>

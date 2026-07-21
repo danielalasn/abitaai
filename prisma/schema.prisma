@@ -56,11 +56,12 @@ model Project {
   botAutoWakeHours    Float?               @default(168)
   agents              Agent[]
   botConfig           BotConfig?
-  botTestSuites       BotTestSuite[]
-  campaigns           Campaign[]
-  leads               Lead[]
-  client              Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  unansweredQuestions UnansweredQuestion[]
+  botTestSuites        BotTestSuite[]
+  campaigns            Campaign[]
+  leads                Lead[]
+  nangoConnections     NangoConnection[]
+  client               Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  unansweredQuestions  UnansweredQuestion[]
 }
 
 model BotConfig {
@@ -255,4 +256,22 @@ enum SubscriptionStatus {
   ACTIVE
   INACTIVE
   BLOCKED
+}
+
+// Almacena la conexión OAuth de Nango por proyecto.
+// Cada proyecto puede tener una conexión por proveedor externo.
+// El connectionId es el identificador único en Nango (= projectId).
+model NangoConnection {
+  id                String   @id @default(cuid())
+  projectId         String
+  providerConfigKey String   // ej: 'google-calendar', 'hubspot'
+  connectionId      String   // ID en Nango (usamos el projectId como connectionId)
+  status            String   @default("CONNECTED") // CONNECTED | DISCONNECTED | ERROR
+  metadata          Json?    // Configuración adicional por comercio
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, providerConfigKey])
+  @@index([projectId])
 }

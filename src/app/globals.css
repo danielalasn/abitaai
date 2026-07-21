@@ -106,3 +106,194 @@ body {
 .abita-accent-bg       { background-color: var(--abita-accent); }
 .abita-accent-bg-soft  { background-color: var(--abita-accent-10); }
 .abita-accent-border   { border-color: var(--abita-accent); }
+
+/* ─── Integration Cards (Nango) ─── */
+.integration-card {
+  background: white;
+  border: 1px solid #DEDAD0;
+  border-radius: 24px;
+  padding: 24px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+}
+
+.dark .integration-card {
+  background: rgba(17,17,17,0.6);
+  border-color: rgba(255,255,255,0.06);
+}
+
+.integration-card:hover {
+  border-color: rgba(66, 133, 244, 0.3);
+  box-shadow: 0 8px 32px rgba(66,133,244,0.08);
+  transform: translateY(-1px);
+}
+
+.integration-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.integration-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #f8faff;
+  border: 1px solid #e8eeff;
+}
+
+.dark .integration-icon {
+  background: rgba(66,133,244,0.08);
+  border-color: rgba(66,133,244,0.15);
+}
+
+.integration-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.integration-info h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111111;
+  margin: 0 0 2px;
+  letter-spacing: -0.01em;
+}
+
+.dark .integration-info h3 {
+  color: #EDE9E0;
+}
+
+.integration-info p {
+  font-size: 11px;
+  color: #6F6F6F;
+  margin: 0;
+}
+
+.integration-status-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.integration-status-badge.connected {
+  background: rgba(52, 168, 83, 0.1);
+  color: #2d9e52;
+  border: 1px solid rgba(52, 168, 83, 0.2);
+}
+
+.dark .integration-status-badge.connected {
+  background: rgba(52, 168, 83, 0.12);
+  color: #4ade80;
+  border-color: rgba(52,168,83,0.25);
+}
+
+.integration-status-badge.disconnected {
+  background: rgba(111,111,111,0.08);
+  color: #9A9A9A;
+  border: 1px solid rgba(111,111,111,0.12);
+}
+
+.integration-error {
+  font-size: 11px;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220,38,38,0.15);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.integration-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.capability-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(66,133,244,0.06);
+  color: #4285f4;
+  border: 1px solid rgba(66,133,244,0.12);
+  text-transform: uppercase;
+}
+
+.dark .capability-tag {
+  background: rgba(66,133,244,0.08);
+  border-color: rgba(66,133,244,0.18);
+}
+
+.integration-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-connect {
+  flex: 1;
+  padding: 10px 20px;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(66,133,244,0.3);
+}
+
+.btn-connect:hover:not(:disabled) {
+  background: #3367d6;
+  box-shadow: 0 6px 20px rgba(66,133,244,0.4);
+  transform: translateY(-1px);
+}
+
+.btn-connect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-disconnect {
+  padding: 10px 20px;
+  background: transparent;
+  color: #9A9A9A;
+  border: 1px solid #DEDAD0;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-disconnect:hover:not(:disabled) {
+  background: rgba(220,38,38,0.06);
+  color: #dc2626;
+  border-color: rgba(220,38,38,0.2);
+}
+
+.btn-disconnect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dark .btn-disconnect {
+  border-color: rgba(255,255,255,0.08);
+}
