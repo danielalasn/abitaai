@@ -33,7 +33,17 @@ export async function sendTestMessage(
       }
     });
   } else {
-    project = await getCurrentProject();
+    const sessionProj = await getCurrentProject();
+    if (sessionProj) {
+      project = await prisma.project.findUnique({
+        where: { id: sessionProj.id },
+        include: { 
+          agents: true,
+          calendarConfig: true,
+          nangoConnections: { where: { providerConfigKey: 'google-calendar', status: 'CONNECTED' } }
+        }
+      });
+    }
   }
 
   if (!project) {
@@ -111,10 +121,10 @@ export async function sendTestMessage(
 
   // Append Calendar Instructions if configured
   let calendarInstructions = '';
-  const hasCalendar = project?.nangoConnections && project.nangoConnections.length > 0 && project.calendarConfig;
+  const hasCalendar = (project as any)?.nangoConnections && (project as any).nangoConnections.length > 0 && (project as any)?.calendarConfig;
   if (hasCalendar) {
-    const calConfig = project.calendarConfig;
-    const requiredFields = calConfig.fieldsToCollect.length > 0 ? calConfig.fieldsToCollect.join(', ') : 'Ninguno';
+    const calConfig = (project as any).calendarConfig;
+    const requiredFields = calConfig?.fieldsToCollect?.length > 0 ? calConfig.fieldsToCollect.join(', ') : 'Ninguno';
     calendarInstructions = `
 <calendar_actions>
 Este proyecto tiene Google Calendar conectado. Puedes verificar disponibilidad, ver citas del cliente, agendar, modificar o cancelar eventos.
@@ -206,11 +216,11 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
           actionFound = true;
           const { createEvent } = await import('@/lib/calendar');
           
-          let title = project.calendarConfig.eventTitle || 'Cita';
-          title = title.replace(/\{\{(.*?)\}\}/g, (m, key) => match[4] || clientName || 'Cliente');
+          let title = (project as any).calendarConfig?.eventTitle || 'Cita';
+          title = title.replace(/\{\{(.*?)\}\}/g, (m: any, key: any) => match[4] || clientName || 'Cliente');
           
-          let description = project.calendarConfig.eventDescription || '';
-          description = description.replace(/\{\{(.*?)\}\}/g, (m, key) => match[5] || clientName || 'Agendado via bot');
+          let description = (project as any).calendarConfig?.eventDescription || '';
+          description = description.replace(/\{\{(.*?)\}\}/g, (m: any, key: any) => match[5] || clientName || 'Agendado via bot');
 
           const res = await createEvent(project.id, match[1], match[2], match[3], title, description);
           
@@ -218,7 +228,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
             // Check ownership logic internally via userBookings if needed in the future
             // Right now we just track it.
             // Replace confirmation variables
-            let confirmMsg = project.calendarConfig.confirmationMessage || 'Cita agendada exitosamente.';
+            let confirmMsg = (project as any).calendarConfig?.confirmationMessage || 'Cita agendada exitosamente.';
             confirmMsg = confirmMsg
               .replace(/\{\{fecha\}\}/g, match[1])
               .replace(/\{\{hora_inicio\}\}/g, match[2])
