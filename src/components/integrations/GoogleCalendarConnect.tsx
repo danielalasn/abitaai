@@ -7,6 +7,7 @@ interface GoogleCalendarConnectProps {
   projectId: string;
   isConnected: boolean;
   onStatusChange?: (connected: boolean) => void;
+  onOpenConfig?: () => void;
 }
 
 const PROVIDER_CONFIG_KEY = 'google-calendar';
@@ -19,6 +20,7 @@ export default function GoogleCalendarConnect({
   projectId,
   isConnected,
   onStatusChange,
+  onOpenConfig,
 }: GoogleCalendarConnectProps) {
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(isConnected);
@@ -159,6 +161,15 @@ export default function GoogleCalendarConnect({
         {connected && (
           <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
         )}
+        {connected && onOpenConfig && (
+          <button 
+            onClick={onOpenConfig}
+            className="absolute -top-3 -left-3 p-2 bg-white dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700 shadow-md text-zinc-500 hover:text-blue-500 transition-colors z-10"
+            title="Configurar Calendario"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        )}
       </div>
 
       <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">
@@ -176,14 +187,24 @@ export default function GoogleCalendarConnect({
 
       <div className="mt-auto flex gap-3 w-full">
         {connected ? (
-          <button
-            onClick={handleDisconnect}
-            disabled={loading}
-            className="w-full py-4 bg-transparent border border-red-500/30 text-red-500 hover:bg-red-500/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2"
-            id={`disconnect-google-calendar-${projectId}`}
-          >
-            {loading ? 'Desconectando...' : 'Desconectar'}
-          </button>
+          <div className="flex w-full gap-2">
+            <button
+              onClick={handleDisconnect}
+              disabled={loading}
+              className="flex-1 py-4 bg-transparent border border-red-500/30 text-red-500 hover:bg-red-500/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2"
+              id={`disconnect-google-calendar-${projectId}`}
+            >
+              {loading ? '...' : 'Desconectar'}
+            </button>
+            {onOpenConfig && (
+              <button
+                onClick={onOpenConfig}
+                className="flex-1 py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                Configurar
+              </button>
+            )}
+          </div>
         ) : (
           <button
             onClick={handleConnect}

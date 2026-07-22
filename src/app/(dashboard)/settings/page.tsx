@@ -101,6 +101,7 @@ export default function SettingsPage() {
   const [waIntegration, setWaIntegration] = useState<{ status: string } | null>(null)
   const [waLoading, setWaLoading] = useState(false)
   const [waFeedback, setWaFeedback] = useState<'success' | 'error' | null>(null)
+  const [showCalendarConfig, setShowCalendarConfig] = useState(false)
   const [waErrorMessage, setWaErrorMessage] = useState<string | null>(null)
   const [waVerifyStatus, setWaVerifyStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
@@ -1069,10 +1070,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
-                
-                {/* CALENDAR CONFIG */}
-                <CalendarConfigPanel />
-
               </div>
             </div>
           )}
@@ -1149,11 +1146,19 @@ export default function SettingsPage() {
                 <div>
                   <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-3 px-1">Herramientas Externas</p>
                   {projectId && (
-                    <GoogleCalendarConnect
-                      projectId={projectId}
-                      isConnected={gcalConnected}
-                      onStatusChange={(connected) => setGcalConnected(connected)}
-                    />
+                    <div className="flex flex-col gap-4">
+                      <GoogleCalendarConnect
+                        projectId={projectId}
+                        isConnected={gcalConnected}
+                        onStatusChange={(connected) => setGcalConnected(connected)}
+                        onOpenConfig={() => setShowCalendarConfig(!showCalendarConfig)}
+                      />
+                      {showCalendarConfig && gcalConnected && (
+                        <div className="animate-in slide-in-from-top-2">
+                          <CalendarConfigPanel />
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
