@@ -18,7 +18,6 @@ import {
   getNotificationEmails, saveNotificationEmails
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
-import TemplateGroupSelector from '@/components/settings/TemplateGroupSelector'
 import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
 import CalendarConfigPanel from '@/components/bot-builder/CalendarConfigPanel'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
