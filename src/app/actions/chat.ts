@@ -234,9 +234,26 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
           const res = await createEvent(project.id, match[1], match[2], match[3], title, description);
           
           if (res.success && res.event_id) {
-            // Check ownership logic internally via userBookings if needed in the future
-            // Right now we just track it.
-            // Replace confirmation variables
+            // Track in UserBooking so we can update/cancel it later
+            const phone = metadata?.phone || 'unknown';
+            if (phone !== 'unknown') {
+              try {
+                await prisma.userBooking.create({
+                  data: {
+                    phone,
+                    projectId: project.id,
+                    eventId: res.event_id,
+                    date: match[1],
+                    startTime: match[2],
+                    endTime: match[3],
+                    title
+                  }
+                });
+              } catch (err) {
+                console.error('[Calendar] Error tracking UserBooking:', err);
+              }
+            }
+
             let confirmMsg = (project as any).calendarConfig?.confirmationMessage || 'Cita agendada exitosamente.';
             confirmMsg = confirmMsg
               .replace(/\{\{fecha\}\}/g, match[1])
@@ -249,7 +266,69 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
           }
         }
       }
-      // UPDATE and CANCEL could be added here following same logic
+      else if (rawReply.includes('[ACTION: UPDATE_BOOKING')) {
+        const match = rawReply.match(/\[ACTION:\s*UPDATE_BOOKING\s+event_id=["'](.*?)["']\s+date=["'](.*?)["']\s+start=["'](.*?)["']\s+end=["'](.*?)["']\]/i);
+        if (match) {
+          actionFound = true;
+          let eventId = match[1];
+          const date = match[2];
+          const start = match[3];
+          const end = match[4];
+          
+          const phone = metadata?.phone || 'unknown';
+          if (eventId === 'latest' && phone !== 'unknown') {
+            const lastBooking = await prisma.userBooking.findFirst({
+              where: { phone, projectId: project.id },
+              orderBy: { createdAt: 'desc' }
+            });
+            if (lastBooking) eventId = lastBooking.eventId;
+          }
+
+          if (eventId === 'latest') {
+            systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":false, "error":"No se encontró una cita previa para este cliente."}`;
+          } else {
+            const { updateEvent } = await import('@/lib/calendar');
+            const res = await updateEvent(project.id, eventId, date, start, end);
+            if (res.success) {
+              await prisma.userBooking.updateMany({
+                where: { eventId },
+                data: { date, startTime: start, endTime: end }
+              });
+              systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":true, "system_message":"Cita actualizada."}`;
+            } else {
+              systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+            }
+          }
+        }
+      }
+      else if (rawReply.includes('[ACTION: CANCEL_BOOKING')) {
+        const match = rawReply.match(/\[ACTION:\s*CANCEL_BOOKING\s+event_id=["'](.*?)["']\]/i);
+        if (match) {
+          actionFound = true;
+          let eventId = match[1];
+          const phone = metadata?.phone || 'unknown';
+          if (eventId === 'latest' && phone !== 'unknown') {
+            const lastBooking = await prisma.userBooking.findFirst({
+              where: { phone, projectId: project.id },
+              orderBy: { createdAt: 'desc' }
+            });
+            if (lastBooking) eventId = lastBooking.eventId;
+          }
+
+          if (eventId === 'latest') {
+            systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":false, "error":"No se encontró una cita previa para este cliente."}`;
+          } else {
+            const { deleteEvent } = await import('@/lib/calendar');
+            const res = await deleteEvent(project.id, eventId);
+            if (res.success) {
+              await prisma.userBooking.deleteMany({ where: { eventId } });
+              systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":true, "system_message":"Cita cancelada."}`;
+            } else {
+              systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+            }
+          }
+        }
+      }
       
       if (actionFound) {
         messages.push({ role: 'assistant', content: rawReply });

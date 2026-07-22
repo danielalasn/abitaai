@@ -152,7 +152,8 @@ export function initWorker() {
             history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason })),
             chatDetails.lead.name || metadata.profileName || 'Desconocido',
             chatDetails.lead.projectId,
-            chatDetails.lead.agentId ?? undefined
+            chatDetails.lead.agentId ?? undefined,
+            { phone: chatDetails.lead.phone }
           );
 
           if (botData && botData.reply !== null) {
