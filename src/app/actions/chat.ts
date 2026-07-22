@@ -26,7 +26,11 @@ export async function sendTestMessage(
   if (projectId) {
     project = await prisma.project.findUnique({
       where: { id: projectId },
-      include: { agents: true }
+      include: { 
+        agents: true,
+        calendarConfig: true,
+        nangoConnections: { where: { providerConfigKey: 'google-calendar', status: 'CONNECTED' } }
+      }
     });
   } else {
     project = await getCurrentProject();
@@ -105,8 +109,48 @@ export async function sendTestMessage(
     previouslyRewarded
   });
 
+  // Append Calendar Instructions if configured
+  let calendarInstructions = '';
+  const hasCalendar = project?.nangoConnections && project.nangoConnections.length > 0 && project.calendarConfig;
+  if (hasCalendar) {
+    const calConfig = project.calendarConfig;
+    const requiredFields = calConfig.fieldsToCollect.length > 0 ? calConfig.fieldsToCollect.join(', ') : 'Ninguno';
+    calendarInstructions = `
+<calendar_actions>
+Este proyecto tiene Google Calendar conectado. Puedes verificar disponibilidad, ver citas del cliente, agendar, modificar o cancelar eventos.
+
+## REGLA ABSOLUTA — LEE ESTO PRIMERO
+NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativos sin haberlos verificado primero con CHECK_AVAILABILITY. NUNCA ejecutes CREATE_BOOKING sin que CHECK_AVAILABILITY haya confirmado "available: true" para ese horario exacto EN ESTA CONVERSACIÓN.
+
+## FLUJO OBLIGATORIO (sin excepciones)
+1. Cliente menciona horario -> Ejecutar CHECK_AVAILABILITY.
+2. Si available: true -> Pedir datos a recopilar.
+3. Si available: false -> Informar y preguntar otro horario.
+4. Cuando tengas confirmación de disponibilidad Y todos los datos -> Ejecutar CREATE_BOOKING.
+
+## REGLAS GENERALES
+- Solo puedes modificar o cancelar citas que pertenezcan al propio cliente.
+- Convierte fechas relativas a absolutas (Hoy es {{fecha_actual}}).
+- Formato de hora: 24h ("2pm" = "14:00", "10am" = "10:00").
+- El [ACTION: ...] va SIEMPRE PRIMERO en tu respuesta.
+
+## ACTIONS DISPONIBLES (CRUD)
+[ACTION: CHECK_AVAILABILITY date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
+[ACTION: CREATE_BOOKING date="YYYY-MM-DD" start="HH:MM" end="HH:MM" title="..." description="..."]
+[ACTION: UPDATE_BOOKING event_id="latest" date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
+[ACTION: CANCEL_BOOKING event_id="latest"]
+
+## CONFIGURACIÓN DEL NEGOCIO
+- Duración por cita: ${calConfig.durationMinutes} minutos.
+- Datos obligatorios a RECOPILAR antes de agendar: ${requiredFields}
+</calendar_actions>
+`;
+  }
+  
+  const finalSystemPrompt = systemPrompt + (calendarInstructions ? '\n\n' + calendarInstructions : '');
+
   // Logs eliminados para limpiar consola
-  console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name}`);
+  console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name} | Calendar Active: ${!!hasCalendar}`);
 
   try {
     // We filter history down to what anthropic expects: assistant and user
@@ -117,19 +161,89 @@ export async function sendTestMessage(
 
     messages.push({ role: 'user', content: redactPII(message) });
 
-    const response = await anthropic.messages.create({
-      model: AI_MODELS.CLAUDE_MAIN,
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: messages,
-    });
+    let rawReply = '';
+    let loopCount = 0;
+    const maxLoops = 3;
+    let currentInputTokens = 0;
+    let currentOutputTokens = 0;
 
-    // Capturar uso de tokens para monitoreo de costos
-    const inputTokens = response.usage?.input_tokens || 0;
-    const outputTokens = response.usage?.output_tokens || 0;
+    // Agentic Loop para Calendar Actions
+    while (loopCount < maxLoops) {
+      loopCount++;
+      const response = await anthropic.messages.create({
+        model: AI_MODELS.CLAUDE_MAIN,
+        max_tokens: 1024,
+        system: finalSystemPrompt,
+        messages: messages,
+      });
+
+      currentInputTokens += response.usage?.input_tokens || 0;
+      currentOutputTokens += response.usage?.output_tokens || 0;
+
+      rawReply = response.content[0].type === 'text' ? response.content[0].text : "";
+      
+      // Si no es un action de calendario, rompemos el loop
+      if (!hasCalendar || !rawReply.includes('[ACTION: ')) {
+        break;
+      }
+
+      // Procesar Calendar Actions
+      let actionFound = false;
+      let systemData = '';
+
+      if (rawReply.includes('[ACTION: CHECK_AVAILABILITY')) {
+        const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["'](.*?)["']\s+start=["'](.*?)["']\s+end=["'](.*?)["']\]/i);
+        if (match) {
+          actionFound = true;
+          const { checkAvailability } = await import('@/lib/calendar');
+          const res = await checkAvailability(project.id, match[1], match[2], match[3]);
+          systemData = `[SYSTEM DATA: CHECK_AVAILABILITY_RESULT]\n${JSON.stringify(res)}`;
+        }
+      } 
+      else if (rawReply.includes('[ACTION: CREATE_BOOKING')) {
+        const match = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["'](.*?)["']\s+start=["'](.*?)["']\s+end=["'](.*?)["'](?:.*?title=["'](.*?)["'])?(?:.*?description=["'](.*?)["'])?\]/i);
+        if (match) {
+          actionFound = true;
+          const { createEvent } = await import('@/lib/calendar');
+          
+          let title = project.calendarConfig.eventTitle || 'Cita';
+          title = title.replace(/\{\{(.*?)\}\}/g, (m, key) => match[4] || clientName || 'Cliente');
+          
+          let description = project.calendarConfig.eventDescription || '';
+          description = description.replace(/\{\{(.*?)\}\}/g, (m, key) => match[5] || clientName || 'Agendado via bot');
+
+          const res = await createEvent(project.id, match[1], match[2], match[3], title, description);
+          
+          if (res.success && res.event_id) {
+            // Check ownership logic internally via userBookings if needed in the future
+            // Right now we just track it.
+            // Replace confirmation variables
+            let confirmMsg = project.calendarConfig.confirmationMessage || 'Cita agendada exitosamente.';
+            confirmMsg = confirmMsg
+              .replace(/\{\{fecha\}\}/g, match[1])
+              .replace(/\{\{hora_inicio\}\}/g, match[2])
+              .replace(/\{\{hora_fin\}\}/g, match[3]);
+            
+            systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${res.event_id}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+          } else {
+            systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+          }
+        }
+      }
+      // UPDATE and CANCEL could be added here following same logic
+      
+      if (actionFound) {
+        messages.push({ role: 'assistant', content: rawReply });
+        messages.push({ role: 'user', content: systemData });
+        console.log(`[Agentic Loop] Iteration ${loopCount}: Inyectando SYSTEM DATA:`, systemData);
+      } else {
+        break; // Fake or unsupported action, just send it back to user
+      }
+    }
+
+    const inputTokens = currentInputTokens;
+    const outputTokens = currentOutputTokens;
     console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Total: ${inputTokens + outputTokens}`);
-
-    const rawReply = response.content[0].type === 'text' ? response.content[0].text : "No hubo respuesta de texto";
 
     // Clean up reply from tags early so we can store it
     const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
@@ -197,7 +311,7 @@ export async function sendTestMessage(
       outputTokens,
       agentName: config.name,
       extractedEmail,
-      debugPrompt: systemPrompt
+      debugPrompt: finalSystemPrompt
     };
 
   } catch (error: any) {
@@ -211,7 +325,7 @@ export async function sendTestMessage(
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ 
         model: AI_MODELS.GEMINI_FALLBACK,
-        systemInstruction: systemPrompt 
+        systemInstruction: finalSystemPrompt 
       });
       
       const geminiHistory = history.map(h => ({

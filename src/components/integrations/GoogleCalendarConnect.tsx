@@ -81,14 +81,13 @@ export default function GoogleCalendarConnect({
         }, 500);
       });
 
-      // 3. Guardar en la DB local usando el projectId como connectionId
+      // 3. Guardar en la DB local — el backend busca el connection_id real en Nango
       const res = await fetch('/api/integrations/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId,
           providerConfigKey: PROVIDER_CONFIG_KEY,
-          connectionId: projectId, // Nango usa projectId como connectionId
         }),
       });
 

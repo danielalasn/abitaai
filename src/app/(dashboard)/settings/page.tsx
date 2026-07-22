@@ -18,8 +18,10 @@ import {
   getNotificationEmails, saveNotificationEmails
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
-import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
+import TemplateGroupSelector from '@/components/settings/TemplateGroupSelector'
 import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
+import CalendarConfigPanel from '@/components/bot-builder/CalendarConfigPanel'
+import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
 // Instagram logo SVG (lucide doesn't include it)
 const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -1068,6 +1070,10 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
+                
+                {/* CALENDAR CONFIG */}
+                <CalendarConfigPanel />
+
               </div>
             </div>
           )}

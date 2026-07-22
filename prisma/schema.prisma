@@ -60,6 +60,8 @@ model Project {
   campaigns            Campaign[]
   leads                Lead[]
   nangoConnections     NangoConnection[]
+  calendarConfig       CalendarConfig?
+  userBookings         UserBooking[]
   client               Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
   unansweredQuestions  UnansweredQuestion[]
 }
@@ -265,7 +267,7 @@ model NangoConnection {
   id                String   @id @default(cuid())
   projectId         String
   providerConfigKey String   // ej: 'google-calendar', 'hubspot'
-  connectionId      String   // ID en Nango (usamos el projectId como connectionId)
+  connectionId      String   // ID real asignado por Nango (UUID)
   status            String   @default("CONNECTED") // CONNECTED | DISCONNECTED | ERROR
   metadata          Json?    // Configuración adicional por comercio
   createdAt         DateTime @default(now())
@@ -274,4 +276,36 @@ model NangoConnection {
 
   @@unique([projectId, providerConfigKey])
   @@index([projectId])
+}
+
+// Configuración del calendario de citas por proyecto.
+// El cliente define qué datos pedir, el formato del evento y la duración.
+model CalendarConfig {
+  id                  String   @id @default(cuid())
+  projectId           String   @unique
+  fieldsToCollect     String[] @default([])  // ej: ["nombre_cliente", "tipo_servicio"]
+  eventTitle          String   @default("Cita / Reserva - {{nombre_cliente}}")
+  eventDescription    String   @default("Cliente: {{nombre_cliente}}\nAgendado via Abita AI.")
+  durationMinutes     Int      @default(60)
+  confirmationMessage String   @default("¡Listo! Su cita ha sido agendada para el {{fecha}} a las {{hora_inicio}}.")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+// Seguimiento de citas agendadas por cada lead (para control de propiedad CRUD).
+model UserBooking {
+  id        String   @id @default(cuid())
+  phone     String
+  projectId String
+  eventId   String   @unique  // ID del evento en Google Calendar
+  date      String
+  startTime String
+  endTime   String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([phone, projectId])
 }
