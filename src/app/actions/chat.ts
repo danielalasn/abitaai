@@ -121,9 +121,17 @@ export async function sendTestMessage(
 
   // Append Calendar Instructions if configured
   let calendarInstructions = '';
-  const hasCalendar = (project as any)?.nangoConnections && (project as any).nangoConnections.length > 0 && (project as any)?.calendarConfig;
+  const hasCalendar = (project as any)?.nangoConnections && (project as any).nangoConnections.length > 0;
+  
   if (hasCalendar) {
-    const calConfig = (project as any).calendarConfig;
+    const calConfig = (project as any).calendarConfig || {
+      durationMinutes: 60,
+      fieldsToCollect: [],
+      eventTitle: 'Cita - {{nombre_cliente}}',
+      eventDescription: 'Agendado vía IA',
+      confirmationMessage: '¡Listo! Su cita ha sido agendada.'
+    };
+    
     const requiredFields = calConfig?.fieldsToCollect?.length > 0 ? calConfig.fieldsToCollect.join(', ') : 'Ninguno';
     calendarInstructions = `
 <calendar_actions>
