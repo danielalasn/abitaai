@@ -153,6 +153,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
 - Convierte fechas relativas a absolutas (Hoy es {{fecha_actual}}).
 - Formato de hora: 24h ("2pm" = "14:00", "10am" = "10:00").
 - El [ACTION: ...] va SIEMPRE PRIMERO y SOLO en tu respuesta para que el sistema lo ejecute. NUNCA pongas más de un [ACTION: ...] en un solo mensaje.
+- SIEMPRE debes calcular el parámetro 'end' sumando la duración de la cita al parámetro 'start'. NUNCA lo dejes vacío.
 
 ## ACTIONS DISPONIBLES (CRUD)
 [ACTION: CHECK_AVAILABILITY date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]

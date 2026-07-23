@@ -54,14 +54,14 @@ function _toRFC3339(dateStr: string, timeStr: string): string | null {
   let minutes = 0;
   
   const match = cleanTime.match(/(\d+)(?::(\d+))?\s*(am|pm)?/);
-  if (match) {
-    hours = parseInt(match[1], 10);
-    minutes = match[2] ? parseInt(match[2], 10) : 0;
-    const ampm = match[3];
-    
-    if (ampm === 'pm' && hours < 12) hours += 12;
-    if (ampm === 'am' && hours === 12) hours = 0;
-  }
+  if (!match) return null;
+
+  hours = parseInt(match[1], 10);
+  minutes = match[2] ? parseInt(match[2], 10) : 0;
+  const ampm = match[3];
+  
+  if (ampm === 'pm' && hours < 12) hours += 12;
+  if (ampm === 'am' && hours === 12) hours = 0;
   
   const hh = hours.toString().padStart(2, '0');
   const mm = minutes.toString().padStart(2, '0');
@@ -136,7 +136,11 @@ export async function checkAvailability(projectId: string, dateStr: string, star
   });
 
   if (!res.ok) {
-    return { available: false, error: await res.text() };
+    const errorText = await res.text();
+    if (errorText.includes('timeRangeEmpty')) {
+      return { available: false, error: 'El parámetro "end" debe ser mayor que "start". Por favor suma la duración de la cita a "start" para calcular "end".' };
+    }
+    return { available: false, error: errorText };
   }
 
   const data = await res.json();
@@ -191,7 +195,13 @@ export async function createEvent(
     body: JSON.stringify(payload)
   });
 
-  if (!res.ok) return { success: false, error: await res.text() };
+  if (!res.ok) {
+    const errorText = await res.text();
+    if (errorText.includes('timeRangeEmpty') || errorText.includes('Invalid time range')) {
+      return { success: false, error: 'El parámetro "end" debe ser estrictamente mayor que "start". Por favor suma la duración a "start" para calcular "end".' };
+    }
+    return { success: false, error: errorText };
+  }
 
   const data = await res.json();
   return {
@@ -243,7 +253,13 @@ export async function updateEvent(
     body: JSON.stringify(payload)
   });
 
-  if (!res.ok) return { success: false, error: await res.text() };
+  if (!res.ok) {
+    const errorText = await res.text();
+    if (errorText.includes('timeRangeEmpty') || errorText.includes('Invalid time range')) {
+      return { success: false, error: 'El parámetro "end" debe ser estrictamente mayor que "start". Por favor suma la duración a "start" para calcular "end".' };
+    }
+    return { success: false, error: errorText };
+  }
 
   const data = await res.json();
   return {
