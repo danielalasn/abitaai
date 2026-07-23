@@ -282,7 +282,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 onChange={e => setNewField(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddField()}
                 placeholder="ej: nombre_completo"
-                className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#F36A2D]"
+                className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
               />
               <button 
                 onClick={handleAddField}
@@ -310,7 +310,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               type="number"
               value={durationMinutes}
               onChange={e => setDurationMinutes(parseInt(e.target.value) || 60)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
             />
           </div>
 
@@ -322,7 +322,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               type="text"
               value={eventTitle}
               onChange={e => setEventTitle(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
             />
           </div>
 
@@ -334,7 +334,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               value={eventDescription}
               onChange={e => setEventDescription(e.target.value)}
               rows={3}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
             />
           </div>
 
@@ -346,7 +346,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               value={confirmationMessage}
               onChange={e => setConfirmationMessage(e.target.value)}
               rows={2}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
             />
           </div>
 
