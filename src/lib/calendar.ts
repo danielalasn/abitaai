@@ -68,6 +68,9 @@ function _toRFC3339(dateStr: string, timeStr: string): string {
   
   const dateTimeStr = `${dateStr}T${hh}:${mm}:00`;
   const dateObj = new Date(`${dateTimeStr}-06:00`); // Hardcoded -6 para SLV
+  if (isNaN(dateObj.getTime())) {
+    return null;
+  }
   return dateObj.toISOString();
 }
 
@@ -111,6 +114,10 @@ export async function checkAvailability(projectId: string, dateStr: string, star
 
   const timeMin = _toRFC3339(resolvedDate, startTime);
   const timeMax = _toRFC3339(resolvedDate, endTime);
+
+  if (!timeMin || !timeMax) {
+    return { available: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
+  }
 
   const payload = {
     timeMin,
@@ -161,11 +168,18 @@ export async function createEvent(
   const token = await _getAccessToken(connectionId);
   if (!token) return { success: false, error: 'No se pudo obtener token de Google.' };
 
+  const startRFC = _toRFC3339(resolvedDate, startTime);
+  const endRFC = _toRFC3339(resolvedDate, endTime);
+
+  if (!startRFC || !endRFC) {
+    return { success: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
+  }
+
   const payload = {
     summary: title,
     description,
-    start: { dateTime: _toRFC3339(resolvedDate, startTime), timeZone: TIMEZONE },
-    end: { dateTime: _toRFC3339(resolvedDate, endTime), timeZone: TIMEZONE }
+    start: { dateTime: startRFC, timeZone: TIMEZONE },
+    end: { dateTime: endRFC, timeZone: TIMEZONE }
   };
 
   const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
@@ -207,9 +221,16 @@ export async function updateEvent(
   const token = await _getAccessToken(connectionId);
   if (!token) return { success: false, error: 'No se pudo obtener token de Google.' };
 
+  const startRFC = _toRFC3339(resolvedDate, startTime);
+  const endRFC = _toRFC3339(resolvedDate, endTime);
+
+  if (!startRFC || !endRFC) {
+    return { success: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
+  }
+
   const payload: any = {
-    start: { dateTime: _toRFC3339(resolvedDate, startTime), timeZone: TIMEZONE },
-    end: { dateTime: _toRFC3339(resolvedDate, endTime), timeZone: TIMEZONE }
+    start: { dateTime: startRFC, timeZone: TIMEZONE },
+    end: { dateTime: endRFC, timeZone: TIMEZONE }
   };
   if (title) payload.summary = title;
 
