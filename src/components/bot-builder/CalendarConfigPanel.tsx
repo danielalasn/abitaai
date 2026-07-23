@@ -85,7 +85,7 @@ export default function CalendarConfigPanel({ isOpen, onClose }: CalendarConfigP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1A1714] w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-[#1A1714] w-full max-w-2xl max-h-[80vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
