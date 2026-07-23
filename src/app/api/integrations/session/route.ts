@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       end_user: {
         id: connectionId,
       },
+      provider_config_key: 'google-calendar',
     });
     console.log('[Nango Session Token Response]:', sessionToken);
 

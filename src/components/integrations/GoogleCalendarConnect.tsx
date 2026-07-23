@@ -46,7 +46,7 @@ export default function GoogleCalendarConnect({
 
       // 2. Abrir el connect_link de Nango como popup y esperar el mensaje de retorno
       const connectLink = sessionData.connectLink || 
-        `https://connect.nango.dev/?session_token=${sessionData.token}`;
+        `https://connect.nango.dev/?session_token=${sessionData.token}&provider_config_key=google-calendar`;
 
       await new Promise<void>((resolve, reject) => {
         const popup = window.open(connectLink, 'nango-connect', 'width=500,height=700,scrollbars=yes');

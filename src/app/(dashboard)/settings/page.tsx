@@ -1151,13 +1151,12 @@ export default function SettingsPage() {
                         projectId={projectId}
                         isConnected={gcalConnected}
                         onStatusChange={(connected) => setGcalConnected(connected)}
-                        onOpenConfig={() => setShowCalendarConfig(!showCalendarConfig)}
+                        onOpenConfig={() => setShowCalendarConfig(true)}
                       />
-                      {showCalendarConfig && gcalConnected && (
-                        <div className="animate-in slide-in-from-top-2">
-                          <CalendarConfigPanel />
-                        </div>
-                      )}
+                      <CalendarConfigPanel 
+                        isOpen={showCalendarConfig && gcalConnected}
+                        onClose={() => setShowCalendarConfig(false)}
+                      />
                     </div>
                   )}
                 </div>
