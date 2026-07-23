@@ -35,8 +35,26 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
   const [newField, setNewField] = useState('');
   const [eventTitle, setEventTitle] = useState('Cita / Reserva - {{nombre_cliente}}');
   const [eventDescription, setEventDescription] = useState('Cliente: {{nombre_cliente}}\\nAgendado via Abita AI.');
-  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [durationMinutes, setDurationMinutes] = useState<number | ''>(60);
   const [confirmationMessage, setConfirmationMessage] = useState('¡Listo! Su cita ha sido agendada para el {{fecha}} a las {{hora_inicio}}.');
+
+  // Helper variables for UI
+  const allVars = ['fecha', 'hora_inicio', 'hora_fin', ...fieldsToCollect];
+
+  const VariableToolbar = ({ onInsert }: { onInsert: (v: string) => void }) => (
+    <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+      {allVars.map(v => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onInsert(`{{${v}}}`)}
+          className="px-2 py-1 text-[10px] font-bold bg-[#F36A2D]/10 text-[#F36A2D] border border-[#F36A2D]/20 rounded-md hover:bg-[#F36A2D]/20 transition-colors"
+        >
+          +{v}
+        </button>
+      ))}
+    </div>
+  );
 
   useEffect(() => {
     async function loadConfig() {
@@ -115,13 +133,14 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
   const handleSave = async () => {
     setIsSaving(true);
     setSaveStatus(null);
+    const finalDuration = typeof durationMinutes === 'number' ? durationMinutes : 60;
     try {
       await saveCalendarConfig(
         selectedCalendarIds,
         fieldsToCollect,
         eventTitle,
         eventDescription,
-        durationMinutes,
+        finalDuration,
         confirmationMessage
       );
       setSaveStatus('success');
@@ -309,7 +328,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
             <input 
               type="number"
               value={durationMinutes}
-              onChange={e => setDurationMinutes(parseInt(e.target.value) || 60)}
+              onChange={e => setDurationMinutes(e.target.value === '' ? '' : parseInt(e.target.value) || 60)}
               className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
             />
           </div>
@@ -318,6 +337,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Título del evento en Calendar</label>
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Puedes usar las variables entre doble llave (ej: {'{{nombre_completo}}'})</p>
+            <VariableToolbar onInsert={(val) => setEventTitle(prev => prev + val)} />
             <input 
               type="text"
               value={eventTitle}
@@ -330,6 +350,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Descripción del evento</label>
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Puedes usar las variables. Se guardará en la descripción de Google Calendar.</p>
+            <VariableToolbar onInsert={(val) => setEventDescription(prev => prev + val)} />
             <textarea 
               value={eventDescription}
               onChange={e => setEventDescription(e.target.value)}
@@ -342,6 +363,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Mensaje de confirmación (WhatsApp)</label>
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Mensaje que el bot dirá al finalizar de agendar. Variables: {'{{fecha}}'}, {'{{hora_inicio}}'}, {'{{hora_fin}}'}</p>
+            <VariableToolbar onInsert={(val) => setConfirmationMessage(prev => prev + val)} />
             <textarea 
               value={confirmationMessage}
               onChange={e => setConfirmationMessage(e.target.value)}
