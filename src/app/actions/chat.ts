@@ -133,47 +133,51 @@ export async function sendTestMessage(
     };
     
     const requiredFields = calConfig?.fieldsToCollect?.length > 0 ? calConfig.fieldsToCollect.join(', ') : 'Ninguno';
+    
+    // Compute example end time for the prompt
+    const exampleEndH = Math.floor((15 * 60 + calConfig.durationMinutes) / 60);
+    const exampleEndM = (15 * 60 + calConfig.durationMinutes) % 60;
+    const exampleEnd = `${String(exampleEndH).padStart(2, '0')}:${String(exampleEndM).padStart(2, '0')}`;
+
     calendarInstructions = `
-<calendar_actions>
-Este proyecto tiene Google Calendar conectado. Puedes verificar disponibilidad, ver citas del cliente, agendar, modificar o cancelar eventos.
+<calendar_tools>
+Tienes acceso a Google Calendar para gestionar reservas/citas del cliente.
 
-## REGLA ABSOLUTA — LEE ESTO PRIMERO
-NUNCA asumas que un horario está disponible sin verificarlo con CHECK_AVAILABILITY.
-¡PROHIBIDO MENTIR! Nunca le digas al cliente "ya agendé tu cita" o "ya la actualicé" si no has ejecutado el tag [ACTION: ...] correspondiente y recibido el [SYSTEM DATA] confirmando el éxito.
-¡PELIGRO! Si necesitas modificar el calendario (CREATE, UPDATE, CANCEL) y luego transferir al cliente (HANDOFF), ESTÁ ESTRICTAMENTE PROHIBIDO usar [ACTION: HANDOFF] sin haber completado la acción del calendario primero. Debes usar el tag del calendario, esperar la respuesta del sistema en el siguiente turno, y SOLO ENTONCES usar [ACTION: HANDOFF].
+CUÁNDO USARLO: Solo cuando el cliente solicite explícitamente agendar, consultar disponibilidad, modificar o cancelar una cita/reserva. Para preguntas generales del negocio (precios, ubicación, servicios, etc.) responde normalmente SIN usar ningún ACTION de calendario.
 
-## FLUJO OBLIGATORIO (sin excepciones)
-1. Cliente pide un horario -> Usar INMEDIATAMENTE [ACTION: CHECK_AVAILABILITY...]. NO respondas nada más hasta recibir el resultado.
-2. Si available: true -> Informa al cliente que SÍ hay espacio Y pide los datos obligatorios que faltan. (NO uses CREATE_BOOKING todavía).
-3. Si available: false -> Informar y preguntar otro horario.
-4. SOLO cuando tengas confirmación de disponibilidad Y el cliente te haya dado TODOS los datos -> Ejecutar [ACTION: CREATE_BOOKING...].
-5. Si el cliente solicita cambiar, mover o cancelar su reserva -> Ejecuta la acción (UPDATE_BOOKING o CANCEL_BOOKING) inmediatamente de forma interna. NO le respondas "déjame verificar" ni "un momento", simplemente devuelve el TAG.
+FLUJO OBLIGATORIO:
+1. Cliente quiere reservar → usa [ACTION: CHECK_AVAILABILITY] inmediatamente.
+2. Disponible → informa y recopila los datos faltantes (ver DATOS REQUERIDOS abajo). NO hagas CREATE_BOOKING aún.
+3. Ocupado → informa que está ocupado. Si vas a sugerir otro horario, DEBES verificarlo primero con CHECK_AVAILABILITY antes de mencionarlo.
+4. Tienes disponibilidad confirmada + todos los datos → ejecuta [ACTION: CREATE_BOOKING].
+5. Cliente quiere modificar/cancelar → el sistema te proveerá sus reservas activas. Identifica la correcta y ejecuta [ACTION: UPDATE_BOOKING] o [ACTION: CANCEL_BOOKING] con el event_id exacto.
 
-## REGLAS GENERALES
-- Solo puedes modificar o cancelar citas que pertenezcan al propio cliente.
-- ¡MUY IMPORTANTE! Si el cliente dice "mañana", "hoy" o un día de la semana, SIEMPRE calcúlalo basándote ESTRICTAMENTE en la <fecha_y_hora_actual> del sistema. IGNORA cualquier fecha de la que se haya hablado en mensajes anteriores del historial si se trata de una nueva consulta.
-- Convierte fechas relativas a absolutas (Hoy es {{fecha_actual}}).
-- Formato de hora: 24h ("2pm" = "14:00", "10am" = "10:00").
-- El [ACTION: ...] va SIEMPRE PRIMERO y SOLO en tu respuesta para que el sistema lo ejecute. NUNCA pongas más de un [ACTION: ...] en un solo mensaje.
-- ESTÁ TOTALMENTE PROHIBIDO usar texto conversacional como "Déjame verificar..." o "Un momento...". Si necesitas verificar, usar o modificar algo en el calendario, simplemente devuelve ÚNICAMENTE el texto [ACTION: ...] correspondiente y nada más.
-- SIEMPRE debes calcular el parámetro 'end' sumando la duración de la cita al parámetro 'start'. NUNCA lo dejes vacío.
-- Si recibes un error del sistema que no puedes resolver después de intentarlo, o si no puedes procesar la solicitud, usa [ACTION: HANDOFF] para transferir con un humano.
+REGLAS DE SEGURIDAD:
+- NUNCA digas "ya agendé", "ya cancelé" o "ya actualicé" sin haber recibido [SYSTEM DATA] con success:true.
+- Solo puedes modificar/cancelar citas del cliente actual. El sistema te lista sus reservas con event_id exacto.
+- Si el ACTION falla 2 veces seguidas, usa [ACTION: HANDOFF].
+- Si necesitas modificar el calendario Y hacer HANDOFF, completa el ACTION del calendario primero, espera la confirmación, y LUEGO usa HANDOFF.
+- Respeta los horarios de atención del negocio definidos en tu base de conocimientos. Solo ofrece o verifica slots dentro de ese rango horario.
+- Si el cliente dice "mañana", "hoy" o un día de la semana, calcula la fecha ESTRICTAMENTE con la fecha_y_hora_actual del sistema. No uses fechas de conversaciones anteriores.
+- Formato de hora: 24h ("3pm" = "15:00", "10am" = "10:00").
+- El [ACTION: ...] va SIEMPRE al inicio de tu respuesta y SOLO UNO por mensaje.
 
-## ACTIONS DISPONIBLES (CRUD y Handoff)
+CÁLCULO DE TIEMPO OBLIGATORIO:
+- Duración por cita: ${calConfig.durationMinutes} minutos.
+- 'end' = 'start' + ${calConfig.durationMinutes} minutos. Ejemplo: start="15:00" → end="${exampleEnd}". NUNCA omitas 'end'.
+
+DATOS REQUERIDOS antes de CREATE_BOOKING: [ ${requiredFields} ]
+Para CREATE_BOOKING, incluye cada dato recopilado como parámetro en el ACTION tag (ej: nombre_cliente="Daniel" tipo_servicio="Corte"). El sistema los usará para armar el evento en el calendario.
+
+ACTIONS DISPONIBLES:
 [ACTION: CHECK_AVAILABILITY date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
-[ACTION: CREATE_BOOKING date="YYYY-MM-DD" start="HH:MM" end="HH:MM" title="..." description="..."]
-[ACTION: UPDATE_BOOKING event_id="latest" date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
-[ACTION: CANCEL_BOOKING event_id="latest"]
+[ACTION: CREATE_BOOKING date="YYYY-MM-DD" start="HH:MM" end="HH:MM" VARIABLE_1="valor" VARIABLE_2="valor"]
+[ACTION: UPDATE_BOOKING event_id="REAL_EVENT_ID" date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
+[ACTION: CANCEL_BOOKING event_id="REAL_EVENT_ID"]
 [ACTION: HANDOFF]
 
-⚠️ ADVERTENCIA CRÍTICA: Eres un asistente real conectado a una base de datos real. ESTÁ ESTRICTAMENTE PROHIBIDO inventar u "alucinar" horarios disponibles, o decirle al cliente que ya reservaste/cancelaste si no has usado el comando [ACTION: ...] correspondiente. ¡USAR LOS TAGS ES OBLIGATORIO!
-
-## CONFIGURACIÓN DEL NEGOCIO (¡RESPETAR ESTRICTAMENTE!)
-- Duración por cita: ${calConfig.durationMinutes} minutos.
-REGLA DE DURACIÓN: Si la duración es de ${calConfig.durationMinutes} minutos, DEBES sumar exactamente ${calConfig.durationMinutes} minutos al parámetro 'start' para calcular 'end'. Ejemplo: si start="16:00" y duración es 15 mins, end="16:15". ¡NO ASUMAS QUE SON 60 MINUTOS SI LA CONFIGURACIÓN DICE OTRA COSA!
-- Datos obligatorios a RECOPILAR antes de agendar: [ ${requiredFields} ]
-REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberle preguntado al cliente por TODOS los datos obligatorios listados arriba. No puedes agendar si falta alguno. No preguntes por cosas que no estén en la lista a menos que sea el nombre.
-</calendar_actions>
+NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la lista de reservas del cliente. NUNCA inventes un event_id.
+</calendar_tools>
 `;
   }
   
@@ -197,13 +201,29 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
     let currentInputTokens = 0;
     let currentOutputTokens = 0;
 
+    // --- Inject active bookings for this phone into the system prompt (so AI knows what to update/cancel) ---
+    let finalSystemPromptWithBookings = finalSystemPrompt;
+    if (hasCalendar && metadata?.phone && metadata.phone !== 'unknown') {
+      const activeBookings = await prisma.userBooking.findMany({
+        where: { phone: metadata.phone, projectId: project.id },
+        orderBy: { date: 'asc' },
+        take: 10
+      });
+      if (activeBookings.length > 0) {
+        const bookingList = activeBookings.map((b: any) =>
+          `- event_id: "${b.eventId}" | Fecha: ${b.date} | Inicio: ${b.startTime} | Fin: ${b.endTime} | Título: ${b.title}`
+        ).join('\n');
+        finalSystemPromptWithBookings += `\n\n<reservas_activas_cliente>\nEl cliente tiene las siguientes reservas activas en el sistema:\n${bookingList}\nUsa el event_id exacto para UPDATE_BOOKING o CANCEL_BOOKING.\n</reservas_activas_cliente>`;
+      }
+    }
+
     // Agentic Loop para Calendar Actions
     while (loopCount < maxLoops) {
       loopCount++;
       const response = await anthropic.messages.create({
         model: AI_MODELS.CLAUDE_MAIN,
         max_tokens: 1024,
-        system: finalSystemPrompt,
+        system: finalSystemPromptWithBookings,
         messages: messages,
       });
 
@@ -212,7 +232,7 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
 
       rawReply = response.content[0].type === 'text' ? response.content[0].text : "";
       
-      // Si no es un action de calendario, rompemos el loop
+      // Solo entrar al loop de acciones si hay calendario Y hay un ACTION tag
       if (!hasCalendar || !rawReply.includes('[ACTION: ')) {
         break;
       }
@@ -223,33 +243,47 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
 
       if (rawReply.includes('[ACTION: CHECK_AVAILABILITY')) {
         const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?.*?\]/i);
-        console.log(`[DEBUG CALENDAR] AI rawReply action: CHECK_AVAILABILITY. Match found: ${!!match}`);
         if (match) {
-          console.log(`[DEBUG CALENDAR] Extracted - date: '${match[1]}', start: '${match[2]}', end: '${match[3]}'`);
           actionFound = true;
           const { checkAvailability } = await import('@/lib/calendar');
           const res = await checkAvailability(project.id, match[1], match[2], match[3] || '');
           systemData = `[SYSTEM DATA: CHECK_AVAILABILITY_RESULT]\n${JSON.stringify(res)}`;
+          console.log(`[Agentic Loop] CHECK_AVAILABILITY date=${match[1]} start=${match[2]} end=${match[3]} → ${JSON.stringify(res)}`);
         }
       } 
       else if (rawReply.includes('[ACTION: CREATE_BOOKING')) {
-        const match = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?(?:.*?title=["']([^"']*)["'])?(?:.*?description=["']([^"']*)["'])?.*?\]/i);
-        console.log(`[DEBUG CALENDAR] AI rawReply action: CREATE_BOOKING. Match found: ${!!match}`);
-        if (match) {
-          console.log(`[DEBUG CALENDAR] Extracted - date: '${match[1]}', start: '${match[2]}', end: '${match[3]}'`);
+        // Capture date/start/end + ALL extra key=value params dynamically
+        const headerMatch = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?([^"'\]\s]+)["']?\s+start=["']?([^"'\]\s]+)["']?(?:\s+end=["']?([^"'\]\s]+)["']?)?/i);
+        if (headerMatch) {
           actionFound = true;
-          const { createEvent } = await import('@/lib/calendar');
+          const [, bookDate, bookStart, bookEnd] = headerMatch;
           
+          // Extract all key="value" pairs from the full ACTION tag
+          const actionTagMatch = rawReply.match(/\[ACTION:\s*CREATE_BOOKING([^\]]+)\]/i);
+          const extraParams: Record<string, string> = {};
+          if (actionTagMatch) {
+            const paramStr = actionTagMatch[1];
+            const paramRegex = /([\w_]+)=["']([^"']*)["']/g;
+            let pm;
+            while ((pm = paramRegex.exec(paramStr)) !== null) {
+              const key = pm[1].toLowerCase();
+              if (!['date','start','end'].includes(key)) extraParams[key] = pm[2];
+            }
+          }
+
+          const { createEvent } = await import('@/lib/calendar');
+
+          // Build title and description replacing {{variable}} with collected params
           let title = (project as any).calendarConfig?.eventTitle || 'Cita';
-          title = title.replace(/\{\{(.*?)\}\}/g, (m: any, key: any) => match[4] || clientName || 'Cliente');
+          title = title.replace(/\{\{([^}]+)\}\}/g, (_: string, key: string) => extraParams[key.toLowerCase()] || clientName || 'Cliente');
           
           let description = (project as any).calendarConfig?.eventDescription || '';
-          description = description.replace(/\{\{(.*?)\}\}/g, (m: any, key: any) => match[5] || clientName || 'Agendado via bot');
+          description = description.replace(/\{\{([^}]+)\}\}/g, (_: string, key: string) => extraParams[key.toLowerCase()] || '');
 
-          const res = await createEvent(project.id, match[1], match[2], match[3] || '', title, description);
+          const res = await createEvent(project.id, bookDate, bookStart, bookEnd || '', title, description);
+          console.log(`[Agentic Loop] CREATE_BOOKING date=${bookDate} start=${bookStart} end=${bookEnd} → success=${res.success}`);
           
           if (res.success && res.event_id) {
-            // Track in UserBooking so we can update/cancel it later
             const phone = metadata?.phone || 'unknown';
             if (phone !== 'unknown') {
               try {
@@ -258,9 +292,9 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
                     phone,
                     projectId: project.id,
                     eventId: res.event_id,
-                    date: match[1],
-                    startTime: match[2],
-                    endTime: match[3],
+                    date: bookDate,
+                    startTime: bookStart,
+                    endTime: bookEnd || '',
                     title
                   }
                 });
@@ -271,9 +305,9 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
 
             let confirmMsg = (project as any).calendarConfig?.confirmationMessage || 'Cita agendada exitosamente.';
             confirmMsg = confirmMsg
-              .replace(/\{\{fecha\}\}/g, match[1])
-              .replace(/\{\{hora_inicio\}\}/g, match[2])
-              .replace(/\{\{hora_fin\}\}/g, match[3]);
+              .replace(/\{\{fecha\}\}/g, bookDate)
+              .replace(/\{\{hora_inicio\}\}/g, bookStart)
+              .replace(/\{\{hora_fin\}\}/g, bookEnd || '');
             
             systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${res.event_id}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
           } else {
@@ -282,34 +316,32 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
         }
       }
       else if (rawReply.includes('[ACTION: UPDATE_BOOKING')) {
-        const match = rawReply.match(/\[ACTION:\s*UPDATE_BOOKING\s+event_id=["']?([^"'\]]+)["']?\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*UPDATE_BOOKING\s+event_id=["']?([^"'\]\s]+)["']?\s+date=["']?([^"'\]\s]+)["']?\s+start=["']?([^"'\]\s]+)["']?(?:\s+end=["']?([^"'\]\s]+)["']?)?.*?\]/i);
         if (match) {
           actionFound = true;
-          let eventId = match[1];
+          const eventId = match[1];
           const date = match[2];
           const start = match[3];
           const end = match[4] || '';
-          
-          const phone = metadata?.phone || 'unknown';
-          if (eventId === 'latest' && phone !== 'unknown') {
-            const lastBooking = await prisma.userBooking.findFirst({
-              where: { phone, projectId: project.id },
-              orderBy: { createdAt: 'desc' }
-            });
-            if (lastBooking) eventId = lastBooking.eventId;
-          }
 
-          if (eventId === 'latest') {
-            systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":false, "error":"No se encontró una cita previa para este cliente."}`;
+          // Verify ownership: event must belong to this phone
+          const phone = metadata?.phone || 'unknown';
+          const ownerBooking = phone !== 'unknown'
+            ? await prisma.userBooking.findFirst({ where: { phone, projectId: project.id, eventId } })
+            : null;
+
+          if (!ownerBooking && phone !== 'unknown') {
+            systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":false, "error":"No se encontró esa reserva para este cliente. Solo puedes modificar tus propias citas."}`;
           } else {
             const { updateEvent } = await import('@/lib/calendar');
             const res = await updateEvent(project.id, eventId, date, start, end);
+            console.log(`[Agentic Loop] UPDATE_BOOKING eventId=${eventId} → success=${res.success}`);
             if (res.success) {
               await prisma.userBooking.updateMany({
                 where: { eventId },
                 data: { date, startTime: start, endTime: end }
               });
-              systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":true, "system_message":"Cita actualizada."}`;
+              systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":true, "system_message":"Cita actualizada exitosamente."}`;
             } else {
               systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
             }
@@ -317,27 +349,26 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
         }
       }
       else if (rawReply.includes('[ACTION: CANCEL_BOOKING')) {
-        const match = rawReply.match(/\[ACTION:\s*CANCEL_BOOKING\s+event_id=["']?([^"'\]]+)["']?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*CANCEL_BOOKING\s+event_id=["']?([^"'\]\s]+)["']?.*?\]/i);
         if (match) {
           actionFound = true;
-          let eventId = match[1];
+          const eventId = match[1];
           const phone = metadata?.phone || 'unknown';
-          if (eventId === 'latest' && phone !== 'unknown') {
-            const lastBooking = await prisma.userBooking.findFirst({
-              where: { phone, projectId: project.id },
-              orderBy: { createdAt: 'desc' }
-            });
-            if (lastBooking) eventId = lastBooking.eventId;
-          }
 
-          if (eventId === 'latest') {
-            systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":false, "error":"No se encontró una cita previa para este cliente."}`;
+          // Verify ownership
+          const ownerBooking = phone !== 'unknown'
+            ? await prisma.userBooking.findFirst({ where: { phone, projectId: project.id, eventId } })
+            : null;
+
+          if (!ownerBooking && phone !== 'unknown') {
+            systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":false, "error":"No se encontró esa reserva para este cliente. Solo puedes cancelar tus propias citas."}`;
           } else {
             const { deleteEvent } = await import('@/lib/calendar');
             const res = await deleteEvent(project.id, eventId);
+            console.log(`[Agentic Loop] CANCEL_BOOKING eventId=${eventId} → success=${res.success}`);
             if (res.success) {
               await prisma.userBooking.deleteMany({ where: { eventId } });
-              systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":true, "system_message":"Cita cancelada."}`;
+              systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":true, "system_message":"Cita cancelada exitosamente."}`;
             } else {
               systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n${JSON.stringify(res)}`;
             }
@@ -348,9 +379,9 @@ REGLA DE VARIABLES: Antes de ejecutar CREATE_BOOKING, DEBES asegurarte de haberl
       if (actionFound) {
         messages.push({ role: 'assistant', content: rawReply });
         messages.push({ role: 'user', content: systemData });
-        console.log(`[Agentic Loop] Iteration ${loopCount}: Inyectando SYSTEM DATA:`, systemData);
+        console.log(`[Agentic Loop] Iteration ${loopCount}: SYSTEM DATA injected`);
       } else {
-        break; // Fake or unsupported action, just send it back to user
+        break;
       }
     }
 
