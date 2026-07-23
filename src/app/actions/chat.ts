@@ -215,17 +215,21 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
       let systemData = '';
 
       if (rawReply.includes('[ACTION: CHECK_AVAILABILITY')) {
-        const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["']?(.*?)["']?\s+start=["']?(.*?)["']?\s+end=["']?(.*?)["']?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["']?(.*?)["']?\s+start=["']?(.*?)["']?(?:\s+end=["']?(.*?)["']?)?.*?\]/i);
+        console.log(`[DEBUG CALENDAR] AI rawReply action: CHECK_AVAILABILITY. Match found: ${!!match}`);
         if (match) {
+          console.log(`[DEBUG CALENDAR] Extracted - date: '${match[1]}', start: '${match[2]}', end: '${match[3]}'`);
           actionFound = true;
           const { checkAvailability } = await import('@/lib/calendar');
-          const res = await checkAvailability(project.id, match[1], match[2], match[3]);
+          const res = await checkAvailability(project.id, match[1], match[2], match[3] || '');
           systemData = `[SYSTEM DATA: CHECK_AVAILABILITY_RESULT]\n${JSON.stringify(res)}`;
         }
       } 
       else if (rawReply.includes('[ACTION: CREATE_BOOKING')) {
-        const match = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?(.*?)["']?\s+start=["']?(.*?)["']?\s+end=["']?(.*?)["']?(?:.*?title=["'](.*?)["'])?(?:.*?description=["'](.*?)["'])?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?(.*?)["']?\s+start=["']?(.*?)["']?(?:\s+end=["']?(.*?)["']?)?(?:.*?title=["'](.*?)["'])?(?:.*?description=["'](.*?)["'])?.*?\]/i);
+        console.log(`[DEBUG CALENDAR] AI rawReply action: CREATE_BOOKING. Match found: ${!!match}`);
         if (match) {
+          console.log(`[DEBUG CALENDAR] Extracted - date: '${match[1]}', start: '${match[2]}', end: '${match[3]}'`);
           actionFound = true;
           const { createEvent } = await import('@/lib/calendar');
           
@@ -235,7 +239,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
           let description = (project as any).calendarConfig?.eventDescription || '';
           description = description.replace(/\{\{(.*?)\}\}/g, (m: any, key: any) => match[5] || clientName || 'Agendado via bot');
 
-          const res = await createEvent(project.id, match[1], match[2], match[3], title, description);
+          const res = await createEvent(project.id, match[1], match[2], match[3] || '', title, description);
           
           if (res.success && res.event_id) {
             // Track in UserBooking so we can update/cancel it later
@@ -277,7 +281,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
           let eventId = match[1];
           const date = match[2];
           const start = match[3];
-          const end = match[4];
+          const end = match[4] || '';
           
           const phone = metadata?.phone || 'unknown';
           if (eventId === 'latest' && phone !== 'unknown') {
