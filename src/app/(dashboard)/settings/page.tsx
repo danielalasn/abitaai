@@ -1176,6 +1176,7 @@ export default function SettingsPage() {
                     <CalendarConfigPanel 
                       isOpen={showCalendarConfig && gcalConnected}
                       onClose={() => setShowCalendarConfig(false)}
+                      projectId={projectId || undefined}
                     />
                   </div>
                 )}

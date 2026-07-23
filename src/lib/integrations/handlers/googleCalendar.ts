@@ -1,4 +1,5 @@
 import { nango } from '../nangoClient';
+import { prisma } from '../../prisma';
 import type { IntegrationHandler, IntegrationResult } from './baseHandler';
 
 const PROVIDER_CONFIG_KEY = 'google-calendar';
@@ -22,13 +23,25 @@ export class GoogleCalendarHandler implements IntegrationHandler {
     payload: Record<string, unknown>,
     connectionId: string
   ): Promise<IntegrationResult> {
+    // Resolve selected calendars from config (fallback to 'primary')
+    const projectId = payload.projectId as string | undefined;
+    let calendarIds: string[] = ['primary'];
+    if (projectId) {
+      try {
+        const config = await prisma.calendarConfig.findUnique({ where: { projectId } });
+        if (config?.selectedCalendarIds?.length) {
+          calendarIds = config.selectedCalendarIds;
+        }
+      } catch { /* ignore — use primary */ }
+    }
+
     switch (action) {
       case 'CHECK_AVAILABILITY':
-        return this.checkAvailability(payload, connectionId);
+        return this.checkAvailability(payload, connectionId, calendarIds);
       case 'CREATE_BOOKING':
-        return this.createBooking(payload, connectionId);
+        return this.createBooking(payload, connectionId, calendarIds[0]);
       case 'CANCEL_BOOKING':
-        return this.cancelBooking(payload, connectionId);
+        return this.cancelBooking(payload, connectionId, calendarIds[0]);
       default:
         return { success: false, error: `Acción no reconocida: ${action}` };
     }
@@ -40,7 +53,8 @@ export class GoogleCalendarHandler implements IntegrationHandler {
    */
   private async checkAvailability(
     payload: Record<string, unknown>,
-    connectionId: string
+    connectionId: string,
+    calendarIds: string[] = ['primary']
   ): Promise<IntegrationResult> {
     const date = payload.date as string;
     const timeZone = (payload.timeZone as string) || 'America/Mexico_City';
@@ -51,23 +65,26 @@ export class GoogleCalendarHandler implements IntegrationHandler {
     const dayEnd = new Date(`${date}T23:59:59`).toISOString();
 
     try {
-      const response = await nango.get({
-        providerConfigKey: PROVIDER_CONFIG_KEY,
-        connectionId,
-        baseUrlOverride: 'https://www.googleapis.com',
-        endpoint: `/calendar/v3/calendars/primary/events`,
-        params: {
-          timeMin: dayStart,
-          timeMax: dayEnd,
-          singleEvents: 'true',
-          orderBy: 'startTime',
-          timeZone,
-        },
-      });
+      // Query all selected calendars in parallel
+      const results = await Promise.all(calendarIds.map(calId =>
+        nango.get({
+          providerConfigKey: PROVIDER_CONFIG_KEY,
+          connectionId,
+          baseUrlOverride: 'https://www.googleapis.com',
+          endpoint: `/calendar/v3/calendars/${encodeURIComponent(calId)}/events`,
+          params: {
+            timeMin: dayStart,
+            timeMax: dayEnd,
+            singleEvents: 'true',
+            orderBy: 'startTime',
+            timeZone,
+          },
+        })
+      ));
 
-      const events: CalendarEvent[] = (response.data?.items || []).filter(
-        (e: CalendarEvent) => e.status !== 'cancelled'
-      );
+      const events: CalendarEvent[] = results
+        .flatMap(r => r.data?.items || [])
+        .filter((e: CalendarEvent) => e.status !== 'cancelled');
 
       const busySlots = events.map((e) => ({
         summary: e.summary || 'Ocupado',
@@ -100,7 +117,8 @@ export class GoogleCalendarHandler implements IntegrationHandler {
    */
   private async createBooking(
     payload: Record<string, unknown>,
-    connectionId: string
+    connectionId: string,
+    calendarId: string = 'primary'
   ): Promise<IntegrationResult> {
     const { date, startTime, endTime, summary, description, attendeeEmail } = payload as {
       date: string;
@@ -130,7 +148,7 @@ export class GoogleCalendarHandler implements IntegrationHandler {
         providerConfigKey: PROVIDER_CONFIG_KEY,
         connectionId,
         baseUrlOverride: 'https://www.googleapis.com',
-        endpoint: '/calendar/v3/calendars/primary/events',
+        endpoint: `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
         data: eventBody,
       });
 
@@ -157,7 +175,8 @@ export class GoogleCalendarHandler implements IntegrationHandler {
    */
   private async cancelBooking(
     payload: Record<string, unknown>,
-    connectionId: string
+    connectionId: string,
+    calendarId: string = 'primary'
   ): Promise<IntegrationResult> {
     const eventId = payload.eventId as string;
     if (!eventId) return { success: false, error: 'Se requiere el campo "eventId"' };
@@ -167,7 +186,7 @@ export class GoogleCalendarHandler implements IntegrationHandler {
         providerConfigKey: PROVIDER_CONFIG_KEY,
         connectionId,
         baseUrlOverride: 'https://www.googleapis.com',
-        endpoint: `/calendar/v3/calendars/primary/events/${eventId}`,
+        endpoint: `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
       });
 
       return {

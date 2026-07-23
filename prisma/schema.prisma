@@ -283,6 +283,7 @@ model NangoConnection {
 model CalendarConfig {
   id                  String   @id @default(cuid())
   projectId           String   @unique
+  selectedCalendarIds String[] @default([])          // IDs de calendarios seleccionados (vacío = primary)
   fieldsToCollect     String[] @default([])  // ej: ["nombre_cliente", "tipo_servicio"]
   eventTitle          String   @default("Cita / Reserva - {{nombre_cliente}}")
   eventDescription    String   @default("Cliente: {{nombre_cliente}}\nAgendado via Abita AI.")

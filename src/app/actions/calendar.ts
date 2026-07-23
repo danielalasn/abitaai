@@ -16,6 +16,7 @@ export async function getCalendarConfig() {
 }
 
 export async function saveCalendarConfig(
+  selectedCalendarIds: string[],
   fieldsToCollect: string[],
   eventTitle: string,
   eventDescription: string,
@@ -28,6 +29,7 @@ export async function saveCalendarConfig(
   const config = await prisma.calendarConfig.upsert({
     where: { projectId: project.id },
     update: {
+      selectedCalendarIds,
       fieldsToCollect,
       eventTitle,
       eventDescription,
@@ -36,6 +38,7 @@ export async function saveCalendarConfig(
     },
     create: {
       projectId: project.id,
+      selectedCalendarIds,
       fieldsToCollect,
       eventTitle,
       eventDescription,
@@ -47,3 +50,4 @@ export async function saveCalendarConfig(
   revalidatePath('/settings');
   return { success: true, config };
 }
+
