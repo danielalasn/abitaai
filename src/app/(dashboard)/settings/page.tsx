@@ -8,7 +8,7 @@ import {
   Save, Bot, BookOpen, Fingerprint, Loader2, HelpCircle, Code, Sparkles,
   CheckCircle2, Flame, Plus, Trash2, MessageSquare, ShieldCheck, ShieldX,
   Wifi, ChevronRight, Power, X, FileText, PanelLeftClose, PanelLeftOpen,
-  Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle
+  Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle
 } from 'lucide-react'
 import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
@@ -82,7 +82,7 @@ export default function SettingsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   // Profile management
-  const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'connections' | 'botConfig'>(isAdmin ? 'agent' : 'profile')
+  const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'connections' | 'botConfig' | 'tools'>(isAdmin ? 'agent' : 'profile')
   const [userName, setUserName] = useState("")
   const [userEmail, setUserEmail] = useState("")
   const [oldPassword, setOldPassword] = useState("")
@@ -598,6 +598,12 @@ export default function SettingsPage() {
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'connections' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
               >
                 <Globe size={18} /> Conexiones
+              </button>
+              <button
+                onClick={() => { setActiveSection('tools'); setSelectedAgentId(null); }}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'tools' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
+              >
+                <Puzzle size={18} /> Herramientas
               </button>
               <button
                 onClick={() => { setActiveSection('botConfig'); setSelectedAgentId(null); }}
@@ -1142,28 +1148,41 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* ─── Sección: Herramientas Externas ─── */}
-                <div>
-                  <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-[0.2em] mb-3 px-1">Herramientas Externas</p>
-                  {projectId && (
-                    <div className="flex flex-col gap-4">
-                      <GoogleCalendarConnect
-                        projectId={projectId}
-                        isConnected={gcalConnected}
-                        onStatusChange={(connected) => setGcalConnected(connected)}
-                        onOpenConfig={() => setShowCalendarConfig(true)}
-                      />
-                      <CalendarConfigPanel 
-                        isOpen={showCalendarConfig && gcalConnected}
-                        onClose={() => setShowCalendarConfig(false)}
-                      />
-                    </div>
-                  )}
-                </div>
+
               </div>
             </div>
           )}
           
+          {/* TOOLS SECTION */}
+          {activeSection === 'tools' && (
+            <div className="h-full flex flex-col p-6 lg:p-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <header className="mb-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
+                  <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Integraciones</span>
+                </div>
+                <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Herramientas</h2>
+              </header>
+
+              <div className="space-y-6 max-w-md mx-auto w-full">
+                {projectId && (
+                  <div className="flex flex-col gap-4">
+                    <GoogleCalendarConnect
+                      projectId={projectId}
+                      isConnected={gcalConnected}
+                      onStatusChange={(connected) => setGcalConnected(connected)}
+                      onOpenConfig={() => setShowCalendarConfig(true)}
+                    />
+                    <CalendarConfigPanel 
+                      isOpen={showCalendarConfig && gcalConnected}
+                      onClose={() => setShowCalendarConfig(false)}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* AGENT CONFIG SECTION (ADMIN ONLY) */}
           {isAdmin && activeSection === 'agent' && selectedAgent ? (
             <div className="flex-1 overflow-auto">

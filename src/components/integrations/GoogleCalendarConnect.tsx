@@ -59,9 +59,10 @@ export default function GoogleCalendarConnect({
         const onMessage = (event: MessageEvent) => {
           if (!event.origin.includes('nango.dev') && !event.origin.includes('localhost')) return;
           console.log('[Nango Popup Message]:', event.data);
-          if (event.data?.eventType === 'AUTHORIZATION_SUCEEDED' || 
-              event.data?.type === 'success' ||
-              event.data?.status === 'success') {
+          const type = event.data?.type || event.data?.eventType || '';
+          const status = event.data?.status || '';
+          
+          if (type === 'AUTHORIZATION_SUCCEEDED' || type === 'success' || status === 'success') {
             window.removeEventListener('message', onMessage);
             popup.close();
             resolve();
