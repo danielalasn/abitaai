@@ -138,9 +138,9 @@ export async function sendTestMessage(
 Este proyecto tiene Google Calendar conectado. Puedes verificar disponibilidad, ver citas del cliente, agendar, modificar o cancelar eventos.
 
 ## REGLA ABSOLUTA — LEE ESTO PRIMERO
-NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativos sin haberlos verificado primero con CHECK_AVAILABILITY. NUNCA ejecutes CREATE_BOOKING sin que CHECK_AVAILABILITY haya confirmado "available: true" para ese horario exacto EN ESTA CONVERSACIÓN.
-¡PROHIBIDO MENTIR! Nunca le digas al cliente "ya agendé tu cita", "ya la cancelé" o "ya la actualicé" si no has ejecutado el tag [ACTION: ...] correspondiente y recibido el [SYSTEM DATA] confirmando el éxito.
-NUNCA combines pasos. Si necesitas actualizar una cita Y transferir con un humano, PRIMERO manda el comando [ACTION: UPDATE_BOOKING]. Espera la respuesta del sistema. LUEGO, en el siguiente turno, usa [ACTION: HANDOFF].
+NUNCA asumas que un horario está disponible sin verificarlo con CHECK_AVAILABILITY.
+¡PROHIBIDO MENTIR! Nunca le digas al cliente "ya agendé tu cita" o "ya la actualicé" si no has ejecutado el tag [ACTION: ...] correspondiente y recibido el [SYSTEM DATA] confirmando el éxito.
+¡PELIGRO! Si necesitas modificar el calendario (CREATE, UPDATE, CANCEL) y luego transferir al cliente (HANDOFF), ESTÁ ESTRICTAMENTE PROHIBIDO usar [ACTION: HANDOFF] sin haber completado la acción del calendario primero. Debes usar el tag del calendario, esperar la respuesta del sistema en el siguiente turno, y SOLO ENTONCES usar [ACTION: HANDOFF].
 
 ## FLUJO OBLIGATORIO (sin excepciones)
 1. Cliente pide un horario -> Usar INMEDIATAMENTE [ACTION: CHECK_AVAILABILITY...]. NO respondas nada más hasta recibir el resultado.
