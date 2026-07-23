@@ -215,7 +215,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
       let systemData = '';
 
       if (rawReply.includes('[ACTION: CHECK_AVAILABILITY')) {
-        const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["']?(.*?)["']?\s+start=["']?(.*?)["']?(?:\s+end=["']?(.*?)["']?)?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?.*?\]/i);
         console.log(`[DEBUG CALENDAR] AI rawReply action: CHECK_AVAILABILITY. Match found: ${!!match}`);
         if (match) {
           console.log(`[DEBUG CALENDAR] Extracted - date: '${match[1]}', start: '${match[2]}', end: '${match[3]}'`);
@@ -226,7 +226,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
         }
       } 
       else if (rawReply.includes('[ACTION: CREATE_BOOKING')) {
-        const match = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?(.*?)["']?\s+start=["']?(.*?)["']?(?:\s+end=["']?(.*?)["']?)?(?:.*?title=["'](.*?)["'])?(?:.*?description=["'](.*?)["'])?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?(?:.*?title=["']([^"']*)["'])?(?:.*?description=["']([^"']*)["'])?.*?\]/i);
         console.log(`[DEBUG CALENDAR] AI rawReply action: CREATE_BOOKING. Match found: ${!!match}`);
         if (match) {
           console.log(`[DEBUG CALENDAR] Extracted - date: '${match[1]}', start: '${match[2]}', end: '${match[3]}'`);
@@ -275,7 +275,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
         }
       }
       else if (rawReply.includes('[ACTION: UPDATE_BOOKING')) {
-        const match = rawReply.match(/\[ACTION:\s*UPDATE_BOOKING\s+event_id=["']?(.*?)["']?\s+date=["']?(.*?)["']?\s+start=["']?(.*?)["']?\s+end=["']?(.*?)["']?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*UPDATE_BOOKING\s+event_id=["']?([^"'\]]+)["']?\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?.*?\]/i);
         if (match) {
           actionFound = true;
           let eventId = match[1];
@@ -310,7 +310,7 @@ NUNCA asumas que un horario está disponible. NUNCA sugieras horarios alternativ
         }
       }
       else if (rawReply.includes('[ACTION: CANCEL_BOOKING')) {
-        const match = rawReply.match(/\[ACTION:\s*CANCEL_BOOKING\s+event_id=["']?(.*?)["']?.*?\]/i);
+        const match = rawReply.match(/\[ACTION:\s*CANCEL_BOOKING\s+event_id=["']?([^"'\]]+)["']?.*?\]/i);
         if (match) {
           actionFound = true;
           let eventId = match[1];
