@@ -48,7 +48,25 @@ async function _getAccessToken(connectionId: string, provider = 'google-calendar
 
 function _toRFC3339(dateStr: string, timeStr: string): string {
   // Ej: 2024-05-15 15:00 en America/El_Salvador
-  const dateTimeStr = `${dateStr}T${timeStr}:00`;
+  // Limpieza robusta por si la IA envía "3:00 PM" o "3 pm" en lugar de "15:00"
+  let cleanTime = timeStr.trim().toLowerCase();
+  let hours = 0;
+  let minutes = 0;
+  
+  const match = cleanTime.match(/(\d+)(?::(\d+))?\s*(am|pm)?/);
+  if (match) {
+    hours = parseInt(match[1], 10);
+    minutes = match[2] ? parseInt(match[2], 10) : 0;
+    const ampm = match[3];
+    
+    if (ampm === 'pm' && hours < 12) hours += 12;
+    if (ampm === 'am' && hours === 12) hours = 0;
+  }
+  
+  const hh = hours.toString().padStart(2, '0');
+  const mm = minutes.toString().padStart(2, '0');
+  
+  const dateTimeStr = `${dateStr}T${hh}:${mm}:00`;
   const dateObj = new Date(`${dateTimeStr}-06:00`); // Hardcoded -6 para SLV
   return dateObj.toISOString();
 }
