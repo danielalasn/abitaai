@@ -511,12 +511,17 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
 
     // 2. Enviar mensaje REAL a WhatsApp vía Meta API
     const phone = chat.lead.phone;
-    const phoneId = chat.lead.project?.whatsappPhoneId;
-    const token = chat.lead.project?.whatsappToken;
+    // Aplicar misma lógica que el worker: si el proyecto usa el WABA de Abita, usar SYSTEM_USER_TOKEN
+    const resolvedProject = resolveProjectCredentials(chat.lead.project as any);
+    const phoneId = resolvedProject?.whatsappPhoneId;
+    const token = resolvedProject?.whatsappToken;
 
     const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+    console.log(`[Manual Agent Text] Sending to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
+    
     if (phone && phoneId && resolvedToken) {
         const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
+        console.log(`[Manual Agent Text] Result:`, result);
         waSendSuccess = result.success;
         waCategory = result.category;
         wamid = result.messageId;
@@ -544,7 +549,15 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
 
   // Guardar en BD local — el mensaje se guarda siempre para que quede en el historial
   await prisma.message.create({
-    data: { chatId, role: 'agent', content: text, waCategory, wamid }
+    data: { 
+      chatId, 
+      role: 'agent', 
+      content: text, 
+      waCategory, 
+      wamid,
+      status: waSendSuccess ? "SENT" : "ERROR",
+      sendError: waSendError || null
+    }
   });
 
   try { revalidatePath('/') } catch (e) {};
@@ -582,14 +595,19 @@ export async function sendAgentMedia(
     });
 
     const phone = chat.lead.phone;
-    const phoneId = chat.lead.project?.whatsappPhoneId;
-    const token = chat.lead.project?.whatsappToken;
+    // Aplicar misma lógica que el worker: si el proyecto usa el WABA de Abita, usar SYSTEM_USER_TOKEN
+    const resolvedProject = resolveProjectCredentials(chat.lead.project as any);
+    const phoneId = resolvedProject?.whatsappPhoneId;
+    const token = resolvedProject?.whatsappToken;
 
     const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+    console.log(`[Manual Agent Media] Sending media to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
+    
     if (phone && phoneId && resolvedToken) {
       const result = await sendWhatsAppMedia(
         phone, mediaUrl, mediaType, phoneId, resolvedToken, caption, filename
       );
+      console.log(`[Manual Agent Media] Result:`, result);
       waSendSuccess = result.success;
       waCategory = result.category;
       wamid = result.messageId;
@@ -621,7 +639,9 @@ export async function sendAgentMedia(
       mediaFilename: filename,
       mediaType,
       waCategory,
-      wamid
+      wamid,
+      status: waSendSuccess ? "SENT" : "ERROR",
+      sendError: waSendError || null
     }
   });
 

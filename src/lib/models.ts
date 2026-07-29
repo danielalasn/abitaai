@@ -4,7 +4,7 @@
  */
 export const AI_MODELS = {
   // Modelo principal (Claude)
-  CLAUDE_MAIN: 'claude-sonnet-4-5-20250929',
+  CLAUDE_MAIN: 'claude-sonnet-5',
   
   // Modelo para resúmenes automáticos (Claude)
   CLAUDE_SUMMARY: 'claude-haiku-4-5',
