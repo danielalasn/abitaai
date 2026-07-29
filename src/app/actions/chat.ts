@@ -233,7 +233,10 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
       currentInputTokens += response.usage?.input_tokens || 0;
       currentOutputTokens += response.usage?.output_tokens || 0;
 
-      rawReply = response.content[0].type === 'text' ? response.content[0].text : "";
+      rawReply = response.content
+        .filter((c: any) => c.type === 'text')
+        .map((c: any) => c.text)
+        .join('\n');
       
       // Solo entrar al loop de acciones si hay calendario Y hay un ACTION tag
       if (!hasCalendar || !rawReply.includes('[ACTION: ')) {
