@@ -126,13 +126,14 @@ export async function sendTestMessage(
   if (hasCalendar) {
     const calConfig = (project as any).calendarConfig || {
       durationMinutes: 60,
-      fieldsToCollect: [],
+      fieldsToCollect: ['nombre_cliente'],
       eventTitle: 'Cita - {{nombre_cliente}}',
       eventDescription: 'Agendado vía IA',
       confirmationMessage: '¡Listo! Su cita ha sido agendada.'
     };
     
-    const requiredFields = calConfig?.fieldsToCollect?.length > 0 ? calConfig.fieldsToCollect.join(', ') : 'Ninguno';
+    const finalFields = calConfig?.fieldsToCollect?.length > 0 ? calConfig.fieldsToCollect : ['nombre_cliente'];
+    const requiredFields = finalFields.join(', ');
     
     // Compute example end time for the prompt
     const exampleEndH = Math.floor((15 * 60 + calConfig.durationMinutes) / 60);
@@ -168,6 +169,7 @@ CÁLCULO DE TIEMPO OBLIGATORIO:
 
 DATOS REQUERIDOS antes de CREATE_BOOKING: [ ${requiredFields} ]
 Para CREATE_BOOKING, incluye cada dato recopilado como parámetro en el ACTION tag (ej: nombre_cliente="Daniel" tipo_servicio="Corte"). El sistema los usará para armar el evento en el calendario.
+NOTA: Si ya conoces alguno de los datos requeridos (ej. por el historial o contexto), úsalo directamente sin volver a preguntarlo.
 
 ACTIONS DISPONIBLES:
 [ACTION: CHECK_AVAILABILITY date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]

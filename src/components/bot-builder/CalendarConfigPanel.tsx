@@ -31,7 +31,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Config state
-  const [fieldsToCollect, setFieldsToCollect] = useState<string[]>([]);
+  const [fieldsToCollect, setFieldsToCollect] = useState<string[]>(['nombre_cliente']);
   const [newField, setNewField] = useState('');
   const [eventTitle, setEventTitle] = useState('Cita / Reserva - {{nombre_cliente}}');
   const [eventDescription, setEventDescription] = useState('Cliente: {{nombre_cliente}}\\nAgendado via Abita AI.');
@@ -62,7 +62,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
         const config = await getCalendarConfig();
         if (config) {
           setSelectedCalendarIds(config.selectedCalendarIds || []);
-          setFieldsToCollect(config.fieldsToCollect || []);
+          setFieldsToCollect(config.fieldsToCollect?.length > 0 ? config.fieldsToCollect : ['nombre_cliente']);
           setEventTitle(config.eventTitle);
           setEventDescription(config.eventDescription);
           setDurationMinutes(config.durationMinutes);
@@ -97,7 +97,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
     if (isOpen && projectId) {
       fetchCalendars();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, projectId]);
 
   // Close dropdown on outside click
@@ -166,7 +166,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-[#1A1714] w-full max-w-2xl max-h-[80vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
-        
+
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -291,19 +291,19 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
 
           {/* Fields to Collect */}
           <div className="flex flex-col gap-3">
-            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Datos a pedir al cliente</label>
+            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Datos a pedir al cliente (Variables)</label>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              La IA preguntará estos datos antes de agendar la cita. Escribe el nombre de la variable (ej: nombre_cliente, motivo).
+              La IA se asegurará de preguntar estos datos antes de poder agendar la cita. Crea aquí las variables (ej: nombre_cliente, motivo_consulta). Luego podrás usar estas variables en el título y descripción del evento. "nombre_cliente" es obligatorio por defecto.
             </p>
             <div className="flex gap-2">
-              <input 
+              <input
                 value={newField}
                 onChange={e => setNewField(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddField()}
-                placeholder="ej: nombre_completo"
+                placeholder="ej: nombre_cliente"
                 className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
               />
-              <button 
+              <button
                 onClick={handleAddField}
                 className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 rounded-xl hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
               >
@@ -324,8 +324,11 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
 
           {/* Duración */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Duración por cita (minutos)</label>
-            <input 
+            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Duración de la cita (minutos)</label>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              ¿Cuánto tiempo bloqueamos en el calendario para cada cita agendada por la IA?
+            </p>
+            <input
               type="number"
               value={durationMinutes}
               onChange={e => setDurationMinutes(e.target.value === '' ? '' : parseInt(e.target.value) || 60)}
@@ -335,10 +338,12 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
 
           {/* Título del evento */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Título del evento en Calendar</label>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Puedes usar las variables entre doble llave (ej: {'{{nombre_completo}}'})</p>
+            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Título del evento en tu Google Calendar</label>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Así aparecerá el evento bloqueado en tu calendario de Google. Haz clic en las variables anaranjadas para insertarlas (ej: "Cita con {'{{nombre_cliente}}'}").
+            </p>
             <VariableToolbar onInsert={(val) => setEventTitle(prev => prev + val)} />
-            <input 
+            <input
               type="text"
               value={eventTitle}
               onChange={e => setEventTitle(e.target.value)}
@@ -348,10 +353,12 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
 
           {/* Descripción del evento */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Descripción del evento</label>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Puedes usar las variables. Se guardará en la descripción de Google Calendar.</p>
+            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Descripción interna del evento</label>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Esta es la información que se guardará dentro de la descripción del evento en tu Google Calendar. Útil para guardar el {'{{motivo_consulta}}'} u otros datos del cliente.
+            </p>
             <VariableToolbar onInsert={(val) => setEventDescription(prev => prev + val)} />
-            <textarea 
+            <textarea
               value={eventDescription}
               onChange={e => setEventDescription(e.target.value)}
               rows={3}
@@ -361,10 +368,12 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
 
           {/* Confirmation Message */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Mensaje de confirmación (WhatsApp)</label>
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Mensaje que el bot dirá al finalizar de agendar. Variables: {'{{fecha}}'}, {'{{hora_inicio}}'}, {'{{hora_fin}}'}</p>
+            <label className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Respuesta final de la IA (Confirmación)</label>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Este es el mensaje exacto que enviará la IA por WhatsApp al cliente justo después de haber guardado la cita exitosamente.
+            </p>
             <VariableToolbar onInsert={(val) => setConfirmationMessage(prev => prev + val)} />
-            <textarea 
+            <textarea
               value={confirmationMessage}
               onChange={e => setConfirmationMessage(e.target.value)}
               rows={2}
@@ -374,7 +383,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
 
           {/* Save Button */}
           <div className="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800/40">
-            <button 
+            <button
               onClick={handleSave}
               disabled={isSaving}
               className="px-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-md hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"

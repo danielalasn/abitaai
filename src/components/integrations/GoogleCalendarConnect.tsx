@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Nango from '@nangohq/frontend';
+import CalendarEventsModal from './CalendarEventsModal';
 
 interface GoogleCalendarConnectProps {
   projectId: string;
@@ -25,6 +26,7 @@ export default function GoogleCalendarConnect({
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(isConnected);
   const [error, setError] = useState<string | null>(null);
+  const [isEventsModalOpen, setIsEventsModalOpen] = useState(false);
 
   const handleConnect = async () => {
     setLoading(true);
@@ -139,8 +141,9 @@ export default function GoogleCalendarConnect({
   };
 
   return (
-    <div
-      className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-blue-500/40 ${
+    <>
+      <div
+        className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-blue-500/40 ${
         connected
           ? 'border-blue-500/20 ring-1 ring-blue-500/20'
           : 'border-[#DEDAD0] dark:border-zinc-800'
@@ -148,7 +151,15 @@ export default function GoogleCalendarConnect({
     >
       <div className="mb-6 relative">
         <div className="absolute inset-0 bg-blue-500 rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
-        <div className="relative h-16 w-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center shadow-sm group-hover:-rotate-3 transition-transform duration-500">
+        <button 
+          type="button"
+          onClick={() => connected && setIsEventsModalOpen(true)}
+          disabled={!connected}
+          title={connected ? "Ver eventos del calendario" : ""}
+          className={`relative h-16 w-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-500 ${
+            connected ? 'cursor-pointer hover:bg-blue-500/20 hover:scale-105 active:scale-95 group-hover:-rotate-3' : 'cursor-default'
+          }`}
+        >
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
             <rect x="3" y="4" width="18" height="17" rx="2" fill="#fff" stroke="#dadce0" strokeWidth="1.5" />
             <rect x="3" y="7" width="18" height="3" fill="#4285f4" />
@@ -158,19 +169,11 @@ export default function GoogleCalendarConnect({
             <rect x="11" y="13" width="3" height="3" rx="0.5" fill="#34a853" />
             <rect x="15" y="13" width="3" height="3" rx="0.5" fill="#fbbc04" />
           </svg>
-        </div>
+        </button>
         {connected && (
           <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
         )}
-        {connected && onOpenConfig && (
-          <button 
-            onClick={onOpenConfig}
-            className="absolute -top-3 -left-3 p-2 bg-white dark:bg-zinc-800 rounded-full border border-zinc-200 dark:border-zinc-700 shadow-md text-zinc-500 hover:text-blue-500 transition-colors z-10"
-            title="Configurar Calendario"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        )}
+
       </div>
 
       <h3 className="text-2xl font-black text-zinc-900 dark:text-[#EDE9E0] tracking-tight mb-2">
@@ -218,5 +221,12 @@ export default function GoogleCalendarConnect({
         )}
       </div>
     </div>
+
+      <CalendarEventsModal
+        isOpen={isEventsModalOpen}
+        onClose={() => setIsEventsModalOpen(false)}
+        projectId={projectId}
+      />
+    </>
   );
 }
