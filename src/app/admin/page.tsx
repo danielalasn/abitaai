@@ -191,8 +191,8 @@ export default function AdminPage() {
     }
   }, [status, session, router]);
 
-  const loadClients = async () => {
-    setIsLoading(true);
+  const loadClients = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const [data, groups, stats] = await Promise.all([
         getClients(),
@@ -203,7 +203,7 @@ export default function AdminPage() {
       setAvailableGroups(groups);
       setGlobalStats(stats);
     } catch (err) { console.error('Error fetching clients or groups', err) }
-    setIsLoading(false);
+    if (!silent) setIsLoading(false);
   };
 
   const loadMasterConfig = async () => {
@@ -422,8 +422,9 @@ export default function AdminPage() {
         leadScoringRules: JSON.stringify(scoringRulesList) // Save list as JSON string
       };
       await updateBotConfig(project.id, configToSave);
+      setSelectedClient(null);
       alert('Configuración guardada exitosamente');
-      loadClients();
+      loadClients(true);
     } catch (err: any) {
       alert('Error al guardar: ' + err.message);
     } finally {
@@ -443,12 +444,9 @@ export default function AdminPage() {
         subscriptionStatus: editSubscriptionStatus,
         subscriptionEndsAt: editSubscriptionEndsAt ? new Date(editSubscriptionEndsAt) : null
       });
+      setSelectedClient(null);
       alert('Usuario actualizado');
-      const updatedList = await getClients();
-      setClients(updatedList);
-      // Actualizar el selectedClient
-      const updatedClient = updatedList.find(c => c.id === selectedClient.id);
-      setSelectedClient(updatedClient);
+      loadClients(true);
       setEditPassword('');
     } catch (err: any) {
       alert('Error al actualizar usuario: ' + err.message);
