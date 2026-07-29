@@ -95,6 +95,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
     if (!activeCalendarId || !isOpen || !projectId) return;
 
     async function fetchEvents() {
+      if (!activeCalendarId) return;
       try {
         setLoadingEvents(true);
         const monthStr = format(currentDate, 'yyyy-MM');
