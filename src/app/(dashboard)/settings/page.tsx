@@ -15,7 +15,7 @@ import {
   createAgent, deleteAgent, saveAgentConfig, toggleAgent,
   compileKnowledgeWithAI, verifyWhatsappConnection,
   updateUserProfile, updateUserPassword,
-  getNotificationEmails, saveNotificationEmails
+  getNotificationEmails, saveNotificationEmails, disconnectWhatsApp
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
 import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
@@ -398,7 +398,6 @@ export default function SettingsPage() {
         window.removeEventListener('message', sessionInfoListener)
         embeddedSignupInfo = event.data.data || {}
         console.log('[WA Embedded Signup] sessionInfo recibido:', embeddedSignupInfo)
-        // Si el código ya llegó, enviamos de inmediato
         if (loginCode) sendToBackend(loginCode, embeddedSignupInfo)
       }
     }
@@ -408,37 +407,53 @@ export default function SettingsPage() {
       (response: any) => {
         if (response.authResponse) {
           loginCode = response.authResponse.code
-          // Si el sessionInfo ya llegó, enviamos de inmediato.
-          // Si no, esperamos hasta 5s y enviamos con lo que haya.
-          if (embeddedSignupInfo.waba_id) {
-            window.removeEventListener('message', sessionInfoListener)
-            sendToBackend(loginCode!, embeddedSignupInfo)
-          } else {
-            setTimeout(() => {
-              window.removeEventListener('message', sessionInfoListener)
-              if (loginCode) sendToBackend(loginCode!, embeddedSignupInfo)
-            }, 5000)
+          console.log('[WA Embedded Signup] Code obtenido de FB.login:', loginCode)
+
+          const processSignup = () => {
+            if (Object.keys(embeddedSignupInfo).length > 0) {
+              sendToBackend(loginCode!, embeddedSignupInfo)
+            } else {
+              console.log('[WA Embedded Signup] Esperando event sessionInfo...')
+              setTimeout(() => {
+                sendToBackend(loginCode!, embeddedSignupInfo)
+              }, 3000)
+            }
           }
+          processSignup()
         } else {
-          window.removeEventListener('message', sessionInfoListener)
           setWaLoading(false)
-          setWaFeedback('error')
-          setWaErrorMessage('Autenticación cancelada o bloqueada por el navegador.')
+          window.removeEventListener('message', sessionInfoListener)
         }
       },
       {
         config_id: process.env.NEXT_PUBLIC_FB_CONFIG_WHATSAPP,
         response_type: 'code',
         override_default_response_type: true,
-        extras: {
-          setup: {} // Requerido para Embedded Signup
-        }
+        extras: { sessionInfoVersion: '3' }
       }
     )
   }
 
+  const handleDisconnectWhatsApp = async () => {
+    if (!confirm('¿Estás seguro de que deseas desconectar WhatsApp? Se borrarán tus credenciales actuales.')) return;
+    setWaLoading(true);
+    setWaFeedback(null);
+    try {
+      await disconnectWhatsApp();
+      await disconnectIntegration('meta_whatsapp');
+      setWaFeedback('success');
+      loadWaStatus();
+      loadProject();
+    } catch (error) {
+      setWaFeedback('error');
+      setWaErrorMessage('Error al desconectar WhatsApp.');
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
   const handleVerifyWhatsApp = async () => {
-    setIsVerifying(true); setVerifyResult(null); setWaVerifyStatus('idle')
+    if (isVerifying) return;   setIsVerifying(true); setVerifyResult(null); setWaVerifyStatus('idle')
     try {
       const r = await verifyWhatsappConnection(whatsappPhoneId || undefined, whatsappToken || undefined)
       setVerifyResult(r)
@@ -1126,11 +1141,15 @@ export default function SettingsPage() {
                   
                   <div className="mt-auto flex gap-3 w-full">
                     <button 
-                      onClick={handleConnectWhatsApp} 
+                      onClick={waIntegration?.status === 'active' ? handleDisconnectWhatsApp : handleConnectWhatsApp} 
                       disabled={waLoading}
-                      className="flex-1 py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-emerald-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
+                      className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+                        waIntegration?.status === 'active' 
+                          ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20' 
+                          : 'bg-[#111111] dark:bg-[#EDE9E0] dark:text-[#111111] hover:bg-emerald-600 hover:text-white'
+                      }`}
                     >
-                      {waLoading ? <Loader2 size={16} className="animate-spin" /> : waIntegration?.status === 'active' ? 'Reconectar' : 'Conectar'}
+                      {waLoading ? <Loader2 size={16} className="animate-spin" /> : waIntegration?.status === 'active' ? 'Desconectar' : 'Conectar'}
                     </button>
                     <button 
                       onClick={handleVerifyWhatsApp}

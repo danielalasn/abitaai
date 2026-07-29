@@ -410,3 +410,24 @@ export async function saveNotificationEmails(emails: string[]): Promise<{ succes
   revalidatePath('/settings');
   return { success: true };
 }
+
+// ──────────────────────────────────────────────
+// Disconnect WhatsApp
+// ──────────────────────────────────────────────
+
+export async function disconnectWhatsApp(): Promise<{ success: boolean }> {
+  const project = await getCurrentProject();
+  if (!project) throw new Error('Proyecto no encontrado.');
+
+  await prisma.project.update({
+    where: { id: project.id },
+    data: { 
+      whatsappToken: null,
+      whatsappPhoneId: null,
+      whatsappBusinessId: null
+    }
+  });
+
+  revalidatePath('/settings');
+  return { success: true };
+}
