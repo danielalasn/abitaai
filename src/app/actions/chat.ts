@@ -122,15 +122,16 @@ export async function sendTestMessage(
   // Append Calendar Instructions if configured
   let calendarInstructions = '';
   const hasCalendar = (project as any)?.nangoConnections && (project as any).nangoConnections.length > 0;
-  
+  const calConfig = (project as any).calendarConfig || {
+    durationMinutes: 60,
+    fieldsToCollect: ['nombre_cliente'],
+    eventTitle: 'Cita - {{nombre_cliente}}',
+    eventDescription: 'Agendado vía IA',
+    confirmationMessage: '¡Listo! Su cita ha sido agendada.',
+    maxCapacityPerSlot: 1
+  };
+
   if (hasCalendar) {
-    const calConfig = (project as any).calendarConfig || {
-      durationMinutes: 60,
-      fieldsToCollect: ['nombre_cliente'],
-      eventTitle: 'Cita - {{nombre_cliente}}',
-      eventDescription: 'Agendado vía IA',
-      confirmationMessage: '¡Listo! Su cita ha sido agendada.'
-    };
     
     const finalFields = calConfig?.fieldsToCollect?.length > 0 ? calConfig.fieldsToCollect : ['nombre_cliente'];
     const requiredFields = finalFields.join(', ');
@@ -256,7 +257,7 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
           systemData = `[SYSTEM DATA: CHECK_AVAILABILITY_RESULT]\n${JSON.stringify(res)}`;
           console.log(`[Agentic Loop] CHECK_AVAILABILITY date=${match[1]} start=${match[2]} end=${match[3]} → ${JSON.stringify(res)}`);
         }
-      } 
+      }
       else if (rawReply.includes('[ACTION: CREATE_BOOKING')) {
         // Capture date/start/end + ALL extra key=value params dynamically
         const headerMatch = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?([^"'\]\s]+)["']?\s+start=["']?([^"'\]\s]+)["']?(?:\s+end=["']?([^"'\]\s]+)["']?)?/i);
@@ -269,7 +270,7 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
           const extraParams: Record<string, string> = {};
           if (actionTagMatch) {
             const paramStr = actionTagMatch[1];
-            const paramRegex = /([\w_]+)=["']([^"']*)["']/g;
+            const paramRegex = /([\w_]+)=["']([^"']*)['"]/g;
             let pm;
             while ((pm = paramRegex.exec(paramStr)) !== null) {
               const key = pm[1].toLowerCase();
@@ -277,47 +278,113 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
             }
           }
 
-          const { createEvent } = await import('@/lib/calendar');
+          const { createEvent, updateEvent: updateCalEvent } = await import('@/lib/calendar');
+          const phone = metadata?.phone || 'unknown';
+          const maxCap = calConfig?.maxCapacityPerSlot ?? 1;
+          const clientLabel = extraParams['nombre_cliente'] || clientName || 'Cliente';
 
-          // Build title and description replacing {{variable}} with collected params
-          let title = (project as any).calendarConfig?.eventTitle || 'Cita';
-          title = title.replace(/\{\{([^}]+)\}\}/g, (_: string, key: string) => extraParams[key.toLowerCase()] || clientName || 'Cliente');
-          
-          let description = (project as any).calendarConfig?.eventDescription || '';
-          description = description.replace(/\{\{([^}]+)\}\}/g, (_: string, key: string) => extraParams[key.toLowerCase()] || '');
+          let confirmMsg = calConfig?.confirmationMessage || 'Cita agendada exitosamente.';
+          confirmMsg = confirmMsg
+            .replace(/\{\{fecha\}\}/g, bookDate)
+            .replace(/\{\{hora_inicio\}\}/g, bookStart)
+            .replace(/\{\{hora_fin\}\}/g, bookEnd || '');
 
-          const res = await createEvent(project.id, bookDate, bookStart, bookEnd || '', title, description);
-          console.log(`[Agentic Loop] CREATE_BOOKING date=${bookDate} start=${bookStart} end=${bookEnd} → success=${res.success}`);
-          
-          if (res.success && res.event_id) {
-            const phone = metadata?.phone || 'unknown';
+          if (maxCap !== 1) {
+            // ── MULTI-BOOKING MODE ─────────────────────────────────────────────
+            // Check if there's already an event for this slot in our DB
+            const existingSlotBooking = await prisma.userBooking.findFirst({
+              where: { projectId: project.id, date: bookDate, startTime: bookStart }
+            });
+
+            let targetEventId: string;
+
+            if (existingSlotBooking) {
+              // Slot already exists — append new attendee to the description
+              const allBookingsForSlot = await prisma.userBooking.findMany({
+                where: { projectId: project.id, date: bookDate, startTime: bookStart },
+                orderBy: { createdAt: 'asc' }
+              });
+              const allNames = [...allBookingsForSlot.map(b => b.title || 'Asistente'), clientLabel];
+              const baseDesc = (calConfig?.eventDescription || '').replace(/\{\{[^}]+\}\}/g, '').trim();
+              const updatedDesc = (baseDesc ? baseDesc + '\n\n' : '') +
+                `--- Asistentes (${allNames.length}) ---\n` +
+                allNames.map((n, i) => `${i + 1}. ${n}`).join('\n');
+
+              await updateCalEvent(project.id, existingSlotBooking.eventId, bookDate, bookStart, bookEnd || '', undefined, updatedDesc);
+              targetEventId = existingSlotBooking.eventId;
+              console.log(`[Agentic Loop] MULTI CREATE_BOOKING (update) date=${bookDate} start=${bookStart} attendees=${allNames.length}`);
+            } else {
+              // First booking for this slot — create a new event with static title
+              let staticTitle = (calConfig?.eventTitle || 'Reserva')
+                .replace(/\{\{nombre_cliente\}\}/gi, '').replace(/\s{2,}/g, ' ').trim();
+              const baseDesc = (calConfig?.eventDescription || '').replace(/\{\{[^}]+\}\}/g, '').trim();
+              const initialDesc = (baseDesc ? baseDesc + '\n\n' : '') +
+                `--- Asistentes (1) ---\n1. ${clientLabel}`;
+
+              const res = await createEvent(project.id, bookDate, bookStart, bookEnd || '', staticTitle, initialDesc);
+              console.log(`[Agentic Loop] MULTI CREATE_BOOKING (new) date=${bookDate} start=${bookStart} → success=${res.success}`);
+              if (!res.success || !res.event_id) {
+                systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+                actionFound = true;
+                break;
+              }
+              targetEventId = res.event_id;
+            }
+
+            // Always create a UserBooking record per client (title = their name for rebuilding list)
             if (phone !== 'unknown') {
               try {
                 await prisma.userBooking.create({
                   data: {
                     phone,
                     projectId: project.id,
-                    eventId: res.event_id,
+                    eventId: targetEventId,
                     date: bookDate,
                     startTime: bookStart,
                     endTime: bookEnd || '',
-                    title
+                    title: clientLabel
                   }
                 });
               } catch (err) {
-                console.error('[Calendar] Error tracking UserBooking:', err);
+                console.error('[Calendar] Error tracking UserBooking (multi):', err);
               }
             }
 
-            let confirmMsg = (project as any).calendarConfig?.confirmationMessage || 'Cita agendada exitosamente.';
-            confirmMsg = confirmMsg
-              .replace(/\{\{fecha\}\}/g, bookDate)
-              .replace(/\{\{hora_inicio\}\}/g, bookStart)
-              .replace(/\{\{hora_fin\}\}/g, bookEnd || '');
-            
-            systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${res.event_id}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+            systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${targetEventId}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+
           } else {
-            systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+            // ── SINGLE BOOKING MODE (original behavior) ────────────────────────
+            let title = calConfig?.eventTitle || 'Cita';
+            title = title.replace(/\{\{([^}]+)\}\}/g, (_: string, key: string) => extraParams[key.toLowerCase()] || clientName || 'Cliente');
+            
+            let description = calConfig?.eventDescription || '';
+            description = description.replace(/\{\{([^}]+)\}\}/g, (_: string, key: string) => extraParams[key.toLowerCase()] || '');
+
+            const res = await createEvent(project.id, bookDate, bookStart, bookEnd || '', title, description);
+            console.log(`[Agentic Loop] CREATE_BOOKING date=${bookDate} start=${bookStart} end=${bookEnd} → success=${res.success}`);
+            
+            if (res.success && res.event_id) {
+              if (phone !== 'unknown') {
+                try {
+                  await prisma.userBooking.create({
+                    data: {
+                      phone,
+                      projectId: project.id,
+                      eventId: res.event_id,
+                      date: bookDate,
+                      startTime: bookStart,
+                      endTime: bookEnd || '',
+                      title
+                    }
+                  });
+                } catch (err) {
+                  console.error('[Calendar] Error tracking UserBooking:', err);
+                }
+              }
+              systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${res.event_id}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+            } else {
+              systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+            }
           }
         }
       }
@@ -665,7 +732,7 @@ export async function sendSimulatorMessage(
     "Usuario de Prueba",
     projectId,
     agentId,
-    lead.metadata // Pasamos la info previa (habitaciones, presupuesto, etc.)
+    { phone: lead.phone, ...(typeof lead.metadata === 'object' && lead.metadata ? lead.metadata : {}) } // Pasamos la info previa y el teléfono
   );
 
   // 5. Guardar respuesta de la IA (solo si no hubo error)

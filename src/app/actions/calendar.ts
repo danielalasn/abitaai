@@ -21,7 +21,8 @@ export async function saveCalendarConfig(
   eventTitle: string,
   eventDescription: string,
   durationMinutes: number,
-  confirmationMessage: string
+  confirmationMessage: string,
+  maxCapacityPerSlot: number = 1
 ) {
   const project = await getCurrentProject();
   if (!project) throw new Error('Project not found');
@@ -34,7 +35,8 @@ export async function saveCalendarConfig(
       eventTitle,
       eventDescription,
       durationMinutes,
-      confirmationMessage
+      confirmationMessage,
+      maxCapacityPerSlot
     },
     create: {
       projectId: project.id,
@@ -43,11 +45,11 @@ export async function saveCalendarConfig(
       eventTitle,
       eventDescription,
       durationMinutes,
-      confirmationMessage
+      confirmationMessage,
+      maxCapacityPerSlot
     }
   });
 
   revalidatePath('/settings');
   return { success: true, config };
 }
-

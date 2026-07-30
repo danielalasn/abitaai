@@ -106,56 +106,122 @@ function _resolveDate(dateStr: string): string {
 
 export async function checkAvailability(projectId: string, dateStr: string, startTime: string, endTime: string) {
   const resolvedDate = _resolveDate(dateStr);
-  const connectionId = await _getNangoConnectionId(projectId);
-  
-  if (!connectionId) return { available: false, error: 'Google Calendar no está conectado.' };
 
-  const token = await _getAccessToken(connectionId);
-  if (!token) return { available: false, error: 'No se pudo obtener token de Google.' };
+  // --- Import prisma here to avoid circular deps ---
+  const { prisma } = await import('@/lib/prisma');
 
-  const timeMin = _toRFC3339(resolvedDate, startTime);
-  const timeMax = _toRFC3339(resolvedDate, endTime);
+  // Get the CalendarConfig to read maxCapacityPerSlot
+  const calConfig = await prisma.calendarConfig.findUnique({
+    where: { projectId },
+    select: { maxCapacityPerSlot: true }
+  });
+  const maxCapacity = calConfig?.maxCapacityPerSlot ?? 1;
 
-  if (!timeMin || !timeMax) {
+  // ── Mode: Unlimited (0) ──────────────────────────────────────────────────
+  if (maxCapacity === 0) {
+    return {
+      available: true,
+      date: resolvedDate,
+      start: startTime,
+      end: endTime,
+      busy_slots: [],
+      booked_count: null,
+      max_capacity: null,
+      error: null
+    };
+  }
+
+  // ── Mode: Exclusive (1) — use Google FreeBusy (original behavior) ────────
+  if (maxCapacity === 1) {
+    const connectionId = await _getNangoConnectionId(projectId);
+    if (!connectionId) return { available: false, error: 'Google Calendar no está conectado.' };
+
+    const token = await _getAccessToken(connectionId);
+    if (!token) return { available: false, error: 'No se pudo obtener token de Google.' };
+
+    const timeMin = _toRFC3339(resolvedDate, startTime);
+    const timeMax = _toRFC3339(resolvedDate, endTime);
+
+    if (!timeMin || !timeMax) {
+      return { available: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
+    }
+
+    const payload = {
+      timeMin,
+      timeMax,
+      timeZone: TIMEZONE,
+      items: [{ id: 'primary' }]
+    };
+
+    const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      if (errorText.includes('timeRangeEmpty')) {
+        return { available: false, error: 'El parámetro "end" debe ser mayor que "start". Por favor suma la duración de la cita a "start" para calcular "end".' };
+      }
+      return { available: false, error: errorText };
+    }
+
+    const data = await res.json();
+    const busySlots = data.calendars?.primary?.busy || [];
+
+    return {
+      available: busySlots.length === 0,
+      date: resolvedDate,
+      start: startTime,
+      end: endTime,
+      busy_slots: busySlots,
+      booked_count: null,
+      max_capacity: null,
+      error: null
+    };
+  }
+
+  // ── Mode: Capped (N > 1) — count UserBookings in DB for this slot ────────
+  const slotStartRFC = _toRFC3339(resolvedDate, startTime);
+  const slotEndRFC   = _toRFC3339(resolvedDate, endTime);
+
+  if (!slotStartRFC || !slotEndRFC) {
     return { available: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
   }
 
-  const payload = {
-    timeMin,
-    timeMax,
-    timeZone: TIMEZONE,
-    items: [{ id: 'primary' }]
-  };
-
-  const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
+  // Count bookings that overlap with the requested slot:
+  // A booking overlaps if its startTime < slotEnd AND its endTime > slotStart
+  const bookedCount = await prisma.userBooking.count({
+    where: {
+      projectId,
+      date: resolvedDate,
+      AND: [
+        { startTime: { lt: endTime } },
+        { endTime:   { gt: startTime } }
+      ]
+    }
   });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    if (errorText.includes('timeRangeEmpty')) {
-      return { available: false, error: 'El parámetro "end" debe ser mayor que "start". Por favor suma la duración de la cita a "start" para calcular "end".' };
-    }
-    return { available: false, error: errorText };
-  }
-
-  const data = await res.json();
-  const busySlots = data.calendars?.primary?.busy || [];
+  const remaining = maxCapacity - bookedCount;
+  const available = remaining > 0;
 
   return {
-    available: busySlots.length === 0,
+    available,
     date: resolvedDate,
     start: startTime,
     end: endTime,
-    busy_slots: busySlots,
+    booked_count: bookedCount,
+    max_capacity: maxCapacity,
+    spots_remaining: remaining,
+    busy_slots: available ? [] : [{ start: slotStartRFC, end: slotEndRFC }],
     error: null
   };
 }
+
 
 export async function createEvent(
   projectId: string,
@@ -222,7 +288,8 @@ export async function updateEvent(
   dateStr: string,
   startTime: string,
   endTime: string,
-  title?: string
+  title?: string,
+  description?: string
 ) {
   const resolvedDate = _resolveDate(dateStr);
   const connectionId = await _getNangoConnectionId(projectId);
@@ -244,6 +311,7 @@ export async function updateEvent(
     end: { dateTime: endRFC, timeZone: TIMEZONE }
   };
   if (title) payload.summary = title;
+  if (description !== undefined) payload.description = description;
 
   const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
     method: 'PATCH',

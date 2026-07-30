@@ -56,14 +56,14 @@ model Project {
   botAutoWakeHours    Float?               @default(168)
   agents              Agent[]
   botConfig           BotConfig?
-  botTestSuites        BotTestSuite[]
-  campaigns            Campaign[]
-  leads                Lead[]
-  nangoConnections     NangoConnection[]
-  calendarConfig       CalendarConfig?
-  userBookings         UserBooking[]
-  client               Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  unansweredQuestions  UnansweredQuestion[]
+  botTestSuites       BotTestSuite[]
+  calendarConfig      CalendarConfig?
+  campaigns           Campaign[]
+  leads               Lead[]
+  nangoConnections    NangoConnection[]
+  client              Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  unansweredQuestions UnansweredQuestion[]
+  userBookings        UserBooking[]
 }
 
 model BotConfig {
@@ -254,22 +254,13 @@ model BotTestSuite {
   project            Project  @relation(fields: [projectId], references: [id])
 }
 
-enum SubscriptionStatus {
-  ACTIVE
-  INACTIVE
-  BLOCKED
-}
-
-// Almacena la conexión OAuth de Nango por proyecto.
-// Cada proyecto puede tener una conexión por proveedor externo.
-// El connectionId es el identificador único en Nango (= projectId).
 model NangoConnection {
   id                String   @id @default(cuid())
   projectId         String
-  providerConfigKey String   // ej: 'google-calendar', 'hubspot'
-  connectionId      String   // ID real asignado por Nango (UUID)
-  status            String   @default("CONNECTED") // CONNECTED | DISCONNECTED | ERROR
-  metadata          Json?    // Configuración adicional por comercio
+  providerConfigKey String
+  connectionId      String
+  status            String   @default("CONNECTED")
+  metadata          Json?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -278,28 +269,26 @@ model NangoConnection {
   @@index([projectId])
 }
 
-// Configuración del calendario de citas por proyecto.
-// El cliente define qué datos pedir, el formato del evento y la duración.
 model CalendarConfig {
   id                  String   @id @default(cuid())
   projectId           String   @unique
-  selectedCalendarIds String[] @default([])          // IDs de calendarios seleccionados (vacío = primary)
-  fieldsToCollect     String[] @default([])  // ej: ["nombre_cliente", "tipo_servicio"]
+  fieldsToCollect     String[] @default([])
   eventTitle          String   @default("Cita / Reserva - {{nombre_cliente}}")
   eventDescription    String   @default("Cliente: {{nombre_cliente}}\nAgendado via Abita AI.")
   durationMinutes     Int      @default(60)
   confirmationMessage String   @default("¡Listo! Su cita ha sido agendada para el {{fecha}} a las {{hora_inicio}}.")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+  selectedCalendarIds String[] @default([])
+  maxCapacityPerSlot  Int      @default(1)
   project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
-// Seguimiento de citas agendadas por cada lead (para control de propiedad CRUD).
 model UserBooking {
   id        String   @id @default(cuid())
   phone     String
   projectId String
-  eventId   String   @unique  // ID del evento en Google Calendar
+  eventId   String   @unique
   date      String
   startTime String
   endTime   String
@@ -309,4 +298,10 @@ model UserBooking {
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([phone, projectId])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
 }
