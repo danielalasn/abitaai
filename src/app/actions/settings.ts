@@ -244,17 +244,11 @@ export async function compileKnowledgeWithAI(text: string) {
     max_tokens: 8192,
     system: `You are an expert Data Engineer. 
 Your ONLY job is to take the unstructured text provided by the user and convert it into a clean, highly structured JSON object. 
-RETAIN ALL IMPORTANT DETAILS. Do not summarize unless explicitly asked. If there are prices, specific schedules, or nested details, INCLUDE THEM.
+RETAIN ALL IMPORTANT DETAILS. Create logical categories and arrays based on the provided text (for example: "empresa", "horarios", "productos", "servicios", "precios", "reglas", etc.).
+Do not summarize unless explicitly asked. If there are prices, specific schedules, or nested details, INCLUDE THEM in a well-structured way.
 
-CRITICAL CATEGORIES:
-- "proyectos": Array of project objects.
-- "amenidades": ONLY positive features (piscina, gym, etc.).
-- "reglas": Prohibitions, schedules, and restrictions (No AirBnB, no pets, noise limits). NEVER put rules inside "amenidades".
-- "modelos": Pricing and specs of units.
-
-CRITICAL RULE: You MUST use Spanish keys for the JSON (e.g., "proyectos", "modelos", "baños", "precio", "reglas").
-Output ONLY a valid JSON string. Do not include markdown wrappers or explanations.
-`,
+CRITICAL RULE: You MUST use Spanish keys for the JSON.
+Output ONLY a valid JSON string. Do not include markdown wrappers or explanations.`,
     messages: [
       { role: "user", content: text }
     ]
@@ -262,10 +256,20 @@ Output ONLY a valid JSON string. Do not include markdown wrappers or explanation
 
   let rawJson = response.content[0].type === 'text' ? response.content[0].text : "{}";
   
-  // Clean up potential markdown wrappers
-  rawJson = rawJson.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+  // Clean up potential markdown wrappers robustly
+  const jsonMatch = rawJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    rawJson = jsonMatch[1];
+  } else {
+    // Attempt to extract from first { to last }
+    const firstBrace = rawJson.indexOf('{');
+    const lastBrace = rawJson.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      rawJson = rawJson.substring(firstBrace, lastBrace + 1);
+    }
+  }
 
-  return rawJson;
+  return rawJson.trim();
 }
 
 // ──────────────────────────────────────────────
