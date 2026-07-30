@@ -256,7 +256,11 @@ Output ONLY a valid JSON string. Do not include markdown wrappers or explanation
     ]
   });
 
-  let rawJson = response.content[0].type === 'text' ? response.content[0].text : "{}";
+  console.log("[AI KNOWLEDGE COMPILE] Full Anthropic Response:", JSON.stringify(response, null, 2));
+
+  const textBlock = response.content.find(block => block.type === 'text');
+  let rawJson = (textBlock && textBlock.type === 'text') ? textBlock.text : "{}";
+  
   console.log("[AI KNOWLEDGE COMPILE] Raw output:", rawJson);
   
   // Clean up potential markdown wrappers robustly
