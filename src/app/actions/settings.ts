@@ -235,6 +235,8 @@ export async function saveBotConfig(
 export async function compileKnowledgeWithAI(text: string) {
   if (!text.trim()) return "{}";
   
+  console.log("[AI KNOWLEDGE COMPILE] Input text length:", text.length);
+
   const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
   });
@@ -255,6 +257,7 @@ Output ONLY a valid JSON string. Do not include markdown wrappers or explanation
   });
 
   let rawJson = response.content[0].type === 'text' ? response.content[0].text : "{}";
+  console.log("[AI KNOWLEDGE COMPILE] Raw output:", rawJson);
   
   // Clean up potential markdown wrappers robustly
   const jsonMatch = rawJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
@@ -269,7 +272,9 @@ Output ONLY a valid JSON string. Do not include markdown wrappers or explanation
     }
   }
 
-  return rawJson.trim();
+  const result = rawJson.trim();
+  console.log("[AI KNOWLEDGE COMPILE] Final cleaned JSON:", result);
+  return result;
 }
 
 // ──────────────────────────────────────────────
