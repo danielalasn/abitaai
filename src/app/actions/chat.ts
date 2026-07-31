@@ -273,7 +273,7 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
         const headerMatch = rawReply.match(/\[ACTION:\s*CREATE_BOOKING\s+date=["']?([^"'\]\s]+)["']?\s+start=["']?([^"'\]\s]+)["']?(?:\s+end=["']?([^"'\]\s]+)["']?)?/i);
         if (headerMatch) {
           actionFound = true;
-          const [, bookDate, bookStart, bookEnd] = headerMatch;
+          let [, bookDate, bookStart, bookEnd] = headerMatch;
           
           // Extract all key="value" pairs from the full ACTION tag
           const actionTagMatch = rawReply.match(/\[ACTION:\s*CREATE_BOOKING([^\]]+)\]/i);
