@@ -230,7 +230,7 @@ export async function processCampaignLead(
     // 2. Transacción de DB: Upsert Lead + Chat + Message
     const metadataToSave = { ...leadData };
     delete metadataToSave['#'];
-    const nameKey = Object.keys(leadData).find(k => ['nombre', 'name'].includes(k.toLowerCase()));
+    const nameKey = Object.keys(leadData).find(k => ['nombre', 'nombres', 'name', 'names'].includes(k.toLowerCase().trim()));
     const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
 
     const lead = await prisma.lead.upsert({
