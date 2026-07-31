@@ -253,7 +253,17 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
         if (match) {
           actionFound = true;
           const { checkAvailability } = await import('@/lib/calendar');
-          const res = await checkAvailability(project.id, match[1], match[2], match[3] || '');
+          const res: any = await checkAvailability(project.id, match[1], match[2], match[3] || '');
+          
+          if (metadata?.phone && metadata.phone !== 'unknown') {
+            const existing = await prisma.userBooking.findFirst({
+              where: { phone: metadata.phone, projectId: project.id, date: match[1], startTime: match[2] }
+            });
+            if (existing) {
+              res.system_warning = "EL CLIENTE YA TIENE UNA RESERVA CONFIRMADA EN ESTE HORARIO. Solo responde a su última pregunta, no intentes agendarlo de nuevo ni le digas que está lleno.";
+            }
+          }
+
           systemData = `[SYSTEM DATA: CHECK_AVAILABILITY_RESULT]\n${JSON.stringify(res)}`;
           console.log(`[Agentic Loop] CHECK_AVAILABILITY date=${match[1]} start=${match[2]} end=${match[3]} → ${JSON.stringify(res)}`);
         }
