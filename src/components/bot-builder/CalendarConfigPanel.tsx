@@ -457,7 +457,9 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 Así aparecerá el evento bloqueado en tu calendario de Google. Haz clic en las variables anaranjadas para insertarlas.
               </p>
             )}
-            <VariableToolbar vars={titleVars} onInsert={(val) => setEventTitle(prev => prev + val)} />
+            {!isMultiBooking && (
+              <VariableToolbar vars={titleVars} onInsert={(val) => setEventTitle(prev => prev + val)} />
+            )}
             <input
               type="text"
               value={eventTitle}

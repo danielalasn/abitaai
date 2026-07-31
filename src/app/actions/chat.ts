@@ -274,7 +274,11 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
             let pm;
             while ((pm = paramRegex.exec(paramStr)) !== null) {
               const key = pm[1].toLowerCase();
-              if (!['date','start','end'].includes(key)) extraParams[key] = pm[2];
+              if (key === 'end') {
+                bookEnd = pm[2];
+              } else if (!['date','start'].includes(key)) {
+                extraParams[key] = pm[2];
+              }
             }
           }
 
@@ -310,7 +314,7 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
                 `--- Asistentes (${allNames.length}) ---\n` +
                 allNames.map((n, i) => `${i + 1}. ${n}`).join('\n');
 
-              await updateCalEvent(project.id, existingSlotBooking.eventId, bookDate, bookStart, bookEnd || '', undefined, updatedDesc);
+              await updateCalEvent(project.id, existingSlotBooking.eventId, existingSlotBooking.date, existingSlotBooking.startTime, existingSlotBooking.endTime, undefined, updatedDesc);
               targetEventId = existingSlotBooking.eventId;
               console.log(`[Agentic Loop] MULTI CREATE_BOOKING (update) date=${bookDate} start=${bookStart} attendees=${allNames.length}`);
             } else {
