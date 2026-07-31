@@ -288,7 +288,7 @@ model UserBooking {
   id        String   @id @default(cuid())
   phone     String
   projectId String
-  eventId   String   @unique
+  eventId   String
   date      String
   startTime String
   endTime   String

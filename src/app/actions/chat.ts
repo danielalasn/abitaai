@@ -332,6 +332,7 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
             }
 
             // Always create a UserBooking record per client (title = their name for rebuilding list)
+            let dbSuccess = true;
             if (phone !== 'unknown') {
               try {
                 await prisma.userBooking.create({
@@ -347,10 +348,15 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
                 });
               } catch (err) {
                 console.error('[Calendar] Error tracking UserBooking (multi):', err);
+                dbSuccess = false;
               }
             }
 
-            systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${targetEventId}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+            if (dbSuccess) {
+              systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${targetEventId}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+            } else {
+              systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":false, "error":"DB_ERROR", "system_instruction":"REGLA GLOBAL: Hubo un error interno. Dile al cliente que no se pudo completar la reserva y que lo pasarás con un humano, luego haz handoff inmediatamente."}`;
+            }
 
           } else {
             // ── SINGLE BOOKING MODE (original behavior) ────────────────────────
@@ -364,6 +370,7 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
             console.log(`[Agentic Loop] CREATE_BOOKING date=${bookDate} start=${bookStart} end=${bookEnd} → success=${res.success}`);
             
             if (res.success && res.event_id) {
+              let dbSuccess = true;
               if (phone !== 'unknown') {
                 try {
                   await prisma.userBooking.create({
@@ -379,11 +386,16 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
                   });
                 } catch (err) {
                   console.error('[Calendar] Error tracking UserBooking:', err);
+                  dbSuccess = false;
                 }
               }
-              systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${res.event_id}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+              if (dbSuccess) {
+                systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":true, "event_id":"${res.event_id}", "system_message":"Dile al cliente: ${confirmMsg}"}`;
+              } else {
+                systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":false, "error":"DB_ERROR", "system_instruction":"REGLA GLOBAL: Hubo un error interno. Dile al cliente que no se pudo completar la reserva y que lo pasarás con un humano, luego haz handoff inmediatamente."}`;
+              }
             } else {
-              systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+              systemData = `[SYSTEM DATA: CREATE_BOOKING_RESULT]\n{"success":false, "error":${JSON.stringify(res)}, "system_instruction":"REGLA GLOBAL: Hubo un error. Dile al cliente que no se pudo completar la reserva y que lo pasarás con un humano, luego haz handoff inmediatamente."}`;
             }
           }
         }
