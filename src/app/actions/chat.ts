@@ -436,11 +436,48 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
           if (!ownerBooking && phone !== 'unknown') {
             systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":false, "error":"No se encontró esa reserva para este cliente. Solo puedes cancelar tus propias citas."}`;
           } else {
-            const { deleteEvent } = await import('@/lib/calendar');
-            const res = await deleteEvent(project.id, eventId);
-            console.log(`[Agentic Loop] CANCEL_BOOKING eventId=${eventId} → success=${res.success}`);
+            // Count how many attendees are currently in this event
+            const allEventBookings = await prisma.userBooking.findMany({
+              where: { eventId },
+              orderBy: { createdAt: 'asc' }
+            });
+
+            const { deleteEvent, updateEvent } = await import('@/lib/calendar');
+            let res;
+
+            if (allEventBookings.length <= 1) {
+              // Only 1 person (or 0) left: delete the whole event
+              res = await deleteEvent(project.id, eventId);
+              console.log(`[Agentic Loop] CANCEL_BOOKING (Delete Event) eventId=${eventId} → success=${res.success}`);
+            } else {
+              // Group event: remove only this user from DB, update calendar description
+              res = { success: true };
+              console.log(`[Agentic Loop] CANCEL_BOOKING (Group Event) removing phone=${phone} from eventId=${eventId}`);
+              
+              if (phone !== 'unknown' && ownerBooking) {
+                // Determine new attendees list excluding this one
+                const remainingBookings = allEventBookings.filter(b => b.id !== ownerBooking.id);
+                const allNames = remainingBookings.map(b => b.title || 'Asistente');
+                
+                const calConfig = await prisma.calendarConfig.findUnique({ where: { projectId: project.id } });
+                const baseDesc = (calConfig?.eventDescription || '').replace(/\{\{[^}]+\}\}/g, '').trim();
+                const updatedDesc = (baseDesc ? baseDesc + '\n\n' : '') +
+                  `--- Asistentes (${allNames.length}) ---\n` +
+                  allNames.map((n, i) => `${i + 1}. ${n}`).join('\n');
+
+                // Update Google Calendar with the remaining attendees
+                await updateEvent(project.id, eventId, ownerBooking.date, ownerBooking.startTime, ownerBooking.endTime, undefined, updatedDesc);
+              }
+            }
+
             if (res.success) {
-              await prisma.userBooking.deleteMany({ where: { eventId } });
+              // Delete ONLY the specific user's booking
+              if (ownerBooking) {
+                await prisma.userBooking.delete({ where: { id: ownerBooking.id } });
+              } else {
+                // Fallback (for testing with unknown phone where we somehow have the eventId)
+                await prisma.userBooking.deleteMany({ where: { eventId, phone } });
+              }
               systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":true, "system_message":"Cita cancelada exitosamente."}`;
             } else {
               systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n${JSON.stringify(res)}`;
