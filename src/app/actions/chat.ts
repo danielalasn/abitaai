@@ -77,7 +77,8 @@ export async function sendTestMessage(
       inputTokens: 0, 
       outputTokens: 0,
       agentName: "Error",
-      debugPrompt: ""
+      debugPrompt: "",
+      sentFiles: []
     };
   }
 
@@ -184,11 +185,30 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
 </calendar_tools>
 `;
   }
+
+  const botFiles = await prisma.botFile.findMany({
+    where: { projectId: project.id }
+  });
+
+  let filesInstructions = '';
+  if (botFiles.length > 0) {
+    filesInstructions = `
+<archivos_disponibles>
+Tienes los siguientes archivos multimedia / documentos disponibles para enviar al cliente en esta conversación:
+${botFiles.map(f => `- ID: "${f.id}" | Nombre: "${f.name}" | Cuándo enviarlo: "${f.description}"`).join('\n')}
+
+REGLA DE ENVÍO DE ARCHIVOS:
+Cuando decidas que corresponde enviar uno o varios de estos archivos según su instrucción y el contexto de la conversación, incluye en tu respuesta el comando:
+[ACTION: SEND_FILE id="ID_EXACTO_DEL_ARCHIVO"]
+Si necesitas enviar múltiples archivos, incluye un tag para cada uno. Puedes acompañar los tags con texto explicativo para el cliente. Solo envía archivos cuando sea relevante y responda a lo solicitado o acordado con el cliente.
+</archivos_disponibles>
+`;
+  }
   
-  const finalSystemPrompt = systemPrompt + (calendarInstructions ? '\n\n' + calendarInstructions : '');
+  const finalSystemPrompt = systemPrompt + (calendarInstructions ? '\n\n' + calendarInstructions : '') + (filesInstructions ? '\n\n' + filesInstructions : '');
 
   // Logs eliminados para limpiar consola
-  console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name} | Calendar Active: ${!!hasCalendar}`);
+  console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name} | Calendar Active: ${!!hasCalendar} | BotFiles Available: ${botFiles.length}`);
 
   try {
     // We filter history down to what anthropic expects: assistant and user
@@ -525,6 +545,14 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
     const outputTokens = currentOutputTokens;
     console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Total: ${inputTokens + outputTokens}`);
 
+    // Check for Send File actions
+    const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]\s]+)["']?\s*\]/gi));
+    const sentFileIds = fileMatches.map(m => m[1].trim());
+    const sentFiles = botFiles.filter(f => sentFileIds.includes(f.id));
+    if (sentFiles.length > 0) {
+      console.log(`[Send File] AI solicitó enviar ${sentFiles.length} archivos:`, sentFiles.map(f => f.name));
+    }
+
     // Clean up reply from tags early so we can store it
     const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
 
@@ -591,7 +619,8 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
       outputTokens,
       agentName: config.name,
       extractedEmail,
-      debugPrompt: finalSystemPrompt
+      debugPrompt: finalSystemPrompt,
+      sentFiles
     };
 
   } catch (error: any) {
@@ -624,6 +653,13 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
       const inputTokens = result.response.usageMetadata?.promptTokenCount || 0;
       const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
       console.log(`[GEMINI TOKENS] Input: ${inputTokens} | Output: ${outputTokens}`);
+
+      const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]\s]+)["']?\s*\]/gi));
+      const sentFileIds = fileMatches.map(m => m[1].trim());
+      const sentFiles = botFiles.filter(f => sentFileIds.includes(f.id));
+      if (sentFiles.length > 0) {
+        console.log(`[Send File] Gemini solicitó enviar ${sentFiles.length} archivos`);
+      }
 
       // Clean up reply from tags
       const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
@@ -668,7 +704,8 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
         outputTokens,
         agentName: config.name + " (Gemini)",
         extractedEmail,
-        debugPrompt: systemPrompt
+        debugPrompt: systemPrompt,
+        sentFiles
       };
 
     } catch (geminiError: any) {
@@ -681,7 +718,8 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
         inputTokens: 0, 
         outputTokens: 0,
         agentName: "Error",
-        debugPrompt: ""
+        debugPrompt: "",
+        sentFiles: []
       };
     }
   }
@@ -813,6 +851,24 @@ export async function sendSimulatorMessage(
           outputTokens: result.outputTokens
         }
       });
+    }
+
+    if (result.sentFiles && result.sentFiles.length > 0) {
+      for (const file of result.sentFiles) {
+        const isImg = file.mimeType?.startsWith('image/') || file.url.match(/\.(jpeg|jpg|png|gif|webp)($|\?)/i);
+        await prisma.message.create({
+          data: {
+            chatId,
+            role: 'assistant',
+            content: file.name || "[Archivo enviado por IA]",
+            agentName: result.agentName,
+            mediaUrl: file.url,
+            mediaFilename: file.filename || file.name,
+            mediaType: isImg ? 'image' : 'document',
+            imageUrl: isImg ? file.url : null
+          }
+        });
+      }
     }
   } else {
     // Desactivar bot si falla la IA

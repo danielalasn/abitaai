@@ -6,7 +6,7 @@ import { signOut, useSession } from 'next-auth/react'
 import { 
   Inbox, Settings, Megaphone, MessageSquareCode, BrainCircuit, 
   BarChart3, LogOut, UserCheck, ChevronLeft, ChevronRight,
-  Sun, Moon, LayoutTemplate
+  Sun, Moon, LayoutTemplate, Files
 } from 'lucide-react'
 import ThemeSwitch from '@/components/ui/theme-switch'
 import { ProfileModal } from '@/components/ProfileModal'
@@ -50,6 +50,7 @@ export function Sidebar() {
           { icon: Inbox,             label: 'Bandeja',          href: '/inbox' },
           { icon: Megaphone,         label: 'Campañas',         href: '/campaigns' },
           { icon: LayoutTemplate,    label: 'Templates',        href: '/templates' },
+          { icon: Files,             label: 'Archivos',         href: '/files' },
           { icon: BarChart3,         label: 'Dashboard',        href: '/analytics' },
           { icon: UserCheck,         label: 'Leads',            href: '/leads' },
           { icon: BrainCircuit,      label: 'Aprendizaje',      href: '/learning' },

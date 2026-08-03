@@ -3,7 +3,7 @@ import { Worker, Job } from 'bullmq';
 import { redisConnection } from './queue';
 import { simulateIncomingMessage, saveAssistantReply, requestHandoff } from '@/app/actions/inbox';
 import { sendTestMessage } from '@/app/actions/chat';
-import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, sendWhatsAppMedia, WaMediaType } from '@/lib/whatsapp';
 import { sendInstagramMessage } from '@/lib/instagram';
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
@@ -216,6 +216,44 @@ export function initWorker() {
                 undefined,
                 sendErrorStr
               );
+            }
+
+            // 7. Enviar y guardar archivos adjuntos solicitados por la IA
+            if (botData.sentFiles && botData.sentFiles.length > 0 && channel === 'whatsapp') {
+              const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
+              const rawToken = chatDetails.lead.project?.whatsappToken;
+              const projectToken = rawToken ? decrypt(rawToken) : process.env.SYSTEM_USER_TOKEN;
+
+              if (projectPhoneId && projectToken) {
+                for (const file of botData.sentFiles) {
+                  const isImg = file.mimeType?.startsWith('image/') || file.url.match(/\.(jpeg|jpg|png|gif|webp)($|\?)/i);
+                  const isVid = file.mimeType?.startsWith('video/') || file.url.match(/\.(mp4|mov|webm)($|\?)/i);
+                  const isAud = file.mimeType?.startsWith('audio/') || file.url.match(/\.(mp3|ogg|wav)($|\?)/i);
+                  let mediaType: WaMediaType = 'document';
+                  if (isImg) mediaType = 'image';
+                  else if (isVid) mediaType = 'video';
+                  else if (isAud) mediaType = 'audio';
+
+                  console.log(`[Worker] Enviando archivo por WhatsApp: ${file.name} (${mediaType})`);
+                  const resMedia = await sendWhatsAppMedia(from, file.url, mediaType, projectPhoneId, projectToken, undefined, file.filename || file.name);
+
+                  await prisma.message.create({
+                    data: {
+                      chatId,
+                      role: 'assistant',
+                      content: file.name || "[Archivo adjunto]",
+                      agentName: botData.agentName,
+                      mediaUrl: file.url,
+                      mediaFilename: file.filename || file.name,
+                      mediaType,
+                      imageUrl: mediaType === 'image' ? file.url : null,
+                      wamid: resMedia.messageId || null,
+                      status: resMedia.success ? "SENT" : "failed",
+                      sendError: resMedia.success ? null : (resMedia.friendlyError || "Error al enviar archivo por WhatsApp")
+                    }
+                  });
+                }
+              }
             }
           }
         }

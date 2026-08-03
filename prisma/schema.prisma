@@ -64,6 +64,7 @@ model Project {
   client              Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
   unansweredQuestions UnansweredQuestion[]
   userBookings        UserBooking[]
+  botFiles            BotFile[]
 }
 
 model BotConfig {
@@ -298,6 +299,21 @@ model UserBooking {
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([phone, projectId])
+}
+
+model BotFile {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String
+  url         String
+  filename    String?
+  mimeType    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 enum SubscriptionStatus {

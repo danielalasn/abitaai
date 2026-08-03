@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { sendSimulatorMessage, getSimulatorChat, resetSimulatorChat } from '@/app/actions/chat';
 import { getProjectConfig } from '@/app/actions/settings';
-import { Send, Bot, User, Sparkles, ChevronDown, RotateCcw, Flame, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Sparkles, ChevronDown, RotateCcw, Flame, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
 
 export default function TestChatPage() {
@@ -12,7 +12,11 @@ export default function TestChatPage() {
     content: string, 
     agentName?: string | null,
     scoreBump?: number | null,
-    scoreReason?: string | null
+    scoreReason?: string | null,
+    mediaUrl?: string | null,
+    mediaType?: string | null,
+    imageUrl?: string | null,
+    mediaFilename?: string | null
   }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -249,11 +253,24 @@ export default function TestChatPage() {
                 </div>
               )}
 
-              <div className={`px-5 py-3.5 rounded-2xl shadow-sm border ${
+              <div className={`px-5 py-3.5 rounded-2xl shadow-sm border space-y-2 ${
                 msg.role === 'user' 
                   ? 'bg-zinc-900 dark:bg-[#EDE9E0] text-white dark:text-zinc-900 border-zinc-800 dark:border-[#EDE9E0] rounded-tr-sm' 
                   : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border-[#DEDAD0] dark:border-zinc-800 rounded-tl-sm'
               }`}>
+                {(msg.mediaUrl || msg.imageUrl) && (
+                  <div className="mb-2">
+                    {msg.mediaType === 'image' || msg.imageUrl || msg.mediaUrl?.match(/\.(jpeg|jpg|png|gif|webp)($|\?)/i) ? (
+                      <img src={msg.mediaUrl || msg.imageUrl || ''} alt="Adjunto" className="rounded-xl max-h-64 object-cover border border-zinc-200 dark:border-zinc-700" />
+                    ) : (
+                      <a href={msg.mediaUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-[#F36A2D]">
+                        <FileText size={18} />
+                        <span className="truncate max-w-[180px]">{msg.mediaFilename || 'Documento adjunto'}</span>
+                        <ExternalLink size={14} className="ml-auto" />
+                      </a>
+                    )}
+                  </div>
+                )}
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
