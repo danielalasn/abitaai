@@ -8,7 +8,7 @@ import {
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
-  Mic, Square, ChevronDown
+  Mic, Square, ChevronDown, LogOut
 } from "lucide-react";
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
@@ -34,7 +34,7 @@ import { getActiveChats, getChatMessages, getChatMessagesPaginated, loadMoreMess
 import { updateLeadAISummary } from "@/app/actions/leads";
 import { uploadFileAction } from "@/app/actions/storage";
 import { sendTestMessage } from "@/app/actions/chat";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { NewChatModal } from "@/components/NewChatModal";
@@ -1200,6 +1200,13 @@ export default function InboxPage() {
                   title="Nuevo Chat Individual"
                 >
                   <Plus size={18} />
+                </button>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="md:hidden p-1.5 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 rounded-lg transition-all shadow-sm"
+                  title="Cerrar Sesión"
+                >
+                  <LogOut size={18} />
                 </button>
               </div>
             </>

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Monitor, Inbox } from 'lucide-react';
+import { Monitor, Inbox, LogOut } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 
 /**
  * Muestra un banner en móvil indicando que la sección está optimizada para escritorio.
@@ -30,6 +31,13 @@ export function DesktopOnlyGuard({ children }: { children: React.ReactNode }) {
           <Inbox size={18} />
           Ir al Inbox
         </Link>
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-2 text-[#6F6F6F] hover:text-rose-600 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+        >
+          <LogOut size={16} />
+          Cerrar Sesión
+        </button>
       </div>
 
       {/* Contenido normal: solo visible en desktop */}
