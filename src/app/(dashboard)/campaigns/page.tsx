@@ -98,7 +98,8 @@ export default function CampaignsPage() {
   const [successStatus, setSuccessStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
   
   // Logs Report
   const [showLogsModal, setShowLogsModal] = useState(false);
@@ -520,8 +521,10 @@ export default function CampaignsPage() {
 
   const filteredCampaigns = campaigns.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDate = !dateFilter || new Date(c.createdAt).toISOString().split('T')[0] === dateFilter;
-    return matchesSearch && matchesDate;
+    const cDate = new Date(c.createdAt).toISOString().split('T')[0];
+    const matchesStart = !startDateFilter || cDate >= startDateFilter;
+    const matchesEnd = !endDateFilter || cDate <= endDateFilter;
+    return matchesSearch && matchesStart && matchesEnd;
   });
 
   return (
@@ -898,11 +901,11 @@ export default function CampaignsPage() {
           </div>
 
           <div className="space-y-6 flex flex-col lg:h-[calc(100vh-180px)]">
-            <div className="flex items-center justify-between mb-4 shrink-0">
+            <div className="flex items-center justify-between mb-4 shrink-0 flex-wrap gap-2">
               <h3 className="text-lg font-medium flex items-center gap-2 text-[#111111] dark:text-[#EDE9E0]">
                 <FileText size={20} /> Historial
               </h3>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6F6F6F]" />
                   <input 
@@ -913,12 +916,32 @@ export default function CampaignsPage() {
                     className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-[#111111] dark:text-[#EDE9E0] w-32 focus:w-48 transition-all outline-none"
                   />
                 </div>
-                <input 
-                  type="date" 
-                  value={dateFilter}
-                  onChange={e => setDateFilter(e.target.value)}
-                  className="px-2 py-1.5 text-xs rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-[#111111] dark:text-[#EDE9E0] outline-none"
-                />
+                <div className="flex items-center gap-1 bg-white/50 dark:bg-black/20 px-2.5 py-1 rounded-xl border border-[#DEDAD0] dark:border-zinc-800">
+                  <span className="text-[10px] text-[#6F6F6F] font-medium">Del</span>
+                  <input 
+                    type="date" 
+                    value={startDateFilter}
+                    onChange={e => setStartDateFilter(e.target.value)}
+                    className="bg-transparent text-xs text-[#111111] dark:text-[#EDE9E0] outline-none cursor-pointer"
+                  />
+                  <span className="text-[10px] text-[#6F6F6F] font-medium">al</span>
+                  <input 
+                    type="date" 
+                    value={endDateFilter}
+                    onChange={e => setEndDateFilter(e.target.value)}
+                    className="bg-transparent text-xs text-[#111111] dark:text-[#EDE9E0] outline-none cursor-pointer"
+                  />
+                  {(startDateFilter || endDateFilter) && (
+                    <button
+                      type="button"
+                      onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+                      title="Limpiar fechas"
+                      className="text-[#6F6F6F] hover:text-red-500 text-xs font-bold px-1 ml-1 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -927,7 +950,7 @@ export default function CampaignsPage() {
                 <div className="p-8 text-center border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-3xl opacity-50">
                   <Clock size={32} className="mx-auto mb-2 text-[#6F6F6F]" />
                   <p className="text-sm font-medium text-[#6F6F6F]">
-                    {searchQuery || dateFilter ? 'No se encontraron resultados' : 'No hay campañas lanzadas aún'}
+                    {searchQuery || startDateFilter || endDateFilter ? 'No se encontraron resultados' : 'No hay campañas lanzadas aún'}
                   </p>
                 </div>
               )}

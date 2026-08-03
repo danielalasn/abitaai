@@ -86,7 +86,7 @@ export default function AdminPage() {
         // Refresh usage stats too
         const project = updatedClient.projects?.[0];
         if (project?.id) {
-          const stats = await getUsageStats(project.id);
+          const stats = await getUsageStats(project.id, clientStartDate, clientEndDate);
           setUsageStats(stats);
         }
       }
@@ -152,6 +152,27 @@ export default function AdminPage() {
   // Usage / Cost state
   const [usageStats, setUsageStats] = useState<ProjectUsageStats | null>(null);
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+  const [clientStartDate, setClientStartDate] = useState('');
+  const [clientEndDate, setClientEndDate] = useState('');
+
+  useEffect(() => {
+    const project = selectedClient?.projects?.[0];
+    if (!project?.id) {
+      setUsageStats(null);
+      return;
+    }
+    if (!clientStartDate && !clientEndDate) {
+      setUsageStats(project.usageStats || null);
+      return;
+    }
+    setIsLoadingUsage(true);
+    getUsageStats(project.id, clientStartDate, clientEndDate)
+      .then(stats => {
+        setUsageStats(stats);
+        setIsLoadingUsage(false);
+      })
+      .catch(() => setIsLoadingUsage(false));
+  }, [selectedClient?.id, clientStartDate, clientEndDate]);
 
   // Edit Config state
   const [configData, setConfigData] = useState<any>({});
@@ -397,14 +418,9 @@ export default function AdminPage() {
     }
 
     // Preload usage stats
+    setClientStartDate('');
+    setClientEndDate('');
     setUsageStats(null);
-    if (project?.id) {
-      setIsLoadingUsage(true);
-      getUsageStats(project.id).then(stats => {
-        setUsageStats(stats);
-        setIsLoadingUsage(false);
-      }).catch(() => setIsLoadingUsage(false));
-    }
   };
 
   const handleSaveConfig = async () => {
@@ -496,6 +512,22 @@ export default function AdminPage() {
     }
 
     return `${date.toLocaleDateString('es-ES')} ${timeStr}`;
+  };
+
+  const getClientStatus = (client: any) => {
+    if (client.subscriptionStatus && client.subscriptionStatus !== 'ACTIVE') {
+      return { label: 'Bloqueado', color: 'bg-red-500', textColor: 'text-red-600 dark:text-red-400' };
+    }
+    const lastUseAt = client.projects?.[0]?.lastUseAt;
+    if (!lastUseAt) {
+      return { label: 'Sin actividad', color: 'bg-zinc-400', textColor: 'text-zinc-500 dark:text-zinc-400' };
+    }
+    const diffDays = (Date.now() - new Date(lastUseAt).getTime()) / (1000 * 3600 * 24);
+    if (diffDays <= 30) {
+      return { label: 'Activo', color: 'bg-green-500', textColor: 'text-green-600 dark:text-green-400' };
+    } else {
+      return { label: 'Dormido', color: 'bg-amber-500', textColor: 'text-amber-600 dark:text-amber-400' };
+    }
   };
 
   if (status === 'loading' || isLoading) {
@@ -982,6 +1014,7 @@ export default function AdminPage() {
           const project = client.projects?.[0];
           const leadsCount = project?._count?.leads || 0;
           const campCount = project?._count?.campaigns || 0;
+          const status = getClientStatus(client);
 
           return (
             <button
@@ -1000,10 +1033,18 @@ export default function AdminPage() {
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white line-clamp-1">{client.name}</h3>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">{client.email}</p>
                 <div className="flex items-center gap-1.5 mt-2 mb-6">
-                  <div className={`h-1.5 w-1.5 rounded-full ${project?.lastUseAt ? 'bg-green-500' : 'bg-zinc-300'}`} />
-                  <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">
-                    Último uso: {formatRelativeDate(project?.lastUseAt)}
+                  <div className={`h-2 w-2 rounded-full shrink-0 ${status.color}`} title={status.label} />
+                  <span className={`text-[10px] font-bold whitespace-nowrap ${status.textColor}`}>
+                    {status.label}
                   </span>
+                  {project?.lastUseAt && (
+                    <>
+                      <span className="text-zinc-300 dark:text-zinc-700 mx-0.5">•</span>
+                      <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 truncate">
+                        Último uso: {formatRelativeDate(project.lastUseAt)}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3 border-t border-zinc-100 dark:border-zinc-800/60 pt-4">
@@ -1054,16 +1095,30 @@ export default function AdminPage() {
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
                   {selectedClient.name}
                 </h2>
-                <div className="text-sm text-zinc-500 font-medium mt-1 flex items-center gap-2">
+                <div className="text-sm text-zinc-500 font-medium mt-1 flex flex-wrap items-center gap-2">
+                  {(() => {
+                    const st = getClientStatus(selectedClient);
+                    return (
+                      <span className="flex items-center gap-1.5 whitespace-nowrap">
+                        <span className={`h-2 w-2 rounded-full inline-block ${st.color}`} />
+                        <span className={`font-bold ${st.textColor}`}>{st.label}</span>
+                      </span>
+                    );
+                  })()}
+                  <span className="text-zinc-300 dark:text-zinc-700">•</span>
                   <span>{selectedClient.email}</span>
                   <span className="text-zinc-300 dark:text-zinc-700">•</span>
                   <span className="flex items-center gap-1">
                     <Calendar size={14} /> Creado: {new Date(selectedClient.createdAt).toLocaleDateString()}
                   </span>
-                  <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                  <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
-                    <Clock size={14} /> Último uso: {formatRelativeDate(selectedClient.projects?.[0]?.lastUseAt)}
-                  </span>
+                  {selectedClient.projects?.[0]?.lastUseAt && (
+                    <>
+                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                      <span className="flex items-center gap-1 text-zinc-600 dark:text-zinc-400">
+                        <Clock size={14} /> Último uso: {formatRelativeDate(selectedClient.projects[0].lastUseAt)}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -1116,13 +1171,6 @@ export default function AdminPage() {
                   Testing & Eval
                 </button>
                 <button
-                  onClick={() => setActiveTab('usage')}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === 'usage' ? 'bg-orange-600 text-white shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-white'}`}
-                >
-                  <CreditCard size={18} />
-                  Consumo
-                </button>
-                <button
                   onClick={() => {
                     setActiveTab('edit');
                     setActiveEditSubTab('info');
@@ -1136,73 +1184,266 @@ export default function AdminPage() {
 
               {/* Content Area */}
               <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+                {activeTab === 'dashboard' && (
+                  <div className="mb-6 bg-zinc-100/80 dark:bg-zinc-800/40 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={18} className="text-orange-600" />
+                      <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">
+                        Filtrar por Periodo
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-[#121214] px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                        <span className="text-xs text-zinc-400 font-medium">Del</span>
+                        <input
+                          type="date"
+                          value={clientStartDate}
+                          onChange={e => setClientStartDate(e.target.value)}
+                          className="bg-transparent text-xs text-zinc-900 dark:text-white outline-none font-medium cursor-pointer"
+                        />
+                        <span className="text-xs text-zinc-400 font-medium ml-1">al</span>
+                        <input
+                          type="date"
+                          value={clientEndDate}
+                          onChange={e => setClientEndDate(e.target.value)}
+                          className="bg-transparent text-xs text-zinc-900 dark:text-white outline-none font-medium cursor-pointer"
+                        />
+                        {(clientStartDate || clientEndDate) && (
+                          <button
+                            type="button"
+                            onClick={() => { setClientStartDate(''); setClientEndDate(''); }}
+                            title="Limpiar periodo"
+                            className="text-zinc-400 hover:text-red-500 text-xs font-bold px-1 ml-1 transition-colors"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      {isLoadingUsage && (
+                        <div className="flex items-center gap-1.5 text-orange-600 text-xs font-bold px-2 animate-pulse">
+                          <Loader2 size={14} className="animate-spin" />
+                          Calculando...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* --- TAB: DASHBOARD --- */}
                 {activeTab === 'dashboard' && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                    <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Métricas Generales</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {/* Fila 1: Leads y Campañas */}
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Métricas Generales</h3>
+                      <p className="text-sm text-zinc-500 mt-1">Resumen del volumen de mensajes, leads y campañas.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                      {/* Total Leads */}
                       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                        <div className="h-14 w-14 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center">
-                          <MessageSquare size={28} />
+                        <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <MessageSquare size={24} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total Leads</p>
-                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
-                            {selectedClient.projects?.[0]?._count?.leads || 0}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                        <div className="h-14 w-14 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center">
-                          <Megaphone size={28} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Total Campañas</p>
-                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
-                            {selectedClient.projects?.[0]?._count?.campaigns || 0}
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Total Leads</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.leadsCount : (selectedClient.projects?.[0]?._count?.leads || 0)}
                           </p>
                         </div>
                       </div>
 
-                      {/* Fila 2: Mensajes Bot y Contactos Nosotros */}
+                      {/* Total Campañas */}
                       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                        <div className="h-14 w-14 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center">
-                          <Bot size={28} />
+                        <div className="h-12 w-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <Megaphone size={24} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mensajes (IA)</p>
-                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
-                            {selectedClient.projects?.[0]?.botMessagesCount || 0}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                        <div className="h-14 w-14 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-2xl flex items-center justify-center">
-                          <User size={28} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Mensajes (Nosotros)</p>
-                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
-                            {selectedClient.projects?.[0]?.agentMessagesCount || 0}
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Total Campañas</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.campaignsCount : (selectedClient.projects?.[0]?._count?.campaigns || 0)}
                           </p>
                         </div>
                       </div>
 
-                      {/* Fila 3: Total Automáticos */}
-                      <div className="bg-white dark:bg-zinc-900 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-5 shadow-sm flex items-center gap-4 sm:col-span-2">
-                        <div className="h-14 w-14 bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-2xl flex items-center justify-center shadow-inner">
-                          <Bot size={28} />
+                      {/* Mensajes IA */}
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                        <div className="h-12 w-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <Bot size={24} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest">Total Automáticos (IA + Campañas)</p>
-                          <p className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">
-                            {selectedClient.projects?.[0]?.automatedMessagesCount || 0}
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes con IA</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.botMessagesCount : (selectedClient.projects?.[0]?.botMessagesCount || 0)}
                           </p>
-                          <p className="text-[10px] text-zinc-500 mt-1">Excluye mensajes manuales del equipo</p>
                         </div>
                       </div>
+
+                      {/* Mensajes con Template */}
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                        <div className="h-12 w-12 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <Layers size={24} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes con Template</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.templateMessagesCount : (selectedClient.projects?.[0]?.templateMessagesCount || 0)}
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">Campañas o inicio de chat</p>
+                        </div>
+                      </div>
+
+                      {/* Mensajes Manuales */}
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                        <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <User size={24} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes Manuales</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.manualMessagesCount : (selectedClient.projects?.[0]?.manualMessagesCount || 0)}
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">Escritos por el equipo</p>
+                        </div>
+                      </div>
+
+                      {/* Total Automáticos */}
+                      <div className="bg-white dark:bg-zinc-900 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                        <div className="h-12 w-12 bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+                          <Bot size={24} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest">Total Automáticos</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.automatedMessagesCount : (selectedClient.projects?.[0]?.automatedMessagesCount || 0)}
+                          </p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">IA + Templates</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* --- MÓDULO DE CONSUMO INTEGRADO --- */}
+                    <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800 space-y-6">
+                      <div>
+                        <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Consumo y Costos</h3>
+                        <p className="text-sm text-zinc-500 mt-1">Desglose de créditos consumidos en IA (Claude) y WhatsApp (Meta).</p>
+                      </div>
+
+                      {isLoadingUsage ? (
+                        <div className="flex items-center justify-center py-16">
+                          <Loader2 size={32} className="animate-spin text-orange-600" />
+                        </div>
+                      ) : usageStats ? (
+                        <>
+                          {/* Costo Total Estimado */}
+                          <div className="bg-gradient-to-br from-orange-600 to-orange-700 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                              <DollarSign size={100} />
+                            </div>
+                            <div className="relative z-10">
+                              <p className="text-orange-200 text-xs font-bold uppercase tracking-widest">Costo Total Estimado</p>
+                              <p className="text-4xl font-bold mt-2">${usageStats.totalEstimatedCostUsd.toFixed(4)}</p>
+                              <p className="text-orange-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.5 y Meta WA API (LATAM).</p>
+                            </div>
+                          </div>
+
+                          {/* AI Section */}
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+                            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                              <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
+                                <Cpu size={16} />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Inteligencia Artificial (Claude 4.5)</h4>
+                                <p className="text-[10px] text-zinc-500">$3.00/MTok entrada · $15.00/MTok salida</p>
+                              </div>
+                              <div className="ml-auto">
+                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">${usageStats.estimatedAiCostUsd.toFixed(4)}</span>
+                              </div>
+                            </div>
+                            <div className="p-6 grid grid-cols-2 gap-6">
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Entrada</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalInputTokens.toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Prompt + historial de conversación</p>
+                              </div>
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Salida</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalOutputTokens.toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Respuestas generadas por la IA</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* WhatsApp Section */}
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+                            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                              <div className="h-8 w-8 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg flex items-center justify-center">
+                                <Phone size={16} />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">WhatsApp (Meta API)</h4>
+                                <p className="text-[10px] text-zinc-500">Precios por conversación según categoría LATAM</p>
+                              </div>
+                              <div className="ml-auto">
+                                <span className="text-sm font-bold text-green-600 dark:text-green-400">${usageStats.estimatedWaCostUsd.toFixed(4)}</span>
+                              </div>
+                            </div>
+                            <div className="p-6 space-y-4">
+                              {/* Service */}
+                              <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-2 w-2 bg-green-500 rounded-full" />
+                                  <div>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Service</p>
+                                    <p className="text-[10px] text-zinc-500">Respuestas dentro de la ventana 24h (gratis)</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waServiceMessages}</p>
+                                  <p className="text-[10px] text-green-600 font-medium">$0.00</p>
+                                </div>
+                              </div>
+
+                              {/* Marketing */}
+                              <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-2 w-2 bg-orange-500 rounded-full" />
+                                  <div>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Marketing</p>
+                                    <p className="text-[10px] text-zinc-500">Plantillas de campañas ($0.0520/msj)</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waMarketingMessages}</p>
+                                  <p className="text-[10px] text-orange-600 font-medium">${(usageStats.waMarketingMessages * 0.0520).toFixed(4)}</p>
+                                </div>
+                              </div>
+
+                              {/* Utility */}
+                              <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-2 w-2 bg-blue-500 rounded-full" />
+                                  <div>
+                                    <p className="text-sm font-semibold text-zinc-900 dark:text-white">Utility</p>
+                                    <p className="text-[10px] text-zinc-500">Confirmaciones, alertas ($0.0080/msj)</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waUtilityMessages}</p>
+                                  <p className="text-[10px] text-blue-600 font-medium">${(usageStats.waUtilityMessages * 0.0080).toFixed(4)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="py-16 flex flex-col items-center justify-center text-center">
+                          <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4">
+                            <CreditCard size={32} />
+                          </div>
+                          <h3 className="font-semibold text-zinc-900 dark:text-white">Sin datos de consumo</h3>
+                          <p className="text-sm text-zinc-500 mt-1 max-w-sm">Aún no hay mensajes registrados para este proyecto en el periodo seleccionado.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2138,132 +2379,7 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {activeTab === 'usage' && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Consumo y Costos</h3>
-                      <p className="text-sm text-zinc-500 mt-1">Desglose de créditos consumidos en IA (Claude) y WhatsApp (Meta).</p>
-                    </div>
 
-                    {isLoadingUsage ? (
-                      <div className="flex items-center justify-center py-16">
-                        <Loader2 size={32} className="animate-spin text-orange-600" />
-                      </div>
-                    ) : usageStats ? (
-                      <>
-                        {/* Costo Total Estimado */}
-                        <div className="bg-gradient-to-br from-orange-600 to-orange-700 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden">
-                          <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <DollarSign size={100} />
-                          </div>
-                          <div className="relative z-10">
-                            <p className="text-orange-200 text-xs font-bold uppercase tracking-widest">Costo Total Estimado</p>
-                            <p className="text-4xl font-bold mt-2">${usageStats.totalEstimatedCostUsd.toFixed(4)}</p>
-                            <p className="text-orange-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.5 y Meta WA API (LATAM).</p>
-                          </div>
-                        </div>
-
-                        {/* AI Section */}
-                        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                          <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                            <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
-                              <Cpu size={16} />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Inteligencia Artificial (Claude 4.5)</h4>
-                              <p className="text-[10px] text-zinc-500">$3.00/MTok entrada · $15.00/MTok salida</p>
-                            </div>
-                            <div className="ml-auto">
-                              <span className="text-sm font-bold text-blue-600 dark:text-blue-400">${usageStats.estimatedAiCostUsd.toFixed(4)}</span>
-                            </div>
-                          </div>
-                          <div className="p-6 grid grid-cols-2 gap-6">
-                            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
-                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Entrada</p>
-                              <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalInputTokens.toLocaleString()}</p>
-                              <p className="text-[10px] text-zinc-400 mt-1">Prompt + historial de conversación</p>
-                            </div>
-                            <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
-                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Salida</p>
-                              <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalOutputTokens.toLocaleString()}</p>
-                              <p className="text-[10px] text-zinc-400 mt-1">Respuestas generadas por la IA</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* WhatsApp Section */}
-                        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                          <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                            <div className="h-8 w-8 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg flex items-center justify-center">
-                              <Phone size={16} />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">WhatsApp (Meta API)</h4>
-                              <p className="text-[10px] text-zinc-500">Precios por conversación según categoría LATAM</p>
-                            </div>
-                            <div className="ml-auto">
-                              <span className="text-sm font-bold text-green-600 dark:text-green-400">${usageStats.estimatedWaCostUsd.toFixed(4)}</span>
-                            </div>
-                          </div>
-                          <div className="p-6 space-y-4">
-                            {/* Service */}
-                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
-                              <div className="flex items-center gap-3">
-                                <div className="h-2 w-2 bg-green-500 rounded-full" />
-                                <div>
-                                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">Service</p>
-                                  <p className="text-[10px] text-zinc-500">Respuestas dentro de la ventana 24h (gratis)</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waServiceMessages}</p>
-                                <p className="text-[10px] text-green-600 font-medium">$0.00</p>
-                              </div>
-                            </div>
-
-                            {/* Marketing */}
-                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
-                              <div className="flex items-center gap-3">
-                                <div className="h-2 w-2 bg-orange-500 rounded-full" />
-                                <div>
-                                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">Marketing</p>
-                                  <p className="text-[10px] text-zinc-500">Plantillas de campañas ($0.0520/msj)</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waMarketingMessages}</p>
-                                <p className="text-[10px] text-orange-600 font-medium">${(usageStats.waMarketingMessages * 0.0520).toFixed(4)}</p>
-                              </div>
-                            </div>
-
-                            {/* Utility */}
-                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
-                              <div className="flex items-center gap-3">
-                                <div className="h-2 w-2 bg-blue-500 rounded-full" />
-                                <div>
-                                  <p className="text-sm font-semibold text-zinc-900 dark:text-white">Utility</p>
-                                  <p className="text-[10px] text-zinc-500">Confirmaciones, alertas ($0.0080/msj)</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-zinc-900 dark:text-white">{usageStats.waUtilityMessages}</p>
-                                <p className="text-[10px] text-blue-600 font-medium">${(usageStats.waUtilityMessages * 0.0080).toFixed(4)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="py-16 flex flex-col items-center justify-center text-center">
-                        <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-400 mb-4">
-                          <CreditCard size={32} />
-                        </div>
-                        <h3 className="font-semibold text-zinc-900 dark:text-white">Sin datos de consumo</h3>
-                        <p className="text-sm text-zinc-500 mt-1 max-w-sm">Aún no hay mensajes registrados para este proyecto.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
