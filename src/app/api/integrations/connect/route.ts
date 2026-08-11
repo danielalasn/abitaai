@@ -102,6 +102,19 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Proyecto no encontrado o acceso denegado' }, { status: 404 });
   }
 
+  const nangoConn = await prisma.nangoConnection.findFirst({
+    where: { projectId, providerConfigKey }
+  });
+
+  if (nangoConn && nangoConn.connectionId) {
+    try {
+      await nango.deleteConnection(providerConfigKey, nangoConn.connectionId);
+      console.log(`[Nango] Conexión ${nangoConn.connectionId} eliminada en Nango.`);
+    } catch (err) {
+      console.error('[Nango] Error eliminando conexión en Nango:', err);
+    }
+  }
+
   await prisma.nangoConnection.updateMany({
     where: { projectId, providerConfigKey },
     data: { status: 'DISCONNECTED' },

@@ -138,6 +138,17 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
   };
 
   const handleSave = async () => {
+    if (isMultiBooking) {
+      const usedClientVars = fieldsToCollect.filter(f => 
+        eventTitle.includes(`{{${f}}}`) || eventDescription.includes(`{{${f}}}`)
+      );
+      
+      if (usedClientVars.length > 0) {
+        alert(`Error: En modo grupal no puedes usar variables exclusivas de cliente como {{${usedClientVars[0]}}} en el título o descripción, ya que el evento es compartido por varias personas.`);
+        return;
+      }
+    }
+
     setIsSaving(true);
     setSaveStatus(null);
     const finalDuration = typeof durationMinutes === 'number' ? durationMinutes : 60;
@@ -457,9 +468,9 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 Así aparecerá el evento bloqueado en tu calendario de Google. Haz clic en las variables anaranjadas para insertarlas.
               </p>
             )}
-            {!isMultiBooking && (
-              <VariableToolbar vars={titleVars} onInsert={(val) => setEventTitle(prev => prev + val)} />
-            )}
+            
+            <VariableToolbar vars={titleVars} onInsert={(val) => setEventTitle(prev => prev + val)} />
+            
             <input
               type="text"
               value={eventTitle}
@@ -488,7 +499,9 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 Esta es la información que se guardará dentro de la descripción del evento en tu Google Calendar.
               </p>
             )}
-            {!isMultiBooking && <VariableToolbar vars={allVars} onInsert={(val) => setEventDescription(prev => prev + val)} />}
+            
+            <VariableToolbar vars={titleVars} onInsert={(val) => setEventDescription(prev => prev + val)} />
+            
             <textarea
               value={eventDescription}
               onChange={e => setEventDescription(e.target.value)}

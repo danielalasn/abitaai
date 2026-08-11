@@ -197,10 +197,12 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
 Tienes los siguientes archivos multimedia / documentos disponibles para enviar al cliente en esta conversación:
 ${botFiles.map(f => `- ID: "${f.id}" | Nombre: "${f.name}" | Cuándo enviarlo: "${f.description}"`).join('\n')}
 
-REGLA DE ENVÍO DE ARCHIVOS:
-Cuando decidas que corresponde enviar uno o varios de estos archivos según su instrucción y el contexto de la conversación, incluye en tu respuesta el comando:
+REGLAS DE ENVÍO DE ARCHIVOS:
+1. Relaciona semánticamente las preguntas del cliente con las instrucciones y nombres de los archivos (ej. "parte de afuera" o "exterior" equivale a "fachada").
+2. Cuando decidas que corresponde enviar un archivo, NUNCA digas que no tienes esa información ni pidas confirmación. En lugar de eso, incluye en tu respuesta el comando:
 [ACTION: SEND_FILE id="ID_EXACTO_DEL_ARCHIVO"]
-Si necesitas enviar múltiples archivos, incluye un tag para cada uno. Puedes acompañar los tags con texto explicativo para el cliente. Solo envía archivos cuando sea relevante y responda a lo solicitado o acordado con el cliente.
+3. Acompaña el comando con una respuesta amable y natural (ej. "¡Claro! Aquí te comparto la imagen de nuestra fachada...").
+4. Si necesitas enviar múltiples archivos, puedes incluir varios tags [ACTION: SEND_FILE id="..."] en tu respuesta.
 </archivos_disponibles>
 `;
   }
