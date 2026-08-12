@@ -212,10 +212,9 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
   const notSimulator = { phone: { not: 'SIMULADOR_TEST' } };
 
   const dateQuery: any = {};
-  if (startDate) dateQuery.gte = new Date(startDate);
+  if (startDate) dateQuery.gte = new Date(startDate + 'T00:00:00');
   if (endDate) {
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    const end = new Date(endDate + 'T23:59:59.999');
     dateQuery.lte = end;
   }
   const dateFilter = Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {};

@@ -12,20 +12,29 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   })
 
   let tierLimit = 250;
-  let tierName = "Tier 1";
+  let tierName = "Tier 0";
   if (botConfig?.whatsappPhoneId && botConfig?.whatsappToken) {
     try {
       const decryptedToken = decrypt(botConfig.whatsappToken);
-      const res = await fetch(`https://graph.facebook.com/v20.0/${botConfig.whatsappPhoneId}?fields=whatsapp_business_manager_messaging_limit`, {
+      // v26+ devuelve whatsapp_business_manager_messaging_limit como STRING "TIER_250"
+      const res = await fetch(`https://graph.facebook.com/v26.0/${botConfig.whatsappPhoneId}?fields=whatsapp_business_manager_messaging_limit`, {
         headers: { Authorization: `Bearer ${decryptedToken}` }
       })
-      const data = await res.json()
-      if (data && data.whatsapp_business_manager_messaging_limit) {
-        const t = data.whatsapp_business_manager_messaging_limit;
-        if (t.messaging_limit) tierLimit = t.messaging_limit;
-        if (t.tier) {
-          tierName = t.tier.replace('_', ' ').toLowerCase();
-          tierName = tierName.charAt(0).toUpperCase() + tierName.slice(1);
+      const apiData = await res.json()
+      if (apiData?.whatsapp_business_manager_messaging_limit) {
+        const raw = apiData.whatsapp_business_manager_messaging_limit;
+        // Puede ser string ("TIER_250") o el objeto antiguo
+        const tierStr = typeof raw === 'string' ? raw : (raw.tier || '');
+        // Mapear al límite numérico
+        if (tierStr.includes('250')) { tierLimit = 250; tierName = 'Tier 0'; }
+        else if (tierStr.includes('2K') || tierStr.includes('2000')) { tierLimit = 2000; tierName = 'Tier 1'; }
+        else if (tierStr.includes('10K') || tierStr.includes('10000')) { tierLimit = 10000; tierName = 'Tier 2'; }
+        else if (tierStr.includes('100K') || tierStr.includes('100000')) { tierLimit = 100000; tierName = 'Tier 3'; }
+        else if (tierStr.includes('UNLIMITED') || tierStr.includes('unlimited')) { tierLimit = 999999; tierName = 'Tier 4'; }
+        else if (typeof raw === 'object' && raw.messaging_limit) {
+          // fallback: objeto antiguo con messaging_limit numérico
+          tierLimit = raw.messaging_limit;
+          tierName = `Tier ${raw.messaging_limit.toLocaleString()}`;
         }
       }
     } catch (e) {
@@ -33,25 +42,33 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     }
   }
 
+  // Tier usage: Business-Initiated Conversations en las últimas 24h
+  // Meta solo cuenta conversaciones donde NOSOTROS iniciamos con un template
+  // fuera de la ventana de 24h del usuario (MARKETING o UTILITY).
+  // Respuestas dentro de la ventana activa NO cuentan.
   const yesterday24h = new Date()
   yesterday24h.setHours(yesterday24h.getHours() - 24)
-  const uniqueChats24h = await prisma.message.findMany({
+
+  // Chats únicos donde enviamos un template (BIC) en las últimas 24h
+  const bicChats24h = await prisma.message.findMany({
     where: {
       createdAt: { gte: yesterday24h },
-      role: { in: ['agent', 'assistant'] },
+      role: 'agent',
+      waCategory: { in: ['MARKETING', 'UTILITY'] },
       chat: { lead: { projectId: project.id, channel: 'whatsapp' } }
     },
     select: { chatId: true },
     distinct: ['chatId']
   })
-  const tierUsage = uniqueChats24h.length
+  const tierUsage = bicChats24h.length
 
   // Construir filtro de fecha si se proporciona
+  // IMPORTANTE: Añadir T00:00:00 para que la fecha se interprete en hora LOCAL
+  // y no como UTC medianoche (lo que causaría que mensajes de madrugada local no aparezcan)
   const dateQuery: any = {}
-  if (dateRange?.start) dateQuery.gte = new Date(dateRange.start)
+  if (dateRange?.start) dateQuery.gte = new Date(dateRange.start + 'T00:00:00')
   if (dateRange?.end) {
-    const endDate = new Date(dateRange.end)
-    endDate.setHours(23, 59, 59, 999) // Incluir todo el último día
+    const endDate = new Date(dateRange.end + 'T23:59:59.999')
     dateQuery.lte = endDate
   }
 
@@ -124,6 +141,8 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     }
   })
   const humanMessagesCount = Math.max(0, rawAgentMessages - proactiveMessagesCount)
+  // Total de todas las respuestas enviadas: IA + manuales + proactivas (templates)
+  const totalResponses = messagesSaved + humanMessagesCount + proactiveMessagesCount
 
   const timeSavedMinutes = messagesSaved * 2
 
@@ -221,6 +240,7 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     totalCampaigns,
     campaignMessagesCount,
     humanMessagesCount,
+    totalResponses,
     timeSavedMinutes,
     whatsappDeliveryRate,
     whatsappReadRate,
