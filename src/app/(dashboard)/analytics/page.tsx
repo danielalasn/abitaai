@@ -254,7 +254,14 @@ export default function AnalyticsDashboard() {
 
   const fetchData = async () => {
     setIsLoading(true)
-    const res = await getAnalyticsData({ start: dateRange.start || undefined, end: dateRange.end || undefined }) as Analytics
+    let startIso, endIso;
+    if (dateRange.start) {
+      startIso = new Date(dateRange.start + 'T00:00:00').toISOString();
+    }
+    if (dateRange.end) {
+      endIso = new Date(dateRange.end + 'T23:59:59.999').toISOString();
+    }
+    const res = await getAnalyticsData({ start: startIso, end: endIso }) as Analytics
     setData(res)
     setIsLoading(false)
   }
@@ -298,7 +305,12 @@ export default function AnalyticsDashboard() {
               Resumen de Rendimiento
             </h1>
           </div>
-          <DateRangePicker value={dateRange} onChange={setDateRange} onClear={() => setDateRange(getDefaultDateRange())} />
+          <div className="flex items-center gap-3">
+            {isLoading && data && (
+              <Loader2 size={16} className="text-[#F36A2D] animate-spin" />
+            )}
+            <DateRangePicker value={dateRange} onChange={setDateRange} onClear={() => setDateRange(getDefaultDateRange())} />
+          </div>
         </header>
 
         {/* Content */}

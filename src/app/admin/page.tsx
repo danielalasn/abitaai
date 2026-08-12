@@ -86,7 +86,10 @@ export default function AdminPage() {
         // Refresh usage stats too
         const project = updatedClient.projects?.[0];
         if (project?.id) {
-          const stats = await getUsageStats(project.id, clientStartDate, clientEndDate);
+          let startIso, endIso;
+          if (clientStartDate) startIso = new Date(clientStartDate + 'T00:00:00').toISOString();
+          if (clientEndDate) endIso = new Date(clientEndDate + 'T23:59:59.999').toISOString();
+          const stats = await getUsageStats(project.id, startIso, endIso);
           setUsageStats(stats);
         }
       }
@@ -166,7 +169,11 @@ export default function AdminPage() {
       return;
     }
     setIsLoadingUsage(true);
-    getUsageStats(project.id, clientStartDate, clientEndDate)
+    let startIso, endIso;
+    if (clientStartDate) startIso = new Date(clientStartDate + 'T00:00:00').toISOString();
+    if (clientEndDate) endIso = new Date(clientEndDate + 'T23:59:59.999').toISOString();
+
+    getUsageStats(project.id, startIso, endIso)
       .then(stats => {
         setUsageStats(stats);
         setIsLoadingUsage(false);

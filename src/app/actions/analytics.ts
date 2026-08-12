@@ -66,10 +66,11 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   // IMPORTANTE: Añadir T00:00:00 para que la fecha se interprete en hora LOCAL
   // y no como UTC medianoche (lo que causaría que mensajes de madrugada local no aparezcan)
   const dateQuery: any = {}
-  if (dateRange?.start) dateQuery.gte = new Date(dateRange.start + 'T00:00:00')
+  if (dateRange?.start) {
+    dateQuery.gte = dateRange.start.includes('T') ? new Date(dateRange.start) : new Date(dateRange.start + 'T00:00:00')
+  }
   if (dateRange?.end) {
-    const endDate = new Date(dateRange.end + 'T23:59:59.999')
-    dateQuery.lte = endDate
+    dateQuery.lte = dateRange.end.includes('T') ? new Date(dateRange.end) : new Date(dateRange.end + 'T23:59:59.999')
   }
 
   const dateFilter = Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {}
