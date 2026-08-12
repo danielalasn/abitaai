@@ -172,15 +172,15 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
     }
   };
 
+  if (isOpen === false) return null;
+
   if (isLoading) {
     return (
-      <div className="flex justify-center p-8">
-        <Loader2 className="animate-spin text-[#F36A2D]" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <Loader2 className="animate-spin text-[#F36A2D] w-8 h-8" />
       </div>
     );
   }
-
-  if (isOpen === false) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
