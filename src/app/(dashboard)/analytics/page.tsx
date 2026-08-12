@@ -399,23 +399,6 @@ export default function AnalyticsDashboard() {
                 </div>
               </div>
 
-              {/* Campaign Messages */}
-              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-indigo-500">
-                  <Megaphone size={100} />
-                </div>
-                <div className="flex justify-between items-start mb-4 relative z-10">
-                  <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                    <Megaphone size={20} />
-                  </div>
-                </div>
-                <div className="relative z-10">
-                  <p className="text-sm font-medium text-[#6F6F6F]">Contactos Iniciales</p>
-                  <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.proactiveMessagesCount}</h3>
-                  <p className="text-xs text-[#6F6F6F] mt-2">Campañas e inicios de chat</p>
-                </div>
-              </div>
-
               {/* Human Messages */}
               <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-amber-500">
@@ -430,6 +413,23 @@ export default function AnalyticsDashboard() {
                   <p className="text-sm font-medium text-[#6F6F6F]">Respuestas Humanas</p>
                   <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.humanMessagesCount}</h3>
                   <p className="text-xs text-[#6F6F6F] mt-2">Enviados por agentes en chats activos</p>
+                </div>
+              </div>
+
+              {/* Campaign Messages */}
+              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-indigo-500">
+                  <Megaphone size={100} />
+                </div>
+                <div className="flex justify-between items-start mb-4 relative z-10">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                    <Megaphone size={20} />
+                  </div>
+                </div>
+                <div className="relative z-10">
+                  <p className="text-sm font-medium text-[#6F6F6F]">Contactos Iniciales</p>
+                  <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.proactiveMessagesCount}</h3>
+                  <p className="text-xs text-[#6F6F6F] mt-2">Campañas e inicios de chat</p>
                 </div>
               </div>
 
