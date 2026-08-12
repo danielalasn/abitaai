@@ -366,13 +366,6 @@ export default function AnalyticsDashboard() {
               <div className="flex-1">
                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Total Respuestas Enviadas</p>
                 <p className="text-5xl font-bold text-white mt-1">{totalRes.toLocaleString()}</p>
-                <p className="text-xs text-zinc-500 mt-1.5">
-                  IA: <span className="text-emerald-400 font-bold">{data?.messagesSaved || 0}</span>
-                  &nbsp;&nbsp;·&nbsp;&nbsp;
-                  Manuales: <span className="text-amber-400 font-bold">{data?.humanMessagesCount || 0}</span>
-                  &nbsp;&nbsp;·&nbsp;&nbsp;
-                  Templates / Campañas: <span className="text-indigo-400 font-bold">{data?.proactiveMessagesCount || 0}</span>
-                </p>
               </div>
             </div>
 
