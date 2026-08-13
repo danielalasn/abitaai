@@ -327,10 +327,17 @@ export async function updateEvent(
     if (errorText.includes('timeRangeEmpty') || errorText.includes('Invalid time range')) {
       return { success: false, error: 'El parámetro "end" debe ser estrictamente mayor que "start". Por favor suma la duración a "start" para calcular "end".' };
     }
+    if (res.status === 404 || res.status === 410) {
+      return { success: false, error: 'RESOURCE_DELETED' };
+    }
     return { success: false, error: errorText };
   }
 
   const data = await res.json();
+  if (data.status === 'cancelled') {
+    return { success: false, error: 'RESOURCE_DELETED' };
+  }
+
   return {
     success: true,
     event_id: data.id,
@@ -354,6 +361,9 @@ export async function deleteEvent(projectId: string, eventId: string) {
   });
 
   if (!res.ok && res.status !== 204) {
+    if (res.status === 404 || res.status === 410) {
+      return { success: true, event_id: eventId, error: null }; // Already deleted
+    }
     return { success: false, error: await res.text() };
   }
 

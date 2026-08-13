@@ -157,8 +157,9 @@ FLUJO OBLIGATORIO:
 
 REGLAS DE SEGURIDAD:
 - NUNCA digas "ya agendé", "ya cancelé" o "ya actualicé" sin haber recibido [SYSTEM DATA] con success:true.
+- Si el [SYSTEM DATA] de una acción de calendario devuelve success:false o un error, NUNCA le digas al cliente que la acción fue exitosa. Explícale de forma atenta que hubo un problema de conexión o que la cita ya no existe en el sistema, y ofrécele de inmediato transferirlo con un asesor humano (si acepta, usa [ACTION: HANDOFF] en tu siguiente respuesta).
 - Solo puedes modificar/cancelar citas del cliente actual. El sistema te lista sus reservas con event_id exacto.
-- Si el ACTION falla 2 veces seguidas, usa [ACTION: HANDOFF].
+- Si el ACTION falla 2 veces seguidas, usa [ACTION: HANDOFF] directamente.
 - Si necesitas modificar el calendario Y hacer HANDOFF, completa el ACTION del calendario primero, espera la confirmación, y LUEGO usa HANDOFF.
 - VERIFICACIÓN PREVIA: Antes de ejecutar [ACTION: CHECK_AVAILABILITY], comprueba si la fecha u hora cae en un día o rango horario en que el negocio está CERRADO según tus instrucciones/conocimientos. Si está cerrado, NO ejecutes ninguna acción de calendario: responde directamente indicando que está cerrado y sugiere un horario de atención válido.
 - Respeta los horarios de atención del negocio definidos en tu base de conocimientos. Solo ofrece o verifica slots dentro de ese rango horario.
@@ -603,7 +604,12 @@ REGLAS DE ENVÍO DE ARCHIVOS:
               });
               systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":true, "system_message":"Cita actualizada exitosamente."}`;
             } else {
-              systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+              if (res.error === 'RESOURCE_DELETED') {
+                await prisma.userBooking.deleteMany({ where: { eventId } });
+                systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n{"success":false, "error":"RESOURCE_DELETED", "system_instruction":"La reserva ya no existe en Google Calendar (fue cancelada o eliminada). Hemos removido el registro local. Informa al cliente que no pudiste completar la acción porque la reserva ya no existe y ofrécele transferirlo con un asesor si lo desea."}`;
+              } else {
+                systemData = `[SYSTEM DATA: UPDATE_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+              }
             }
           }
         }
@@ -667,7 +673,12 @@ REGLAS DE ENVÍO DE ARCHIVOS:
               }
               systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":true, "system_message":"Cita cancelada exitosamente."}`;
             } else {
-              systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+              if (res.error === 'RESOURCE_DELETED') {
+                await prisma.userBooking.deleteMany({ where: { eventId } });
+                systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n{"success":false, "error":"RESOURCE_DELETED", "system_instruction":"La reserva ya no existe en Google Calendar (fue cancelada o eliminada). Hemos removido el registro local. Dile al cliente que la reserva ya estaba cancelada o no existía."}`;
+              } else {
+                systemData = `[SYSTEM DATA: CANCEL_BOOKING_RESULT]\n${JSON.stringify(res)}`;
+              }
             }
           }
         }
