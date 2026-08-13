@@ -194,15 +194,29 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
   if (hasSheets) {
     const sheetsConfig = await prisma.sheetsConfig.findUnique({ where: { projectId: project.id } });
     const tables = (sheetsConfig?.tables as any[]) || [];
-    const validTables = tables.filter(t => t.spreadsheetId && t.queryColumn);
+    const validTables = tables.filter(t => t.spreadsheetId && (t.type === 'flexible' || t.queryColumn));
     if (validTables.length > 0) {
       const tableBlocks = validTables.map((t, i) => {
-        return `
-TABLA ${i + 1}:
+        const isFlexible = t.type === 'flexible';
+        if (isFlexible) {
+          const hint = t.queryColumn
+            ? `Para filtrar eficientemente, pregunta al cliente el valor de "${t.queryColumn}" antes de buscar.`
+            : 'Antes de ejecutar el ACTION, pregunta al cliente qué está buscando (marca, categoría, etc.) para poder filtrar la información.';
+          return `
+TABLA ${i + 1} [FLEXIBLE - Catálogo]:
 - Nombre: "${t.name || 'Tabla ' + (i + 1)}"
-- Cuándo usar: ${t.instructions || 'Cuando el cliente solicite información de esta hoja.'}
-- Columna para buscar al cliente: "${t.queryColumn}"
-- ACTION: [ACTION: QUERY_SHEET tableId="${t.id}" searchValue="<VALOR_A_BUSCAR>"]`;
+- Cuándo usar: ${t.instructions || 'Cuando el cliente pregunte por información del catálogo.'}
+- ${hint}
+- ACTION con filtro: [ACTION: QUERY_SHEET tableId="${t.id}" searchColumn="<COLUMNA>" searchValue="<VALOR>"]
+- ACTION sin filtro (lista completa): [ACTION: QUERY_SHEET tableId="${t.id}"]`;
+        } else {
+          return `
+TABLA ${i + 1} [ESTRICTA - Privada]:
+- Nombre: "${t.name || 'Tabla ' + (i + 1)}"
+- Cuándo usar: ${t.instructions || 'Cuando el cliente solicite información personal.'}
+- Columna de búsqueda: "${t.queryColumn}" (debes pedir este valor al cliente si no lo tienes)
+- ACTION: [ACTION: QUERY_SHEET tableId="${t.id}" searchValue="<VALOR_EXACTO>"]`;
+        }
       }).join('\n');
 
       sheetsInstructions = `
@@ -210,10 +224,10 @@ TABLA ${i + 1}:
 Tienes acceso a ${validTables.length} base(s) de datos del negocio en Google Sheets.
 
 INSTRUCCIONES GENERALES:
-1. Usa la acción QUERY_SHEET de la tabla correspondiente, pasando el valor exacto a buscar en 'searchValue' (ej: el número de teléfono o ID del cliente).
-2. El sistema te devolverá SOLO la información autorizada para ese cliente. Responde de forma natural.
-3. Si no encuentras al cliente en la hoja, dile que verificarás con el equipo.
-4. NUNCA inventes datos. Solo informa lo que encuentres en la hoja.
+1. ESTRICTA: Requiere el valor exacto del cliente. Haz match exacto. NUNCA muestres datos de otros.
+2. FLEXIBLE: Antes de ejecutar el ACTION, pregunta al cliente para obtener un filtro. El sistema filtrará en el servidor y te devolverá solo las filas relevantes.
+3. NUNCA inventes datos. Solo informa lo que encuentres en el resultado.
+4. Si no encuentras al cliente o el producto, dile que verificarás con el equipo.
 ${tableBlocks}
 </sheets_tools>
 `;
@@ -306,15 +320,23 @@ REGLAS DE ENVÍO DE ARCHIVOS:
 
       // --- SHEETS ACTIONS ---
       if (rawReply.includes('[ACTION: QUERY_SHEET')) {
-        const match = rawReply.match(/\[ACTION:\s*QUERY_SHEET\s+tableId=["']?([^"'\]]+)["']?\s+searchValue=["']?([^"'\]]+)["']?.*?\]/i);
-        if (match) {
+        // Extract tableId (required) and optional searchColumn + searchValue
+        const tagMatch = rawReply.match(/\[ACTION:\s*QUERY_SHEET([^\]]*)\]/i);
+        if (tagMatch) {
           actionFound = true;
-          const tableId = match[1];
-          const searchValue = match[2];
+          const paramStr = tagMatch[1];
+          const getParam = (key: string) => {
+            const m = paramStr.match(new RegExp(`${key}=["']?([^"'\\]\\s]+)["']?`, 'i'));
+            return m ? m[1].trim() : null;
+          };
+          const tableId = getParam('tableId');
+          const searchValue = getParam('searchValue');
+          const searchColumn = getParam('searchColumn');
+
           const { executeIntegration } = await import('@/lib/integrations/integrationFactory');
           const sheetsConn = (project as any).nangoConnections.find((c: any) => c.providerConfigKey === 'google-sheet');
           
-          if (sheetsConn) {
+          if (sheetsConn && tableId) {
             const sheetsConfig = await prisma.sheetsConfig.findUnique({ where: { projectId: project.id } });
             const tables = (sheetsConfig?.tables as any[]) || [];
             const tableConfig = tables.find(t => t.id === tableId);
@@ -322,29 +344,57 @@ REGLAS DE ENVÍO DE ARCHIVOS:
             if (tableConfig) {
               const range = `${tableConfig.sheetName || 'Sheet1'}!A1:Z500`;
               const res = await executeIntegration('google-sheet', 'QUERY_SHEET', { spreadsheetId: tableConfig.spreadsheetId, range }, sheetsConn.connectionId);
-              
-              if (res.success && res.data && res.data.values) {
-                const rows = res.data.values;
-                const headers = rows[0] || [];
-                const queryColIdx = headers.findIndex((h: string) => h.trim().toLowerCase() === tableConfig.queryColumn.trim().toLowerCase());
-                
-                if (queryColIdx !== -1) {
-                  const matchingRows = rows.slice(1).filter((r: any[]) => String(r[queryColIdx]).trim() === String(searchValue).trim());
-                  if (matchingRows.length > 0) {
-                    const resultData = matchingRows.map((row: any[]) => {
-                      const obj: any = {};
-                      (tableConfig.readColumns || []).forEach((col: string) => {
-                        const idx = headers.findIndex((h: string) => h.trim().toLowerCase() === col.trim().toLowerCase());
-                        if (idx !== -1) obj[col] = row[idx];
-                      });
-                      return obj;
-                    });
-                    systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n${JSON.stringify({ success: true, data: resultData })}`;
+              const rawData = res as any;
+
+              if (rawData.success && rawData.data && rawData.data.values) {
+                const rows: any[][] = rawData.data.values;
+                const headers: string[] = rows[0] || [];
+                const readCols: string[] = tableConfig.readColumns?.length > 0 ? tableConfig.readColumns : headers;
+                const isFlexible = tableConfig.type === 'flexible';
+
+                let matchingRows: any[][] = [];
+
+                if (isFlexible) {
+                  if (searchValue) {
+                    // Flexible with filter: case-insensitive partial match on specified or configured column
+                    const colToSearch = searchColumn || tableConfig.queryColumn;
+                    if (colToSearch) {
+                      const colIdx = headers.findIndex((h: string) => h.trim().toLowerCase() === colToSearch.trim().toLowerCase());
+                      matchingRows = colIdx !== -1
+                        ? rows.slice(1).filter((r: any[]) => String(r[colIdx] || '').toLowerCase().includes(String(searchValue).toLowerCase()))
+                        : rows.slice(1);
+                    } else {
+                      // No column specified: search across all columns
+                      matchingRows = rows.slice(1).filter((r: any[]) => r.some(cell => String(cell || '').toLowerCase().includes(String(searchValue).toLowerCase())));
+                    }
                   } else {
-                    systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"No se encontró ningún registro para ${searchValue}"}`;
+                    // No filter: return all rows (capped at 100)
+                    matchingRows = rows.slice(1, 101);
                   }
                 } else {
-                  systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"Columna de búsqueda no encontrada en la hoja"}`;
+                  // Strict: exact match on queryColumn
+                  const queryColIdx = headers.findIndex((h: string) => h.trim().toLowerCase() === tableConfig.queryColumn.trim().toLowerCase());
+                  matchingRows = queryColIdx !== -1
+                    ? rows.slice(1).filter((r: any[]) => String(r[queryColIdx]).trim() === String(searchValue).trim())
+                    : [];
+                }
+
+                if (matchingRows.length > 0) {
+                  const resultData = matchingRows.map((row: any[]) => {
+                    const obj: any = {};
+                    readCols.forEach((col: string) => {
+                      const idx = headers.findIndex((h: string) => h.trim().toLowerCase() === col.trim().toLowerCase());
+                      if (idx !== -1) obj[col] = row[idx];
+                    });
+                    return obj;
+                  });
+                  systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n${JSON.stringify({ success: true, count: resultData.length, data: resultData })}`;
+                  console.log(`[Agentic Loop] QUERY_SHEET tableId=${tableId} type=${tableConfig.type} found=${resultData.length}`);
+                } else {
+                  const msg = isFlexible && !searchValue
+                    ? 'La hoja está vacía.'
+                    : `No se encontró ningún registro para "${searchValue}"${searchColumn ? ` en la columna "${searchColumn}"` : ''}.`;
+                  systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n${JSON.stringify({ success: false, error: msg })}`;
                 }
               } else {
                 systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"Error al leer la hoja o la hoja está vacía"}`;
@@ -353,7 +403,7 @@ REGLAS DE ENVÍO DE ARCHIVOS:
               systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"Configuración de tabla no encontrada"}`;
             }
           } else {
-            systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"No sheets connection found"}`;
+            systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"No sheets connection found or missing tableId"}`;
           }
         }
       }

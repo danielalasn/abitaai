@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 export interface SheetTable {
   id: string;
   name?: string;
+  type?: 'strict' | 'flexible';
   spreadsheetId: string;
   sheetName: string;
   instructions: string;

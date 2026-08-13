@@ -13,6 +13,7 @@ interface SheetsConfigPanelProps {
 const emptyTable = (): SheetTable => ({
   id: crypto.randomUUID(),
   name: '',
+  type: 'strict',
   spreadsheetId: '',
   sheetName: 'Sheet1',
   instructions: '',
@@ -100,8 +101,9 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
         alert('Todas las tablas deben tener un ID de spreadsheet.');
         return;
       }
-      if (!t.queryColumn) {
-        alert('Todas las tablas deben tener una columna de búsqueda seleccionada.');
+      const isStrict = (t.type ?? 'strict') === 'strict';
+      if (isStrict && !t.queryColumn) {
+        alert(`La tabla "${t.name || 'sin nombre'}" es tipo Estricta y debe tener una columna de búsqueda.`);
         return;
       }
     }
@@ -212,6 +214,37 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                       />
                     </div>
 
+                    {/* Table Type Selector */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Tipo de tabla</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => updateTable(table.id, { type: 'strict', queryColumn: '' })}
+                          className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition-all ${
+                            (table.type ?? 'strict') === 'strict'
+                              ? 'border-green-500 bg-green-500/10'
+                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
+                          }`}
+                        >
+                          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Estricta</span>
+                          <span className="text-[10px] text-zinc-500 leading-snug">Solo responde con el ID exacto del cliente (ej: teléfono). Ideal para pedidos, cuentas, expedientes.</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateTable(table.id, { type: 'flexible', queryColumn: '' })}
+                          className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition-all ${
+                            table.type === 'flexible'
+                              ? 'border-blue-500 bg-blue-500/10'
+                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
+                          }`}
+                        >
+                          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Flexible</span>
+                          <span className="text-[10px] text-zinc-500 leading-snug">El bot pregunta primero, luego filtra. Ideal para catálogos, inventarios, listas de productos.</span>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Instructions */}
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-bold text-zinc-800 dark:text-zinc-200">¿Cuándo debe el bot usar esta tabla?</label>
@@ -297,20 +330,29 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                     {/* Column selectors - only after verify */}
                     {hasVerified && (
                       <>
-                        {/* Query column */}
+                         {/* Query column - only for strict OR flexible filter */}
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Columna de búsqueda <span className="text-red-400">*</span></label>
-                          <p className="text-[10px] text-zinc-500">El bot buscará al cliente usando el valor de esta columna (ej: Teléfono, Email, Número de orden).</p>
+                          <label className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                            {(table.type ?? 'strict') === 'strict'
+                              ? <>Columna de búsqueda <span className="text-red-400">*</span></>
+                              : 'Columna de filtro principal (opcional)'}
+                          </label>
+                          <p className="text-[10px] text-zinc-500">
+                            {(table.type ?? 'strict') === 'strict'
+                              ? 'El bot buscará al cliente usando el valor exacto de esta columna (ej: Teléfono, Email, Número de orden).'
+                              : 'Si se selecciona, la IA intentará recolectar un filtro para esta columna antes de buscar. Si no, buscará por la columna que el cliente mencione.'}
+                          </p>
                           <div className="flex flex-wrap gap-2">
                             {cols.map(col => (
                               <button
                                 key={col}
                                 type="button"
-                                onClick={() => updateTable(table.id, { queryColumn: col })}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${table.queryColumn === col
-                                  ? 'bg-green-500 text-white border-green-500'
-                                  : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-green-400'
-                                  }`}
+                                onClick={() => updateTable(table.id, { queryColumn: table.queryColumn === col ? '' : col })}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                                  table.queryColumn === col
+                                    ? (table.type === 'flexible' ? 'bg-blue-500 text-white border-blue-500' : 'bg-green-500 text-white border-green-500')
+                                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-green-400'
+                                }`}
                               >
                                 {col}
                               </button>
@@ -349,11 +391,18 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                     )}
 
                     {/* Show summary if verified */}
-                    {hasVerified && table.queryColumn && table.readColumns.length > 0 && (
-                      <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/40 rounded-xl">
-                        <p className="text-[10px] text-green-700 dark:text-green-400 leading-relaxed">
-                          El bot buscará por <strong>{table.queryColumn}</strong> y leerá:{' '}
-                          <strong>{table.readColumns.join(', ')}</strong>.
+                    {hasVerified && table.readColumns.length > 0 && (
+                      <div className={`p-3 rounded-xl border ${
+                        table.type === 'flexible'
+                          ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40'
+                          : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/40'
+                      }`}>
+                        <p className={`text-[10px] leading-relaxed ${
+                          table.type === 'flexible' ? 'text-blue-700 dark:text-blue-400' : 'text-green-700 dark:text-green-400'
+                        }`}>
+                          {(table.type ?? 'strict') === 'strict'
+                            ? <>Búsqueda exacta por <strong>{table.queryColumn || '(sin columna)'}</strong>. Leerá: <strong>{table.readColumns.join(', ')}</strong>.</>                            
+                            : <>Catálogo flexible. La IA {table.queryColumn ? <>pedirá un filtro para "<strong>{table.queryColumn}</strong>"</> : 'preguntará para filtrar'} antes de buscar. Columnas disponibles: <strong>{table.readColumns.join(', ')}</strong>.</>}
                         </p>
                       </div>
                     )}
