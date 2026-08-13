@@ -40,8 +40,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    console.log('[WA Embedded Signup] code:', code?.substring(0, 20) + '...')
-    console.log('[WA Embedded Signup] waba_id:', waba_id, '| phone_number_id:', phone_number_id)
+    console.log('[WA Embedded Signup] ═══════ INICIO ═══════')
+    console.log('[WA Embedded Signup] Usuario:', user?.id, '| email:', user?.email)
+    console.log('[WA Embedded Signup] Body recibido del frontend:', JSON.stringify({ code: code?.substring(0, 20) + '...', waba_id, phone_number_id, business_id }))
 
     // BACKEND FALLBACK: Si el frontend no pudo capturar waba_id o phone_number_id
     let finalWabaId = waba_id;
@@ -113,10 +114,14 @@ export async function POST(req: NextRequest) {
     const llData = await llRes.json()
     const longLivedToken = llData.access_token || shortLivedToken
     console.log('[WA Embedded Signup] Long-lived token OK:', !!llData.access_token)
+    if (!llData.access_token) {
+      console.warn('[WA Embedded Signup] ADVERTENCIA: No se obtuvo long-lived token, se usará el short-lived. llData:', JSON.stringify(llData))
+    }
 
     // 3. Suscribir la WABA del cliente a los webhooks de Abita
     //    Usamos el SYSTEM_USER_TOKEN (no el del cliente) para suscribir
     if (finalWabaId && SYSTEM_USER_TOKEN) {
+      console.log('[WA Embedded Signup] Suscribiendo webhooks para WABA:', finalWabaId)
       const subRes = await fetch(`https://graph.facebook.com/${API_VERSION}/${finalWabaId}/subscribed_apps`, {
         method: 'POST',
         headers: {
@@ -125,9 +130,9 @@ export async function POST(req: NextRequest) {
         },
       })
       const subData = await subRes.json()
-      console.log('[WA Embedded Signup] Webhook subscription:', JSON.stringify(subData))
+      console.log('[WA Embedded Signup] Webhook subscription result:', JSON.stringify(subData))
     } else {
-      console.warn('[WA Embedded Signup] waba_id or SYSTEM_USER_TOKEN missing — skipping webhook subscription')
+      console.warn('[WA Embedded Signup] ⚠️ waba_id o SYSTEM_USER_TOKEN faltante — se omite suscripción de webhooks. finalWabaId:', finalWabaId, '| hasSystemToken:', !!SYSTEM_USER_TOKEN)
     }
 
     // 4. Buscar proyecto del cliente y guardar credenciales
@@ -140,13 +145,27 @@ export async function POST(req: NextRequest) {
       }, { status: 404 })
     }
 
+    console.log('[WA Embedded Signup] ─── Resumen de IDs capturados ───')
+    console.log('[WA Embedded Signup] finalWabaId:', finalWabaId || '(vacío)')
+    console.log('[WA Embedded Signup] finalPhoneId:', finalPhoneId || '(vacío)')
+    console.log('[WA Embedded Signup] business_id (del frontend):', business_id || '(vacío)')
+    console.log('[WA Embedded Signup] Proyecto actual en DB → phoneId:', project.whatsappPhoneId || '(vacío)', '| wabaId:', project.whatsappBusinessId || '(vacío)')
+
+    const updateData: any = {
+      whatsappToken: encrypt(longLivedToken),
+    };
+    // Solo sobreescribir IDs si se capturaron — nunca reemplazar con string vacío
+    if (finalPhoneId) updateData.whatsappPhoneId = finalPhoneId;
+    else if (!project.whatsappPhoneId) updateData.whatsappPhoneId = '';
+
+    if (finalWabaId || business_id) updateData.whatsappBusinessId = finalWabaId || business_id;
+    else if (!project.whatsappBusinessId) updateData.whatsappBusinessId = '';
+
+    console.log('[WA Embedded Signup] Datos que SE GUARDARÁN en DB:', JSON.stringify(updateData).replace(updateData.whatsappToken, '[TOKEN_CIFRADO]'))
+
     await prisma.project.update({
       where: { id: project.id },
-      data: {
-        whatsappToken:      encrypt(longLivedToken),
-        whatsappPhoneId:    finalPhoneId || project.whatsappPhoneId || '',
-        whatsappBusinessId: finalWabaId || business_id || project.whatsappBusinessId || '',
-      },
+      data: updateData,
     })
 
     await prisma.integration.upsert({
@@ -155,7 +174,8 @@ export async function POST(req: NextRequest) {
       update: { status: 'active', oauthState: null },
     })
 
-    console.log('[WA Embedded Signup] Credenciales guardadas. Project:', project.id, '| Phone:', finalPhoneId, '| WABA:', finalWabaId)
+    console.log('[WA Embedded Signup] ✅ Credenciales guardadas. Project:', project.id, '| Phone:', finalPhoneId || '(no capturado)', '| WABA:', finalWabaId || '(no capturado)')
+    console.log('[WA Embedded Signup] ═══════ FIN ═══════')
     
     // Invalidate the cache for the settings page so loadProject fetches fresh data
     const { revalidatePath } = require('next/cache');
