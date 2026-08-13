@@ -100,7 +100,8 @@ Formato de respuesta:
       }]
     });
 
-    let responseText = response.content[0].type === 'text' ? response.content[0].text : "";
+    const textBlock = response.content.find((block: any) => block.type === 'text');
+    let responseText = (textBlock as any)?.text || "";
     
     // Parse JSON
     if (responseText.includes("```json")) {
@@ -109,11 +110,45 @@ Formato de respuesta:
       responseText = responseText.split("```")[1].split("```")[0];
     }
 
+    const firstBrace = responseText.indexOf("{");
+    const lastBrace = responseText.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      responseText = responseText.substring(firstBrace, lastBrace + 1);
+    }
+
     const data = JSON.parse(responseText.trim());
     return data.messages || [];
 
   } catch (error) {
-    console.error("Error generating conversation:", error);
+    console.error("Error generating conversation con Claude, intentando fallback con Gemini:", error);
+    try {
+      if (process.env.GEMINI_API_KEY) {
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({
+          model: AI_MODELS.GEMINI_FALLBACK,
+          systemInstruction: systemPrompt
+        });
+        const result = await model.generateContent(`Genera la conversación de ${numTurns} turnos en JSON estricto.`);
+        let responseText = result.response.text();
+        if (responseText.includes("```json")) {
+          responseText = responseText.split("```json")[1].split("```")[0];
+        } else if (responseText.includes("```")) {
+          responseText = responseText.split("```")[1].split("```")[0];
+        }
+        const firstBrace = responseText.indexOf("{");
+        const lastBrace = responseText.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          responseText = responseText.substring(firstBrace, lastBrace + 1);
+        }
+        const data = JSON.parse(responseText.trim());
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          return data.messages;
+        }
+      }
+    } catch (geminiError) {
+      console.error("Error generating conversation con Gemini Fallback:", geminiError);
+    }
     return ["Hola"]; // Fallback
   }
 }

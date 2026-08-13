@@ -425,6 +425,36 @@ export async function saveNotificationEmails(emails: string[]): Promise<{ succes
 }
 
 // ──────────────────────────────────────────────
+// Notification Phones (WhatsApp)
+// ──────────────────────────────────────────────
+
+export async function getNotificationPhones(): Promise<string[]> {
+  const project = await getCurrentProject();
+  if (!project) return [];
+  return (project as any).notificationPhones || [];
+}
+
+export async function saveNotificationPhones(phones: string[]): Promise<{ success: boolean }> {
+  const project = await getCurrentProject();
+  if (!project) throw new Error('Proyecto no encontrado.');
+  await (prisma.project as any).update({
+    where: { id: project.id },
+    data: { notificationPhones: phones }
+  });
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function getHandoffTemplateStatus(): Promise<string | null> {
+  const project = await getCurrentProject();
+  if (!project) return null;
+  return (project as any).handoffTemplateStatus || null;
+}
+
+
+
+
+// ──────────────────────────────────────────────
 // Disconnect WhatsApp
 // ──────────────────────────────────────────────
 

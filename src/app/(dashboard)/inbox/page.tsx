@@ -163,6 +163,7 @@ export default function InboxPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [isBotConfirmModalOpen, setIsBotConfirmModalOpen] = useState(false);
 
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -290,10 +291,19 @@ export default function InboxPage() {
     const initialLoad = async () => {
       const data = await getActiveChats(Date.now());
       setChats(data);
-      // Ya no seleccionamos el primer chat por defecto para que inicie en la bandeja vacía
       setIsLoading(false);
+
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const chatId = params.get('chatId');
+        if (chatId) {
+          loadChatDetails(chatId);
+          window.history.replaceState({}, '', '/inbox');
+        }
+      }
     };
     initialLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Inicializar audio de notificación
@@ -1490,7 +1500,7 @@ export default function InboxPage() {
                 <div className="w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
                 <span className="text-sm font-medium text-[#6F6F6F]">IA Activa</span>
                 <button
-                  onClick={handleToggleBot}
+                  onClick={() => setIsBotConfirmModalOpen(true)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${activeChat.botActive ? 'bg-[#F36A2D]' : 'bg-[#DEDAD0] dark:bg-zinc-700'
                     }`}
                 >
@@ -2193,6 +2203,63 @@ export default function InboxPage() {
           </div>
         ))}
       </div>
+
+      {/* Modal de Doble Verificación para Bot Active */}
+      {isBotConfirmModalOpen && activeChat && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 p-6 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`p-3 rounded-2xl flex items-center justify-center ${activeChat.botActive ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+                <Bot size={24} />
+              </div>
+              <button
+                onClick={() => setIsBotConfirmModalOpen(false)}
+                className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-[#6F6F6F]"
+              >
+                <XIcon size={18} />
+              </button>
+            </div>
+
+            <h3 className="text-lg font-bold text-[#111111] dark:text-[#EDE9E0] mb-2">
+              {activeChat.botActive ? '¿Desactivar Inteligencia Artificial?' : '¿Activar Inteligencia Artificial?'}
+            </h3>
+
+            <p className="text-sm text-[#6F6F6F] leading-relaxed mb-6">
+              {activeChat.botActive ? (
+                <>
+                  Estás a punto de <strong>desactivar</strong> el bot para <strong className="text-[#111111] dark:text-[#EDE9E0]">{activeChat.lead?.name || activeChat.lead?.phone}</strong>. El bot dejará de responder automáticamente a los mensajes de este cliente.
+                </>
+              ) : (
+                <>
+                  Estás a punto de <strong>activar</strong> el bot para <strong className="text-[#111111] dark:text-[#EDE9E0]">{activeChat.lead?.name || activeChat.lead?.phone}</strong>. La IA responderá de forma automática a los mensajes entrantes de este cliente.
+                </>
+              )}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DEDAD0]/60 dark:border-zinc-800">
+              <button
+                onClick={() => setIsBotConfirmModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#6F6F6F] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setIsBotConfirmModalOpen(false);
+                  handleToggleBot();
+                }}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${
+                  activeChat.botActive
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                    : 'bg-[#F36A2D] hover:bg-[#d9591d] shadow-[#F36A2D]/20'
+                }`}
+              >
+                {activeChat.botActive ? 'Sí, desactivar bot' : 'Sí, activar bot'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Imagen */}
       {selectedImage && (

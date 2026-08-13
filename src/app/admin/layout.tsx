@@ -9,6 +9,9 @@ import { updateUserTheme } from '@/app/actions/user';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  
+  React.useEffect(() => setMounted(true), []);
   
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A';
 
@@ -39,10 +42,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-700"
-            title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-700 flex items-center justify-center w-10 h-10"
+            title={mounted ? (theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro') : 'Cambiar tema'}
           >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {mounted ? (theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />) : <span className="w-[18px] h-[18px]" />}
           </button>
 
           {/* User Profile */}

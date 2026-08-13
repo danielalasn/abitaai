@@ -7,7 +7,7 @@ import { getCurrentProject, resolveProjectCredentials } from '@/lib/auth-server'
 import { updateLeadAISummaryInternal } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
 import { decrypt } from '@/lib/encryption';
-import { sendHandoffNotification } from '@/lib/email';
+import { sendHandoffNotification, sendHandoffWhatsAppNotification } from '@/lib/email';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats(_timestamp?: number) {
@@ -256,7 +256,24 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
         leadScore: lead.score,
         projectName: lead.project.name,
         channel: lead.channel,
+        chatId: chatId,
       }).catch((e) => console.error('[Email] Error enviando notificación de handoff:', e));
+    }
+
+    // Send WhatsApp notifications
+    const notificationPhones = (lead.project as any).notificationPhones as string[] | undefined;
+    const templateApproved = (lead.project as any).handoffTemplateStatus === 'APPROVED';
+    if (notificationPhones && notificationPhones.length > 0 && templateApproved) {
+      sendHandoffWhatsAppNotification(notificationPhones, {
+        leadName: lead.name,
+        leadPhone: lead.phone,
+        leadScore: lead.score,
+        chatId: chatId,
+        project: {
+          whatsappPhoneId: lead.project.whatsappPhoneId,
+          whatsappToken: (lead.project as any).whatsappToken,
+        },
+      }).catch((e) => console.error('[WA Handoff] Error enviando notificación:', e));
     }
   }
 

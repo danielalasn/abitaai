@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import { sendWhatsAppTemplate } from '@/lib/whatsapp';
+import { decrypt } from '@/lib/encryption';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -8,6 +10,7 @@ export interface HandoffEmailData {
   leadScore?: number;
   projectName?: string;
   channel?: string;
+  chatId: string;
 }
 
 export async function sendHandoffNotification(
@@ -20,51 +23,20 @@ export async function sendHandoffNotification(
     return;
   }
 
-  const { leadName, leadPhone, leadScore, projectName, channel = 'WhatsApp' } = data;
+  const { leadName, leadPhone, leadScore, projectName, channel = 'WhatsApp', chatId } = data;
   const displayName = leadName || leadPhone;
   const time = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
+  const link = `https://platform.abitaai.com/inbox?chatId=${chatId}`;
 
   const htmlBody = `
-    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 10px; overflow: hidden;">
-      <div style="background: #F36A2D; padding: 24px 32px;">
-        <h1 style="color: white; margin: 0; font-size: 20px;">Handoff requerido</h1>
-        <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0; font-size: 14px;">Un cliente necesita atención humana</p>
-      </div>
-      <div style="padding: 28px 32px; background: white;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 10px 0; color: #666; font-size: 14px; width: 130px;">Cliente</td>
-            <td style="padding: 10px 0; font-weight: bold; color: #111; font-size: 14px;">${displayName}</td>
-          </tr>
-          <tr style="border-top: 1px solid #f0f0f0;">
-            <td style="padding: 10px 0; color: #666; font-size: 14px;">Teléfono</td>
-            <td style="padding: 10px 0; font-weight: bold; color: #111; font-size: 14px;">${leadPhone}</td>
-          </tr>
-          <tr style="border-top: 1px solid #f0f0f0;">
-            <td style="padding: 10px 0; color: #666; font-size: 14px;">Canal</td>
-            <td style="padding: 10px 0; font-weight: bold; color: #111; font-size: 14px;">${channel}</td>
-          </tr>
-          ${leadScore !== undefined ? `
-          <tr style="border-top: 1px solid #f0f0f0;">
-            <td style="padding: 10px 0; color: #666; font-size: 14px;">Lead Score</td>
-            <td style="padding: 10px 0; font-weight: bold; color: #F36A2D; font-size: 14px;">${leadScore} pts</td>
-          </tr>` : ''}
-          ${projectName ? `
-          <tr style="border-top: 1px solid #f0f0f0;">
-            <td style="padding: 10px 0; color: #666; font-size: 14px;">Proyecto</td>
-            <td style="padding: 10px 0; font-weight: bold; color: #111; font-size: 14px;">${projectName}</td>
-          </tr>` : ''}
-          <tr style="border-top: 1px solid #f0f0f0;">
-            <td style="padding: 10px 0; color: #666; font-size: 14px;">Hora</td>
-            <td style="padding: 10px 0; color: #111; font-size: 14px;">${time}</td>
-          </tr>
-        </table>
-        <div style="margin-top: 24px; padding: 14px 18px; background: #FFF4EE; border-left: 4px solid #F36A2D; border-radius: 4px;">
-          <p style="margin: 0; font-size: 13px; color: #333;">Entra a tu plataforma y atiende este cliente a la brevedad.</p>
-        </div>
-      </div>
-      <div style="padding: 16px 32px; background: #f9f9f9; text-align: center;">
-        <p style="margin: 0; font-size: 12px; color: #aaa;">Abita AI — Notificación automática</p>
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 10px; overflow: hidden; border: 1px solid #eee;">
+      <div style="padding: 24px 32px; background: white;">
+        <h2 style="margin: 0 0 16px 0; font-size: 18px; color: #111;">*HANDOFF Abita AI*</h2>
+        <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Cliente:</strong> ${displayName}</p>
+        <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Numero:</strong> ${leadPhone}</p>
+        <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>lead score:</strong> ${leadScore || 0}</p>
+        <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>hora:</strong> ${time}</p>
+        <p style="margin: 16px 0 0 0; font-size: 14px; color: #333;"><strong>link:</strong> <a href="${link}" style="color: #F36A2D;">${link}</a></p>
       </div>
     </div>
   `;
@@ -73,11 +45,84 @@ export async function sendHandoffNotification(
     await resend.emails.send({
       from: 'Abita AI <info@alnovu.com>',
       to: notificationEmails,
-      subject: `Handoff: ${displayName} necesita un agente`,
+      subject: `Handoff: ${displayName} necesita un asesor`,
       html: htmlBody,
     });
     console.log(`[Email] Notificación de handoff enviada a: ${notificationEmails.join(', ')}`);
   } catch (err) {
     console.error('[Email] Error al enviar notificación de handoff:', err);
+  }
+}
+
+// ──────────────────────────────────────────────
+// WhatsApp Handoff Notification
+// ──────────────────────────────────────────────
+
+export interface HandoffWhatsAppData {
+  leadName?: string | null;
+  leadPhone: string;
+  leadScore?: number;
+  chatId: string;
+  project: {
+    whatsappPhoneId?: string | null;
+    whatsappToken?: string | null;
+  };
+}
+
+const HANDOFF_TEMPLATE_NAME = 'handoff_notif_abita';
+
+export async function sendHandoffWhatsAppNotification(
+  notificationPhones: string[],
+  data: HandoffWhatsAppData
+): Promise<void> {
+  if (!notificationPhones || notificationPhones.length === 0) return;
+
+  const { leadName, leadPhone, leadScore, chatId, project } = data;
+  const displayName = leadName || leadPhone;
+  const time = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
+
+  const phoneNumberId = project.whatsappPhoneId;
+  const rawToken = project.whatsappToken;
+
+  if (!phoneNumberId || !rawToken) {
+    console.warn('[WA Handoff] Sin credenciales WA en el proyecto. Saltando notificación.');
+    return;
+  }
+
+  const accessToken = decrypt(rawToken) || rawToken;
+
+  for (const phone of notificationPhones) {
+    try {
+      await sendWhatsAppTemplate(
+        phone,
+        HANDOFF_TEMPLATE_NAME,
+        'es',
+        [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: displayName },
+              { type: 'text', text: leadPhone },
+              { type: 'text', text: leadScore !== undefined ? leadScore.toString() : '0' },
+              { type: 'text', text: time },
+            ],
+          },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: '0',
+            parameters: [
+              { type: 'text', text: chatId },
+            ],
+          },
+        ],
+        phoneNumberId,
+        accessToken,
+        'UTILITY'
+      );
+      console.log(`[WA Handoff] Notificación enviada a ${phone}`);
+    } catch (err) {
+      console.error(`[WA Handoff] Error enviando a ${phone}:`, err);
+    }
   }
 }

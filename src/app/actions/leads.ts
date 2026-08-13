@@ -109,8 +109,8 @@ ${transcript}`,
       ],
     });
 
-    const summary =
-      response.content[0].type === 'text' ? response.content[0].text.trim() : null;
+    const textBlock = response.content.find((block: any) => block.type === 'text');
+    const summary = (textBlock as any)?.text ? (textBlock as any).text.trim() : null;
     if (!summary) return;
 
     await prisma.lead.update({

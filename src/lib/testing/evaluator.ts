@@ -43,7 +43,9 @@ Sé RIGUROSO pero JUSTO. No infles los scores. Un score de 7 es "bueno", 8 es "m
 NO marques como hallucination algo que el bot dijo si eso está en su prompt o knowledge base.
 Solo baja puntos en "accuracy" y "no_hallucination" si el bot inventó datos que claramente no tiene de ninguna fuente.
 
-Formato de respuesta (JSON estricto):
+MUY IMPORTANTE: Tu respuesta DEBE ser ÚNICAMENTE un objeto JSON válido. NO envuelvas la respuesta en bloques de código (\`\`\`json), NO incluyas texto antes ni después. El formato debe poder parsearse directamente con JSON.parse(). Asegúrate de incluir todas las comas necesarias.
+
+Formato exacto esperado (reemplaza con los valores reales):
 {
   "overall_score": 8.5,
   "criteria_scores": {
@@ -83,7 +85,8 @@ Evaluá rigurosamente en formato JSON.`
       }]
     });
 
-    let responseText = response.content[0].type === 'text' ? response.content[0].text : "";
+    const textBlock = response.content.find((block: any) => block.type === 'text');
+    let responseText = (textBlock as any)?.text || "";
     
     if (responseText.includes("```json")) {
       responseText = responseText.split("```json")[1].split("```")[0];
@@ -91,9 +94,47 @@ Evaluá rigurosamente en formato JSON.`
       responseText = responseText.split("```")[1].split("```")[0];
     }
 
+    const firstBrace = responseText.indexOf("{");
+    const lastBrace = responseText.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      responseText = responseText.substring(firstBrace, lastBrace + 1);
+    }
+
     return JSON.parse(responseText.trim());
   } catch (error) {
-    console.error("Error evaluating conversation:", error);
+    console.error("Error evaluating conversation con Claude, intentando fallback con Gemini:", error);
+    try {
+      if (process.env.GEMINI_API_KEY) {
+        const { GoogleGenerativeAI } = await import('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({
+          model: AI_MODELS.GEMINI_FALLBACK,
+          systemInstruction: evaluatorPrompt
+        });
+        const result = await model.generateContent(`Conversación a evaluar:
+Perfil del cliente: ${executedConversation.profile}
+Intención: ${executedConversation.intent}
+
+Turnos:
+${JSON.stringify(executedConversation.turns, null, 2)}
+
+Evaluá rigurosamente en formato JSON.`);
+        let responseText = result.response.text();
+        if (responseText.includes("```json")) {
+          responseText = responseText.split("```json")[1].split("```")[0];
+        } else if (responseText.includes("```")) {
+          responseText = responseText.split("```")[1].split("```")[0];
+        }
+        const firstBrace = responseText.indexOf("{");
+        const lastBrace = responseText.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          responseText = responseText.substring(firstBrace, lastBrace + 1);
+        }
+        return JSON.parse(responseText.trim());
+      }
+    } catch (geminiError) {
+      console.error("Error evaluating conversation con Gemini Fallback:", geminiError);
+    }
     return {
       overall_score: 0,
       criteria_scores: {},

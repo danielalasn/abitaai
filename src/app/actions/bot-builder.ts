@@ -93,8 +93,18 @@ function normalizeScoringRules(raw: string | any[]): string {
 // ─────────────────────────────────────────────────────────────
 
 function parseClaudeJson(text: string): GeneratedBotConfig {
-  const cleaned = text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-  const parsed = JSON.parse(cleaned);
+  let cleaned = text.trim();
+  if (cleaned.includes("```json")) {
+    cleaned = cleaned.split("```json")[1].split("```")[0];
+  } else if (cleaned.includes("```")) {
+    cleaned = cleaned.split("```")[1].split("```")[0];
+  }
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  const parsed = JSON.parse(cleaned.trim());
   return {
     identity: parsed.identity || '',
     instructions: parsed.instructions || '',
@@ -138,7 +148,8 @@ async function generateFromPdf(buffer: Buffer, clientName: string): Promise<Gene
     ],
   });
 
-  const rawJson = response.content[0].type === 'text' ? response.content[0].text : '{}';
+  const textBlock = response.content.find((block: any) => block.type === 'text');
+  const rawJson = (textBlock as any)?.text || '{}';
   try {
     return parseClaudeJson(rawJson);
   } catch {
@@ -165,7 +176,8 @@ async function generateFromText(rawText: string, clientName: string): Promise<Ge
     ],
   });
 
-  const rawJson = response.content[0].type === 'text' ? response.content[0].text : '{}';
+  const textBlock = response.content.find((block: any) => block.type === 'text');
+  const rawJson = (textBlock as any)?.text || '{}';
   try {
     return parseClaudeJson(rawJson);
   } catch {

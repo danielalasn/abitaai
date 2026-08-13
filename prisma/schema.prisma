@@ -52,8 +52,10 @@ model Project {
   whatsappToken       String?
   defaultBotActive    Boolean              @default(false)
   leadScoringEnabled  Boolean              @default(true)
-  notificationEmails  String[]             @default([])
-  botAutoWakeHours    Float?               @default(168)
+  notificationEmails      String[]             @default([])
+  notificationPhones      String[]             @default([])
+  handoffTemplateStatus   String?
+  botAutoWakeHours        Float?               @default(168)
   agents              Agent[]
   botConfig           BotConfig?
   botTestSuites       BotTestSuite[]
