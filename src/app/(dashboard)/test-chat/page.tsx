@@ -5,6 +5,11 @@ import { sendSimulatorMessage, getSimulatorChat, resetSimulatorChat } from '@/ap
 import { getProjectConfig } from '@/app/actions/settings';
 import { Send, Bot, User, Sparkles, ChevronDown, RotateCcw, Flame, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
+import nextDynamic from 'next/dynamic';
+import { Paperclip, Smile, XIcon } from 'lucide-react';
+import { uploadFileAction } from "@/app/actions/storage";
+
+const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
 
 export default function TestChatPage() {
   const [messages, setMessages] = useState<{
@@ -25,6 +30,14 @@ export default function TestChatPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
   
+  // States for media & emoji
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFilePreview, setPendingFilePreview] = useState<string | null>(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [score, setScore] = useState(0);
   const [heat, setHeat] = useState("FRIO");
   const [isResetting, setIsResetting] = useState(false);
@@ -42,6 +55,16 @@ export default function TestChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -67,12 +90,78 @@ export default function TestChatPage() {
   const pendingMessages = useRef<string[]>([]);
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('El archivo es muy grande. Máximo 10MB.');
+        return;
+      }
+      setPendingFile(file);
+      if (file.type.startsWith('image/')) {
+        setPendingFilePreview(URL.createObjectURL(file));
+      } else {
+        setPendingFilePreview(null);
+      }
+    }
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || !projectId) return;
+    const hasText = input.trim().length > 0;
+    if (!hasText && !pendingFile) return;
+    if (!projectId) return;
     
     const userMessage = input.trim();
     setInput('');
     
+    if (pendingFile) {
+      setIsUploadingMedia(true);
+      let fileUrl = null;
+      let fileType = null;
+      let fileName = null;
+      try {
+        const formData = new FormData();
+        formData.append('file', pendingFile);
+        const uploadResult = await uploadFileAction(formData);
+        if (!uploadResult.success || !uploadResult.url) {
+          alert('Error al subir el archivo: ' + (uploadResult as any).error);
+          setIsUploadingMedia(false);
+          return;
+        }
+        fileUrl = uploadResult.url;
+        fileType = (uploadResult as any).mediaType || (pendingFile.type.startsWith('image/') ? 'image' : 'document');
+        fileName = (uploadResult as any).filename || pendingFile.name;
+      } catch (e) {
+        console.error(e);
+        alert('Error al subir');
+        setIsUploadingMedia(false);
+        return;
+      } finally {
+        setIsUploadingMedia(false);
+      }
+
+      const finalMsg = userMessage || '[Archivo]';
+      setMessages(prev => [...prev, { role: 'user', content: finalMsg, mediaUrl: fileUrl, mediaType: fileType, mediaFilename: fileName, imageUrl: fileType === 'image' ? fileUrl : null }]);
+      
+      setPendingFile(null);
+      setPendingFilePreview(null);
+      setIsLoading(true);
+
+      try {
+        const result = await sendSimulatorMessage(finalMsg, projectId, selectedAgentId || undefined, fileUrl, fileName, fileType);
+        const chatData = await getSimulatorChat(projectId);
+        setMessages(chatData.messages);
+        setScore(chatData.score);
+        setHeat(chatData.heat);
+      } catch (e) {
+         console.error(e);
+         setMessages(prev => [...prev, { role: 'assistant', content: 'Error procesando archivo.' }]);
+      } finally {
+         setIsLoading(false);
+      }
+      return;
+    }
+
     // 1. Agregar a la cola y mostrar en UI de inmediato
     pendingMessages.current.push(userMessage);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
@@ -271,7 +360,9 @@ export default function TestChatPage() {
                     )}
                   </div>
                 )}
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                {msg.content && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && !(msg.role === 'assistant' && msg.mediaUrl) && (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                )}
               </div>
             </div>
 
@@ -300,8 +391,68 @@ export default function TestChatPage() {
       </div>
 
       {/* Input de Chat */}
-      <div className="p-6 bg-transparent border-t border-[#DEDAD0] dark:border-zinc-800/60 transition-all">
-        <div className="max-w-4xl mx-auto flex items-end gap-3 bg-white/50 dark:bg-zinc-900/50 p-2 rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-sm focus-within:border-[#F36A2D]/50 focus-within:ring-4 focus-within:ring-[#F36A2D]/5 transition-all">
+      <div className="p-6 bg-transparent border-t border-[#DEDAD0] dark:border-zinc-800/60 transition-all flex flex-col gap-2">
+        {pendingFile && (
+          <div className="max-w-4xl mx-auto w-full mb-2 flex items-center gap-2 p-2 bg-white/50 dark:bg-zinc-900/50 border border-[#DEDAD0] dark:border-zinc-700 rounded-xl">
+            {pendingFilePreview ? (
+              <img src={pendingFilePreview} alt="preview" className="h-10 w-10 object-cover rounded-lg shrink-0" />
+            ) : (
+              <div className="h-10 w-10 bg-[#F36A2D]/10 rounded-lg flex items-center justify-center shrink-0">
+                <FileText size={18} className="text-[#F36A2D]" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-[#111111] dark:text-white truncate">{pendingFile.name}</p>
+              <p className="text-[10px] text-[#6F6F6F]">{(pendingFile.size / 1024).toFixed(0)} KB</p>
+            </div>
+            <button
+              onClick={() => { setPendingFile(null); setPendingFilePreview(null); }}
+              className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#6F6F6F]"
+            >
+              <XIcon size={14} />
+            </button>
+          </div>
+        )}
+
+        <div className="max-w-4xl mx-auto w-full flex items-end gap-3 bg-white/50 dark:bg-zinc-900/50 p-2 rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-sm focus-within:border-[#F36A2D]/50 focus-within:ring-4 focus-within:ring-[#F36A2D]/5 transition-all">
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*,application/pdf,video/*,audio/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            onChange={handleFileSelect}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="shrink-0 p-3 bg-white dark:bg-zinc-800 border border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D] rounded-full transition-all mb-1"
+            title="Adjuntar archivo"
+          >
+            <Paperclip size={18} />
+          </button>
+          
+          <div className="relative mb-1" ref={emojiPickerRef}>
+            <button
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className={`shrink-0 p-3 border rounded-full transition-all ${showEmojiPicker ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
+              title="Insertar emoji"
+            >
+              <Smile size={18} />
+            </button>
+
+            {showEmojiPicker && (
+              <div className="absolute bottom-full left-0 mb-4 z-[70] shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => {
+                    setInput(prev => prev + emojiData.emoji);
+                  }}
+                  theme={'auto' as any}
+                  lazyLoadEmojis={true}
+                  searchPlaceholder="Buscar emoji..."
+                />
+              </div>
+            )}
+          </div>
+
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -312,15 +463,15 @@ export default function TestChatPage() {
               }
             }}
             placeholder={selectedAgentId ? `Escribiendo a ${selectedAgentName}...` : "Envía un mensaje para enrutamiento automático..."}
-            className="flex-1 max-h-48 min-h-12 bg-transparent resize-none outline-none py-3 px-5 text-zinc-900 dark:text-[#EDE9E0] text-sm placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+            className="flex-1 max-h-48 min-h-12 bg-transparent resize-none outline-none py-3 px-3 text-zinc-900 dark:text-[#EDE9E0] text-sm placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
             rows={1}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
-            className="h-12 w-12 shrink-0 rounded-full bg-[#111111] dark:bg-[#EDE9E0] hover:scale-105 active:scale-95 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 text-white dark:text-zinc-900 flex items-center justify-center transition-all shadow-md group border border-transparent dark:border-zinc-800"
+            disabled={(!input.trim() && !pendingFile) || isUploadingMedia}
+            className="h-12 w-12 mb-0.5 shrink-0 rounded-full bg-[#111111] dark:bg-[#EDE9E0] hover:scale-105 active:scale-95 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 text-white dark:text-zinc-900 flex items-center justify-center transition-all shadow-md group border border-transparent dark:border-zinc-800"
           >
-            <Send size={18} className={`transition-transform duration-300 ${input.trim() && !isLoading ? 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5' : ''}`} />
+            {isUploadingMedia ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className={`transition-transform duration-300 ${(input.trim() || pendingFile) && !isLoading ? 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5' : ''}`} />}
           </button>
         </div>
         <p className="text-center text-[10px] text-zinc-500 uppercase tracking-widest font-bold mt-4 flex items-center justify-center gap-2">

@@ -700,13 +700,13 @@ REGLAS DE ENVÍO DE ARCHIVOS:
     // Check for Send File actions
     const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]\s]+)["']?\s*\]/gi));
     const sentFileIds = fileMatches.map(m => m[1].trim());
-    const sentFiles = botFiles.filter(f => sentFileIds.includes(f.id));
+    const sentFiles = botFiles.filter(f => sentFileIds.some(ref => ref === f.id || ref.toLowerCase() === f.name?.toLowerCase() || ref.toLowerCase() === f.filename?.toLowerCase()));
     if (sentFiles.length > 0) {
       console.log(`[Send File] AI solicitó enviar ${sentFiles.length} archivos:`, sentFiles.map(f => f.name));
     }
 
     // Clean up reply from tags early so we can store it
-    const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
+    const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").replace(/\n{3,}/g, '\n\n').trim();
 
     // Check if the AI generated the handoff tag
     const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
@@ -808,13 +808,13 @@ REGLAS DE ENVÍO DE ARCHIVOS:
 
       const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]\s]+)["']?\s*\]/gi));
       const sentFileIds = fileMatches.map(m => m[1].trim());
-      const sentFiles = botFiles.filter(f => sentFileIds.includes(f.id));
+      const sentFiles = botFiles.filter(f => sentFileIds.some(ref => ref === f.id || ref.toLowerCase() === f.name?.toLowerCase() || ref.toLowerCase() === f.filename?.toLowerCase()));
       if (sentFiles.length > 0) {
         console.log(`[Send File] Gemini solicitó enviar ${sentFiles.length} archivos`);
       }
 
       // Clean up reply from tags
-      const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").trim();
+      const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").replace(/\n{3,}/g, '\n\n').trim();
       const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
 
       // Check for Unanswered Questions
@@ -931,7 +931,10 @@ export async function resetSimulatorChat(projectId: string) {
 export async function sendSimulatorMessage(
   message: string,
   projectId: string,
-  agentId?: string
+  agentId?: string,
+  mediaUrl?: string | null,
+  mediaFilename?: string | null,
+  mediaType?: string | null
 ) {
   // 1. Obtener o crear el Lead del Simulador
   let lead = await prisma.lead.findFirst({
@@ -964,7 +967,11 @@ export async function sendSimulatorMessage(
     data: {
       chatId,
       role: 'user',
-      content: message
+      content: message,
+      mediaUrl: mediaUrl || null,
+      mediaFilename: mediaFilename || null,
+      mediaType: mediaType || null,
+      imageUrl: mediaType === 'image' ? mediaUrl : null
     }
   });
 
