@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "npx concurrently \"npx tsx src/run-worker.ts\" \"next start\"",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "backup": "node scripts/backup.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",

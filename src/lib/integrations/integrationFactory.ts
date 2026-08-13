@@ -1,5 +1,6 @@
 import type { IntegrationHandler, IntegrationResult } from './handlers/baseHandler';
 import { GoogleCalendarHandler } from './handlers/googleCalendar';
+import { GoogleSheetsHandler } from './handlers/googleSheets';
 
 /**
  * Registro de handlers disponibles.
@@ -7,6 +8,7 @@ import { GoogleCalendarHandler } from './handlers/googleCalendar';
  */
 const handlers: Record<string, IntegrationHandler> = {
   'google-calendar': new GoogleCalendarHandler(),
+  'google-sheet': new GoogleSheetsHandler(),
   // 'hubspot': new HubSpotHandler(),
   // 'salesforce': new SalesforceHandler(),
 };

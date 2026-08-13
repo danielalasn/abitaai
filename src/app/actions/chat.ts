@@ -29,7 +29,7 @@ export async function sendTestMessage(
       include: { 
         agents: true,
         calendarConfig: true,
-        nangoConnections: { where: { providerConfigKey: 'google-calendar', status: 'CONNECTED' } }
+        nangoConnections: { where: { providerConfigKey: { in: ['google-calendar', 'google-sheet'] }, status: 'CONNECTED' } }
       }
     });
   } else {
@@ -40,7 +40,7 @@ export async function sendTestMessage(
         include: { 
           agents: true,
           calendarConfig: true,
-          nangoConnections: { where: { providerConfigKey: 'google-calendar', status: 'CONNECTED' } }
+          nangoConnections: { where: { providerConfigKey: { in: ['google-calendar', 'google-sheet'] }, status: 'CONNECTED' } }
         }
       });
     }
@@ -186,6 +186,40 @@ NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la 
 `;
   }
 
+  // Append Google Sheets Instructions if configured
+  let sheetsInstructions = '';
+  const sheetsConn = (project as any)?.nangoConnections?.find((c: any) => c.providerConfigKey === 'google-sheet');
+  const hasSheets = !!sheetsConn;
+
+  if (hasSheets) {
+    const sheetsConfig = await prisma.sheetsConfig.findUnique({ where: { projectId: project.id } });
+    const tables = (sheetsConfig?.tables as any[]) || [];
+    const validTables = tables.filter(t => t.spreadsheetId && t.queryColumn);
+    if (validTables.length > 0) {
+      const tableBlocks = validTables.map((t, i) => {
+        return `
+TABLA ${i + 1}:
+- Nombre: "${t.name || 'Tabla ' + (i + 1)}"
+- Cuándo usar: ${t.instructions || 'Cuando el cliente solicite información de esta hoja.'}
+- Columna para buscar al cliente: "${t.queryColumn}"
+- ACTION: [ACTION: QUERY_SHEET tableId="${t.id}" searchValue="<VALOR_A_BUSCAR>"]`;
+      }).join('\n');
+
+      sheetsInstructions = `
+<sheets_tools>
+Tienes acceso a ${validTables.length} base(s) de datos del negocio en Google Sheets.
+
+INSTRUCCIONES GENERALES:
+1. Usa la acción QUERY_SHEET de la tabla correspondiente, pasando el valor exacto a buscar en 'searchValue' (ej: el número de teléfono o ID del cliente).
+2. El sistema te devolverá SOLO la información autorizada para ese cliente. Responde de forma natural.
+3. Si no encuentras al cliente en la hoja, dile que verificarás con el equipo.
+4. NUNCA inventes datos. Solo informa lo que encuentres en la hoja.
+${tableBlocks}
+</sheets_tools>
+`;
+    }
+  }
+
   const botFiles = await prisma.botFile.findMany({
     where: { projectId: project.id }
   });
@@ -207,7 +241,7 @@ REGLAS DE ENVÍO DE ARCHIVOS:
 `;
   }
   
-  const finalSystemPrompt = systemPrompt + (calendarInstructions ? '\n\n' + calendarInstructions : '') + (filesInstructions ? '\n\n' + filesInstructions : '');
+  const finalSystemPrompt = systemPrompt + (calendarInstructions ? '\n\n' + calendarInstructions : '') + (sheetsInstructions ? '\n\n' + sheetsInstructions : '') + (filesInstructions ? '\n\n' + filesInstructions : '');
 
   // Logs eliminados para limpiar consola
   console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name} | Calendar Active: ${!!hasCalendar} | BotFiles Available: ${botFiles.length}`);
@@ -261,16 +295,71 @@ REGLAS DE ENVÍO DE ARCHIVOS:
         .map((c: any) => c.text)
         .join('\n');
       
-      // Solo entrar al loop de acciones si hay calendario Y hay un ACTION tag
-      if (!hasCalendar || !rawReply.includes('[ACTION: ')) {
+      // Solo entrar al loop de acciones si hay calendario/sheets Y hay un ACTION tag
+      if ((!hasCalendar && !hasSheets) || !rawReply.includes('[ACTION: ')) {
         break;
       }
 
-      // Procesar Calendar Actions
+      // Procesar Actions
       let actionFound = false;
       let systemData = '';
 
-      if (rawReply.includes('[ACTION: CHECK_AVAILABILITY')) {
+      // --- SHEETS ACTIONS ---
+      if (rawReply.includes('[ACTION: QUERY_SHEET')) {
+        const match = rawReply.match(/\[ACTION:\s*QUERY_SHEET\s+tableId=["']?([^"'\]]+)["']?\s+searchValue=["']?([^"'\]]+)["']?.*?\]/i);
+        if (match) {
+          actionFound = true;
+          const tableId = match[1];
+          const searchValue = match[2];
+          const { executeIntegration } = await import('@/lib/integrations/integrationFactory');
+          const sheetsConn = (project as any).nangoConnections.find((c: any) => c.providerConfigKey === 'google-sheet');
+          
+          if (sheetsConn) {
+            const sheetsConfig = await prisma.sheetsConfig.findUnique({ where: { projectId: project.id } });
+            const tables = (sheetsConfig?.tables as any[]) || [];
+            const tableConfig = tables.find(t => t.id === tableId);
+            
+            if (tableConfig) {
+              const range = `${tableConfig.sheetName || 'Sheet1'}!A1:Z500`;
+              const res = await executeIntegration('google-sheet', 'QUERY_SHEET', { spreadsheetId: tableConfig.spreadsheetId, range }, sheetsConn.connectionId);
+              
+              if (res.success && res.data && res.data.values) {
+                const rows = res.data.values;
+                const headers = rows[0] || [];
+                const queryColIdx = headers.findIndex((h: string) => h.trim().toLowerCase() === tableConfig.queryColumn.trim().toLowerCase());
+                
+                if (queryColIdx !== -1) {
+                  const matchingRows = rows.slice(1).filter((r: any[]) => String(r[queryColIdx]).trim() === String(searchValue).trim());
+                  if (matchingRows.length > 0) {
+                    const resultData = matchingRows.map((row: any[]) => {
+                      const obj: any = {};
+                      (tableConfig.readColumns || []).forEach((col: string) => {
+                        const idx = headers.findIndex((h: string) => h.trim().toLowerCase() === col.trim().toLowerCase());
+                        if (idx !== -1) obj[col] = row[idx];
+                      });
+                      return obj;
+                    });
+                    systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n${JSON.stringify({ success: true, data: resultData })}`;
+                  } else {
+                    systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"No se encontró ningún registro para ${searchValue}"}`;
+                  }
+                } else {
+                  systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"Columna de búsqueda no encontrada en la hoja"}`;
+                }
+              } else {
+                systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"Error al leer la hoja o la hoja está vacía"}`;
+              }
+            } else {
+              systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"Configuración de tabla no encontrada"}`;
+            }
+          } else {
+            systemData = `[SYSTEM DATA: QUERY_SHEET_RESULT]\n{"success":false, "error":"No sheets connection found"}`;
+          }
+        }
+      }
+      
+      // --- CALENDAR ACTIONS ---
+      else if (rawReply.includes('[ACTION: CHECK_AVAILABILITY')) {
         const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?.*?\]/i);
         if (match) {
           actionFound = true;

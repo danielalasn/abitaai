@@ -60,6 +60,7 @@ model Project {
   botConfig           BotConfig?
   botTestSuites       BotTestSuite[]
   calendarConfig      CalendarConfig?
+  sheetsConfig        SheetsConfig?
   campaigns           Campaign[]
   leads               Lead[]
   nangoConnections    NangoConnection[]
@@ -285,6 +286,15 @@ model CalendarConfig {
   selectedCalendarIds String[] @default([])
   maxCapacityPerSlot  Int      @default(1)
   project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model SheetsConfig {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  tables    Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model UserBooking {

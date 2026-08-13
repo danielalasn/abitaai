@@ -19,12 +19,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const connectionId = body.projectId || session.user.id || 'default_user';
 
+    const provider = body.provider;
+    const allowed = provider ? [provider] : ['google-calendar', 'google-sheet'];
+
     // Generar la sesión Connect en Nango usando la Secret Key y el ID del cliente
     const sessionToken = await nango.createConnectSession({
       end_user: {
         id: connectionId,
       },
-      allowed_integrations: ['google-calendar'],
+      allowed_integrations: allowed,
     });
     console.log('[Nango Session Token Response]:', sessionToken);
 
@@ -39,6 +42,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, token, connectLink });
   } catch (err: any) {
     console.error('[Nango Session Error]:', err?.response?.data || err.message);
+    if (err?.response?.data?.errors) {
+      console.error('Nango Validation Errors:', JSON.stringify(err.response.data.errors, null, 2));
+    }
     return NextResponse.json(
       { error: 'Error al generar sesión de Nango' },
       { status: 500 }

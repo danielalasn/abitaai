@@ -8,7 +8,7 @@ import {
   Save, Bot, BookOpen, Fingerprint, Loader2, HelpCircle, Code, Sparkles,
   CheckCircle2, Flame, Plus, Trash2, MessageSquare, ShieldCheck, ShieldX,
   Wifi, ChevronRight, Power, X, FileText, PanelLeftClose, PanelLeftOpen,
-  Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell
+  Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings
 } from 'lucide-react'
 import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
@@ -23,6 +23,8 @@ import {
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
 import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
 import CalendarConfigPanel from '@/components/bot-builder/CalendarConfigPanel'
+import GoogleSheetsConnect from '@/components/integrations/GoogleSheetsConnect'
+import SheetsConfigPanel from '@/components/integrations/SheetsConfigPanel'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
 // Instagram logo SVG (lucide doesn't include it)
@@ -112,6 +114,8 @@ export default function SettingsPage() {
 
   // Nango integrations
   const [gcalConnected, setGcalConnected] = useState(false)
+  const [gsheetsConnected, setGsheetsConnected] = useState(false)
+  const [showSheetsConfig, setShowSheetsConfig] = useState(false)
 
   // Notification emails
   const [notificationEmails, setNotificationEmails] = useState<string[]>([])
@@ -198,10 +202,16 @@ export default function SettingsPage() {
 
       // Load Nango connections for this project
       if (data.projectId) {
-        const res = await fetch(`/api/integrations/status?projectId=${data.projectId}&provider=google-calendar`)
-        if (res.ok) {
-          const json = await res.json()
+        const resCal = await fetch(`/api/integrations/status?projectId=${data.projectId}&provider=google-calendar`)
+        if (resCal.ok) {
+          const json = await resCal.json()
           setGcalConnected(json.connected === true)
+        }
+        
+        const resSheets = await fetch(`/api/integrations/status?projectId=${data.projectId}&provider=google-sheet`)
+        if (resSheets.ok) {
+          const json = await resSheets.json()
+          setGsheetsConnected(json.connected === true)
         }
       }
     } catch (e) { console.error(e) }
@@ -631,7 +641,7 @@ export default function SettingsPage() {
             </button>
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
-                <Bot size={18} />
+                <Settings size={18} />
               </div>
               <h1 className="text-xl font-medium text-zinc-900 dark:text-[#EDE9E0]">Configuración</h1>
             </div>
@@ -1432,9 +1442,9 @@ export default function SettingsPage() {
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Herramientas</h2>
                 </header>
 
-                <div className="space-y-6 max-w-md mx-auto w-full">
+                <div className="w-full">
                   {projectId && (
-                    <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                       <GoogleCalendarConnect
                         projectId={projectId}
                         isConnected={gcalConnected}
@@ -1444,6 +1454,18 @@ export default function SettingsPage() {
                       <CalendarConfigPanel
                         isOpen={showCalendarConfig && gcalConnected}
                         onClose={() => setShowCalendarConfig(false)}
+                        projectId={projectId || undefined}
+                      />
+                      
+                      <GoogleSheetsConnect
+                        projectId={projectId}
+                        isConnected={gsheetsConnected}
+                        onStatusChange={(connected) => setGsheetsConnected(connected)}
+                        onOpenConfig={() => setShowSheetsConfig(true)}
+                      />
+                      <SheetsConfigPanel
+                        isOpen={showSheetsConfig && gsheetsConnected}
+                        onClose={() => setShowSheetsConfig(false)}
                         projectId={projectId || undefined}
                       />
                     </div>
