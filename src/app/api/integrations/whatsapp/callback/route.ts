@@ -135,14 +135,28 @@ export async function POST(req: NextRequest) {
       console.warn('[WA Embedded Signup] ⚠️ waba_id o SYSTEM_USER_TOKEN faltante — se omite suscripción de webhooks. finalWabaId:', finalWabaId, '| hasSystemToken:', !!SYSTEM_USER_TOKEN)
     }
 
-    // 4. Buscar proyecto del cliente y guardar credenciales
-    const project = await prisma.project.findFirst({ where: { clientId: user.id } })
+    // 4. Buscar proyecto del cliente y guardar credenciales (crear si no existe)
+    let project = await prisma.project.findFirst({ where: { clientId: user.id } })
 
     if (!project) {
-      return NextResponse.json({ 
-        error: 'No project found', 
-        errorMessage: 'No se encontró un proyecto asociado a tu cuenta.' 
-      }, { status: 404 })
+      console.log('[WA Embedded Signup] No se encontró proyecto — creando uno automáticamente para usuario:', user.id)
+      project = await prisma.project.create({
+        data: {
+          clientId: user.id,
+          name: 'Proyecto Principal',
+          whatsappToken: null,
+          whatsappBusinessId: null,
+          whatsappPhoneId: null,
+          agents: {
+            create: {
+              name: 'Agente Principal',
+              identity: '',
+              instructions: '',
+            }
+          }
+        }
+      })
+      console.log('[WA Embedded Signup] Proyecto creado:', project.id)
     }
 
     console.log('[WA Embedded Signup] ─── Resumen de IDs capturados ───')

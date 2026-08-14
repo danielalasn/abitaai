@@ -29,10 +29,28 @@ export async function getCurrentProject() {
   const session = await getServerSession(authOptions) as any;
   if (!session?.user?.id) return null;
   
-  const project = await prisma.project.findFirst({
+  let project = await prisma.project.findFirst({
     where: { clientId: session.user.id },
     include: { agents: true, client: true }
   });
+
+  // Auto-create project if user has none (e.g. embedded signup users)
+  if (!project) {
+    project = await prisma.project.create({
+      data: {
+        clientId: session.user.id,
+        name: 'Proyecto Principal',
+        agents: {
+          create: {
+            name: 'Agente Principal',
+            identity: '',
+            instructions: '',
+          }
+        }
+      },
+      include: { agents: true, client: true }
+    });
+  }
 
   return resolveProjectCredentials(project);
 }
