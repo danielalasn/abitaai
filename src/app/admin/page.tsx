@@ -1348,7 +1348,7 @@ export default function AdminPage() {
                             <div className="relative z-10">
                               <p className="text-orange-200 text-xs font-bold uppercase tracking-widest">Costo Total Estimado</p>
                               <p className="text-4xl font-bold mt-2">${usageStats.totalEstimatedCostUsd.toFixed(4)}</p>
-                              <p className="text-orange-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.5 y Meta WA API (LATAM).</p>
+                              <p className="text-orange-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.6 y Meta WA API (LATAM).</p>
                             </div>
                           </div>
 
@@ -1359,8 +1359,8 @@ export default function AdminPage() {
                                 <Cpu size={16} />
                               </div>
                               <div>
-                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Inteligencia Artificial (Claude 4.5)</h4>
-                                <p className="text-[10px] text-zinc-500">$3.00/MTok entrada · $15.00/MTok salida</p>
+                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Inteligencia Artificial (Claude 4.6)</h4>
+                                <p className="text-[10px] text-zinc-500">$2.00/MTok entrada · $10.00/MTok salida</p>
                               </div>
                               <div className="ml-auto">
                                 <span className="text-sm font-bold text-blue-600 dark:text-blue-400">${usageStats.estimatedAiCostUsd.toFixed(4)}</span>

@@ -169,10 +169,10 @@ export async function deleteClient(clientId: string) {
 // Consumption & Cost Tracking
 // ──────────────────────────────────────────────
 
-// Precios Claude Sonnet 4.5 (USD por 1M tokens) — actualizar si cambian
+// Precios Claude Sonnet 4.6 (USD por 1M tokens) — actualizar si cambian
 const AI_PRICING = {
-  inputPerMillion: 3.00,    // $3.00 / 1M input tokens
-  outputPerMillion: 15.00,  // $15.00 / 1M output tokens
+  inputPerMillion: 2.00,    // $2.00 / 1M input tokens
+  outputPerMillion: 10.00,  // $10.00 / 1M output tokens
 }
 
 // Precios Meta WhatsApp Business API (LATAM / El Salvador approx, USD por conversación)

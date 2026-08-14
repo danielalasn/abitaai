@@ -225,9 +225,9 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
       estimatedInputCostUsd += (input / 1_000_000) * 0.075;
       estimatedOutputCostUsd += (output / 1_000_000) * 0.30;
     } else {
-      // Claude Sonnet 4.5: $3.00 / 1M input, $15.00 / 1M output
-      estimatedInputCostUsd += (input / 1_000_000) * 3.00;
-      estimatedOutputCostUsd += (output / 1_000_000) * 15.00;
+      // Claude Sonnet 4.6: $2.00 / 1M input, $10.00 / 1M output
+      estimatedInputCostUsd += (input / 1_000_000) * 2.00;
+      estimatedOutputCostUsd += (output / 1_000_000) * 10.00;
     }
   });
 
