@@ -1687,7 +1687,7 @@ export default function InboxPage() {
                         )}
 
                         {/* 5. Contenido del mensaje (sin el tag de respuesta) */}
-                        {msg.content && msg.content !== '[Archivo]' && (
+                        {msg.content && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && !(msg.role === 'assistant' && msg.mediaUrl) && (
                           <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()) }}>
                           </div>
                         )}
