@@ -138,7 +138,7 @@ function FileModal({ fileToEdit, onClose, onSaved }: { fileToEdit?: BotFileItem 
         setFilename(file.name);
         setMimeType(file.type || 'application/octet-stream');
         if (!name) {
-          const defaultName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+          const defaultName = file.name.replace(/\.[^/.]+$/, '').replace(/[\s-]/g, '_');
           setName(defaultName);
         }
       } else {
@@ -267,8 +267,8 @@ function FileModal({ fileToEdit, onClose, onSaved }: { fileToEdit?: BotFileItem 
             <input
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Ej. Render Fachada Torre A / Brochure de Precios"
+              onChange={e => setName(e.target.value.replace(/\s+/g, '_'))}
+              placeholder="Ej. Render_Fachada_Torre_A"
               className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors"
             />
           </div>

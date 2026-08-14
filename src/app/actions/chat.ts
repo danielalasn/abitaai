@@ -698,9 +698,14 @@ REGLAS DE ENVÍO DE ARCHIVOS:
     console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Total: ${inputTokens + outputTokens}`);
 
     // Check for Send File actions
-    const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]\s]+)["']?\s*\]/gi));
+    const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]]+?)["']?\s*\]/gi));
     const sentFileIds = fileMatches.map(m => m[1].trim());
-    const sentFiles = botFiles.filter(f => sentFileIds.some(ref => ref === f.id || ref.toLowerCase() === f.name?.toLowerCase() || ref.toLowerCase() === f.filename?.toLowerCase()));
+    const sentFiles = botFiles.filter(f => sentFileIds.some(ref => {
+      const r = ref.toLowerCase();
+      const name = (f.name || '').toLowerCase();
+      const fname = (f.filename || '').toLowerCase();
+      return r === f.id || r === name || r === fname || name.includes(r) || r.includes(name) || fname.includes(r) || r.includes(fname);
+    }));
     if (sentFiles.length > 0) {
       console.log(`[Send File] AI solicitó enviar ${sentFiles.length} archivos:`, sentFiles.map(f => f.name));
     }
@@ -806,9 +811,14 @@ REGLAS DE ENVÍO DE ARCHIVOS:
       const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
       console.log(`[GEMINI TOKENS] Input: ${inputTokens} | Output: ${outputTokens}`);
 
-      const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]\s]+)["']?\s*\]/gi));
+      const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]]+?)["']?\s*\]/gi));
       const sentFileIds = fileMatches.map(m => m[1].trim());
-      const sentFiles = botFiles.filter(f => sentFileIds.some(ref => ref === f.id || ref.toLowerCase() === f.name?.toLowerCase() || ref.toLowerCase() === f.filename?.toLowerCase()));
+      const sentFiles = botFiles.filter(f => sentFileIds.some(ref => {
+        const r = ref.toLowerCase();
+        const name = (f.name || '').toLowerCase();
+        const fname = (f.filename || '').toLowerCase();
+        return r === f.id || r === name || r === fname || name.includes(r) || r.includes(name) || fname.includes(r) || r.includes(fname);
+      }));
       if (sentFiles.length > 0) {
         console.log(`[Send File] Gemini solicitó enviar ${sentFiles.length} archivos`);
       }
