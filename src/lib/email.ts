@@ -26,7 +26,7 @@ export async function sendHandoffNotification(
   const { leadName, leadPhone, leadScore, projectName, channel = 'WhatsApp', chatId } = data;
   const displayName = leadName || leadPhone;
   const time = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
-  const link = `https://platform.abitaai.com/inbox?chatId=${chatId}`;
+  const link = `https://abitaai.com/inbox?chatId=${chatId}`;
 
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #f9f9f9; border-radius: 10px; overflow: hidden; border: 1px solid #eee;">

@@ -22,16 +22,48 @@ export async function POST(req: NextRequest) {
 
     const token = decrypt(rawToken) || rawToken;
 
+    const expectedComponents = [
+      {
+        type: 'BODY',
+        text: '*HANDOFF Abita AI*\nUn cliente requiere atención en el panel de control.\n\nCliente: {{1}}\nNúmero de teléfono: {{2}}\nPuntos de lead score: {{3}}\nHora de la solicitud: {{4}}\n\nPor favor ingresa al panel de control para dar seguimiento a la conversación.',
+        example: {
+          body_text: [['Juan Pérez', '+50378901234', '15', '14:30']],
+        },
+      },
+      {
+        type: 'BUTTONS',
+        buttons: [
+          {
+            type: 'URL',
+            text: 'Ver conversación',
+            url: 'https://abitaai.com/inbox?chatId={{1}}',
+            example: ['cmo96o9860001fat2yu9ivivk'],
+          },
+        ],
+      },
+    ];
+
     // Check if the template already exists
     const checkRes = await fetch(
-      `https://graph.facebook.com/v19.0/${businessId}/message_templates?name=${TEMPLATE_NAME}&fields=name,status`,
+      `https://graph.facebook.com/v19.0/${businessId}/message_templates?name=${TEMPLATE_NAME}&fields=name,status,components`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const checkData = await checkRes.json();
     const existing = checkData.data?.[0];
 
     if (existing) {
-      const status = existing.status; // APPROVED, PENDING, REJECTED, etc.
+      // Comparar el contenido de los componentes relevantes (ignorar example para la comparacion estricta de meta a veces)
+      const existingBody = existing.components?.find((c: any) => c.type === 'BODY')?.text;
+      const expectedBody = expectedComponents.find(c => c.type === 'BODY')?.text;
+      
+      const existingButton = existing.components?.find((c: any) => c.type === 'BUTTONS')?.buttons?.[0]?.url;
+      const expectedButton = expectedComponents.find(c => c.type === 'BUTTONS')?.buttons?.[0]?.url;
+
+      if (existingBody !== expectedBody || existingButton !== expectedButton) {
+        return NextResponse.json({ error: 'Ya existe una plantilla con este nombre pero su contenido es diferente.' }, { status: 400 });
+      }
+
+      const status = existing.status;
       await prisma.project.update({
         where: { id: project.id },
         data: { handoffTemplateStatus: status },
@@ -44,26 +76,7 @@ export async function POST(req: NextRequest) {
       name: TEMPLATE_NAME,
       language: 'es',
       category: 'UTILITY',
-      components: [
-        {
-          type: 'BODY',
-          text: '*HANDOFF Abita AI*\nUn cliente requiere atención.\n\nCliente: {{1}}\nNúmero de teléfono: {{2}}\nPuntos de lead score: {{3}}\nHora de la solicitud: {{4}}\n\nPor favor ingresa al panel de control para dar seguimiento a la conversación.',
-          example: {
-            body_text: [['Juan Pérez', '+50378901234', '15', '14:30']],
-          },
-        },
-        {
-          type: 'BUTTONS',
-          buttons: [
-            {
-              type: 'URL',
-              text: 'Ver conversación',
-              url: 'https://platform.abitaai.com/inbox?chatId={{1}}',
-              example: ['cmo96o9860001fat2yu9ivivk'],
-            },
-          ],
-        },
-      ],
+      components: expectedComponents,
     };
 
     const createRes = await fetch(
