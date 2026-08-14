@@ -10,6 +10,7 @@ import {
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
   Mic, Square, ChevronDown, LogOut
 } from "lucide-react";
+import { formatWhatsAppText } from '@/lib/utils';
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
 import { VoiceNotePlayer } from "@/components/VoiceNotePlayer";
@@ -622,12 +623,12 @@ export default function InboxPage() {
               {repliedText}
             </div>
           </div>
-          <div className="whitespace-pre-wrap leading-relaxed">{actualMessage}</div>
+          <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(actualMessage) }}></div>
         </div>
       );
     }
 
-    return <div className="whitespace-pre-wrap leading-relaxed">{content}</div>;
+    return <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(content) }}></div>;
   };
 
   const startRecording = async () => {
@@ -1687,8 +1688,7 @@ export default function InboxPage() {
 
                         {/* 5. Contenido del mensaje (sin el tag de respuesta) */}
                         {msg.content && msg.content !== '[Archivo]' && (
-                          <div className="whitespace-pre-wrap leading-relaxed">
-                            {msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()}
+                          <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()) }}>
                           </div>
                         )}
 
