@@ -149,7 +149,7 @@ export function initWorker() {
           const history = chatDetails.messages.slice(1).reverse();
           const botData = await sendTestMessage(
             aiInputText,
-            history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason })),
+            history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason, mediaUrl: m.mediaUrl, mediaFilename: m.mediaFilename })),
             chatDetails.lead.name || metadata.profileName || 'Desconocido',
             chatDetails.lead.projectId,
             chatDetails.lead.agentId ?? undefined,

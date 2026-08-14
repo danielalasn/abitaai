@@ -14,7 +14,7 @@ const anthropic = new Anthropic({
 
 export async function sendTestMessage(
   message: string,
-  history: { role: string, content: string, scoreReason?: string | null }[],
+  history: { role: string, content: string, scoreReason?: string | null, mediaUrl?: string | null, mediaFilename?: string | null }[],
   clientName?: string,
   projectId?: string,
   agentId?: string,
@@ -1032,7 +1032,7 @@ export async function sendSimulatorMessage(
   // 4. Llamar a la lógica de IA existente
   const result = await sendTestMessage(
     message,
-    history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason })),
+    history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason, mediaUrl: m.mediaUrl, mediaFilename: m.mediaFilename })),
     "Usuario de Prueba",
     projectId,
     agentId,
