@@ -265,10 +265,18 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
 
   try {
     // We filter history down to what anthropic expects: assistant and user
-    const messages = history.map(h => ({
-      role: h.role === 'user' ? 'user' : 'assistant',
-      content: redactPII(h.content),
-    })) as Anthropic.MessageParam[];
+    const messages = history.map(h => {
+      let textContent = h.content;
+      // Reconstruir el tag XML en el historial para que la IA aprenda el formato correcto de sus propios mensajes pasados
+      if (h.role === 'assistant' && h.mediaUrl) {
+        const fileId = h.mediaFilename || h.content || "archivo";
+        textContent = `<send_file id="${fileId}" />`;
+      }
+      return {
+        role: h.role === 'user' ? 'user' : 'assistant',
+        content: redactPII(textContent),
+      };
+    }) as Anthropic.MessageParam[];
 
     messages.push({ role: 'user', content: redactPII(message) });
 
