@@ -144,18 +144,19 @@ export async function checkWhatsAppConnections() {
 export async function checkMasterMetaConnection() {
   const details = [];
   try {
-    const { verifyWhatsappConnection } = await import('@/app/actions/settings');
     const token = process.env.SYSTEM_USER_TOKEN || '';
-    const phoneId = process.env.WHATSAPP_PHONE_ID;
+    const wabaId = process.env.WHATSAPP_BUSINESS_ID || '';
     
-    if (!token) {
-      details.push({ name: 'Abita Master Account', status: 'error', message: 'SYSTEM_USER_TOKEN no configurado' });
+    if (!token || !wabaId) {
+      details.push({ name: 'Abita Master Account', status: 'error', message: 'Faltan variables (SYSTEM_USER_TOKEN o WHATSAPP_BUSINESS_ID)' });
     } else {
-      const verifyResult = await verifyWhatsappConnection(phoneId, token);
-      if (!verifyResult.success) {
-        details.push({ name: 'Abita Master Account', status: 'error', message: verifyResult.message });
+      const res = await fetch(`https://graph.facebook.com/v22.0/${wabaId}?access_token=${token}`);
+      const data = await res.json();
+      
+      if (data.error) {
+        details.push({ name: 'Abita Master Account', status: 'error', message: data.error.message });
       } else {
-        details.push({ name: 'Abita Master Account', status: 'success', message: verifyResult.message });
+        details.push({ name: 'Abita Master Account', status: 'success', message: 'Token maestro válido y conectado' });
       }
     }
 
