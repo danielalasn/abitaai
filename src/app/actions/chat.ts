@@ -426,6 +426,10 @@ REGLAS DE ENVÍO DE ARCHIVOS:
             }
           }
 
+          if (res.available === false) {
+            res.system_instruction = "REGLA GLOBAL: El horario que verificaste está ocupado. En tu respuesta final al usuario, DEBES decirle explícitamente y con amabilidad que ese horario ya está reservado/ocupado ANTES de sugerirle cualquier otra alternativa.";
+          }
+
           systemData = `[SYSTEM DATA: CHECK_AVAILABILITY_RESULT]\n${JSON.stringify(res)}`;
           console.log(`[Agentic Loop] CHECK_AVAILABILITY date=${match[1]} start=${match[2]} end=${match[3]} → ${JSON.stringify(res)}`);
         }
