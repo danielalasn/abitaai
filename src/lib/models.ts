@@ -10,11 +10,11 @@ export const AI_MODELS = {
   CLAUDE_SUMMARY: 'claude-haiku-4-5',
 
   // Modelo de Gemini para el "Plan B" (si falla Claude en el chat)
-  GEMINI_FALLBACK: 'gemini-flash-latest',
+  GEMINI_FALLBACK: 'gemini-3.7-flash',
 
   // Modelo de Gemini para transcripción de notas de voz
-  GEMINI_TRANSCRIBE: 'gemini-flash-latest',
+  GEMINI_TRANSCRIBE: 'gemini-3.7-flash',
   
   // Modelo de Gemini para resúmenes (fallback si falla Claude)
-  GEMINI_SUMMARY: 'gemini-flash-latest'
+  GEMINI_SUMMARY: 'gemini-3.7-flash'
 };

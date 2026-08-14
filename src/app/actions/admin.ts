@@ -348,7 +348,7 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     if (isGemini) {
       geminiInputTokens += input;
       geminiOutputTokens += output;
-      geminiEstimatedCostUsd += (input / 1_000_000) * 0.075 + (output / 1_000_000) * 0.30;
+      geminiEstimatedCostUsd += (input / 1_000_000) * 0.75 + (output / 1_000_000) * 3.75;
     } else {
       claudeInputTokens += input;
       claudeOutputTokens += output;
@@ -428,7 +428,7 @@ export async function getGlobalStats() {
     const output = group._sum.outputTokens || 0;
     const isGemini = group.agentName?.endsWith('(Gemini)') || false;
     if (isGemini) {
-      estimatedAiCostUsd += (input / 1_000_000) * 0.075 + (output / 1_000_000) * 0.30;
+      estimatedAiCostUsd += (input / 1_000_000) * 0.75 + (output / 1_000_000) * 3.75;
     } else {
       estimatedAiCostUsd += (input / 1_000_000) * AI_PRICING.inputPerMillion + (output / 1_000_000) * AI_PRICING.outputPerMillion;
     }

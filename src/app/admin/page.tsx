@@ -1385,8 +1385,8 @@ export default function AdminPage() {
                                 <Sparkles size={16} />
                               </div>
                               <div>
-                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Respaldo IA (Gemini 1.5 Flash)</h4>
-                                <p className="text-[10px] text-zinc-500">$0.075/MTok entrada · $0.30/MTok salida</p>
+                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Respaldo IA (Gemini 3.7 Flash)</h4>
+                                <p className="text-[10px] text-zinc-500">$0.75/MTok entrada · $3.75/MTok salida</p>
                               </div>
                               <div className="ml-auto">
                                 <span className="text-sm font-bold text-purple-600 dark:text-purple-400">${usageStats.geminiEstimatedCostUsd?.toFixed(4) || '0.0000'}</span>

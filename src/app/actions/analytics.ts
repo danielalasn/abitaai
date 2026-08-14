@@ -221,9 +221,9 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     const isGemini = group.agentName?.endsWith('(Gemini)') || false;
     
     if (isGemini) {
-      // Gemini 1.5 Flash: $0.075 / 1M input, $0.30 / 1M output
-      estimatedInputCostUsd += (input / 1_000_000) * 0.075;
-      estimatedOutputCostUsd += (output / 1_000_000) * 0.30;
+      // Gemini 3.7 Flash: $0.75 / 1M input, $3.75 / 1M output
+      estimatedInputCostUsd += (input / 1_000_000) * 0.75;
+      estimatedOutputCostUsd += (output / 1_000_000) * 3.75;
     } else {
       // Claude Sonnet 4.6: $2.00 / 1M input, $10.00 / 1M output
       estimatedInputCostUsd += (input / 1_000_000) * 2.00;
