@@ -929,11 +929,22 @@ export async function resetSimulatorChat(projectId: string) {
   });
 
   if (lead && lead.chat) {
-    // Borrar mensajes y resetear score
+    // Borrar mensajes y resetear lead completamente (como persona nueva)
     await prisma.message.deleteMany({ where: { chatId: lead.chat.id } });
     await prisma.lead.update({
       where: { id: lead.id },
-      data: { score: 0, heat: 'FRIO', status: 'PENDING' }
+      data: {
+        score: 0,
+        heat: 'FRIO',
+        status: 'PENDING',
+        name: 'Usuario de Prueba',
+        email: null,
+        metadata: {},
+      }
+    });
+    await prisma.chat.update({
+      where: { id: lead.chat.id },
+      data: { botActive: true }
     });
   }
 }
