@@ -246,12 +246,14 @@ ${tableBlocks}
 Tienes los siguientes archivos multimedia / documentos disponibles para enviar al cliente en esta conversación:
 ${botFiles.map(f => `- ID: "${f.id}" | Nombre: "${f.name}" | Cuándo enviarlo: "${f.description}"`).join('\n')}
 
-REGLAS DE ENVÍO DE ARCHIVOS:
-1. Relaciona semánticamente las preguntas del cliente con las instrucciones y nombres de los archivos (ej. "parte de afuera" o "exterior" equivale a "fachada").
-2. Cuando decidas que corresponde enviar un archivo, DEBES usar EXACTAMENTE la siguiente sintaxis con corchetes y comillas. NUNCA escribas solo el nombre del archivo en el texto, el sistema no lo detectará.
-Sintaxis obligatoria: [ACTION: SEND_FILE id="ID_EXACTO_DEL_ARCHIVO"]
-3. Acompaña el comando con una respuesta amable y natural (ej. "¡Claro! Aquí te comparto la imagen de nuestra fachada... [ACTION: SEND_FILE id="fachada"]").
-4. Si necesitas enviar múltiples archivos, usa el tag completo varias veces en tu respuesta.
+REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
+1. Para enviar uno de estos archivos al cliente, DEBES escribir en tu respuesta el comando exacto entre corchetes.
+2. EJEMPLO DE USO CORRECTO:
+"¡Claro! Aquí te comparto la imagen: [ACTION: SEND_FILE id="ID_DEL_ARCHIVO"]"
+3. EJEMPLO DE USO INCORRECTO (NO LO HAGAS):
+"Aquí te comparto la imagen: ID_DEL_ARCHIVO" (Esto fallará porque faltan los corchetes y la palabra ACTION).
+4. NUNCA escribas solo el ID del archivo como texto normal. Si no usas los corchetes, el sistema no enviará la imagen.
+5. Puedes incluir varios tags [ACTION: SEND_FILE id="..."] en el mismo mensaje si es necesario.
 </archivos_disponibles>
 `;
   }
