@@ -62,7 +62,7 @@ export async function createClient(data: { name: string, email: string, password
   
   // Si es número de abita, asignamos las credenciales globales, de lo contrario quedan null
   const defaultToken = data.numberType === 'abita' && process.env.SYSTEM_USER_TOKEN ? encrypt(process.env.SYSTEM_USER_TOKEN) : null;
-  const defaultBusinessId = data.numberType === 'abita' ? (process.env.WHATSAPP_BUSINESS_ID || '2178386092973067') : null;
+  const defaultBusinessId = data.numberType === 'abita' ? (process.env.WHATSAPP_BUSINESS_ID || '') : null;
 
   const client = await prisma.client.create({
     data: {
@@ -222,7 +222,7 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     select: { whatsappBusinessId: true }
   });
 
-  const defaultWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
+  const defaultWabaId = process.env.WHATSAPP_BUSINESS_ID || '';
   const isAbita = project?.whatsappBusinessId === defaultWabaId;
 
   // Common where clause to exclude simulator
@@ -434,7 +434,7 @@ export async function getGlobalStats() {
     }
   });
 
-  const defaultWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
+  const defaultWabaId = process.env.WHATSAPP_BUSINESS_ID || '';
   
   const waMarketing = await prisma.message.count({ 
     where: { 

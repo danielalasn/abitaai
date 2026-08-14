@@ -6,7 +6,7 @@ import { encrypt } from '@/lib/encryption';
 export function resolveProjectCredentials<T extends { whatsappToken?: string | null, whatsappBusinessId?: string | null, whatsappPhoneId?: string | null } | null | undefined>(project: T): T {
   if (!project) return project;
 
-  const masterWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
+  const masterWabaId = process.env.WHATSAPP_BUSINESS_ID || '';
 
   // Solo forzamos las credenciales de Abita si el proyecto explícitamente usa el WABA ID de Abita,
   // o si es la cuenta maestra (abita@abitaai.com) que perdió sus credenciales en BD.

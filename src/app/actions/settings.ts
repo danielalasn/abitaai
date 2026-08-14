@@ -29,7 +29,7 @@ export async function getProjectConfig() {
       whatsappToken = decrypt(masterProject?.whatsappToken) || process.env.SYSTEM_USER_TOKEN || '';
     }
     if (!whatsappBusinessId) {
-      whatsappBusinessId = masterProject?.whatsappBusinessId || '2178386092973067';
+      whatsappBusinessId = masterProject?.whatsappBusinessId || process.env.WHATSAPP_BUSINESS_ID || '';
     }
   }
 
