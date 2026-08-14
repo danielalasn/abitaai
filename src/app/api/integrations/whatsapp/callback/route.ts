@@ -139,6 +139,16 @@ export async function POST(req: NextRequest) {
     let project = await prisma.project.findFirst({ where: { clientId: user.id } })
 
     if (!project) {
+      // Verify client exists in DB (session JWT may have stale ID)
+      const clientExists = await prisma.client.findUnique({ where: { id: user.id } })
+      if (!clientExists) {
+        console.error('[WA Embedded Signup] El clientId de sesión no existe en DB:', user.id)
+        return NextResponse.json({ 
+          error: 'Client not found', 
+          errorMessage: 'Tu sesión es inválida. Por favor cierra sesión e inicia de nuevo.' 
+        }, { status: 404 })
+      }
+
       console.log('[WA Embedded Signup] No se encontró proyecto — creando uno automáticamente para usuario:', user.id)
       project = await prisma.project.create({
         data: {
@@ -158,6 +168,7 @@ export async function POST(req: NextRequest) {
       })
       console.log('[WA Embedded Signup] Proyecto creado:', project.id)
     }
+
 
     console.log('[WA Embedded Signup] ─── Resumen de IDs capturados ───')
     console.log('[WA Embedded Signup] finalWabaId:', finalWabaId || '(vacío)')
