@@ -208,6 +208,14 @@ export interface ProjectUsageStats {
 }
 
 export async function getUsageStats(projectId: string, startDate?: string, endDate?: string): Promise<ProjectUsageStats> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { whatsappBusinessId: true }
+  });
+
+  const defaultWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
+  const isAbita = project?.whatsappBusinessId === defaultWabaId;
+
   // Common where clause to exclude simulator
   const notSimulator = { phone: { not: 'SIMULADOR_TEST' } };
 
@@ -317,10 +325,11 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
 
   const waServiceMessages = waServiceExplicit + waServiceNull;
 
-  const estimatedWaCostUsd = 
+  const estimatedWaCostUsd = isAbita ? (
     (waMarketingMessages * WA_PRICING.MARKETING) +
     (waUtilityMessages * WA_PRICING.UTILITY) +
-    (waServiceMessages * WA_PRICING.SERVICE);
+    (waServiceMessages * WA_PRICING.SERVICE)
+  ) : 0;
 
   const totalEstimatedCostUsd = estimatedAiCostUsd + estimatedWaCostUsd;
 
@@ -375,8 +384,20 @@ export async function getGlobalStats() {
     ((tokenAgg._sum.inputTokens || 0) / 1_000_000) * AI_PRICING.inputPerMillion +
     ((tokenAgg._sum.outputTokens || 0) / 1_000_000) * AI_PRICING.outputPerMillion;
 
-  const waMarketing = await prisma.message.count({ where: { waCategory: 'MARKETING', chat: { lead: notSimulator } } });
-  const waUtility = await prisma.message.count({ where: { waCategory: 'UTILITY', chat: { lead: notSimulator } } });
+  const defaultWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
+  
+  const waMarketing = await prisma.message.count({ 
+    where: { 
+      waCategory: 'MARKETING', 
+      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } } 
+    } 
+  });
+  const waUtility = await prisma.message.count({ 
+    where: { 
+      waCategory: 'UTILITY', 
+      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } } 
+    } 
+  });
   
   const estimatedWaCostUsd = (waMarketing * WA_PRICING.MARKETING) + (waUtility * WA_PRICING.UTILITY);
   const totalEstimatedCostUsd = estimatedAiCostUsd + estimatedWaCostUsd;
