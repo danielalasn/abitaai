@@ -222,13 +222,12 @@ export default function AdminPage() {
   const loadClients = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const [data, groups, stats] = await Promise.all([
+      const [data, stats] = await Promise.all([
         getClients(),
-        fetchAvailableTemplateGroups(),
         getGlobalStats()
       ]);
       setClients(data);
-      setAvailableGroups(groups);
+      setAvailableGroups([]); // Se omite el fetch automático para no saturar la API
       setGlobalStats(stats);
     } catch (err) { console.error('Error fetching clients or groups', err) }
     if (!silent) setIsLoading(false);

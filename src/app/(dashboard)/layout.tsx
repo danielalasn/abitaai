@@ -10,12 +10,8 @@ export default async function DashboardLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session) {
-    redirect('/login');
-  }
-
   // Si el usuario es el administrador principal, no tiene proyectos de cliente comunes, lo enviamos a su panel
-  if (session.user?.email === 'info@abitaai.com') {
+  if (session?.user?.email === 'info@abitaai.com') {
     redirect('/admin');
   }
 

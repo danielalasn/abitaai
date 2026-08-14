@@ -3,7 +3,7 @@ import { getCurrentProject } from '@/lib/auth-server';
 import { decrypt } from '@/lib/encryption';
 import { prisma } from '@/lib/prisma';
 
-const TEMPLATE_NAME = 'handoff_notif_abita';
+const TEMPLATE_NAME = 'handoff_notif_abitaai';
 
 export async function GET(req: NextRequest) {
   try {

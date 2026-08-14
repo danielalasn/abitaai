@@ -69,7 +69,7 @@ export interface HandoffWhatsAppData {
   };
 }
 
-const HANDOFF_TEMPLATE_NAME = 'handoff_notif_abita';
+const HANDOFF_TEMPLATE_NAME = 'handoff_notif_abitaai';
 
 export async function sendHandoffWhatsAppNotification(
   notificationPhones: string[],

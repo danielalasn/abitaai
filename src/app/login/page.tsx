@@ -40,11 +40,16 @@ function LoginContent() {
     } else {
       // Obtener la sesión actualizada para revisar el Rol
       const session = await getSession()
+      const callbackUrl = searchParams.get('callbackUrl')
 
       if ((session?.user as any)?.role === 'ADMIN') {
         router.push('/admin')
       } else {
-        router.push('/inbox')
+        if (callbackUrl && callbackUrl !== window.location.origin && callbackUrl !== window.location.origin + '/') {
+          router.push(callbackUrl)
+        } else {
+          router.push('/inbox')
+        }
       }
       router.refresh()
     }

@@ -5,11 +5,14 @@ import { signOut, useSession } from 'next-auth/react';
 import { LogOut, User, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { updateUserTheme } from '@/app/actions/user';
+import HealthCheckModal from '@/components/HealthCheckModal';
+import { Activity } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
+  const [isHealthCheckOpen, setIsHealthCheckOpen] = React.useState(false);
   
   React.useEffect(() => setMounted(true), []);
   
@@ -39,6 +42,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <div className="flex items-center gap-6">
+          {/* Health Check */}
+          <button
+            onClick={() => setIsHealthCheckOpen(true)}
+            className="p-2.5 rounded-xl bg-orange-50 dark:bg-orange-900/10 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/20 transition-all border border-orange-200 dark:border-orange-900/30 flex items-center justify-center w-10 h-10"
+            title="Chequeo de Salud del Sistema"
+          >
+            <Activity size={18} />
+          </button>
+
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -77,6 +89,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="max-w-7xl mx-auto p-8">
         {children}
       </main>
+
+      {isHealthCheckOpen && (
+        <HealthCheckModal onClose={() => setIsHealthCheckOpen(false)} />
+      )}
     </div>
   );
 }
