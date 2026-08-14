@@ -247,13 +247,13 @@ Tienes los siguientes archivos multimedia / documentos disponibles para enviar a
 ${botFiles.map(f => `- ID: "${f.id}" | Nombre: "${f.name}" | Cuándo enviarlo: "${f.description}"`).join('\n')}
 
 REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
-1. Para enviar uno de estos archivos al cliente, DEBES escribir en tu respuesta el comando exacto entre corchetes.
+1. Para enviar uno de estos archivos al cliente, DEBES escribir en tu respuesta el comando exacto en formato XML.
 2. EJEMPLO DE USO CORRECTO:
-"¡Claro! Aquí te comparto la imagen: [ACTION: SEND_FILE id="ID_DEL_ARCHIVO"]"
+"¡Claro! Aquí te comparto la imagen: <send_file id="ID_DEL_ARCHIVO" />"
 3. EJEMPLO DE USO INCORRECTO (NO LO HAGAS):
-"Aquí te comparto la imagen: ID_DEL_ARCHIVO" (Esto fallará porque faltan los corchetes y la palabra ACTION).
-4. NUNCA escribas solo el ID del archivo como texto normal. Si no usas los corchetes, el sistema no enviará la imagen.
-5. Puedes incluir varios tags [ACTION: SEND_FILE id="..."] en el mismo mensaje si es necesario.
+"Aquí te comparto la imagen: ID_DEL_ARCHIVO" (Esto fallará porque faltan las etiquetas XML).
+4. NUNCA escribas solo el ID del archivo como texto normal. Si no usas el tag XML <send_file />, el sistema no enviará la imagen.
+5. Puedes incluir varios tags <send_file id="..." /> en el mismo mensaje si es necesario.
 </archivos_disponibles>
 `;
   }
@@ -710,8 +710,8 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
     console.log(`[TOKENS] Input: ${inputTokens} | Output: ${outputTokens} | Total: ${inputTokens + outputTokens}`);
 
     // Check for Send File actions
-    const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]]+?)["']?\s*\]/gi));
-    const sentFileIds = fileMatches.map(m => m[1].trim());
+    const fileMatches = Array.from(rawReply.matchAll(/(?:\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]]+?)["']?\s*\]|<send_file\s+id=["']([^"']+)["']\s*\/>)/gi));
+    const sentFileIds = fileMatches.map(m => m[1] || m[2]);
     const sentFiles = botFiles.filter(f => sentFileIds.some(ref => {
       const r = ref.toLowerCase();
       const name = (f.name || '').toLowerCase();
@@ -723,7 +723,7 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
     }
 
     // Clean up reply from tags early so we can store it
-    const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").replace(/\n{3,}/g, '\n\n').trim();
+    const reply = rawReply.replace(/(?:\[ACTION: [\s\S]+?\]|<send_file\s+id=["'][^"']+["']\s*\/>)/gi, "").replace(/\n{3,}/g, '\n\n').trim();
 
     // Check if the AI generated the handoff tag
     const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
@@ -823,8 +823,8 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
       const outputTokens = result.response.usageMetadata?.candidatesTokenCount || 0;
       console.log(`[GEMINI TOKENS] Input: ${inputTokens} | Output: ${outputTokens}`);
 
-      const fileMatches = Array.from(rawReply.matchAll(/\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]]+?)["']?\s*\]/gi));
-      const sentFileIds = fileMatches.map(m => m[1].trim());
+      const fileMatches = Array.from(rawReply.matchAll(/(?:\[ACTION:\s*SEND_FILE\s+(?:id=)?["']?([^"'\]]+?)["']?\s*\]|<send_file\s+id=["']([^"']+)["']\s*\/>)/gi));
+      const sentFileIds = fileMatches.map(m => m[1] || m[2]);
       const sentFiles = botFiles.filter(f => sentFileIds.some(ref => {
         const r = ref.toLowerCase();
         const name = (f.name || '').toLowerCase();
@@ -836,7 +836,7 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
       }
 
       // Clean up reply from tags
-      const reply = rawReply.replace(/\[ACTION: [\s\S]+?\]/g, "").replace(/\n{3,}/g, '\n\n').trim();
+      const reply = rawReply.replace(/(?:\[ACTION: [\s\S]+?\]|<send_file\s+id=["'][^"']+["']\s*\/>)/gi, "").replace(/\n{3,}/g, '\n\n').trim();
       const isHandoff = rawReply.includes("[ACTION: HANDOFF]");
 
       // Check for Unanswered Questions
