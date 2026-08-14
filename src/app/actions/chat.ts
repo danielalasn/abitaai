@@ -939,7 +939,7 @@ export async function resetSimulatorChat(projectId: string) {
         status: 'PENDING',
         name: 'Usuario de Prueba',
         email: null,
-        metadata: {},
+        metadata: { simulator_session: Date.now() },
       }
     });
     await prisma.chat.update({
@@ -1006,6 +1006,9 @@ export async function sendSimulatorMessage(
   // El mensaje recién creado está en la posición 0, lo ignoramos para no enviarlo duplicado
   const history = rawHistory.slice(1).reverse();
 
+  const md = typeof lead.metadata === 'object' && lead.metadata ? lead.metadata : {};
+  const sessionPhone = (md as any).simulator_session ? `${SIMULATOR_PHONE}_${(md as any).simulator_session}` : SIMULATOR_PHONE;
+
   // 4. Llamar a la lógica de IA existente
   const result = await sendTestMessage(
     message,
@@ -1013,7 +1016,7 @@ export async function sendSimulatorMessage(
     "Usuario de Prueba",
     projectId,
     agentId,
-    { phone: lead.phone, ...(typeof lead.metadata === 'object' && lead.metadata ? lead.metadata : {}) } // Pasamos la info previa y el teléfono
+    { phone: sessionPhone, ...md } // Pasamos el teléfono con sesión única
   );
 
   // 5. Guardar respuesta de la IA (solo si no hubo error)
