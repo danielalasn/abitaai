@@ -248,10 +248,10 @@ ${botFiles.map(f => `- ID: "${f.id}" | Nombre: "${f.name}" | Cuándo enviarlo: "
 
 REGLAS DE ENVÍO DE ARCHIVOS:
 1. Relaciona semánticamente las preguntas del cliente con las instrucciones y nombres de los archivos (ej. "parte de afuera" o "exterior" equivale a "fachada").
-2. Cuando decidas que corresponde enviar un archivo, NUNCA digas que no tienes esa información ni pidas confirmación. En lugar de eso, incluye en tu respuesta el comando:
-[ACTION: SEND_FILE id="ID_EXACTO_DEL_ARCHIVO"]
-3. Acompaña el comando con una respuesta amable y natural (ej. "¡Claro! Aquí te comparto la imagen de nuestra fachada...").
-4. Si necesitas enviar múltiples archivos, puedes incluir varios tags [ACTION: SEND_FILE id="..."] en tu respuesta.
+2. Cuando decidas que corresponde enviar un archivo, DEBES usar EXACTAMENTE la siguiente sintaxis con corchetes y comillas. NUNCA escribas solo el nombre del archivo en el texto, el sistema no lo detectará.
+Sintaxis obligatoria: [ACTION: SEND_FILE id="ID_EXACTO_DEL_ARCHIVO"]
+3. Acompaña el comando con una respuesta amable y natural (ej. "¡Claro! Aquí te comparto la imagen de nuestra fachada... [ACTION: SEND_FILE id="fachada"]").
+4. Si necesitas enviar múltiples archivos, usa el tag completo varias veces en tu respuesta.
 </archivos_disponibles>
 `;
   }
@@ -275,6 +275,7 @@ REGLAS DE ENVÍO DE ARCHIVOS:
     const maxLoops = 3;
     let currentInputTokens = 0;
     let currentOutputTokens = 0;
+    let failedSlots: string[] = [];
 
     // --- Inject active bookings for this phone into the system prompt (so AI knows what to update/cancel) ---
     let finalSystemPromptWithBookings = finalSystemPrompt;
@@ -427,7 +428,12 @@ REGLAS DE ENVÍO DE ARCHIVOS:
           }
 
           if (res.available === false) {
-            res.system_instruction = "REGLA GLOBAL: El horario que verificaste está ocupado. En tu respuesta final al usuario, DEBES decirle explícitamente y con amabilidad que ese horario ya está reservado/ocupado ANTES de sugerirle cualquier otra alternativa.";
+            failedSlots.push(`${match[2]}`);
+            res.system_instruction = `REGLA GLOBAL: El horario está OCUPADO. Puedes seguir verificando otras horas con CHECK_AVAILABILITY antes de responderle al cliente.`;
+          }
+
+          if (res.available === true && failedSlots.length > 0) {
+            res.system_reminder = `REGLA GLOBAL OBLIGATORIA: Este horario (${match[2]}) SÍ está disponible. PERO RECUERDA: El cliente originalmente pidió los siguientes horarios que estaban OCUPADOS: ${failedSlots.join(', ')}. Tu PRIMERA ORACIÓN al cliente DEBE informarle que esos horarios están ocupados, y DESPUÉS ofrecerle este horario disponible.`;
           }
 
           systemData = `[SYSTEM DATA: CHECK_AVAILABILITY_RESULT]\n${JSON.stringify(res)}`;
