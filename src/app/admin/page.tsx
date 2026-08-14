@@ -103,7 +103,7 @@ export default function AdminPage() {
   const handleRunTest = async () => {
     const project = selectedClient?.projects?.[0];
     if (!project) return;
-    
+
     setIsTesting(true);
     setTestData(null);
     setTestProgress('Iniciando simulación...');
@@ -689,13 +689,12 @@ export default function AdminPage() {
                           return (
                             <div
                               key={block.id}
-                              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${
-                                !block.isEnabled
-                                  ? 'opacity-40 bg-zinc-50 dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900'
-                                  : isPlaceholder
+                              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${!block.isEnabled
+                                ? 'opacity-40 bg-zinc-50 dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900'
+                                : isPlaceholder
                                   ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/40'
                                   : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-orange-300 dark:hover:border-orange-700'
-                              }`}
+                                }`}
                             >
                               {/* Order controls */}
                               <div className="flex flex-col gap-0 shrink-0">
@@ -711,11 +710,10 @@ export default function AdminPage() {
                                 <span className={`font-semibold text-sm ${isPlaceholder ? 'text-purple-700 dark:text-purple-300' : 'text-zinc-900 dark:text-white'}`}>
                                   {isPlaceholder ? `{ ${block.label} }` : block.label}
                                 </span>
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ${
-                                  block.source === 'global' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' :
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ${block.source === 'global' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' :
                                   block.source === 'agent' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' :
-                                  'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
-                                }`}>
+                                    'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                                  }`}>
                                   {block.source === 'global' ? 'Global' : block.source === 'agent' ? 'Cliente' : 'Auto'}
                                 </span>
                                 {!block.isEnabled && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-500">OFF</span>}
@@ -844,7 +842,7 @@ export default function AdminPage() {
                             </h3>
                             <button onClick={() => setShowCheatsheet(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400"><X size={18} /></button>
                           </div>
-                          
+
                           <div className="flex-1 overflow-y-auto p-6 space-y-6">
                             <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
                               Usa estas etiquetas (tags) en tus reglas maestras. El sistema intercepta estas etiquetas y ejecuta la acción automáticamente en la base de datos o en la bandeja de entrada.
@@ -957,16 +955,16 @@ export default function AdminPage() {
                 {newUserNumberType === 'abita' && (
                   <div>
                     <label className="text-xs font-bold text-zinc-500 mb-1 block uppercase tracking-widest">Grupo de Plantillas (Prefijo)</label>
-                      <select
-                        value={newUserTemplateGroup}
-                        onChange={e => setNewUserTemplateGroup(e.target.value)}
-                        className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
-                      >
-                        <option value="">Inactivo / Ninguno</option>
-                        {availableGroups.map(g => (
-                          <option key={g} value={g}>{g}</option>
-                        ))}
-                      </select>
+                    <select
+                      value={newUserTemplateGroup}
+                      onChange={e => setNewUserTemplateGroup(e.target.value)}
+                      className="w-full text-sm px-4 py-3 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
+                    >
+                      <option value="">Inactivo / Ninguno</option>
+                      {availableGroups.map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
                     <p className="text-[10px] text-zinc-500 mt-1 pl-1">Selecciona el grupo de plantillas autorizado para este cliente.</p>
                   </div>
                 )}
@@ -1091,7 +1089,7 @@ export default function AdminPage() {
         )}
       </div>
 
-{/* SELECTED CLIENT MODAL */}
+      {/* SELECTED CLIENT MODAL */}
       {selectedClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-zinc-50 dark:bg-[#09090b] w-full max-w-5xl h-[650px] rounded-[2rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
@@ -1348,34 +1346,62 @@ export default function AdminPage() {
                             <div className="relative z-10">
                               <p className="text-orange-200 text-xs font-bold uppercase tracking-widest">Costo Total Estimado</p>
                               <p className="text-4xl font-bold mt-2">${usageStats.totalEstimatedCostUsd.toFixed(4)}</p>
-                              <p className="text-orange-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet 4.6 y Meta WA API (LATAM).</p>
+                              <p className="text-orange-200 text-xs mt-2 opacity-80">Basado en precios actuales de Claude Sonnet y Meta WA API (LATAM).</p>
                             </div>
                           </div>
 
-                          {/* AI Section */}
-                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
+                          {/* AI Section (Claude) */}
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden mb-6">
                             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
                               <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
                                 <Cpu size={16} />
                               </div>
                               <div>
-                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Inteligencia Artificial (Claude 4.6)</h4>
+                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Inteligencia Artificial (Claude Sonnet 4.6)</h4>
                                 <p className="text-[10px] text-zinc-500">$2.00/MTok entrada · $10.00/MTok salida</p>
                               </div>
                               <div className="ml-auto">
-                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">${usageStats.estimatedAiCostUsd.toFixed(4)}</span>
+                                <span className="text-sm font-bold text-blue-600 dark:text-blue-400">${usageStats.claudeEstimatedCostUsd?.toFixed(4) || '0.0000'}</span>
                               </div>
                             </div>
                             <div className="p-6 grid grid-cols-2 gap-6">
                               <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
                                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Entrada</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalInputTokens.toLocaleString()}</p>
-                                <p className="text-[10px] text-zinc-400 mt-1">Prompt + historial de conversación</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{(usageStats.claudeInputTokens || 0).toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Prompt + historial</p>
                               </div>
                               <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
                                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Salida</p>
-                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{usageStats.totalOutputTokens.toLocaleString()}</p>
-                                <p className="text-[10px] text-zinc-400 mt-1">Respuestas generadas por la IA</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{(usageStats.claudeOutputTokens || 0).toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Respuestas de IA</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* AI Section (Gemini) */}
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden mb-6">
+                            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                              <div className="h-8 w-8 bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg flex items-center justify-center">
+                                <Sparkles size={16} />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Respaldo IA (Gemini 1.5 Flash)</h4>
+                                <p className="text-[10px] text-zinc-500">$0.075/MTok entrada · $0.30/MTok salida</p>
+                              </div>
+                              <div className="ml-auto">
+                                <span className="text-sm font-bold text-purple-600 dark:text-purple-400">${usageStats.geminiEstimatedCostUsd?.toFixed(4) || '0.0000'}</span>
+                              </div>
+                            </div>
+                            <div className="p-6 grid grid-cols-2 gap-6">
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Entrada</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{(usageStats.geminiInputTokens || 0).toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Prompt + historial</p>
+                              </div>
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Salida</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{(usageStats.geminiOutputTokens || 0).toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Respuestas de IA</p>
                               </div>
                             </div>
                           </div>
@@ -1535,8 +1561,8 @@ export default function AdminPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Estado de la Cuenta</label>
-                              <select 
-                                value={editSubscriptionStatus} 
+                              <select
+                                value={editSubscriptionStatus}
                                 onChange={e => setEditSubscriptionStatus(e.target.value)}
                                 className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
                               >
@@ -1547,11 +1573,11 @@ export default function AdminPage() {
                             </div>
                             <div>
                               <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Fecha de Vencimiento</label>
-                              <input 
-                                type="date" 
-                                value={editSubscriptionEndsAt} 
-                                onChange={e => setEditSubscriptionEndsAt(e.target.value)} 
-                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100" 
+                              <input
+                                type="date"
+                                value={editSubscriptionEndsAt}
+                                onChange={e => setEditSubscriptionEndsAt(e.target.value)}
+                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100"
                               />
                             </div>
                           </div>
@@ -1578,7 +1604,7 @@ export default function AdminPage() {
                                   {opt.label}
                                 </button>
                               ))}
-                               <button
+                              <button
                                 onClick={() => {
                                   setEditSubscriptionEndsAt('');
                                   setEditSubscriptionStatus('ACTIVE');
@@ -1591,7 +1617,7 @@ export default function AdminPage() {
                           </div>
 
                           <div className="pt-4 flex justify-end gap-3">
-                            <button 
+                            <button
                               onClick={handleSaveUser}
                               disabled={isSavingUser}
                               className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-2xl text-[13px] font-bold flex items-center gap-2 transition shadow-lg shadow-orange-500/20 disabled:opacity-50"
@@ -1664,21 +1690,19 @@ export default function AdminPage() {
                         <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-2xl">
                           <button
                             onClick={() => { setBuilderMode('file'); setBuilderUrl(''); }}
-                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                              builderMode === 'file'
-                                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                            }`}
+                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${builderMode === 'file'
+                              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
+                              : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                              }`}
                           >
                             <Database size={15} /> Documento
                           </button>
                           <button
                             onClick={() => { setBuilderMode('url'); setBuilderFile(null); }}
-                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                              builderMode === 'url'
-                                ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
-                                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                            }`}
+                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${builderMode === 'url'
+                              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
+                              : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                              }`}
                           >
                             <Globe size={15} /> Página Web
                           </button>
@@ -1696,13 +1720,12 @@ export default function AdminPage() {
                               const f = e.dataTransfer.files[0];
                               if (f) setBuilderFile(f);
                             }}
-                            className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
-                              builderDragOver
-                                ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
-                                : builderFile
+                            className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${builderDragOver
+                              ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
+                              : builderFile
                                 ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20'
                                 : 'border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 hover:border-orange-400 hover:bg-orange-50/30 dark:hover:bg-orange-950/10'
-                            }`}
+                              }`}
                           >
                             <input
                               id="bot-builder-file-input"
@@ -1860,11 +1883,10 @@ export default function AdminPage() {
                             <button
                               key={tab.id}
                               onClick={() => setBuilderPreviewTab(tab.id)}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                                builderPreviewTab === tab.id
-                                  ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm'
-                                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-                              }`}
+                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${builderPreviewTab === tab.id
+                                ? 'bg-white dark:bg-zinc-900 text-orange-600 shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                                }`}
                             >
                               {tab.icon} {tab.label}
                             </button>
@@ -1931,7 +1953,7 @@ export default function AdminPage() {
                               try {
                                 // Compile knowledge to JSON too
                                 let knowledgeJson = '{}';
-                                try { knowledgeJson = await compileKnowledgeWithAI(builderGenerated.knowledgeRaw); } catch {}
+                                try { knowledgeJson = await compileKnowledgeWithAI(builderGenerated.knowledgeRaw); } catch { }
 
                                 await saveAgentConfig(
                                   agentId,
@@ -2033,43 +2055,43 @@ export default function AdminPage() {
 
                       <div className="bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm h-[320px] flex flex-col overflow-hidden">
                         {activeBotSubTab === 'api' && (
-                            <div className="space-y-4 animate-in fade-in duration-200 overflow-y-auto pr-2">
-                              <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
-                                <div>
-                                  <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Respuesta Automática del Bot</h4>
-                                  <p className="text-[11px] text-zinc-500 mt-0.5">Si está apagado, los mensajes nuevos requerirán atención humana.</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                  <input 
-                                    type="checkbox" 
-                                    className="sr-only peer" 
-                                    checked={configData.defaultBotActive ?? false}
-                                    onChange={e => {
-                                      if (window.confirm(`¿Estás seguro de que quieres ${e.target.checked ? 'activar' : 'desactivar'} el bot por defecto para este usuario?`)) {
-                                        setConfigData({ ...configData, defaultBotActive: e.target.checked })
-                                      }
-                                    }}
-                                  />
-                                  <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
-                                </label>
+                          <div className="space-y-4 animate-in fade-in duration-200 overflow-y-auto pr-2">
+                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
+                              <div>
+                                <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Respuesta Automática del Bot</h4>
+                                <p className="text-[11px] text-zinc-500 mt-0.5">Si está apagado, los mensajes nuevos requerirán atención humana.</p>
                               </div>
-                              <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
-                                <div>
-                                  <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Auto-Reactivación (Horas)</h4>
-                                  <p className="text-[11px] text-zinc-500 mt-0.5">Horas de inactividad antes de que el bot se encienda solo. (0 o vacío = Nunca)</p>
-                                </div>
-                                <input 
-                                  type="number" 
-                                  min="0"
-                                  placeholder="Ej: 2"
-                                  className="w-20 text-[13px] px-3 py-2 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 font-mono text-center"
-                                  value={configData.botAutoWakeHours || ''}
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="sr-only peer"
+                                  checked={configData.defaultBotActive ?? false}
                                   onChange={e => {
-                                    const val = e.target.value ? parseInt(e.target.value) : null;
-                                    setConfigData({ ...configData, botAutoWakeHours: val })
+                                    if (window.confirm(`¿Estás seguro de que quieres ${e.target.checked ? 'activar' : 'desactivar'} el bot por defecto para este usuario?`)) {
+                                      setConfigData({ ...configData, defaultBotActive: e.target.checked })
+                                    }
                                   }}
                                 />
+                                <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                              </label>
+                            </div>
+                            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700 rounded-2xl">
+                              <div>
+                                <h4 className="font-bold text-zinc-900 dark:text-white text-sm">Auto-Reactivación (Horas)</h4>
+                                <p className="text-[11px] text-zinc-500 mt-0.5">Horas de inactividad antes de que el bot se encienda solo. (0 o vacío = Nunca)</p>
                               </div>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Ej: 2"
+                                className="w-20 text-[13px] px-3 py-2 border border-zinc-200 rounded-xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100 font-mono text-center"
+                                value={configData.botAutoWakeHours || ''}
+                                onChange={e => {
+                                  const val = e.target.value ? parseInt(e.target.value) : null;
+                                  setConfigData({ ...configData, botAutoWakeHours: val })
+                                }}
+                              />
+                            </div>
                             <div>
                               <h4 className="font-bold text-zinc-900 dark:text-white uppercase text-[10px] tracking-widest text-zinc-400 mb-4 flex items-center gap-2">
                                 <Key size={14} /> Credenciales Meta (WhatsApp API)
@@ -2134,20 +2156,20 @@ export default function AdminPage() {
                                         <CheckCircle2 size={14} /> ¡Estructurado!
                                       </p>
                                     )}
-                                    <button 
+                                    <button
                                       onClick={async () => {
                                         setIsCompiling(true); setCompileStatus(null);
-                                        try { 
-                                          const json = await compileKnowledgeWithAI(configData.knowledgeRaw || ''); 
-                                          setConfigData({ ...configData, knowledgeData: json }); 
-                                          setCompileStatus("success"); 
+                                        try {
+                                          const json = await compileKnowledgeWithAI(configData.knowledgeRaw || '');
+                                          setConfigData({ ...configData, knowledgeData: json });
+                                          setCompileStatus("success");
                                           setTimeout(() => setCompileStatus(null), 4000);
-                                        } catch { 
-                                          setCompileStatus("error"); 
+                                        } catch {
+                                          setCompileStatus("error");
                                         }
                                         setIsCompiling(false);
-                                      }} 
-                                      disabled={isCompiling || !configData.knowledgeRaw?.trim()} 
+                                      }}
+                                      disabled={isCompiling || !configData.knowledgeRaw?.trim()}
                                       className="px-4 py-2 text-[11px] font-bold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 border border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-orange-700 dark:text-orange-400"
                                     >
                                       {isCompiling ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -2157,7 +2179,7 @@ export default function AdminPage() {
                                 </div>
                               </>
                             ) : (
-                                <textarea value={configData.knowledgeData || ''} onChange={e => setConfigData({ ...configData, knowledgeData: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-green-600 dark:text-green-500 resize-none font-mono leading-relaxed whitespace-pre shadow-inner" placeholder="Aquí va toda la información técnica..." />
+                              <textarea value={configData.knowledgeData || ''} onChange={e => setConfigData({ ...configData, knowledgeData: e.target.value })} className="flex-1 w-full text-[13px] px-4 py-3 border border-zinc-200 rounded-2xl dark:bg-[#121416] dark:border-zinc-800 outline-none focus:border-orange-500 text-green-600 dark:text-green-500 resize-none font-mono leading-relaxed whitespace-pre shadow-inner" placeholder="Aquí va toda la información técnica..." />
                             )}
                           </div>
                         )}
@@ -2177,9 +2199,9 @@ export default function AdminPage() {
                                 <p className="text-[11px] text-orange-600/80 dark:text-orange-400/80">Activa el heatmap para calificar leads.</p>
                               </div>
                               <label className="relative inline-flex items-center cursor-pointer">
-                                <input 
-                                  type="checkbox" 
-                                  className="sr-only peer" 
+                                <input
+                                  type="checkbox"
+                                  className="sr-only peer"
                                   checked={configData.leadScoringEnabled}
                                   onChange={e => setConfigData({ ...configData, leadScoringEnabled: e.target.checked })}
                                 />
@@ -2189,26 +2211,26 @@ export default function AdminPage() {
 
                             <div className={`flex flex-col gap-3 transition-opacity ${!configData.leadScoringEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
                               <label className="text-[10px] font-bold text-zinc-500 block uppercase tracking-widest leading-none mb-1">Reglas ({scoringRulesList.length})</label>
-                              
+
                               {scoringRulesList.map((rule, idx) => (
                                 <div key={idx} className="flex items-start gap-2 bg-zinc-50 dark:bg-zinc-800/30 p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl">
                                   <div className="flex-1 space-y-2">
-                                    <input 
-                                      type="text" 
+                                    <input
+                                      type="text"
                                       value={rule.condition}
                                       onChange={e => {
                                         const newList = [...scoringRulesList];
                                         newList[idx].condition = e.target.value;
                                         setScoringRulesList(newList);
                                       }}
-                                      placeholder="Si el cliente pregunta por precios..." 
-                                      className="w-full text-[13px] px-3 py-2 border border-zinc-200 rounded-lg dark:bg-[#121416] dark:border-zinc-700 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100" 
+                                      placeholder="Si el cliente pregunta por precios..."
+                                      className="w-full text-[13px] px-3 py-2 border border-zinc-200 rounded-lg dark:bg-[#121416] dark:border-zinc-700 outline-none focus:border-orange-500 text-zinc-900 dark:text-zinc-100"
                                     />
                                   </div>
                                   <div className="w-24 shrink-0 flex items-center gap-1">
                                     <span className="text-zinc-400 font-bold px-1">+</span>
-                                    <input 
-                                      type="number" 
+                                    <input
+                                      type="number"
                                       value={rule.score || ''}
                                       max={100}
                                       onChange={e => {
@@ -2216,8 +2238,8 @@ export default function AdminPage() {
                                         newList[idx].score = parseInt(e.target.value) || 0;
                                         setScoringRulesList(newList);
                                       }}
-                                      placeholder="Puntos" 
-                                      className="w-full text-center text-[13px] px-2 py-2 border border-zinc-200 rounded-lg dark:bg-[#121416] dark:border-zinc-700 outline-none focus:border-orange-500 text-emerald-600 dark:text-emerald-400 font-bold" 
+                                      placeholder="Puntos"
+                                      className="w-full text-center text-[13px] px-2 py-2 border border-zinc-200 rounded-lg dark:bg-[#121416] dark:border-zinc-700 outline-none focus:border-orange-500 text-emerald-600 dark:text-emerald-400 font-bold"
                                     />
                                   </div>
                                   <button onClick={() => setScoringRulesList(scoringRulesList.filter((_, i) => i !== idx))} className="shrink-0 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors mt-0.5">
@@ -2230,7 +2252,7 @@ export default function AdminPage() {
                                 <p className="text-xs text-zinc-500 italic text-center py-4 bg-zinc-50 dark:bg-zinc-800/20 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700">No hay reglas configuradas. La IA no sumará puntos todavía.</p>
                               )}
 
-                              <button 
+                              <button
                                 onClick={() => setScoringRulesList([...scoringRulesList, { condition: '', score: 10 }])}
                                 className="w-full py-2.5 mt-2 border border-dashed border-orange-300 dark:border-orange-800 text-orange-600 dark:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/20 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
                               >
@@ -2252,8 +2274,8 @@ export default function AdminPage() {
                         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">Testing Automático del Bot</h3>
                         <p className="text-zinc-500 text-sm mt-1">Evalúa cómo responde tu bot frente a clientes simulados (MVP).</p>
                       </div>
-                      <button 
-                        onClick={handleRunTest} 
+                      <button
+                        onClick={handleRunTest}
                         disabled={isTesting}
                         className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-md flex items-center gap-2 transition-all disabled:opacity-50"
                       >
@@ -2274,7 +2296,7 @@ export default function AdminPage() {
 
                     {testData && (
                       <div className="space-y-6 mt-6">
-                        
+
                         {/* Resumen de Evaluación */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm text-center">
@@ -2344,7 +2366,7 @@ export default function AdminPage() {
                                     <p className="text-xs text-zinc-500 mt-1 max-w-[200px] truncate" title={ev?.summary}>{ev?.summary}</p>
                                   </div>
                                 </div>
-                                
+
                                 {ev?.critical_issues?.length > 0 && (
                                   <div className="mb-4 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 p-3 rounded-xl">
                                     <h6 className="text-xs font-bold text-red-600 dark:text-red-400 mb-2 uppercase">Issues Detectados</h6>

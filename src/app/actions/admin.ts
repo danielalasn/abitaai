@@ -193,6 +193,15 @@ export interface ProjectUsageStats {
   manualMessagesCount: number
 
   // AI (Claude)
+  claudeInputTokens: number
+  claudeOutputTokens: number
+  claudeEstimatedCostUsd: number
+
+  // AI (Gemini)
+  geminiInputTokens: number
+  geminiOutputTokens: number
+  geminiEstimatedCostUsd: number
+
   totalInputTokens: number
   totalOutputTokens: number
   estimatedAiCostUsd: number
@@ -269,7 +278,8 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
         ...dateFilter
       }
     }),
-    prisma.message.aggregate({
+    prisma.message.groupBy({
+      by: ['agentName'],
       where: {
         role: 'assistant',
         chat: { lead: { projectId, ...notSimulator } },
@@ -317,11 +327,36 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
   const templateMessagesCount = waMarketingMessages + waUtilityMessages;
   const manualMessagesCount = Math.max(0, agentMessagesCount - templateMessagesCount);
 
-  const totalInputTokens = tokenAgg._sum.inputTokens || 0;
-  const totalOutputTokens = tokenAgg._sum.outputTokens || 0;
-  const estimatedAiCostUsd = 
-    (totalInputTokens / 1_000_000) * AI_PRICING.inputPerMillion +
-    (totalOutputTokens / 1_000_000) * AI_PRICING.outputPerMillion;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let claudeInputTokens = 0;
+  let claudeOutputTokens = 0;
+  let claudeEstimatedCostUsd = 0;
+  let geminiInputTokens = 0;
+  let geminiOutputTokens = 0;
+  let geminiEstimatedCostUsd = 0;
+
+  tokenAgg.forEach(group => {
+    const input = group._sum.inputTokens || 0;
+    const output = group._sum.outputTokens || 0;
+    
+    totalInputTokens += input;
+    totalOutputTokens += output;
+
+    const isGemini = group.agentName?.endsWith('(Gemini)') || false;
+    
+    if (isGemini) {
+      geminiInputTokens += input;
+      geminiOutputTokens += output;
+      geminiEstimatedCostUsd += (input / 1_000_000) * 0.075 + (output / 1_000_000) * 0.30;
+    } else {
+      claudeInputTokens += input;
+      claudeOutputTokens += output;
+      claudeEstimatedCostUsd += (input / 1_000_000) * AI_PRICING.inputPerMillion + (output / 1_000_000) * AI_PRICING.outputPerMillion;
+    }
+  });
+
+  const estimatedAiCostUsd = claudeEstimatedCostUsd + geminiEstimatedCostUsd;
 
   const waServiceMessages = waServiceExplicit + waServiceNull;
 
@@ -343,6 +378,12 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     manualMessagesCount,
     totalInputTokens,
     totalOutputTokens,
+    claudeInputTokens,
+    claudeOutputTokens,
+    claudeEstimatedCostUsd,
+    geminiInputTokens,
+    geminiOutputTokens,
+    geminiEstimatedCostUsd,
     estimatedAiCostUsd,
     waServiceMessages,
     waMarketingMessages,
@@ -375,14 +416,23 @@ export async function getGlobalStats() {
     prisma.lead.count({ where: { status: 'NEEDS_AGENT', phone: { not: 'SIMULADOR_TEST' } } })
   ]);
 
-  const tokenAgg = await prisma.message.aggregate({
+  const tokenAgg = await prisma.message.groupBy({
+    by: ['agentName'],
     where: { role: 'assistant', chat: { lead: notSimulator } },
     _sum: { inputTokens: true, outputTokens: true }
   });
   
-  const estimatedAiCostUsd = 
-    ((tokenAgg._sum.inputTokens || 0) / 1_000_000) * AI_PRICING.inputPerMillion +
-    ((tokenAgg._sum.outputTokens || 0) / 1_000_000) * AI_PRICING.outputPerMillion;
+  let estimatedAiCostUsd = 0;
+  tokenAgg.forEach(group => {
+    const input = group._sum.inputTokens || 0;
+    const output = group._sum.outputTokens || 0;
+    const isGemini = group.agentName?.endsWith('(Gemini)') || false;
+    if (isGemini) {
+      estimatedAiCostUsd += (input / 1_000_000) * 0.075 + (output / 1_000_000) * 0.30;
+    } else {
+      estimatedAiCostUsd += (input / 1_000_000) * AI_PRICING.inputPerMillion + (output / 1_000_000) * AI_PRICING.outputPerMillion;
+    }
+  });
 
   const defaultWabaId = process.env.WHATSAPP_BUSINESS_ID || '2178386092973067';
   
