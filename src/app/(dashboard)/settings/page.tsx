@@ -99,6 +99,7 @@ export default function SettingsPage() {
   const [profileStatus, setProfileStatus] = useState<'success' | 'error' | null>(null)
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
   const [passwordStatus, setPasswordStatus] = useState<'success' | 'error' | null>(null)
+  const [passwordFeedback, setPasswordFeedback] = useState<string | null>(null)
 
   // Integration states
   const searchParams = useSearchParams()
@@ -279,26 +280,30 @@ export default function SettingsPage() {
 
   const handleUpdatePassword = async () => {
     const user = session?.user as any
+    setPasswordFeedback(null)
     if (!user?.id || !oldPassword || !userPassword || !confirmPassword) {
-      alert("Por favor completa todos los campos de contraseña.")
+      setPasswordStatus('error')
+      setPasswordFeedback("Por favor completa todos los campos de contraseña.")
       return
     }
     if (userPassword !== confirmPassword) {
-      alert("La nueva contraseña y su confirmación no coinciden.")
+      setPasswordStatus('error')
+      setPasswordFeedback("Las nuevas contraseñas no coinciden.")
       return
     }
 
-    setIsUpdatingPassword(true); setPasswordStatus(null)
+    setIsUpdatingPassword(true); setPasswordStatus(null); setPasswordFeedback(null)
     try {
       await updateUserPassword(user.id, oldPassword, userPassword)
       setOldPassword("")
       setUserPassword("")
       setConfirmPassword("")
       setPasswordStatus('success')
-      setTimeout(() => setPasswordStatus(null), 3000)
+      setPasswordFeedback("¡Contraseña actualizada con éxito!")
+      setTimeout(() => { setPasswordStatus(null); setPasswordFeedback(null) }, 4000)
     } catch (e: any) {
-      alert(e.message || "Error al actualizar la contraseña")
       setPasswordStatus('error')
+      setPasswordFeedback(e.message || "Error al actualizar la contraseña")
     }
     setIsUpdatingPassword(false)
   }
@@ -912,6 +917,13 @@ export default function SettingsPage() {
                           <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Seguridad</h3>
                         </div>
                       </div>
+
+                      {passwordFeedback && (
+                        <div className={`mb-4 p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 ${passwordStatus === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                          {passwordStatus === 'success' ? <CheckCircle2 size={14} className="shrink-0 mt-0.5" /> : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
+                          <span>{passwordFeedback}</span>
+                        </div>
+                      )}
 
                       <div className="space-y-4 flex-1">
                         <div className="space-y-1">
