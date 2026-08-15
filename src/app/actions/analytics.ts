@@ -233,6 +233,43 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
 
   const estimatedAiCostUsd = estimatedInputCostUsd + estimatedOutputCostUsd;
 
+  // Calculate time series for the chart
+  let dateFilterSql = '';
+  const params: any[] = [];
+  let paramIndex = 1;
+  
+  if (dateRange?.start && dateRange?.end) {
+    const startIso = dateRange.start.includes('T') ? dateRange.start : dateRange.start + 'T00:00:00';
+    const endIso = dateRange.end.includes('T') ? dateRange.end : dateRange.end + 'T23:59:59.999Z';
+    dateFilterSql = `AND m."createdAt" >= $${paramIndex} AND m."createdAt" <= $${paramIndex + 1}`;
+    params.push(new Date(startIso), new Date(endIso));
+    paramIndex += 2;
+  }
+  
+  const projectFilterSql = `AND l."projectId" = $${paramIndex}`;
+  params.push(project.id);
+  
+  const query = `
+    SELECT 
+      TO_CHAR(m."createdAt", 'YYYY-MM-DD') as date,
+      CAST(SUM(CASE WHEN m.role = 'assistant' THEN 1 ELSE 0 END) AS INTEGER) as ai_messages,
+      CAST(SUM(CASE WHEN m.role = 'agent' THEN 1 ELSE 0 END) AS INTEGER) as agent_messages,
+      CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY') THEN 1 ELSE 0 END) AS INTEGER) as template_messages
+    FROM "Message" m
+    INNER JOIN "Chat" c ON m."chatId" = c.id
+    INNER JOIN "Lead" l ON c."leadId" = l.id
+    WHERE l.phone != 'SIMULADOR_TEST' ${dateFilterSql} ${projectFilterSql}
+    GROUP BY TO_CHAR(m."createdAt", 'YYYY-MM-DD')
+    ORDER BY TO_CHAR(m."createdAt", 'YYYY-MM-DD') ASC
+  `;
+  
+  let dailyTrends: any[] = [];
+  try {
+    dailyTrends = await prisma.$queryRawUnsafe<any[]>(query, ...params);
+  } catch(e) {
+    console.error("Error fetching daily trends", e);
+  }
+
   return {
     totalLeads,
     handedOffLeads,
@@ -263,7 +300,7 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     sentByUsCount: rawAgentMessages,
     proactiveMessagesCount,
     planUsageAllTime,
-    dailyTrends: [],
+    dailyTrends,
     tierLimit,
     tierName,
     tierUsage

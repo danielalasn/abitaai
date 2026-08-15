@@ -7,6 +7,7 @@ import Link from 'next/link'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { format, startOfMonth } from 'date-fns'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
+import { MessageChart } from '@/components/admin/MessageChart'
 
 type Analytics = {
   totalLeads: number;
@@ -41,6 +42,7 @@ type Analytics = {
   tierLimit: number;
   tierName: string;
   tierUsage: number;
+  dailyTrends: any[];
 } | null
 
 const CACHE_KEY = 'analytics_date_range'
@@ -358,16 +360,6 @@ export default function AnalyticsDashboard() {
               </div>
             </div>
 
-            {/* Total Respuestas — NEW prominent card */}
-            <div className="bg-[#111111] dark:bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-md flex items-center gap-6">
-              <div className="h-14 w-14 bg-[#F36A2D]/20 text-[#F36A2D] rounded-2xl flex items-center justify-center shrink-0">
-                <Send size={28} />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Total Respuestas Enviadas</p>
-                <p className="text-5xl font-bold text-white mt-1">{totalRes.toLocaleString()}</p>
-              </div>
-            </div>
 
             {/* Top KPIs - ROW 1 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -403,7 +395,7 @@ export default function AnalyticsDashboard() {
                   </div>
                 </div>
                 <div className="relative z-10">
-                  <p className="text-sm font-medium text-[#6F6F6F]">Respuestas Humanas</p>
+                  <p className="text-sm font-medium text-[#6F6F6F]">Mensajes Nosotros</p>
                   <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.humanMessagesCount}</h3>
                   <p className="text-xs text-[#6F6F6F] mt-2">Enviados por agentes en chats activos</p>
                 </div>
@@ -420,7 +412,7 @@ export default function AnalyticsDashboard() {
                   </div>
                 </div>
                 <div className="relative z-10">
-                  <p className="text-sm font-medium text-[#6F6F6F]">Contactos Iniciales</p>
+                  <p className="text-sm font-medium text-[#6F6F6F]">Mensajes Template</p>
                   <h3 className="text-3xl font-bold text-[#111111] dark:text-[#EDE9E0] mt-1">{data?.proactiveMessagesCount}</h3>
                   <p className="text-xs text-[#6F6F6F] mt-2">Campañas e inicios de chat</p>
                 </div>
@@ -449,57 +441,7 @@ export default function AnalyticsDashboard() {
             </div>
 
             {/* Detailed Sections */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-              {/* Métricas Clave — con explicaciones */}
-              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col space-y-4 lg:col-span-1">
-                <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">Métricas Clave</h3>
-
-                {/* Autonomía */}
-                <div className="p-4 bg-[#E9E4D8]/60 dark:bg-[#111111]/60 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col justify-center">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center">
-                      Tasa de Autonomía IA
-                      <Tooltip text="Porcentaje de chats activos donde el bot está al frente, sin intervención humana. Se calcula sobre el estado actual de todos los chats (no filtrado por fecha)." />
-                    </span>
-                    <span className="text-sm font-bold text-[#F36A2D]">{data?.autonomyRate}%</span>
-                  </div>
-                  <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2 mb-1">
-                    <div className="bg-[#F36A2D] h-2 rounded-full transition-all duration-700" style={{ width: `${data?.autonomyRate}%` }} />
-                  </div>
-                  <p className="text-[10px] text-[#6F6F6F]">{data?.botActiveLeads || 0} chats con bot activo de {data?.totalLeads || 0} leads totales</p>
-                </div>
-
-                {/* Entrega / Lectura — de campaignLogs */}
-                <div className="p-4 bg-[#E9E4D8]/60 dark:bg-[#111111]/60 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col justify-center">
-                  <p className="text-xs font-bold text-[#6F6F6F] mb-3 flex items-center">
-                    TASA DE CAMPAÑAS
-                    <Tooltip text="Entregados y Leídos son métricas de los mensajes de campaña (templates de WhatsApp). Si no enviaste campañas en el periodo seleccionado, aparecerá en 0%." />
-                  </p>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5">
-                      <CheckCircle2 size={14} className="text-emerald-500" /> Entregados
-                    </span>
-                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{data?.whatsappDeliveryRate}%</span>
-                  </div>
-                  <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2 mb-3">
-                    <div className="bg-emerald-500 h-2 rounded-full transition-all duration-700" style={{ width: `${data?.whatsappDeliveryRate}%` }} />
-                  </div>
-
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5">
-                      <CheckCheck size={14} className="text-blue-500" /> Leídos
-                    </span>
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{data?.whatsappReadRate}%</span>
-                  </div>
-                  <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2 mb-2">
-                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-700" style={{ width: `${data?.whatsappReadRate}%` }} />
-                  </div>
-                  {(data?.whatsappDeliveryRate === 0 && data?.whatsappReadRate === 0) && (
-                    <p className="text-[10px] text-[#6F6F6F] mt-1 italic">Sin campañas en el periodo seleccionado</p>
-                  )}
-                </div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Estado de Atención */}
               <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
@@ -580,19 +522,15 @@ export default function AnalyticsDashboard() {
                   </Link>
                 </div>
 
-                {/* Canales */}
-                <div className="mt-6 pt-6 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-[#6F6F6F] uppercase font-bold tracking-wider mb-1">WhatsApp</span>
-                    <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5"><Smartphone size={14} className="text-emerald-500" /> {data?.whatsappLeads || 0} leads</span>
-                  </div>
-                  <div className="flex flex-col text-right">
-                    <span className="text-[10px] text-[#6F6F6F] uppercase font-bold tracking-wider mb-1">Instagram</span>
-                    <span className="text-sm font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5 justify-end"><Smartphone size={14} className="text-rose-500" /> {data?.instagramLeads || 0} leads</span>
-                  </div>
-                </div>
+
               </div>
 
+            </div>
+
+            {/* VOLUMEN DE MENSAJES (CHART) */}
+            <div className="mt-6 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+              <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] mb-6">Volumen de Mensajes</h3>
+              <MessageChart data={data?.dailyTrends || []} />
             </div>
 
           </div>

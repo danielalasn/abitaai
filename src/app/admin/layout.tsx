@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { signOut, useSession } from 'next-auth/react';
-import { LogOut, User, Sun, Moon } from 'lucide-react';
+import { LogOut, User, Sun, Moon, Settings } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { updateUserTheme } from '@/app/actions/user';
 import HealthCheckModal from '@/components/HealthCheckModal';
@@ -74,6 +74,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </span>
             </div>
           </div>
+
+          {/* Settings */}
+          <button
+            onClick={() => window.dispatchEvent(new Event('open-global-config'))}
+            className="flex items-center gap-2 p-2 rounded-xl text-zinc-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-all group"
+            title="Configuración Global Abita"
+          >
+            <Settings size={20} className="group-hover:rotate-45 transition-transform" />
+          </button>
 
           {/* Logout */}
           <button 

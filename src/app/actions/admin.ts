@@ -247,7 +247,8 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     waServiceExplicit,
     waServiceNull,
     waMarketingMessages,
-    waUtilityMessages
+    waUtilityMessages,
+    handoffsCount
   ] = await Promise.all([
     prisma.lead.count({ where: { projectId, ...notSimulator, ...dateFilter } }),
     prisma.campaign.count({ where: { projectId, ...dateFilter } }),
@@ -321,7 +322,8 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
         chat: { lead: { projectId, ...notSimulator } },
         ...dateFilter
       }
-    })
+    }),
+    prisma.lead.count({ where: { projectId, status: 'NEEDS_AGENT', ...notSimulator, ...dateFilter } })
   ]);
 
   const templateMessagesCount = waMarketingMessages + waUtilityMessages;
@@ -371,6 +373,7 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
   return {
     leadsCount,
     campaignsCount,
+    handoffsCount,
     botMessagesCount,
     agentMessagesCount,
     automatedMessagesCount,
@@ -393,34 +396,61 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
   };
 }
 
-export async function getGlobalStats() {
+export async function getGlobalStats(startDate?: Date, endDate?: Date) {
   const notSimulator = { phone: { not: 'SIMULADOR_TEST' } };
+  
+  const dateFilter = startDate && endDate ? { createdAt: { gte: startDate, lte: endDate } } : {};
   
   const [
     totalClients,
     activeClients,
     botMessages,
     agentMessages,
+    templateMessages,
     handoffs,
     totalLeads
   ] = await Promise.all([
     prisma.client.count({ where: { email: { not: 'info@abitaai.com' } } }),
-    prisma.client.count({ where: { email: { not: 'info@abitaai.com' }, subscriptionStatus: 'ACTIVE' } }),
-    prisma.message.count({ where: { role: 'assistant', chat: { lead: notSimulator } } }),
+    prisma.client.count({ 
+      where: { 
+        email: { not: 'info@abitaai.com' }, 
+        subscriptionStatus: 'ACTIVE',
+        projects: {
+          some: {
+            leads: {
+              some: {
+                phone: { not: 'SIMULADOR_TEST' },
+                chat: {
+                  messages: {
+                    some: {
+                      createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } 
+    }),
+    prisma.message.count({ where: { role: 'assistant', chat: { lead: notSimulator }, ...dateFilter } }),
     prisma.message.count({ where: { 
-      OR: [
-        { role: 'agent' },
-        { waCategory: { in: ['MARKETING', 'UTILITY'] } }
-      ],
-      chat: { lead: notSimulator } 
+      role: 'agent',
+      chat: { lead: notSimulator },
+      ...dateFilter
     }}),
-    prisma.lead.count({ where: { status: 'NEEDS_AGENT', phone: { not: 'SIMULADOR_TEST' } } }),
-    prisma.lead.count({ where: { phone: { not: 'SIMULADOR_TEST' } } })
+    prisma.message.count({ where: { 
+      waCategory: { in: ['MARKETING', 'UTILITY'] },
+      chat: { lead: notSimulator },
+      ...dateFilter
+    }}),
+    prisma.lead.count({ where: { status: 'NEEDS_AGENT', phone: { not: 'SIMULADOR_TEST' }, ...dateFilter } }),
+    prisma.lead.count({ where: { phone: { not: 'SIMULADOR_TEST' }, ...dateFilter } })
   ]);
 
   const tokenAgg = await prisma.message.groupBy({
     by: ['agentName'],
-    where: { role: 'assistant', chat: { lead: notSimulator } },
+    where: { role: 'assistant', chat: { lead: notSimulator }, ...dateFilter },
     _sum: { inputTokens: true, outputTokens: true }
   });
   
@@ -441,13 +471,15 @@ export async function getGlobalStats() {
   const waMarketing = await prisma.message.count({ 
     where: { 
       waCategory: 'MARKETING', 
-      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } } 
+      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } },
+      ...dateFilter
     } 
   });
   const waUtility = await prisma.message.count({ 
     where: { 
       waCategory: 'UTILITY', 
-      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } } 
+      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } },
+      ...dateFilter
     } 
   });
   
@@ -459,10 +491,53 @@ export async function getGlobalStats() {
     activeClients,
     botMessages,
     agentMessages,
+    templateMessages,
     handoffs,
     totalLeads,
     totalEstimatedCostUsd
   };
+}
+
+export async function getMessageTimeSeries(startDate?: Date, endDate?: Date, projectId?: string) {
+  try {
+    let dateFilter = '';
+    let projectFilter = '';
+    const params: any[] = [];
+    let paramIndex = 1;
+    
+    if (startDate && endDate) {
+      dateFilter = `AND m."createdAt" >= $${paramIndex} AND m."createdAt" <= $${paramIndex + 1}`;
+      params.push(startDate, endDate);
+      paramIndex += 2;
+    }
+
+    if (projectId) {
+      projectFilter = `AND l."projectId" = $${paramIndex}`;
+      params.push(projectId);
+      paramIndex++;
+    }
+    
+    // Convert to explicit strings for raw SQL safely, since prisma raw uses parameterized queries
+    const query = `
+      SELECT 
+        TO_CHAR(m."createdAt", 'YYYY-MM-DD') as date,
+        CAST(SUM(CASE WHEN m.role = 'assistant' THEN 1 ELSE 0 END) AS INTEGER) as ai_messages,
+        CAST(SUM(CASE WHEN m.role = 'agent' THEN 1 ELSE 0 END) AS INTEGER) as agent_messages,
+        CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY') THEN 1 ELSE 0 END) AS INTEGER) as template_messages
+      FROM "Message" m
+      INNER JOIN "Chat" c ON m."chatId" = c.id
+      INNER JOIN "Lead" l ON c."leadId" = l.id
+      WHERE l.phone != 'SIMULADOR_TEST' ${dateFilter} ${projectFilter}
+      GROUP BY TO_CHAR(m."createdAt", 'YYYY-MM-DD')
+      ORDER BY TO_CHAR(m."createdAt", 'YYYY-MM-DD') ASC
+    `;
+    
+    const results = await prisma.$queryRawUnsafe<any[]>(query, ...params);
+    return results;
+  } catch (error) {
+    console.error('Error fetching time series data:', error);
+    return [];
+  }
 }
 
 // ──────────────────────────────────────────────

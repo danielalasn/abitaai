@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Globe, TestTube, Play } from 'lucide-react';
-import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getGlobalStats } from '@/app/actions/admin';
+import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getGlobalStats, getMessageTimeSeries } from '@/app/actions/admin';
 import { compileKnowledgeWithAI, saveAgentConfig } from '@/app/actions/settings';
 import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
 import { generateBotConfigFromFile, generateBotConfigFromUrl, type GeneratedBotConfig } from '@/app/actions/bot-builder';
 import { runTestSimulation, getTestSuiteStatus, getTestSuiteResults } from '@/app/actions/testing';
+import { MessageChart, type ChartDataPoint } from '@/components/admin/MessageChart';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -21,6 +22,10 @@ export default function AdminPage() {
 
   // Global Stats state
   const [globalStats, setGlobalStats] = useState<any>(null);
+  const [statsStartDate, setStatsStartDate] = useState('');
+  const [statsEndDate, setStatsEndDate] = useState('');
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
 
   // Create User state
   const [showCreate, setShowCreate] = useState(false);
@@ -158,24 +163,29 @@ export default function AdminPage() {
   const [clientStartDate, setClientStartDate] = useState('');
   const [clientEndDate, setClientEndDate] = useState('');
 
+  const [clientChartData, setClientChartData] = useState<ChartDataPoint[]>([]);
+
   useEffect(() => {
     const project = selectedClient?.projects?.[0];
     if (!project?.id) {
       setUsageStats(null);
+      setClientChartData([]);
       return;
     }
-    if (!clientStartDate && !clientEndDate) {
-      setUsageStats(project.usageStats || null);
-      return;
-    }
-    setIsLoadingUsage(true);
+    
     let startIso, endIso;
-    if (clientStartDate) startIso = new Date(clientStartDate + 'T00:00:00').toISOString();
-    if (clientEndDate) endIso = new Date(clientEndDate + 'T23:59:59.999').toISOString();
+    if (clientStartDate) startIso = new Date(clientStartDate + 'T00:00:00');
+    if (clientEndDate) endIso = new Date(clientEndDate + 'T23:59:59.999Z');
 
-    getUsageStats(project.id, startIso, endIso)
-      .then(stats => {
+    setIsLoadingUsage(true);
+
+    Promise.all([
+      getUsageStats(project.id, startIso?.toISOString(), endIso?.toISOString()),
+      getMessageTimeSeries(startIso, endIso, project.id)
+    ])
+      .then(([stats, timeSeries]) => {
         setUsageStats(stats);
+        setClientChartData(timeSeries);
         setIsLoadingUsage(false);
       })
       .catch(() => setIsLoadingUsage(false));
@@ -219,19 +229,51 @@ export default function AdminPage() {
     }
   }, [status, session, router]);
 
+  useEffect(() => {
+    const handleOpenGlobalConfig = () => setShowGlobalConfig(true);
+    window.addEventListener('open-global-config', handleOpenGlobalConfig);
+    return () => window.removeEventListener('open-global-config', handleOpenGlobalConfig);
+  }, []);
+
+  const loadStats = async (start?: string, end?: string) => {
+    setIsStatsLoading(true);
+    try {
+      const [stats, timeSeries] = await Promise.all([
+        getGlobalStats(
+          start ? new Date(start) : undefined,
+          end ? new Date(`${end}T23:59:59.999Z`) : undefined
+        ),
+        getMessageTimeSeries(
+          start ? new Date(start) : undefined,
+          end ? new Date(`${end}T23:59:59.999Z`) : undefined
+        )
+      ]);
+      setGlobalStats(stats);
+      setChartData(timeSeries);
+    } catch (err) {
+      console.error('Error fetching stats', err);
+    }
+    setIsStatsLoading(false);
+  };
+
   const loadClients = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const [data, stats] = await Promise.all([
-        getClients(),
-        getGlobalStats()
-      ]);
+      const data = await getClients();
       setClients(data);
       setAvailableGroups([]); // Se omite el fetch automático para no saturar la API
-      setGlobalStats(stats);
+      
+      // Load stats initially
+      await loadStats(statsStartDate, statsEndDate);
     } catch (err) { console.error('Error fetching clients or groups', err) }
     if (!silent) setIsLoading(false);
   };
+
+  useEffect(() => {
+    if (hasLoadedInitially) {
+      loadStats(statsStartDate, statsEndDate);
+    }
+  }, [statsStartDate, statsEndDate]);
 
   const loadMasterConfig = async () => {
     try {
@@ -556,8 +598,8 @@ export default function AdminPage() {
         ))}
       </datalist>
 
-      {/* HEADER & Create Button */}
-      <div className="flex items-center justify-between">
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
             <Users size={24} className="text-orange-600" /> Gestionar Clientes
@@ -565,21 +607,6 @@ export default function AdminPage() {
           <p className="text-zinc-500 text-sm mt-1">
             Visualiza y administra todas las cuentas de la plataforma.
           </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowGlobalConfig(true)}
-            className="p-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-zinc-700 shadow-sm"
-            title="Configuración Global Abita"
-          >
-            <Settings size={20} />
-          </button>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-medium tracking-wide shadow-md transition-all flex items-center gap-2"
-          >
-            <Plus size={18} /> Nuevo Cliente
-          </button>
         </div>
       </div>
 
@@ -978,46 +1005,119 @@ export default function AdminPage() {
 
       {/* GLOBAL DASHBOARD */}
       {globalStats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
-            <Users className="text-blue-500 mb-2" size={24} />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Usuarios Totales</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.totalClients}</span>
+        <div className="flex flex-col lg:flex-row gap-6 mb-8">
+          {/* Left Column: Global non-date stats */}
+          <div className="lg:w-1/4 flex flex-col">
+            <div className="flex items-center h-[34px] mb-3">
+              <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Cuentas Globales</h2>
+            </div>
+            <div className="flex flex-col gap-4 flex-1">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow flex-1">
+                <Users className="text-blue-500 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Clientes Totales</span>
+                <span className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.totalClients}</span>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow flex-1">
+                <CheckCircle2 className="text-green-500 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Clientes Activos</span>
+                <span className="text-3xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.activeClients}</span>
+              </div>
+            </div>
           </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
-            <User className="text-cyan-500 mb-2" size={24} />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Leads Totales</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.totalLeads}</span>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
-            <CheckCircle2 className="text-green-500 mb-2" size={24} />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Activos</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.activeClients}</span>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
-            <Bot className="text-purple-500 mb-2" size={24} />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Mensajes IA</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.botMessages}</span>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
-            <MessageSquare className="text-orange-500 mb-2" size={24} />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Msj Nosotros</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.agentMessages}</span>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
-            <AlertTriangle className="text-red-500 mb-2" size={24} />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Handoffs</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.handoffs}</span>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
-            <DollarSign className="text-emerald-500 mb-2" size={24} />
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Costo Est.</span>
-            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">${globalStats.totalEstimatedCostUsd.toFixed(2)}</span>
+
+          {/* Right Column: Date-dependent stats */}
+          <div className="lg:w-3/4 flex flex-col">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Métricas de Uso</h2>
+                {isStatsLoading && <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={statsStartDate}
+                  onChange={(e) => setStatsStartDate(e.target.value)}
+                  className="px-3 py-1.5 text-sm bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                />
+                <span className="text-zinc-500 text-sm">a</span>
+                <input
+                  type="date"
+                  value={statsEndDate}
+                  onChange={(e) => setStatsEndDate(e.target.value)}
+                  className="px-3 py-1.5 text-sm bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                />
+                {(statsStartDate || statsEndDate) && (
+                  <button 
+                    onClick={() => { setStatsStartDate(''); setStatsEndDate(''); }}
+                    className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                    title="Limpiar fechas"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
+              {/* Row 1 */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                <User className="text-cyan-500 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Leads Totales</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.totalLeads}</span>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                <AlertTriangle className="text-red-500 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Handoffs</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.handoffs}</span>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                <DollarSign className="text-emerald-500 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Costo Est.</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">${globalStats.totalEstimatedCostUsd.toFixed(2)}</span>
+              </div>
+              
+              {/* Row 2 */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                <Bot className="text-purple-500 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Mensajes IA</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.botMessages}</span>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                <MessageSquare className="text-orange-500 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Msj Nosotros</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.agentMessages}</span>
+              </div>
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                <MessageSquare className="text-blue-400 mb-2" size={24} />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Templates</span>
+                <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.templateMessages}</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* CARDS GRID */}
+      {/* CHART ROW */}
+      {globalStats && (
+        <div className="mb-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-6">Volumen de Mensajes</h2>
+          <MessageChart data={chartData} />
+        </div>
+      )}
+
+      {/* CLIENTS HEADER & CARDS GRID */}
+      <div className="flex items-center justify-between mb-4 mt-8">
+        <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">
+          Clientes
+        </h2>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-medium tracking-wide shadow-md transition-all flex items-center gap-2"
+        >
+          <Plus size={18} /> Nuevo Cliente
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {clients.map(client => {
           const project = client.projects?.[0];
@@ -1056,28 +1156,6 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                <div className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3 border-t border-zinc-100 dark:border-zinc-800/60 pt-4">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Leads Totales</span>
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{leadsCount}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Campañas</span>
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{campCount}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Mensajes (IA)</span>
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.botMessagesCount || 0}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">Mensajes (Nosotros)</span>
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.agentMessagesCount || 0}</span>
-                  </div>
-                  <div className="flex flex-col col-span-2">
-                    <span className="text-[9px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-tighter">Total Automáticos</span>
-                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{project?.automatedMessagesCount || 0}</span>
-                  </div>
-                </div>
               </div>
             </button>
           )
@@ -1246,11 +1324,11 @@ export default function AdminPage() {
                       <p className="text-sm text-zinc-500 mt-1">Resumen del volumen de mensajes, leads y campañas.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-                      {/* Total Leads */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 mb-8">
+                      {/* Row 1 */}
                       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
                         <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center shrink-0">
-                          <MessageSquare size={24} />
+                          <User size={24} />
                         </div>
                         <div>
                           <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Total Leads</p>
@@ -1260,7 +1338,6 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Total Campañas */}
                       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
                         <div className="h-12 w-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center shrink-0">
                           <Megaphone size={24} />
@@ -1273,49 +1350,57 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Mensajes IA */}
                       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                        <div className="h-12 w-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center shrink-0">
+                        <div className="h-12 w-12 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <AlertTriangle size={24} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Total Handoffs</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.handoffsCount : 0}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Row 2 */}
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                        <div className="h-12 w-12 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center shrink-0">
                           <Bot size={24} />
                         </div>
                         <div>
-                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes con IA</p>
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes IA</p>
                           <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
                             {usageStats ? usageStats.botMessagesCount : (selectedClient.projects?.[0]?.botMessagesCount || 0)}
                           </p>
                         </div>
                       </div>
 
-                      {/* Mensajes con Template */}
                       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                        <div className="h-12 w-12 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center shrink-0">
-                          <Layers size={24} />
+                        <div className="h-12 w-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <MessageSquare size={24} />
                         </div>
                         <div>
-                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes con Template</p>
-                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
-                            {usageStats ? usageStats.templateMessagesCount : (selectedClient.projects?.[0]?.templateMessagesCount || 0)}
-                          </p>
-                          <p className="text-[10px] text-zinc-400 mt-0.5">Campañas o inicio de chat</p>
-                        </div>
-                      </div>
-
-                      {/* Mensajes Manuales */}
-                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
-                        <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-2xl flex items-center justify-center shrink-0">
-                          <User size={24} />
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes Manuales</p>
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes Nosotros</p>
                           <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
                             {usageStats ? usageStats.manualMessagesCount : (selectedClient.projects?.[0]?.manualMessagesCount || 0)}
                           </p>
-                          <p className="text-[10px] text-zinc-400 mt-0.5">Escritos por el equipo</p>
                         </div>
                       </div>
 
-                      {/* Total Automáticos */}
-                      <div className="bg-white dark:bg-zinc-900 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                        <div className="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center shrink-0">
+                          <Layers size={24} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Mensajes Template</p>
+                          <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-0.5">
+                            {usageStats ? usageStats.templateMessagesCount : (selectedClient.projects?.[0]?.templateMessagesCount || 0)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Row 3 */}
+                      <div className="md:col-start-2 bg-white dark:bg-zinc-900 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-5 shadow-sm flex items-center gap-4">
                         <div className="h-12 w-12 bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
                           <Bot size={24} />
                         </div>
@@ -1327,6 +1412,12 @@ export default function AdminPage() {
                           <p className="text-[10px] text-zinc-500 mt-0.5">IA + Templates</p>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Chart Row */}
+                    <div className="mb-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+                      <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-6">Volumen de Mensajes</h2>
+                      <MessageChart data={clientChartData} />
                     </div>
 
                     {/* --- MÓDULO DE CONSUMO INTEGRADO --- */}
