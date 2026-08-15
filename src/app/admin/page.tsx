@@ -978,11 +978,16 @@ export default function AdminPage() {
 
       {/* GLOBAL DASHBOARD */}
       {globalStats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
             <Users className="text-blue-500 mb-2" size={24} />
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Usuarios Totales</span>
             <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.totalClients}</span>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
+            <User className="text-cyan-500 mb-2" size={24} />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Leads Totales</span>
+            <span className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{globalStats.totalLeads}</span>
           </div>
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 flex flex-col justify-center items-center text-center shadow-sm hover:shadow-md transition-shadow">
             <CheckCircle2 className="text-green-500 mb-2" size={24} />

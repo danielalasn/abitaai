@@ -402,6 +402,7 @@ export async function getGlobalStats() {
     botMessages,
     agentMessages,
     handoffs,
+    totalLeads
   ] = await Promise.all([
     prisma.client.count({ where: { email: { not: 'info@abitaai.com' } } }),
     prisma.client.count({ where: { email: { not: 'info@abitaai.com' }, subscriptionStatus: 'ACTIVE' } }),
@@ -413,7 +414,8 @@ export async function getGlobalStats() {
       ],
       chat: { lead: notSimulator } 
     }}),
-    prisma.lead.count({ where: { status: 'NEEDS_AGENT', phone: { not: 'SIMULADOR_TEST' } } })
+    prisma.lead.count({ where: { status: 'NEEDS_AGENT', phone: { not: 'SIMULADOR_TEST' } } }),
+    prisma.lead.count({ where: { phone: { not: 'SIMULADOR_TEST' } } })
   ]);
 
   const tokenAgg = await prisma.message.groupBy({
@@ -458,6 +460,7 @@ export async function getGlobalStats() {
     botMessages,
     agentMessages,
     handoffs,
+    totalLeads,
     totalEstimatedCostUsd
   };
 }
