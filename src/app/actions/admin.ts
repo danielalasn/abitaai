@@ -186,6 +186,7 @@ export interface ProjectUsageStats {
   // Counts
   leadsCount: number
   campaignsCount: number
+  handoffsCount: number
   botMessagesCount: number
   agentMessagesCount: number
   automatedMessagesCount: number
