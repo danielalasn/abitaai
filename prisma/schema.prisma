@@ -19,6 +19,7 @@ model Client {
   templateGroup      String?
   subscriptionEndsAt DateTime?
   subscriptionStatus SubscriptionStatus @default(ACTIVE)
+  failedLoginAttempts Int               @default(0)
   auditLogs          AuditLog[]
   integrations       Integration[]
   projects           Project[]

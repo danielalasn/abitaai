@@ -1,6 +1,7 @@
 import CredentialsProvider from 'next-auth/providers/credentials'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { redisConnection } from '@/lib/queue'
 
 export const authOptions = {
   providers: [
@@ -32,6 +33,11 @@ export const authOptions = {
             return null
           }
 
+          if (client.subscriptionStatus === 'BLOCKED') {
+            console.log('[AUTH DEBUG] Intento de login en cuenta bloqueada:', credentials.email)
+            throw new Error('Tu cuenta ha sido bloqueada por demasiados intentos. Por favor, contacta al equipo de abitaai para desbloquearla.');
+          }
+
           if (!client.password) {
             console.log('[AUTH DEBUG] El cliente no tiene contraseña configurada')
             return null
@@ -41,7 +47,30 @@ export const authOptions = {
           
           if (!passwordValid) {
             console.log('[AUTH DEBUG] Contraseña INVALIDA para:', credentials.email)
+            const updatedAttempts = (client.failedLoginAttempts || 0) + 1;
+            
+            if (updatedAttempts >= 5) {
+              await prisma.client.update({
+                where: { id: client.id },
+                data: { failedLoginAttempts: updatedAttempts, subscriptionStatus: 'BLOCKED' }
+              });
+              console.warn(`[Auth] Bloqueando cuenta por intentos fallidos: ${credentials.email}`);
+              throw new Error('Tu cuenta ha sido bloqueada por demasiados intentos. Por favor, contacta al equipo de abitaai para desbloquearla.');
+            } else {
+              await prisma.client.update({
+                where: { id: client.id },
+                data: { failedLoginAttempts: updatedAttempts }
+              });
+            }
             return null
+          }
+
+          // Restablecer si login es exitoso
+          if (client.failedLoginAttempts > 0) {
+            await prisma.client.update({
+              where: { id: client.id },
+              data: { failedLoginAttempts: 0 }
+            });
           }
 
           console.log('[AUTH DEBUG] Login exitoso:', credentials.email)

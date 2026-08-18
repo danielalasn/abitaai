@@ -41,3 +41,21 @@ try {
   console.error("\n❌ Error durante el backup. Detalles arriba.");
   process.exit(1);
 }
+
+// Limpieza de backups antiguos (mantener los últimos 5)
+try {
+  const files = fs.readdirSync('backups')
+    .filter(f => f.startsWith('supabase_backup_') && f.endsWith('.sql'))
+    .sort() // Ordena alfabéticamente (por timestamp)
+    .reverse(); // Los más recientes primero
+  
+  if (files.length > 5) {
+    const filesToDelete = files.slice(5);
+    filesToDelete.forEach(file => {
+      fs.unlinkSync(`backups/${file}`);
+      console.log(`🗑️  Backup antiguo eliminado: backups/${file}`);
+    });
+  }
+} catch (err) {
+  console.error("⚠️ Error limpiando backups antiguos:", err.message);
+}

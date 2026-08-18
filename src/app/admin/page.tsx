@@ -506,7 +506,9 @@ export default function AdminPage() {
         password: editPassword || undefined,
         templateGroup: editTemplateGroup,
         subscriptionStatus: editSubscriptionStatus,
-        subscriptionEndsAt: editSubscriptionEndsAt ? new Date(editSubscriptionEndsAt) : null
+        subscriptionEndsAt: editSubscriptionEndsAt ? new Date(editSubscriptionEndsAt) : null,
+        // Si el admin manualmente lo pasa a ACTIVE, reiniciamos intentos por si acaso
+        resetFailedLogins: editSubscriptionStatus === 'ACTIVE'
       });
       setSelectedClient(null);
       alert('Usuario actualizado');
@@ -514,6 +516,25 @@ export default function AdminPage() {
       setEditPassword('');
     } catch (err: any) {
       alert('Error al actualizar usuario: ' + err.message);
+    } finally {
+      setIsSavingUser(false);
+    }
+  };
+
+  const handleUnblock = async () => {
+    if (!selectedClient) return;
+    setIsSavingUser(true);
+    try {
+      await updateClient(selectedClient.id, {
+        subscriptionStatus: 'ACTIVE',
+        resetFailedLogins: true
+      });
+      alert('Cuenta desbloqueada con éxito');
+      loadClients(true);
+      setEditSubscriptionStatus('ACTIVE');
+      setSelectedClient({ ...selectedClient, failedLoginAttempts: 0, subscriptionStatus: 'ACTIVE' });
+    } catch (err: any) {
+      alert('Error al desbloquear: ' + err.message);
     } finally {
       setIsSavingUser(false);
     }
@@ -1653,6 +1674,22 @@ export default function AdminPage() {
 
                       {activeEditSubTab === 'subscription' && (
                         <div className="space-y-6 animate-in fade-in duration-200">
+                          {selectedClient?.failedLoginAttempts >= 5 && (
+                            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl p-4 flex items-center justify-between">
+                              <div>
+                                <h4 className="text-red-800 dark:text-red-400 font-bold text-[13px]">Cuenta Bloqueada por Seguridad</h4>
+                                <p className="text-red-600 dark:text-red-500 text-[11px] mt-1">El usuario intentó iniciar sesión fallidamente {selectedClient?.failedLoginAttempts} veces.</p>
+                              </div>
+                              <button
+                                onClick={handleUnblock}
+                                disabled={isSavingUser}
+                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-[12px] font-bold transition disabled:opacity-50"
+                              >
+                                {isSavingUser ? 'Desbloqueando...' : 'Desbloquear Ahora'}
+                              </button>
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                               <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Estado de la Cuenta</label>

@@ -4,8 +4,19 @@ import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { encrypt, decrypt } from '@/lib/encryption';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
+async function checkAdminAuth() {
+  const session = await getServerSession(authOptions) as any;
+  if (!session?.user || session.user.role !== 'ADMIN') {
+    throw new Error('Unauthorized: Admin access required');
+  }
+}
 
 export async function getClients() {
+  await checkAdminAuth();
+  
   const clients = await prisma.client.findMany({
     where: {
       email: { not: 'info@abitaai.com' } // Excluir al master admin
@@ -25,6 +36,9 @@ export async function getClients() {
   
   // Agregar conteos de mensajes (EXCLUYENDO SIMULADOR)
   for (const client of clients) {
+    // No exponer contraseñas en el frontend
+    delete client.password;
+
     if (client.projects) {
       for (const project of client.projects) {
         const [stats, lastMsg] = await Promise.all([
@@ -58,6 +72,7 @@ export async function getClients() {
 }
 
 export async function createClient(data: { name: string, email: string, password?: string, templateGroup?: string, numberType?: 'abita' | 'embedded' }) {
+  await checkAdminAuth();
   const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : null;
   
   // Si es número de abita, asignamos las credenciales globales, de lo contrario quedan null
@@ -93,6 +108,7 @@ export async function createClient(data: { name: string, email: string, password
 }
 
 export async function updateBotConfig(projectId: string, configData: any) {
+  await checkAdminAuth();
   // Separar datos para Agente y Proyecto
   const { 
     whatsappToken, whatsappPhoneId, whatsappBusinessId, leadScoringEnabled, defaultBotActive, botAutoWakeHours,
@@ -137,7 +153,8 @@ export async function updateBotConfig(projectId: string, configData: any) {
   }
 }
 
-export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string, templateGroup?: string, subscriptionStatus?: string, subscriptionEndsAt?: Date | null }) {
+export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string, templateGroup?: string, subscriptionStatus?: string, subscriptionEndsAt?: Date | null, resetFailedLogins?: boolean }) {
+  await checkAdminAuth();
   const updateData: any = {};
   if (data.name) updateData.name = data.name;
   if (data.email) updateData.email = data.email;
@@ -147,6 +164,7 @@ export async function updateClient(clientId: string, data: { name?: string, emai
   }
   if (data.subscriptionStatus) updateData.subscriptionStatus = data.subscriptionStatus;
   if (data.subscriptionEndsAt !== undefined) updateData.subscriptionEndsAt = data.subscriptionEndsAt;
+  if (data.resetFailedLogins) updateData.failedLoginAttempts = 0;
 
   const updated = await prisma.client.update({
     where: { id: clientId },
@@ -158,6 +176,7 @@ export async function updateClient(clientId: string, data: { name?: string, emai
 }
 
 export async function deleteClient(clientId: string) {
+  await checkAdminAuth();
   await prisma.client.delete({
     where: { id: clientId }
   });
@@ -218,6 +237,7 @@ export interface ProjectUsageStats {
 }
 
 export async function getUsageStats(projectId: string, startDate?: string, endDate?: string): Promise<ProjectUsageStats> {
+  await checkAdminAuth();
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: { whatsappBusinessId: true }
@@ -398,6 +418,7 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
 }
 
 export async function getGlobalStats(startDate?: Date, endDate?: Date) {
+  await checkAdminAuth();
   const notSimulator = { phone: { not: 'SIMULADOR_TEST' } };
   
   const dateFilter = startDate && endDate ? { createdAt: { gte: startDate, lte: endDate } } : {};
@@ -500,6 +521,7 @@ export async function getGlobalStats(startDate?: Date, endDate?: Date) {
 }
 
 export async function getMessageTimeSeries(startDate?: Date, endDate?: Date, projectId?: string) {
+  await checkAdminAuth();
   try {
     let dateFilter = '';
     let projectFilter = '';
@@ -547,6 +569,7 @@ export async function getMessageTimeSeries(startDate?: Date, endDate?: Date, pro
 import { getApprovedTemplates } from '@/lib/whatsapp';
 
 export async function fetchAvailableTemplateGroups() {
+  await checkAdminAuth();
   console.log("--------------------------------------------------");
   console.log("[Groups] INICIANDO ESCANEO DE PLANTILLAS...");
   
@@ -589,6 +612,7 @@ export async function fetchAvailableTemplateGroups() {
 }
 
 export async function getMasterConfig() {
+  await checkAdminAuth();
   return {
     whatsappBusinessId: process.env.WHATSAPP_BUSINESS_ID || '',
     whatsappToken: process.env.SYSTEM_USER_TOKEN || '',
@@ -597,6 +621,7 @@ export async function getMasterConfig() {
 }
 
 export async function updateMasterConfig(data: { whatsappBusinessId: string, whatsappToken: string }) {
+  await checkAdminAuth();
   // Ahora la configuración maestra se lee de las variables de entorno,
   // por lo que no se actualiza en la base de datos de info@abitaai.com.
   console.log("[Admin] updateMasterConfig llamado. La configuración se maneja vía .env, ignorando actualización.");
