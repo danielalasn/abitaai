@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Globe, TestTube, Play } from 'lucide-react';
+import { Loader2, Users, Plus, Settings, ChevronRight, Save, X, Edit3, Trash2, LayoutDashboard, Calendar, MessageSquare, Megaphone, AlertTriangle, Bot, User, Clock, LogOut, CreditCard, Cpu, Phone, DollarSign, RefreshCw, Key, Database, HelpCircle, Code, Sparkles, CheckCircle2, BookOpen, Layers, GripVertical, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Globe, TestTube, Play, Copy } from 'lucide-react';
 import { getClients, createClient, updateBotConfig, updateClient, deleteClient, getUsageStats, fetchAvailableTemplateGroups, getMasterConfig, updateMasterConfig, type ProjectUsageStats, getGlobalStats, getMessageTimeSeries } from '@/app/actions/admin';
 import { compileKnowledgeWithAI, saveAgentConfig } from '@/app/actions/settings';
 import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
@@ -215,6 +215,9 @@ export default function AdminPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Copy bot state
+  const [copiedBotConfig, setCopiedBotConfig] = useState<any>(null);
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -406,13 +409,15 @@ export default function AdminPage() {
         email: newUserEmail,
         password: newUserPassword,
         templateGroup: newUserTemplateGroup,
-        numberType: newUserNumberType
+        numberType: newUserNumberType,
+        initialBotConfig: copiedBotConfig
       });
       setNewUserName('');
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserTemplateGroup('');
       setNewUserNumberType('abita');
+      setCopiedBotConfig(null);
       setShowCreate(false);
       loadClients();
       alert('Usuario creado con éxito');
@@ -421,6 +426,14 @@ export default function AdminPage() {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleCopyBot = () => {
+    if (!selectedClient) return;
+    const project = selectedClient.projects?.[0];
+    const initialConfig = project?.agents?.[0] || {};
+    setCopiedBotConfig(initialConfig);
+    setShowCreate(true);
   };
 
   const handleSelectClient = (client: any) => {
@@ -968,8 +981,10 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-              <h3 className="font-semibold text-zinc-900 dark:text-white">Crear Nuevo Cliente</h3>
-              <button onClick={() => setShowCreate(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400">
+              <h3 className="font-semibold text-zinc-900 dark:text-white">
+                {copiedBotConfig ? 'Crear Nuevo Cliente (Copiando Bot)' : 'Crear Nuevo Cliente'}
+              </h3>
+              <button onClick={() => { setShowCreate(false); setCopiedBotConfig(null); }} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400">
                 <X size={20} />
               </button>
             </div>
@@ -1231,6 +1246,15 @@ export default function AdminPage() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyBot}
+                  className="px-3 py-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-900/50 rounded-xl text-[13px] font-bold transition flex items-center gap-2"
+                  title="Copiar reglas de este bot a un nuevo usuario"
+                >
+                  <Copy size={16} />
+                  <span className="hidden md:inline">Copiar Bot</span>
+                </button>
+                <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
                 <button
                   onClick={handleRefreshClient}
                   disabled={isRefreshingClient}

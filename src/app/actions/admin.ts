@@ -71,7 +71,14 @@ export async function getClients() {
   return clients;
 }
 
-export async function createClient(data: { name: string, email: string, password?: string, templateGroup?: string, numberType?: 'abita' | 'embedded' }) {
+export async function createClient(data: { 
+  name: string, 
+  email: string, 
+  password?: string, 
+  templateGroup?: string, 
+  numberType?: 'abita' | 'embedded',
+  initialBotConfig?: any
+}) {
   await checkAdminAuth();
   const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : null;
   
@@ -94,8 +101,13 @@ export async function createClient(data: { name: string, email: string, password
           agents: {
             create: {
               name: 'Agente Principal',
-              identity: '',
-              instructions: '',
+              identity: data.initialBotConfig?.identity || '',
+              instructions: data.initialBotConfig?.instructions || '',
+              handoffRules: data.initialBotConfig?.handoffRules || null,
+              knowledgeData: data.initialBotConfig?.knowledgeData || null,
+              knowledgeRaw: data.initialBotConfig?.knowledgeRaw || null,
+              faq: data.initialBotConfig?.faq || null,
+              leadScoringRules: data.initialBotConfig?.leadScoringRules || null,
             }
           }
         }

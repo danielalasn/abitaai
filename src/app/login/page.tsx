@@ -35,7 +35,11 @@ function LoginContent() {
     })
 
     if (result?.error) {
-      setError('Credenciales no válidas')
+      if (result.error === 'CredentialsSignin') {
+        setError('Credenciales no válidas')
+      } else {
+        setError(result.error)
+      }
       setIsLoading(false)
     } else {
       // Obtener la sesión actualizada para revisar el Rol

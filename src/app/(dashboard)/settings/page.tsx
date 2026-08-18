@@ -208,7 +208,7 @@ export default function SettingsPage() {
           const json = await resCal.json()
           setGcalConnected(json.connected === true)
         }
-        
+
         const resSheets = await fetch(`/api/integrations/status?projectId=${data.projectId}&provider=google-sheet`)
         if (resSheets.ok) {
           const json = await resSheets.json()
@@ -347,9 +347,9 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/notifications/template-status')
       const data = await res.json()
-      
+
       setHandoffTemplateStatus(data.status)
-      
+
       if (data.status === 'PENDING') {
         setCheckTemplateFeedback('La plantilla sigue en revisión por Meta. Intenta de nuevo en unos minutos.')
       } else if (data.status === 'APPROVED') {
@@ -760,8 +760,8 @@ export default function SettingsPage() {
                         key={agent.id}
                         onClick={() => { selectAgent(agent); setActiveSection('agent'); }}
                         className={`w-full text-left p-3 rounded-xl border transition-all group ${activeSection === 'agent' && selectedAgentId === agent.id
-                            ? 'border-[#F36A2D] bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 shadow-sm'
-                            : 'border-transparent hover:border-[#DEDAD0] dark:hover:border-zinc-700 hover:bg-white/60 dark:hover:bg-zinc-900/40'
+                          ? 'border-[#F36A2D] bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 shadow-sm'
+                          : 'border-transparent hover:border-[#DEDAD0] dark:hover:border-zinc-700 hover:bg-white/60 dark:hover:bg-zinc-900/40'
                           }`}
                       >
                         <div className="flex items-center justify-between">
@@ -980,7 +980,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                
+
 
                 {/* PRIVACY & COMPLIANCE SECTION */}
                 <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-red-500/30 transition-all duration-500">
@@ -1053,7 +1053,7 @@ export default function SettingsPage() {
             )}
 
 
-            
+
             {/* NOTIFICATIONS SECTION */}
             {activeSection === 'notifications' && (
               <div className="h-full flex flex-col p-6 lg:p-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
@@ -1068,213 +1068,213 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-6">
 
                   {/* WhatsApp Notification Card — FIRST */}
-                                  {whatsappPhoneId && (
-                                    <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-emerald-500/30 transition-all duration-500">
-                                      <div className="flex items-center gap-3 mb-5">
-                                        <div className="p-2 bg-emerald-500/10 rounded-xl">
-                                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-emerald-500"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.117 1.524 5.847L.057 23.571a.5.5 0 0 0 .612.612l5.724-1.467A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.98 0-3.84-.524-5.448-1.44l-.39-.228-4.047 1.038 1.057-3.96-.25-.405A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
-                                        </div>
-                                        <div>
-                                          <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por WhatsApp</h3>
-                                          <p className="text-xs text-zinc-500 dark:text-zinc-400">Recibe un mensaje de WhatsApp directo en tu celular cuando ocurra un handoff.</p>
-                                        </div>
-                                      </div>
-                  
-                                      {/* STEP 1 — Template not created */}
-                                      {!handoffTemplateStatus && (
-                                        <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-5 flex flex-col gap-4">
-                                          <div className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                                            Para poder enviarte mensajes de WhatsApp fuera del horario de atención, Meta requiere una <strong className="text-zinc-700 dark:text-zinc-300">Plantilla pre-aprobada</strong>.
-                                            Al presionar el botón, la crearemos automáticamente en tu cuenta. El proceso puede tomar un par de minutoss.
-                                          </div>
-                                          {templateError && <p className="text-xs text-red-500">{templateError}</p>}
-                                          <button
-                                            onClick={handleCreateHandoffTemplate}
-                                            disabled={isCreatingTemplate}
-                                            className="w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black tracking-tight hover:bg-emerald-600 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                                          >
-                                            {isCreatingTemplate ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg> Creando plantilla...</> : 'Crear Plantilla de Alerta en Meta'}
-                                          </button>
-                                        </div>
-                                      )}
-                  
-                                      {/* STEP 2 — Template pending approval */}
-                                      {handoffTemplateStatus === 'PENDING' && (
-                                        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-5 flex flex-col gap-3">
-                                          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Plantilla enviada a Meta y en revisión. Los templates de tipo UTILITY se aprueban en segundos. Haz clic en Verificar para actualizar el estado.</p>
-                                          
-                                          {checkTemplateFeedback && (
-                                            <p className="text-xs font-bold text-amber-800 dark:text-amber-300 animate-in fade-in">{checkTemplateFeedback}</p>
-                                          )}
-                  
-                                          <button
-                                            onClick={handleCheckTemplateStatus}
-                                            disabled={isCheckingTemplate}
-                                            className="text-xs font-bold text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:no-underline disabled:opacity-50 disabled:no-underline flex items-center gap-1.5 w-fit"
-                                          >
-                                            {isCheckingTemplate ? <><Loader2 size={14} className="animate-spin" /> Verificando...</> : 'Verificar estado ahora'}
-                                          </button>
-                                        </div>
-                                      )}
-                  
-                                      {/* STEP 3 — Template rejected */}
-                                      {handoffTemplateStatus === 'REJECTED' && (
-                                        <div className="rounded-2xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-5 flex flex-col gap-3">
-                                          <p className="text-xs text-red-600 dark:text-red-400 font-medium">Meta rechazó la plantilla. Esto puede ocurrir si ya existe una con el mismo nombre o hay restricciones en tu cuenta. Contáctanos para resolverlo.</p>
-                                          {templateError && <p className="text-xs text-red-500">{templateError}</p>}
-                                          <button
-                                            onClick={handleCreateHandoffTemplate}
-                                            disabled={isCreatingTemplate}
-                                            className="text-xs font-bold text-red-600 dark:text-red-400 underline underline-offset-2"
-                                          >Reintentar</button>
-                                        </div>
-                                      )}
-                  
-                                      {/* STEP 4 — Approved: show phone input */}
-                                      {handoffTemplateStatus === 'APPROVED' && (
-                                        <div className="space-y-3">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Plantilla activa y aprobada por Meta</span>
-                                          </div>
-                  
-                                          {notificationPhones.length > 0 && (
-                                            <div className="flex flex-wrap gap-2 mb-2">
-                                              {notificationPhones.map((phone) => (
-                                                <div key={phone} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                                  <span>+{phone}</span>
-                                                  <button
-                                                    onClick={() => setNotificationPhones(prev => prev.filter(p => p !== phone))}
-                                                    className="hover:text-red-500 transition-colors"
-                                                  >
-                                                    <X size={12} />
-                                                  </button>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          )}
-                  
-                                          <div className="flex gap-2">
-                                            <input
-                                              id="notification-phone-input"
-                                              type="tel"
-                                              placeholder="50378901234 (con código de país, sin +)"
-                                              value={notificationPhoneInput}
-                                              onChange={e => setNotificationPhoneInput(e.target.value)}
-                                              onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                  e.preventDefault();
-                                                  const trimmed = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
-                                                  if (trimmed && !notificationPhones.includes(trimmed)) {
-                                                    setNotificationPhones(prev => [...prev, trimmed])
-                                                    setNotificationPhoneInput('')
-                                                  }
-                                                }
-                                              }}
-                                              className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all text-zinc-900 dark:text-zinc-100"
-                                            />
-                                            <button
-                                              onClick={() => {
-                                                const trimmed = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
-                                                if (trimmed && !notificationPhones.includes(trimmed)) {
-                                                  setNotificationPhones(prev => [...prev, trimmed])
-                                                  setNotificationPhoneInput('')
-                                                }
-                                              }}
-                                              className="px-4 py-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-500 hover:text-white transition-all"
-                                            >
-                                              <Plus size={16} />
-                                            </button>
-                                          </div>
-                  
-                                          <button
-                                            onClick={handleSaveNotificationPhones}
-                                            disabled={isSavingNotificationPhones}
-                                            className="w-full mt-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-emerald-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                                          >
-                                            {isSavingNotificationPhones ? <Loader2 size={16} className="animate-spin" /> : notificationPhonesStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar números'}
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                  
-                                  {/* Notification Emails Card — SECOND */}
-                                  <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500">
-                                    <div className="flex items-center gap-3 mb-6">
-                                      <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
-                                        <MessageSquare className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
-                                      </div>
-                                      <div>
-                                        <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por Correo</h3>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Cuando el bot transfiera a un asesor, se enviará un correo a estas direcciones.</p>
-                                      </div>
-                                    </div>
-                  
-                                    <div className="space-y-3">
-                                      {notificationEmails.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mb-4">
-                                          {notificationEmails.map((email) => (
-                                            <div key={email} className="flex items-center gap-2 px-3 py-1.5 bg-[#F36A2D]/10 border border-[#F36A2D]/20 rounded-full text-xs font-medium text-[#F36A2D]">
-                                              <span>{email}</span>
-                                              <button
-                                                onClick={() => setNotificationEmails(prev => prev.filter(e => e !== email))}
-                                                className="hover:text-red-500 transition-colors"
-                                              >
-                                                <X size={12} />
-                                              </button>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                  
-                                      <div className="flex gap-2">
-                                        <input
-                                          id="notification-email-input"
-                                          type="email"
-                                          placeholder="correo@ejemplo.com"
-                                          value={notificationEmailInput}
-                                          onChange={e => setNotificationEmailInput(e.target.value)}
-                                          onKeyDown={e => {
-                                            if (e.key === 'Enter') {
-                                              e.preventDefault();
-                                              const trimmed = notificationEmailInput.trim();
-                                              if (trimmed && !notificationEmails.includes(trimmed)) {
-                                                setNotificationEmails(prev => [...prev, trimmed]);
-                                                setNotificationEmailInput('');
-                                              }
-                                            }
-                                          }}
-                                          className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100"
-                                        />
-                                        <button
-                                          onClick={() => {
-                                            const trimmed = notificationEmailInput.trim();
-                                            if (trimmed && !notificationEmails.includes(trimmed)) {
-                                              setNotificationEmails(prev => [...prev, trimmed]);
-                                              setNotificationEmailInput('');
-                                            }
-                                          }}
-                                          className="px-4 py-2.5 bg-[#F36A2D]/10 text-[#F36A2D] rounded-xl text-xs font-bold hover:bg-[#F36A2D] hover:text-white transition-all"
-                                        >
-                                          <Plus size={16} />
-                                        </button>
-                                      </div>
-                  
-                                      <button
-                                        onClick={handleSaveNotificationEmails}
-                                        disabled={isSavingNotificationEmails}
-                                        className="w-full mt-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                                      >
-                                        {isSavingNotificationEmails ? <Loader2 size={16} className="animate-spin" /> : notificationEmailsStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar correos'}
-                                      </button>
-                                    </div>
-                                  </div>
+                  {whatsappPhoneId && (
+                    <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-emerald-500/30 transition-all duration-500">
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className="p-2 bg-emerald-500/10 rounded-xl">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-emerald-500"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.117 1.524 5.847L.057 23.571a.5.5 0 0 0 .612.612l5.724-1.467A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.98 0-3.84-.524-5.448-1.44l-.39-.228-4.047 1.038 1.057-3.96-.25-.405A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por WhatsApp</h3>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400">Recibe un mensaje de WhatsApp directo en tu celular cuando ocurra un handoff.</p>
+                        </div>
+                      </div>
+
+                      {/* STEP 1 — Template not created */}
+                      {!handoffTemplateStatus && (
+                        <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-5 flex flex-col gap-4">
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                            Para poder enviarte mensajes de WhatsApp fuera del horario de atención, Meta requiere una <strong className="text-zinc-700 dark:text-zinc-300">Plantilla pre-aprobada</strong>.
+                            Al presionar el botón, la crearemos automáticamente en tu cuenta. El proceso puede tomar un par de minutoss.
+                          </div>
+                          {templateError && <p className="text-xs text-red-500">{templateError}</p>}
+                          <button
+                            onClick={handleCreateHandoffTemplate}
+                            disabled={isCreatingTemplate}
+                            className="w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black tracking-tight hover:bg-emerald-600 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {isCreatingTemplate ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg> Creando plantilla...</> : 'Crear Plantilla de Alerta en Meta'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* STEP 2 — Template pending approval */}
+                      {handoffTemplateStatus === 'PENDING' && (
+                        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-5 flex flex-col gap-3">
+                          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Plantilla enviada a Meta y en revisión. Los templates pueden llegar a tardar un par de horas en ser aprobados. Haz clic en Verificar para actualizar el estado.</p>
+
+                          {checkTemplateFeedback && (
+                            <p className="text-xs font-bold text-amber-800 dark:text-amber-300 animate-in fade-in">{checkTemplateFeedback}</p>
+                          )}
+
+                          <button
+                            onClick={handleCheckTemplateStatus}
+                            disabled={isCheckingTemplate}
+                            className="text-xs font-bold text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:no-underline disabled:opacity-50 disabled:no-underline flex items-center gap-1.5 w-fit"
+                          >
+                            {isCheckingTemplate ? <><Loader2 size={14} className="animate-spin" /> Verificando...</> : 'Verificar estado ahora'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* STEP 3 — Template rejected */}
+                      {handoffTemplateStatus === 'REJECTED' && (
+                        <div className="rounded-2xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-5 flex flex-col gap-3">
+                          <p className="text-xs text-red-600 dark:text-red-400 font-medium">Meta rechazó la plantilla. Esto puede ocurrir si ya existe una con el mismo nombre o hay restricciones en tu cuenta. Contáctanos para resolverlo.</p>
+                          {templateError && <p className="text-xs text-red-500">{templateError}</p>}
+                          <button
+                            onClick={handleCreateHandoffTemplate}
+                            disabled={isCreatingTemplate}
+                            className="text-xs font-bold text-red-600 dark:text-red-400 underline underline-offset-2"
+                          >Reintentar</button>
+                        </div>
+                      )}
+
+                      {/* STEP 4 — Approved: show phone input */}
+                      {handoffTemplateStatus === 'APPROVED' && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Plantilla activa y aprobada por Meta</span>
+                          </div>
+
+                          {notificationPhones.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {notificationPhones.map((phone) => (
+                                <div key={phone} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                  <span>+{phone}</span>
+                                  <button
+                                    onClick={() => setNotificationPhones(prev => prev.filter(p => p !== phone))}
+                                    className="hover:text-red-500 transition-colors"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2">
+                            <input
+                              id="notification-phone-input"
+                              type="tel"
+                              placeholder="50378901234 (con código de país, sin +)"
+                              value={notificationPhoneInput}
+                              onChange={e => setNotificationPhoneInput(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const trimmed = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
+                                  if (trimmed && !notificationPhones.includes(trimmed)) {
+                                    setNotificationPhones(prev => [...prev, trimmed])
+                                    setNotificationPhoneInput('')
+                                  }
+                                }
+                              }}
+                              className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all text-zinc-900 dark:text-zinc-100"
+                            />
+                            <button
+                              onClick={() => {
+                                const trimmed = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
+                                if (trimmed && !notificationPhones.includes(trimmed)) {
+                                  setNotificationPhones(prev => [...prev, trimmed])
+                                  setNotificationPhoneInput('')
+                                }
+                              }}
+                              className="px-4 py-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-500 hover:text-white transition-all"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={handleSaveNotificationPhones}
+                            disabled={isSavingNotificationPhones}
+                            className="w-full mt-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-emerald-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {isSavingNotificationPhones ? <Loader2 size={16} className="animate-spin" /> : notificationPhonesStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar números'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Notification Emails Card — SECOND */}
+                  <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
+                        <MessageSquare className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por Correo</h3>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Cuando el bot transfiera a un asesor, se enviará un correo a estas direcciones.</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {notificationEmails.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {notificationEmails.map((email) => (
+                            <div key={email} className="flex items-center gap-2 px-3 py-1.5 bg-[#F36A2D]/10 border border-[#F36A2D]/20 rounded-full text-xs font-medium text-[#F36A2D]">
+                              <span>{email}</span>
+                              <button
+                                onClick={() => setNotificationEmails(prev => prev.filter(e => e !== email))}
+                                className="hover:text-red-500 transition-colors"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <input
+                          id="notification-email-input"
+                          type="email"
+                          placeholder="correo@ejemplo.com"
+                          value={notificationEmailInput}
+                          onChange={e => setNotificationEmailInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const trimmed = notificationEmailInput.trim();
+                              if (trimmed && !notificationEmails.includes(trimmed)) {
+                                setNotificationEmails(prev => [...prev, trimmed]);
+                                setNotificationEmailInput('');
+                              }
+                            }
+                          }}
+                          className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100"
+                        />
+                        <button
+                          onClick={() => {
+                            const trimmed = notificationEmailInput.trim();
+                            if (trimmed && !notificationEmails.includes(trimmed)) {
+                              setNotificationEmails(prev => [...prev, trimmed]);
+                              setNotificationEmailInput('');
+                            }
+                          }}
+                          className="px-4 py-2.5 bg-[#F36A2D]/10 text-[#F36A2D] rounded-xl text-xs font-bold hover:bg-[#F36A2D] hover:text-white transition-all"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={handleSaveNotificationEmails}
+                        disabled={isSavingNotificationEmails}
+                        className="w-full mt-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isSavingNotificationEmails ? <Loader2 size={16} className="animate-spin" /> : notificationEmailsStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar correos'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-{/* BOT CONFIG SECTION */}
+            {/* BOT CONFIG SECTION */}
             {activeSection === 'botConfig' && (
               <div className="h-full flex flex-col p-6 lg:p-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
@@ -1417,8 +1417,8 @@ export default function SettingsPage() {
                         onClick={waIntegration?.status === 'active' ? handleDisconnectWhatsApp : handleConnectWhatsApp}
                         disabled={waLoading}
                         className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${waIntegration?.status === 'active'
-                            ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
-                            : 'bg-[#111111] dark:bg-[#EDE9E0] dark:text-[#111111] hover:bg-emerald-600 hover:text-white'
+                          ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
+                          : 'bg-[#111111] dark:bg-[#EDE9E0] dark:text-[#111111] hover:bg-emerald-600 hover:text-white'
                           }`}
                       >
                         {waLoading ? <Loader2 size={16} className="animate-spin" /> : waIntegration?.status === 'active' ? 'Desconectar' : 'Conectar'}
@@ -1427,10 +1427,10 @@ export default function SettingsPage() {
                         onClick={handleVerifyWhatsApp}
                         disabled={isVerifying}
                         className={`px-5 py-4 border rounded-2xl transition-all duration-300 ${waVerifyStatus === 'success'
-                            ? 'text-emerald-500 border-emerald-500/30 bg-emerald-50/50 hover:bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/20'
-                            : waVerifyStatus === 'error'
-                              ? 'text-red-500 border-red-500/30 bg-red-50/50 hover:bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 dark:hover:bg-red-900/20'
-                              : 'text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
+                          ? 'text-emerald-500 border-emerald-500/30 bg-emerald-50/50 hover:bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/20'
+                          : waVerifyStatus === 'error'
+                            ? 'text-red-500 border-red-500/30 bg-red-50/50 hover:bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 dark:hover:bg-red-900/20'
+                            : 'text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
                           }`}
                       >
                         {isVerifying ? <Loader2 size={18} className="animate-spin" /> : <Wifi size={18} />}
@@ -1468,7 +1468,7 @@ export default function SettingsPage() {
                         onClose={() => setShowCalendarConfig(false)}
                         projectId={projectId || undefined}
                       />
-                      
+
                       <GoogleSheetsConnect
                         projectId={projectId}
                         isConnected={gsheetsConnected}
@@ -1505,8 +1505,8 @@ export default function SettingsPage() {
                       <button
                         onClick={() => toggleAgent(selectedAgentId!, !selectedAgent.isActive).then(loadProject)}
                         className={`p-2 rounded-xl transition-all shadow-sm ${selectedAgent.isActive
-                            ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 ring-1 ring-emerald-500/30'
-                            : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-500 ring-1 ring-zinc-300 dark:ring-zinc-700'
+                          ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 ring-1 ring-emerald-500/30'
+                          : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-500 ring-1 ring-zinc-300 dark:ring-zinc-700'
                           }`}
                         title={selectedAgent.isActive ? 'Desactivar Agente' : 'Activar Agente'}
                       >
@@ -1515,8 +1515,8 @@ export default function SettingsPage() {
                     </div>
 
                     <button onClick={handleSaveAgent} disabled={isSaving} className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm disabled:opacity-70 ${saveStatus === 'success' ? "bg-emerald-600 text-white"
-                        : compileStatus === 'success' ? "bg-[#F36A2D] text-white animate-pulse scale-105"
-                          : "bg-[#111111] hover:bg-[#333] dark:bg-[#EDE9E0] dark:hover:bg-white text-white dark:text-[#111111]"
+                      : compileStatus === 'success' ? "bg-[#F36A2D] text-white animate-pulse scale-105"
+                        : "bg-[#111111] hover:bg-[#333] dark:bg-[#EDE9E0] dark:hover:bg-white text-white dark:text-[#111111]"
                       }`}>
                       {isSaving ? <Loader2 size={16} className="animate-spin" /> : saveStatus === 'success' ? <CheckCircle2 size={16} /> : <Save size={16} />}
                       {isSaving ? 'Guardando...' : saveStatus === 'success' ? '¡Guardado!' : 'Guardar Agente'}
@@ -1705,11 +1705,10 @@ export default function SettingsPage() {
                   setIsDefaultBotConfirmModalOpen(false);
                   setDefaultBotActive(!defaultBotActive);
                 }}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${
-                  defaultBotActive
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${defaultBotActive
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
                     : 'bg-[#F36A2D] hover:bg-[#d9591d] shadow-[#F36A2D]/20'
-                }`}
+                  }`}
               >
                 {defaultBotActive ? 'Sí, desactivar' : 'Sí, activar'}
               </button>
@@ -1765,11 +1764,10 @@ export default function SettingsPage() {
                     setBotAutoWakeHours(168);
                   }
                 }}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${
-                  botAutoWakeHours !== null
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${botAutoWakeHours !== null
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
                     : 'bg-[#F36A2D] hover:bg-[#d9591d] shadow-[#F36A2D]/20'
-                }`}
+                  }`}
               >
                 {botAutoWakeHours !== null ? 'Sí, desactivar' : 'Sí, activar'}
               </button>
