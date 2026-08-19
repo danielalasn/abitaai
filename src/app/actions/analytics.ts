@@ -102,7 +102,7 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     }
   })
 
-  let abitaMessageLimit = 1000;
+  let abitaMessageLimit: number | null = 1000;
   let abitaMessageUsage = 0;
   if (project.clientId) {
     const client = await prisma.client.findUnique({
