@@ -249,7 +249,7 @@ export interface ProjectUsageStats {
   simulatorGeminiEstimatedCostUsd: number
   totalSimulatorInputTokens: number
   totalSimulatorOutputTokens: number
-  estimatedSimulatorAiCostUsd: number
+  simulatorEstimatedCostUsd: number
 
   // WhatsApp
   waServiceMessages: number
@@ -477,6 +477,8 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     simulatorGeminiInputTokens,
     simulatorGeminiOutputTokens,
     simulatorGeminiEstimatedCostUsd,
+    totalSimulatorInputTokens: simulatorClaudeInputTokens + simulatorGeminiInputTokens,
+    totalSimulatorOutputTokens: simulatorClaudeOutputTokens + simulatorGeminiOutputTokens,
     simulatorEstimatedCostUsd,
     waServiceMessages,
     waMarketingMessages,
