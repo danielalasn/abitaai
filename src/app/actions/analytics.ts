@@ -182,8 +182,8 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   const whatsappReadRate = totalLogs > 0 ? Math.round((readLogs / totalLogs) * 100) : 0;
 
   // Channel Distribution (Current state, not filtered by date)
-  const whatsappLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'whatsapp', ...notSimulator } })
-  const instagramLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'instagram', ...notSimulator } })
+  const whatsappLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'whatsapp', phone: { not: 'SIMULADOR_TEST' } } })
+  const instagramLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'instagram', phone: { not: 'SIMULADOR_TEST' } } })
 
   // Heatmap calculations (Current state, not filtered by date)
   const hotLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'CALIENTE', ...notSimulator } })
