@@ -124,6 +124,11 @@ export function initWorker() {
         }
       });
 
+      if (!chatDetails) {
+        console.warn(`[Worker] Chat ${chatId} no encontrado en BD.`);
+        return;
+      }
+
       if (chatDetails?.lead?.project) {
         resolveProjectCredentials(chatDetails.lead.project);
       }
