@@ -367,7 +367,7 @@ export default function AnalyticsDashboard() {
               </div>
 
               {/* ABITA LIMIT CARD */}
-              {data?.abitaMessageLimit !== null && (
+              {data?.abitaMessageLimit !== null ? (
                 <div className={`border rounded-2xl p-6 shadow-sm border-orange-200 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-900/10`}>
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -401,6 +401,22 @@ export default function AnalyticsDashboard() {
                       </p>
                     </div>
                   </div>
+                </div>
+              ) : (
+                <div className={`border rounded-2xl p-6 shadow-sm border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/10 flex flex-col justify-center`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap size={16} className="text-emerald-500" />
+                    <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Suscripción Abita</span>
+                  </div>
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <span className={`text-2xl font-bold text-emerald-600 dark:text-emerald-400`}>Mensajes Ilimitados</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300`}>
+                      Plan Infinito
+                    </span>
+                  </div>
+                  <p className="text-sm text-[#6F6F6F] mt-2 leading-relaxed">
+                    Tu cuenta no tiene tope de mensajes automatizados. Puedes escalar tus operaciones libremente.
+                  </p>
                 </div>
               )}
 
