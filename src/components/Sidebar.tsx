@@ -10,8 +10,9 @@ import {
 } from 'lucide-react'
 import ThemeSwitch from '@/components/ui/theme-switch'
 import { ProfileModal } from '@/components/ProfileModal'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
+import { getSubscriptionUsageAction } from '@/app/actions/settings'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -19,11 +20,31 @@ export function Sidebar() {
   const { theme, resolvedTheme, setTheme } = useTheme()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [usageData, setUsageData] = useState<{ limit: number, usage: number } | null>(null)
+
+  useEffect(() => {
+    getSubscriptionUsageAction().then(res => {
+      if (res) setUsageData(res)
+    }).catch(console.error)
+  }, [pathname])
+
+  const usagePct = usageData ? Math.round((usageData.usage / usageData.limit) * 100) : 0;
+  
+  let sidebarBgClass = 'bg-[#E9E4D8] dark:bg-[#1A1714]';
+  let sidebarBorderClass = 'border-[#DEDAD0] dark:border-zinc-800/60';
+  
+  if (usagePct >= 100) {
+    sidebarBgClass = 'bg-red-50 dark:bg-red-950/30';
+    sidebarBorderClass = 'border-red-200 dark:border-red-900/50';
+  } else if (usagePct >= 80) {
+    sidebarBgClass = 'bg-orange-50 dark:bg-orange-950/30';
+    sidebarBorderClass = 'border-orange-200 dark:border-orange-900/50';
+  }
 
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col pt-6 pb-4 px-4 shrink-0 transition-[width] duration-300 ease-in-out relative z-50`}>
+    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} border-r ${sidebarBorderClass} ${sidebarBgClass} flex flex-col pt-6 pb-4 px-4 shrink-0 transition-[width,background-color,border-color] duration-300 ease-in-out relative z-50`}>
       
       {/* Header Container */}
       <div className="flex flex-col mb-8 shrink-0 overflow-hidden">

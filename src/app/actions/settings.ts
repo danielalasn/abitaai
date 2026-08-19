@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { getCurrentProject } from '@/lib/auth-server'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { AI_MODELS } from '@/lib/models'
+import { getCurrentMonthUsage } from '@/lib/subscription'
 
 // ──────────────────────────────────────────────
 // Project-level: WhatsApp Config & Agents list
@@ -79,6 +80,28 @@ export async function updateBotAutoWakeHours(projectId: string, botAutoWakeHours
   });
   revalidatePath('/settings');
   return { success: true };
+}
+
+// ──────────────────────────────────────────────
+// Subscription Usage for Sidebar
+// ──────────────────────────────────────────────
+export async function getSubscriptionUsageAction() {
+  const project = await getCurrentProject();
+  if (!project || !project.clientId) return null;
+
+  const client = await prisma.client.findUnique({
+    where: { id: project.clientId },
+    select: { messageLimit: true }
+  });
+
+  if (!client) return null;
+
+  const usage = await getCurrentMonthUsage(project.clientId);
+  
+  return {
+    limit: client.messageLimit || 1000,
+    usage
+  };
 }
 
 // ──────────────────────────────────────────────
