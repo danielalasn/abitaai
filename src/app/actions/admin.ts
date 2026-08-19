@@ -283,7 +283,8 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     waServiceNull,
     waMarketingMessages,
     waUtilityMessages,
-    handoffsCount
+    handoffsCount,
+    simulatorTokenAgg
   ] = await Promise.all([
     prisma.lead.count({ where: { projectId, ...notSimulator, ...dateFilter } }),
     prisma.campaign.count({ where: { projectId, ...dateFilter } }),
@@ -358,7 +359,19 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
         ...dateFilter
       }
     }),
-    prisma.lead.count({ where: { projectId, status: 'NEEDS_AGENT', ...notSimulator, ...dateFilter } })
+    prisma.lead.count({ where: { projectId, status: 'NEEDS_AGENT', ...notSimulator, ...dateFilter } }),
+    prisma.message.groupBy({
+      by: ['agentName'],
+      where: {
+        role: 'assistant',
+        chat: { lead: { projectId, phone: 'SIMULADOR_TEST' } },
+        ...dateFilter
+      },
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
+      }
+    })
   ]);
 
   const templateMessagesCount = waMarketingMessages + waUtilityMessages;
@@ -372,6 +385,13 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
   let geminiInputTokens = 0;
   let geminiOutputTokens = 0;
   let geminiEstimatedCostUsd = 0;
+
+  let simulatorClaudeInputTokens = 0;
+  let simulatorClaudeOutputTokens = 0;
+  let simulatorClaudeEstimatedCostUsd = 0;
+  let simulatorGeminiInputTokens = 0;
+  let simulatorGeminiOutputTokens = 0;
+  let simulatorGeminiEstimatedCostUsd = 0;
 
   tokenAgg.forEach(group => {
     const input = group._sum.inputTokens || 0;
@@ -393,6 +413,22 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     }
   });
 
+  simulatorTokenAgg.forEach(group => {
+    const input = group._sum.inputTokens || 0;
+    const output = group._sum.outputTokens || 0;
+    const isGemini = group.agentName?.endsWith('(Gemini)') || false;
+    
+    if (isGemini) {
+      simulatorGeminiInputTokens += input;
+      simulatorGeminiOutputTokens += output;
+      simulatorGeminiEstimatedCostUsd += (input / 1_000_000) * 0.75 + (output / 1_000_000) * 3.75;
+    } else {
+      simulatorClaudeInputTokens += input;
+      simulatorClaudeOutputTokens += output;
+      simulatorClaudeEstimatedCostUsd += (input / 1_000_000) * AI_PRICING.inputPerMillion + (output / 1_000_000) * AI_PRICING.outputPerMillion;
+    }
+  });
+
   const estimatedAiCostUsd = claudeEstimatedCostUsd + geminiEstimatedCostUsd;
 
   const waServiceMessages = waServiceExplicit + waServiceNull;
@@ -403,7 +439,8 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     (waServiceMessages * WA_PRICING.SERVICE)
   ) : 0;
 
-  const totalEstimatedCostUsd = estimatedAiCostUsd + estimatedWaCostUsd;
+  const simulatorEstimatedCostUsd = simulatorClaudeEstimatedCostUsd + simulatorGeminiEstimatedCostUsd;
+  const totalEstimatedCostUsd = estimatedAiCostUsd + estimatedWaCostUsd + simulatorEstimatedCostUsd;
 
   return {
     leadsCount,
@@ -423,6 +460,13 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     geminiOutputTokens,
     geminiEstimatedCostUsd,
     estimatedAiCostUsd,
+    simulatorClaudeInputTokens,
+    simulatorClaudeOutputTokens,
+    simulatorClaudeEstimatedCostUsd,
+    simulatorGeminiInputTokens,
+    simulatorGeminiOutputTokens,
+    simulatorGeminiEstimatedCostUsd,
+    simulatorEstimatedCostUsd,
     waServiceMessages,
     waMarketingMessages,
     waUtilityMessages,

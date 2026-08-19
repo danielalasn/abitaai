@@ -180,7 +180,12 @@ export function initWorker() {
           console.warn('⚠️ [Worker] Saltando llamada a IA porque el texto está vacío y no hay media.');
         } else {
           // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
-          const history = chatDetails.messages.slice(1).reverse();
+          // Ignoramos los mensajes del sistema para que la IA no se confunda o los repita
+          const history = chatDetails.messages
+            .slice(1)
+            .reverse()
+            .filter(m => !m.content.startsWith('[Sistema]'));
+            
           const botData = await sendTestMessage(
             aiInputText,
             history.map(m => ({ role: m.role, content: m.content, scoreReason: m.scoreReason, mediaUrl: m.mediaUrl, mediaFilename: m.mediaFilename })),

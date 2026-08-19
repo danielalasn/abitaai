@@ -34,6 +34,7 @@ export async function getCurrentMonthUsage(clientId: string): Promise<number> {
       },
       chat: {
         lead: {
+          phone: { not: 'SIMULADOR_TEST' },
           project: {
             clientId
           }

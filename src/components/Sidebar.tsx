@@ -22,9 +22,16 @@ export function Sidebar() {
   const [usageData, setUsageData] = useState<{ limit: number, usage: number } | null>(null)
 
   useEffect(() => {
-    getSubscriptionUsageAction().then(res => {
-      if (res) setUsageData(res)
-    }).catch(console.error)
+    const fetchUsage = () => {
+      getSubscriptionUsageAction().then(res => {
+        if (res) setUsageData(res)
+      }).catch(console.error)
+    };
+
+    fetchUsage();
+    const interval = setInterval(fetchUsage, 30000); // Refrescar cada 30 segundos
+
+    return () => clearInterval(interval);
   }, [pathname])
 
   const usagePct = usageData ? Math.round((usageData.usage / usageData.limit) * 100) : 0;

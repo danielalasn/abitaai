@@ -247,34 +247,41 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
       include: { project: true }
     });
 
-    // Send email notifications
+    // Send notifications reliably
+    const promises = [];
+
     const notificationEmails = (lead.project as any).notificationEmails as string[] | undefined;
     if (notificationEmails && notificationEmails.length > 0) {
-      sendHandoffNotification(notificationEmails, {
-        leadName: lead.name,
-        leadPhone: lead.phone,
-        leadScore: lead.score,
-        projectName: lead.project.name,
-        channel: lead.channel,
-        chatId: chatId,
-      }).catch((e) => console.error('[Email] Error enviando notificación de handoff:', e));
+      promises.push(
+        sendHandoffNotification(notificationEmails, {
+          leadName: lead.name,
+          leadPhone: lead.phone,
+          leadScore: lead.score,
+          projectName: lead.project.name,
+          channel: lead.channel,
+          chatId: chatId,
+        }).catch((e) => console.error('[Email] Error enviando notificación de handoff:', e))
+      );
     }
 
-    // Send WhatsApp notifications
     const notificationPhones = (lead.project as any).notificationPhones as string[] | undefined;
     const templateApproved = (lead.project as any).handoffTemplateStatus === 'APPROVED';
     if (notificationPhones && notificationPhones.length > 0 && templateApproved) {
-      sendHandoffWhatsAppNotification(notificationPhones, {
-        leadName: lead.name,
-        leadPhone: lead.phone,
-        leadScore: lead.score,
-        chatId: chatId,
-        project: {
-          whatsappPhoneId: lead.project.whatsappPhoneId,
-          whatsappToken: (lead.project as any).whatsappToken,
-        },
-      }).catch((e) => console.error('[WA Handoff] Error enviando notificación:', e));
+      promises.push(
+        sendHandoffWhatsAppNotification(notificationPhones, {
+          leadName: lead.name,
+          leadPhone: lead.phone,
+          leadScore: lead.score,
+          chatId: chatId,
+          project: {
+            whatsappPhoneId: lead.project.whatsappPhoneId,
+            whatsappToken: (lead.project as any).whatsappToken,
+          },
+        }).catch((e) => console.error('[WA Handoff] Error enviando notificación:', e))
+      );
     }
+
+    await Promise.allSettled(promises);
   }
 
   try { revalidatePath('/') } catch (e) {};

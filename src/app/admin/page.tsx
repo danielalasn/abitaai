@@ -1552,6 +1552,34 @@ export default function AdminPage() {
                             </div>
                           </div>
 
+                          {/* Simulator Section */}
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden mb-6">
+                            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
+                              <div className="h-8 w-8 bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-lg flex items-center justify-center">
+                                <Bot size={16} />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-zinc-900 dark:text-white text-sm">Simulador (Pruebas IA)</h4>
+                                <p className="text-[10px] text-zinc-500">Tokens de pruebas internas consumidas</p>
+                              </div>
+                              <div className="ml-auto">
+                                <span className="text-sm font-bold text-orange-600 dark:text-orange-400">${usageStats.simulatorEstimatedCostUsd?.toFixed(4) || '0.0000'}</span>
+                              </div>
+                            </div>
+                            <div className="p-6 grid grid-cols-2 gap-6">
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Entrada</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{((usageStats.simulatorClaudeInputTokens || 0) + (usageStats.simulatorGeminiInputTokens || 0)).toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Prompt + historial</p>
+                              </div>
+                              <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tokens de Salida</p>
+                                <p className="text-2xl font-bold text-zinc-900 dark:text-white mt-1">{((usageStats.simulatorClaudeOutputTokens || 0) + (usageStats.simulatorGeminiOutputTokens || 0)).toLocaleString()}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">Respuestas de IA</p>
+                              </div>
+                            </div>
+                          </div>
+
                           {/* WhatsApp Section */}
                           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
                             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
