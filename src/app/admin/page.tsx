@@ -209,6 +209,8 @@ export default function AdminPage() {
   const [editTemplateGroup, setEditTemplateGroup] = useState('');
   const [editSubscriptionStatus, setEditSubscriptionStatus] = useState('ACTIVE');
   const [editSubscriptionEndsAt, setEditSubscriptionEndsAt] = useState<string | undefined>('');
+  const [editMessageLimit, setEditMessageLimit] = useState<number>(1000);
+  const [editSubscriptionResetDay, setEditSubscriptionResetDay] = useState<number>(1);
   const [isSavingUser, setIsSavingUser] = useState(false);
 
   // Delete User state
@@ -447,6 +449,8 @@ export default function AdminPage() {
     setEditTemplateGroup(client.templateGroup || '');
     setEditSubscriptionStatus(client.subscriptionStatus || 'ACTIVE');
     setEditSubscriptionEndsAt(client.subscriptionEndsAt ? new Date(client.subscriptionEndsAt).toISOString().split('T')[0] : '');
+    setEditMessageLimit(client.messageLimit ?? 1000);
+    setEditSubscriptionResetDay(client.subscriptionResetDay ?? 1);
     setDeleteConfirmText('');
 
     // Init Bot Config tab
@@ -520,6 +524,8 @@ export default function AdminPage() {
         templateGroup: editTemplateGroup,
         subscriptionStatus: editSubscriptionStatus,
         subscriptionEndsAt: editSubscriptionEndsAt ? new Date(editSubscriptionEndsAt) : null,
+        messageLimit: editMessageLimit,
+        subscriptionResetDay: editSubscriptionResetDay,
         // Si el admin manualmente lo pasa a ACTIVE, reiniciamos intentos por si acaso
         resetFailedLogins: editSubscriptionStatus === 'ACTIVE'
       });
@@ -1735,6 +1741,31 @@ export default function AdminPage() {
                                 onChange={e => setEditSubscriptionEndsAt(e.target.value)}
                                 className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100"
                               />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Límite de Mensajes (Mensual)</label>
+                              <input
+                                type="number"
+                                min={1}
+                                value={editMessageLimit}
+                                onChange={e => setEditMessageLimit(Number(e.target.value))}
+                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Día de Corte</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={31}
+                                value={editSubscriptionResetDay}
+                                onChange={e => setEditSubscriptionResetDay(Number(e.target.value))}
+                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100"
+                              />
+                              <p className="text-[10px] text-zinc-500 mt-1">Día del mes en que se reinicia el contador.</p>
                             </div>
                           </div>
 

@@ -165,7 +165,7 @@ export async function updateBotConfig(projectId: string, configData: any) {
   }
 }
 
-export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string, templateGroup?: string, subscriptionStatus?: string, subscriptionEndsAt?: Date | null, resetFailedLogins?: boolean }) {
+export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string, templateGroup?: string, subscriptionStatus?: string, subscriptionEndsAt?: Date | null, resetFailedLogins?: boolean, messageLimit?: number, subscriptionResetDay?: number }) {
   await checkAdminAuth();
   const updateData: any = {};
   if (data.name) updateData.name = data.name;
@@ -177,6 +177,8 @@ export async function updateClient(clientId: string, data: { name?: string, emai
   if (data.subscriptionStatus) updateData.subscriptionStatus = data.subscriptionStatus;
   if (data.subscriptionEndsAt !== undefined) updateData.subscriptionEndsAt = data.subscriptionEndsAt;
   if (data.resetFailedLogins) updateData.failedLoginAttempts = 0;
+  if (data.messageLimit !== undefined) updateData.messageLimit = data.messageLimit;
+  if (data.subscriptionResetDay !== undefined) updateData.subscriptionResetDay = data.subscriptionResetDay;
 
   const updated = await prisma.client.update({
     where: { id: clientId },

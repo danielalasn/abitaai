@@ -42,6 +42,8 @@ type Analytics = {
   tierLimit: number;
   tierName: string;
   tierUsage: number;
+  abitaMessageLimit: number;
+  abitaMessageUsage: number;
   dailyTrends: any[];
 } | null
 
@@ -289,6 +291,7 @@ export default function AnalyticsDashboard() {
 
   const tierInfo = getTierInfo(data?.tierName || 'Tier 1', data?.tierLimit || 250)
   const tierUsagePct = data?.tierLimit ? Math.min(100, Math.round((data.tierUsage / data.tierLimit) * 100)) : 0
+  const abitaUsagePct = data?.abitaMessageLimit ? Math.min(100, Math.round(((data.abitaMessageUsage || 0) / data.abitaMessageLimit) * 100)) : 0
 
   const totalRes = data?.totalResponses ?? (
     (data?.messagesSaved || 0) + (data?.humanMessagesCount || 0) + (data?.proactiveMessagesCount || 0)
@@ -319,45 +322,86 @@ export default function AnalyticsDashboard() {
         <div className="flex-1 overflow-auto p-8">
           <div className="max-w-6xl mx-auto space-y-8 pb-12">
 
-            {/* TIER CARD — redesigned */}
-            <div className={`border rounded-2xl p-6 shadow-sm ${tierInfo.border} ${tierInfo.bg}`}>
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shield size={16} className={tierInfo.color} />
-                    <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Tier de Mensajería WhatsApp</span>
-                    <button
-                      onClick={() => setShowTierInfo(true)}
-                      className="text-[#6F6F6F] hover:text-[#F36A2D] transition-colors"
-                      title="¿Cómo funcionan los tiers?"
-                    >
-                      <Info size={13} />
-                    </button>
+            {/* TIER CARD AND ABITA LIMIT CARD */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              
+              {/* TIER CARD */}
+              <div className={`border rounded-2xl p-6 shadow-sm ${tierInfo.border} ${tierInfo.bg}`}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Shield size={16} className={tierInfo.color} />
+                      <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Tier de Mensajería WhatsApp</span>
+                      <button
+                        onClick={() => setShowTierInfo(true)}
+                        className="text-[#6F6F6F] hover:text-[#F36A2D] transition-colors"
+                        title="¿Cómo funcionan los tiers?"
+                      >
+                        <Info size={13} />
+                      </button>
+                    </div>
+                    <div className="flex items-baseline gap-3 mt-1">
+                      <span className={`text-2xl font-bold ${tierInfo.color}`}>{data?.tierName || 'Tier 0'}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${tierInfo.badge}`}>
+                        {data?.tierUsage || 0} / {data?.tierLimit || 250} iniciadas (24h)
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#6F6F6F] mt-2 leading-relaxed">{tierInfo.description}</p>
                   </div>
-                  <div className="flex items-baseline gap-3 mt-1">
-                    <span className={`text-2xl font-bold ${tierInfo.color}`}>{data?.tierName || 'Tier 0'}</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${tierInfo.badge}`}>
-                      {data?.tierUsage || 0} / {data?.tierLimit || 250} conversaciones iniciadas (24h)
-                    </span>
+                  <div className="w-full sm:w-48 shrink-0">
+                    <div className="flex justify-between text-xs text-[#6F6F6F] mb-1.5">
+                      <span>Uso del día</span>
+                      <span className={`font-bold ${tierInfo.color}`}>{tierUsagePct}%</span>
+                    </div>
+                    <div className="w-full bg-white/50 dark:bg-black/20 rounded-full h-2.5">
+                      <div
+                        className={`h-2.5 rounded-full transition-all duration-700 ${tierUsagePct > 80 ? 'bg-red-500' : tierUsagePct > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${tierUsagePct}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-[#6F6F6F] mt-1.5">
+                      Cuenta conversaciones que tú iniciaste con templates (campañas o WhatsApp directo) en las últimas 24h. Si alguien te escribe y el bot responde, no cuenta.
+                    </p>
                   </div>
-                  <p className="text-sm text-[#6F6F6F] mt-2 leading-relaxed">{tierInfo.description}</p>
-                </div>
-                <div className="w-full sm:w-48 shrink-0">
-                  <div className="flex justify-between text-xs text-[#6F6F6F] mb-1.5">
-                    <span>Uso del día</span>
-                    <span className={`font-bold ${tierInfo.color}`}>{tierUsagePct}%</span>
-                  </div>
-                  <div className="w-full bg-white/50 dark:bg-black/20 rounded-full h-2.5">
-                    <div
-                      className={`h-2.5 rounded-full transition-all duration-700 ${tierUsagePct > 80 ? 'bg-red-500' : tierUsagePct > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                      style={{ width: `${tierUsagePct}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-[#6F6F6F] mt-1.5">
-                    Cuenta conversaciones que tú iniciaste con templates (campañas o WhatsApp directo) en las últimas 24h. Si alguien te escribe y el bot responde, no cuenta.
-                  </p>
                 </div>
               </div>
+
+              {/* ABITA LIMIT CARD */}
+              <div className={`border rounded-2xl p-6 shadow-sm border-orange-200 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-900/10`}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Zap size={16} className="text-orange-500" />
+                      <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Suscripción Abita</span>
+                    </div>
+                    <div className="flex items-baseline gap-3 mt-1">
+                      <span className={`text-2xl font-bold text-orange-600 dark:text-orange-400`}>Límite Mensual</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300`}>
+                        {data?.abitaMessageUsage || 0} / {data?.abitaMessageLimit || 1000} mensajes
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#6F6F6F] mt-2 leading-relaxed">
+                      Límite de mensajes automatizados (bot y campañas) para tu ciclo de facturación actual.
+                    </p>
+                  </div>
+                  <div className="w-full sm:w-48 shrink-0">
+                    <div className="flex justify-between text-xs text-[#6F6F6F] mb-1.5">
+                      <span>Uso mensual</span>
+                      <span className={`font-bold ${abitaUsagePct > 90 ? 'text-red-500' : 'text-orange-500'}`}>{abitaUsagePct}%</span>
+                    </div>
+                    <div className="w-full bg-white/50 dark:bg-black/20 rounded-full h-2.5">
+                      <div
+                        className={`h-2.5 rounded-full transition-all duration-700 ${abitaUsagePct > 90 ? 'bg-red-500' : abitaUsagePct > 70 ? 'bg-amber-500' : 'bg-orange-500'}`}
+                        style={{ width: `${abitaUsagePct}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-[#6F6F6F] mt-1.5">
+                      Cuenta los mensajes enviados por tu Agente IA y las Campañas. Los mensajes manuales enviados por ti a través del Inbox no consumen esta cuota.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
 

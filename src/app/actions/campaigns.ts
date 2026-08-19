@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentProject } from '@/lib/auth-server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { after } from 'next/server';
+import { getCurrentMonthUsage } from '@/lib/subscription';
 
 // Helper: get project + credentials
 async function getProjectWithCredentials() {
@@ -67,6 +68,17 @@ export async function launchCampaignAction(
 
   if (!project.whatsappPhoneId || !project.whatsappToken) {
     throw new Error('Configura el Phone Number ID y el Access Token en Configuración antes de lanzar campañas.');
+  }
+
+  // --- Verificación de Límite de Suscripción ---
+  if (project.clientId) {
+    const client = await prisma.client.findUnique({ where: { id: project.clientId }, select: { messageLimit: true } });
+    if (client) {
+      const currentUsage = await getCurrentMonthUsage(project.clientId);
+      if (currentUsage + leadsData.length > client.messageLimit) {
+        throw new Error(`Límite mensual excedido. Límite: ${client.messageLimit}. Uso actual: ${currentUsage}. Intentas enviar: ${leadsData.length} mensajes.`);
+      }
+    }
   }
 
   const campaign = await prisma.campaign.create({

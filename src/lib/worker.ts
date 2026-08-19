@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/encryption';
 import { transcribeAudioWithGemini } from './transcribe';
 import { resolveProjectCredentials } from '@/lib/auth-server';
+import { hasExceededLimit } from '@/lib/subscription';
 
 /**
  * WORKER DE PROCESAMIENTO
@@ -145,6 +146,21 @@ export function initWorker() {
         if (!aiInputText) {
           console.warn('⚠️ [Worker] Saltando llamada a IA porque el texto está vacío y no hay media.');
         } else {
+          // --- Verificación de Suscripción ---
+          if (chatDetails.lead.project?.clientId) {
+            const limitExceeded = await hasExceededLimit(chatDetails.lead.project.clientId);
+            if (limitExceeded) {
+              console.log(`[Worker] Límite de suscripción excedido. Desactivando bot para chat ${chatId}`);
+              await requestHandoff(chatId, true); // Desactiva el bot
+              await saveAssistantReply(
+                chatId,
+                "[Sistema] Límite mensual de mensajes alcanzado. El bot ha sido desactivado.",
+                null, null, null, 'SERVICE', null, null, undefined, undefined, null
+              );
+              return; // Detiene el flujo
+            }
+          }
+
           // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
           const history = chatDetails.messages.slice(1).reverse();
           const botData = await sendTestMessage(

@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { getCurrentProject } from '@/lib/auth-server'
 import { decrypt } from '@/lib/encryption'
+import { getCurrentMonthUsage } from '@/lib/subscription'
 export async function getAnalyticsData(dateRange?: { start?: string, end?: string }) {
   const project = await getCurrentProject()
   if (!project) return null
@@ -98,6 +99,17 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
       ]
     }
   })
+
+  let abitaMessageLimit = 1000;
+  let abitaMessageUsage = 0;
+  if (project.clientId) {
+    const client = await prisma.client.findUnique({
+      where: { id: project.clientId },
+      select: { messageLimit: true }
+    });
+    if (client) abitaMessageLimit = client.messageLimit;
+    abitaMessageUsage = await getCurrentMonthUsage(project.clientId);
+  }
 
   const messagesSaved = await prisma.message.count({
     where: { 
@@ -303,7 +315,9 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     dailyTrends,
     tierLimit,
     tierName,
-    tierUsage
+    tierUsage,
+    abitaMessageLimit,
+    abitaMessageUsage
   };
 }
 
