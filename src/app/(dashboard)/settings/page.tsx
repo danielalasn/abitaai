@@ -175,7 +175,10 @@ export default function SettingsPage() {
 
   const installPwa = async () => {
     const promptEvent = (window as any).deferredPwaPrompt
-    if (!promptEvent) return
+    if (!promptEvent) {
+      alert("Tu navegador ya tiene instalada la App, o debes instalarla manualmente desde el menú de opciones (Instalar / Añadir a inicio).");
+      return;
+    }
     promptEvent.prompt()
     const result = await promptEvent.userChoice
     if (result.outcome === 'accepted') {
@@ -864,17 +867,15 @@ export default function SettingsPage() {
               </div>
             )}
             
-            {/* Install PWA Button */}
-            {canInstallPwa && (
-              <div className="mt-4 px-6 pb-2">
-                <button
-                  onClick={installPwa}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl text-xs font-bold hover:bg-[#F36A2D] dark:hover:bg-[#F36A2D] dark:hover:text-white transition-all shadow-lg active:scale-95"
-                >
-                  📱 Instalar Abita AI
-                </button>
-              </div>
-            )}
+            {/* Install PWA Button - Always visible so user knows it exists */}
+            <div className="mt-4 px-6 pb-2">
+              <button
+                onClick={installPwa}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl text-xs font-bold hover:bg-[#F36A2D] dark:hover:bg-[#F36A2D] dark:hover:text-white transition-all shadow-lg active:scale-95"
+              >
+                📱 Instalar Abita AI
+              </button>
+            </div>
 
             {/* Theme Toggle in Settings Sidebar */}
             <div className="mt-auto border-t border-[#DEDAD0] dark:border-zinc-800/60 p-4">
