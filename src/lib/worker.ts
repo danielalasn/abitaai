@@ -33,7 +33,7 @@ export function initWorker() {
         if (!hours) continue;
         const cutoffDate = new Date(Date.now() - hours * 60 * 60 * 1000);
         const chatsToWake = await prisma.chat.findMany({
-          where: { lead: { projectId: project.id }, botActive: false, autoWakeBot: true, lastActiveAt: { lt: cutoffDate } }
+          where: { lead: { projectId: project.id }, botActive: false, autoWakeBot: true, disabledDueToLimit: false, lastActiveAt: { lt: cutoffDate } }
         });
         if (chatsToWake.length === 0) continue;
         const chatIds = chatsToWake.map(c => c.id);
@@ -128,7 +128,35 @@ export function initWorker() {
         resolveProjectCredentials(chatDetails.lead.project);
       }
 
-      if (chatDetails?.botActive) {
+      let isBotActive = chatDetails?.botActive ?? false;
+      const wasDisabledDueToLimit = chatDetails?.disabledDueToLimit ?? false;
+
+      // --- Verificación de Suscripción Lógica ---
+      if (chatDetails?.lead?.project?.clientId && (isBotActive || wasDisabledDueToLimit)) {
+        const limitExceeded = await hasExceededLimit(chatDetails.lead.project.clientId);
+        
+        if (limitExceeded) {
+          if (isBotActive) {
+            console.log(`[Worker] Límite de suscripción excedido. Desactivando bot para chat ${chatId}`);
+            await requestHandoff(chatId, true); // Desactiva el bot en DB y notifica UI
+            await prisma.chat.update({ where: { id: chatId }, data: { disabledDueToLimit: true } });
+            await saveAssistantReply(
+              chatId,
+              "[Sistema] Límite mensual de mensajes alcanzado. El bot ha sido desactivado.",
+              0, 0, 0, 'SERVICE', undefined, undefined, undefined, undefined, undefined
+            );
+          }
+          console.warn(`⚠️ [Worker] Mensaje de ${from} no procesado por IA porque el proyecto excede límite.`);
+          return; // Detiene el flujo (no consume AI)
+        } else if (!isBotActive && wasDisabledDueToLimit) {
+          // Límite restaurado!
+          console.log(`[Worker] Límite restaurado. Reactivando bot para chat ${chatId}`);
+          await prisma.chat.update({ where: { id: chatId }, data: { botActive: true, autoWakeBot: true, disabledDueToLimit: false } });
+          isBotActive = true;
+        }
+      }
+
+      if (isBotActive) {
         // Determinar un texto para la IA si finalCombinedText está vacío (pero hay media)
         let aiInputText = finalCombinedText;
         if (!aiInputText && firstMedia) {
@@ -146,21 +174,6 @@ export function initWorker() {
         if (!aiInputText) {
           console.warn('⚠️ [Worker] Saltando llamada a IA porque el texto está vacío y no hay media.');
         } else {
-          // --- Verificación de Suscripción ---
-          if (chatDetails.lead.project?.clientId) {
-            const limitExceeded = await hasExceededLimit(chatDetails.lead.project.clientId);
-            if (limitExceeded) {
-              console.log(`[Worker] Límite de suscripción excedido. Desactivando bot para chat ${chatId}`);
-              await requestHandoff(chatId, true); // Desactiva el bot
-              await saveAssistantReply(
-                chatId,
-                "[Sistema] Límite mensual de mensajes alcanzado. El bot ha sido desactivado.",
-                null, null, null, 'SERVICE', null, null, undefined, undefined, null
-              );
-              return; // Detiene el flujo
-            }
-          }
-
           // 3. Llamar a la IA (Claude/Gemini con PII redactado ya integrado en la acción)
           const history = chatDetails.messages.slice(1).reverse();
           const botData = await sendTestMessage(
