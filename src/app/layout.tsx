@@ -5,6 +5,10 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 export const metadata: Metadata = {
   title: "abita.ai",
   description: "Plataforma de ventas y atención al cliente con Inteligencia Artificial",
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/icon-192x192.png",
+  },
   other: {
     "facebook-domain-verification": "iunrwlqy60te8rusq9asd8lxke9qf1",
   },
@@ -15,6 +19,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
+  themeColor: "#1A1714",
 };
 
 import { Providers } from "./providers";
@@ -30,6 +35,19 @@ export default function RootLayout({
       <body suppressHydrationWarning className="min-h-full flex flex-col">
         <VersionChecker />
         <Providers>{children}</Providers>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
