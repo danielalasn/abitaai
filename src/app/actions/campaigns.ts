@@ -73,7 +73,7 @@ export async function launchCampaignAction(
   // --- Verificación de Límite de Suscripción ---
   if (project.clientId) {
     const client = await prisma.client.findUnique({ where: { id: project.clientId }, select: { messageLimit: true } });
-    if (client) {
+    if (client && client.messageLimit !== null) {
       const currentUsage = await getCurrentMonthUsage(project.clientId);
       if (currentUsage + leadsData.length > client.messageLimit) {
         throw new Error(`Límite mensual excedido. Límite: ${client.messageLimit}. Uso actual: ${currentUsage}. Intentas enviar: ${leadsData.length} mensajes.`);
