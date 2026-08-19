@@ -240,6 +240,17 @@ export interface ProjectUsageStats {
   totalOutputTokens: number
   estimatedAiCostUsd: number
 
+  // AI Simulator
+  simulatorClaudeInputTokens: number
+  simulatorClaudeOutputTokens: number
+  simulatorClaudeEstimatedCostUsd: number
+  simulatorGeminiInputTokens: number
+  simulatorGeminiOutputTokens: number
+  simulatorGeminiEstimatedCostUsd: number
+  totalSimulatorInputTokens: number
+  totalSimulatorOutputTokens: number
+  estimatedSimulatorAiCostUsd: number
+
   // WhatsApp
   waServiceMessages: number
   waMarketingMessages: number
