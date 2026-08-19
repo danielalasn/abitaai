@@ -116,9 +116,11 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   const messagesSaved = await prisma.message.count({
     where: { 
       role: 'assistant',
+      content: { not: { startsWith: '[Sistema]' } },
       chat: {
         lead: {
-          projectId: project.id
+          projectId: project.id,
+          phone: { not: 'SIMULADOR_TEST' }
         }
       },
       ...dateFilter
@@ -142,20 +144,22 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   const proactiveMessagesCount = await prisma.message.count({
     where: {
       role: 'agent',
-      waCategory: { in: ['MARKETING', 'UTILITY'] },
-      chat: { lead: { projectId: project.id } },
+      waCategory: { in: ['MARKETING', 'UTILITY', 'AUTHENTICATION'] },
+      chat: { lead: { projectId: project.id, phone: { not: 'SIMULADOR_TEST' } } },
       ...dateFilter
     }
   })
 
-  const rawAgentMessages = await prisma.message.count({
+  // Mensajes manuales (Inbox)
+  const humanMessagesCount = await prisma.message.count({
     where: { 
       role: 'agent',
-      chat: { lead: { projectId: project.id } },
+      waCategory: 'SERVICE',
+      chat: { lead: { projectId: project.id, phone: { not: 'SIMULADOR_TEST' } } },
       ...dateFilter
     }
   })
-  const humanMessagesCount = Math.max(0, rawAgentMessages - proactiveMessagesCount)
+  
   // Total de todas las respuestas enviadas: IA + manuales + proactivas (templates)
   const totalResponses = messagesSaved + humanMessagesCount + proactiveMessagesCount
 
@@ -311,7 +315,7 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     estimatedAiCostUsd,
     estimatedInputCostUsd,
     estimatedOutputCostUsd,
-    sentByUsCount: rawAgentMessages,
+    sentByUsCount: humanMessagesCount,
     proactiveMessagesCount,
     planUsageAllTime,
     dailyTrends,

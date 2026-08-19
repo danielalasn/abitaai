@@ -287,46 +287,57 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     leadsCount,
     campaignsCount,
     botMessagesCount,
-    agentMessagesCount,
-    automatedMessagesCount,
-    tokenAgg,
-    waServiceExplicit,
-    waServiceNull,
     waMarketingMessages,
     waUtilityMessages,
+    waAuthMessages,
+    waServiceMessages,
+    tokenAgg,
     handoffsCount,
     simulatorTokenAgg
   ] = await Promise.all([
     prisma.lead.count({ where: { projectId, ...notSimulator, ...dateFilter } }),
     prisma.campaign.count({ where: { projectId, ...dateFilter } }),
-    prisma.message.count({
+    prisma.message.count({ // botMessagesCount
       where: {
         role: 'assistant',
+        content: { not: { startsWith: '[Sistema]' } },
         chat: { lead: { projectId, ...notSimulator } },
         ...dateFilter
       }
     }),
-    prisma.message.count({
+    prisma.message.count({ // waMarketingMessages
       where: {
-        OR: [
-          { role: 'agent' },
-          { waCategory: { in: ['MARKETING', 'UTILITY'] } }
-        ],
+        role: 'agent',
+        waCategory: 'MARKETING',
         chat: { lead: { projectId, ...notSimulator } },
         ...dateFilter
       }
     }),
-    prisma.message.count({
+    prisma.message.count({ // waUtilityMessages
       where: {
-        OR: [
-          { role: 'assistant' },
-          { waCategory: { in: ['MARKETING', 'UTILITY'] } }
-        ],
+        role: 'agent',
+        waCategory: 'UTILITY',
         chat: { lead: { projectId, ...notSimulator } },
         ...dateFilter
       }
     }),
-    prisma.message.groupBy({
+    prisma.message.count({ // waAuthMessages
+      where: {
+        role: 'agent',
+        waCategory: 'AUTHENTICATION',
+        chat: { lead: { projectId, ...notSimulator } },
+        ...dateFilter
+      }
+    }),
+    prisma.message.count({ // waServiceMessages / manualMessagesCount
+      where: {
+        role: 'agent',
+        waCategory: 'SERVICE',
+        chat: { lead: { projectId, ...notSimulator } },
+        ...dateFilter
+      }
+    }),
+    prisma.message.groupBy({ // tokenAgg
       by: ['agentName'],
       where: {
         role: 'assistant',
@@ -338,40 +349,8 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
         outputTokens: true,
       }
     }),
-    prisma.message.count({
-      where: {
-        waCategory: 'SERVICE',
-        role: { in: ['assistant', 'agent'] },
-        chat: { lead: { projectId, ...notSimulator } },
-        ...dateFilter
-      }
-    }),
-    prisma.message.count({
-      where: {
-        waCategory: null,
-        role: { in: ['assistant', 'agent'] },
-        chat: { lead: { projectId, ...notSimulator } },
-        ...dateFilter
-      }
-    }),
-    prisma.message.count({
-      where: {
-        waCategory: 'MARKETING',
-        role: { in: ['assistant', 'agent'] },
-        chat: { lead: { projectId, ...notSimulator } },
-        ...dateFilter
-      }
-    }),
-    prisma.message.count({
-      where: {
-        waCategory: 'UTILITY',
-        role: { in: ['assistant', 'agent'] },
-        chat: { lead: { projectId, ...notSimulator } },
-        ...dateFilter
-      }
-    }),
-    prisma.lead.count({ where: { projectId, status: 'NEEDS_AGENT', ...notSimulator, ...dateFilter } }),
-    prisma.message.groupBy({
+    prisma.lead.count({ where: { projectId, status: 'NEEDS_AGENT', ...notSimulator, ...dateFilter } }), // handoffsCount
+    prisma.message.groupBy({ // simulatorTokenAgg
       by: ['agentName'],
       where: {
         role: 'assistant',
@@ -385,8 +364,10 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
     })
   ]);
 
-  const templateMessagesCount = waMarketingMessages + waUtilityMessages;
-  const manualMessagesCount = Math.max(0, agentMessagesCount - templateMessagesCount);
+  const templateMessagesCount = waMarketingMessages + waUtilityMessages + waAuthMessages;
+  const manualMessagesCount = waServiceMessages;
+  const agentMessagesCount = templateMessagesCount + manualMessagesCount;
+  const automatedMessagesCount = botMessagesCount + templateMessagesCount;
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -441,8 +422,6 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
   });
 
   const estimatedAiCostUsd = claudeEstimatedCostUsd + geminiEstimatedCostUsd;
-
-  const waServiceMessages = waServiceExplicit + waServiceNull;
 
   const estimatedWaCostUsd = isAbita ? (
     (waMarketingMessages * WA_PRICING.MARKETING) +
