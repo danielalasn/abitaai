@@ -122,6 +122,7 @@ model Chat {
   isArchived   Boolean   @default(false)
   channel      String    @default("whatsapp")
   autoWakeBot  Boolean   @default(true)
+  disabledDueToLimit Boolean @default(false)
   lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
   messages     Message[]
 }
