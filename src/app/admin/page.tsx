@@ -209,7 +209,7 @@ export default function AdminPage() {
   const [editTemplateGroup, setEditTemplateGroup] = useState('');
   const [editSubscriptionStatus, setEditSubscriptionStatus] = useState('ACTIVE');
   const [editSubscriptionEndsAt, setEditSubscriptionEndsAt] = useState<string | undefined>('');
-  const [editMessageLimit, setEditMessageLimit] = useState<number>(1000);
+  const [editMessageLimit, setEditMessageLimit] = useState<number | ''>(1000);
   const [editSubscriptionResetDay, setEditSubscriptionResetDay] = useState<number>(1);
   const [isSavingUser, setIsSavingUser] = useState(false);
 
@@ -524,7 +524,7 @@ export default function AdminPage() {
         templateGroup: editTemplateGroup,
         subscriptionStatus: editSubscriptionStatus,
         subscriptionEndsAt: editSubscriptionEndsAt ? new Date(editSubscriptionEndsAt) : null,
-        messageLimit: editMessageLimit,
+        messageLimit: editMessageLimit === '' ? 0 : editMessageLimit,
         subscriptionResetDay: editSubscriptionResetDay,
         // Si el admin manualmente lo pasa a ACTIVE, reiniciamos intentos por si acaso
         resetFailedLogins: editSubscriptionStatus === 'ACTIVE'
@@ -1751,7 +1751,10 @@ export default function AdminPage() {
                                 type="number"
                                 min={1}
                                 value={editMessageLimit}
-                                onChange={e => setEditMessageLimit(Number(e.target.value))}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setEditMessageLimit(val === '' ? '' : Number(val));
+                                }}
                                 className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100"
                               />
                             </div>

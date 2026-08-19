@@ -8,7 +8,8 @@ import {
   Save, Bot, BookOpen, Fingerprint, Loader2, HelpCircle, Code, Sparkles,
   CheckCircle2, Flame, Plus, Trash2, MessageSquare, ShieldCheck, ShieldX,
   Wifi, ChevronRight, Power, X, FileText, PanelLeftClose, PanelLeftOpen,
-  Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings
+  Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings,
+  Sun, Moon
 } from 'lucide-react'
 import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
@@ -25,6 +26,7 @@ import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConne
 import CalendarConfigPanel from '@/components/bot-builder/CalendarConfigPanel'
 import GoogleSheetsConnect from '@/components/integrations/GoogleSheetsConnect'
 import SheetsConfigPanel from '@/components/integrations/SheetsConfigPanel'
+import ThemeSwitch from '@/components/ui/theme-switch'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
 // Instagram logo SVG (lucide doesn't include it)
@@ -840,6 +842,22 @@ export default function SettingsPage() {
                 )}
               </div>
             )}
+            
+            {/* Theme Toggle in Settings Sidebar */}
+            <div className="mt-auto border-t border-[#DEDAD0] dark:border-zinc-800/60 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 bg-[#F36A2D]/10 rounded-lg">
+                    <Sun size={14} className="text-[#F36A2D] dark:hidden" />
+                    <Moon size={14} className="text-[#F36A2D] hidden dark:block" />
+                  </div>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Apariencia</span>
+                </div>
+                <div className="scale-90 origin-right">
+                  <ThemeSwitch />
+                </div>
+              </div>
+            </div>
           </aside>
 
           {/* ─── Main Content ─── */}
