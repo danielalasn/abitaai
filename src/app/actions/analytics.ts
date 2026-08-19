@@ -76,13 +76,15 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
 
   const dateFilter = Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {}
 
+  const notSimulator = { phone: { not: 'SIMULADOR_TEST' }, channel: { not: 'simulator' } };
+
   const totalLeads = await prisma.lead.count({
-    where: { projectId: project.id }
+    where: { projectId: project.id, ...notSimulator }
   })
 
   // Leads handed off to human
   const handedOffLeads = await prisma.lead.count({
-    where: { projectId: project.id, status: 'NEEDS_AGENT' }
+    where: { projectId: project.id, status: 'NEEDS_AGENT', ...notSimulator }
   })
 
   // Uso del plan de todo el tiempo: Mensajes de IA (assistant) + Mensajes de plantilla proactivos (MARKETING/UTILITY)
@@ -180,18 +182,18 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   const whatsappReadRate = totalLogs > 0 ? Math.round((readLogs / totalLogs) * 100) : 0;
 
   // Channel Distribution (Current state, not filtered by date)
-  const whatsappLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'whatsapp' } })
-  const instagramLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'instagram' } })
+  const whatsappLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'whatsapp', ...notSimulator } })
+  const instagramLeads = await prisma.lead.count({ where: { projectId: project.id, channel: 'instagram', ...notSimulator } })
 
   // Heatmap calculations (Current state, not filtered by date)
-  const hotLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'CALIENTE' } })
-  const warmLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'TIBIO' } })
-  const coldLeads = await prisma.lead.count({ where: { projectId: project.id, heat: { in: ['FRIO', ''] } } })
+  const hotLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'CALIENTE', ...notSimulator } })
+  const warmLeads = await prisma.lead.count({ where: { projectId: project.id, heat: 'TIBIO', ...notSimulator } })
+  const coldLeads = await prisma.lead.count({ where: { projectId: project.id, heat: { in: ['FRIO', ''] }, ...notSimulator } })
 
   // Bot Active / Agent status (Current state, not filtered by date)
-  const botActiveLeads = await prisma.chat.count({ where: { lead: { projectId: project.id }, botActive: true } })
-  const needsAgentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: 'NEEDS_AGENT' }, botActive: false } })
-  const agentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: { not: 'NEEDS_AGENT' } }, botActive: false } })
+  const botActiveLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, ...notSimulator }, botActive: true } })
+  const needsAgentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: 'NEEDS_AGENT', ...notSimulator }, botActive: false } })
+  const agentLeads = await prisma.chat.count({ where: { lead: { projectId: project.id, status: { not: 'NEEDS_AGENT' }, ...notSimulator }, botActive: false } })
 
   // Calculamos la tasa de conversión (handoff)
   const conversionRate = totalLeads > 0 ? Math.round((handedOffLeads / totalLeads) * 100) : 0
