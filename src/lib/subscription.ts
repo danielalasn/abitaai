@@ -29,9 +29,16 @@ export async function getCurrentMonthUsage(clientId: string): Promise<number> {
       createdAt: {
         gte: startOfMonth
       },
-      role: {
-        in: ['assistant', 'agent'] // assistant = bot response, agent = campaign template
-      },
+      OR: [
+        {
+          role: 'assistant',
+          content: { not: { startsWith: '[Sistema]' } }
+        },
+        {
+          role: 'agent',
+          waCategory: { in: ['MARKETING', 'UTILITY', 'AUTHENTICATION'] }
+        }
+      ],
       chat: {
         lead: {
           phone: { not: 'SIMULADOR_TEST' },
