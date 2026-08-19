@@ -137,6 +137,8 @@ export default function SettingsPage() {
   const [isCheckingTemplate, setIsCheckingTemplate] = useState(false)
   const [checkTemplateFeedback, setCheckTemplateFeedback] = useState<string | null>(null)
 
+  const [canInstallPwa, setCanInstallPwa] = useState(false)
+  
   const loadIgStatus = useCallback(async () => {
     const integration = await getIntegrationStatus('meta_instagram')
     setIgIntegration(integration as any)
@@ -160,8 +162,27 @@ export default function SettingsPage() {
       if (error === 'instagram_denied') setIgFeedback('denied')
       if (error === 'oauth_failed' || error === 'invalid_state') setIgFeedback('error')
     }
+    const checkPrompt = () => {
+      if ((window as any).deferredPwaPrompt) {
+        setCanInstallPwa(true)
+      }
+    }
+    checkPrompt()
+    window.addEventListener('pwa-prompt-ready', checkPrompt)
+    return () => window.removeEventListener('pwa-prompt-ready', checkPrompt)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const installPwa = async () => {
+    const promptEvent = (window as any).deferredPwaPrompt
+    if (!promptEvent) return
+    promptEvent.prompt()
+    const result = await promptEvent.userChoice
+    if (result.outcome === 'accepted') {
+      setCanInstallPwa(false)
+      ;(window as any).deferredPwaPrompt = null
+    }
+  }
 
   const handleDisconnectIg = async () => {
     setIgLoading(true)
@@ -843,6 +864,18 @@ export default function SettingsPage() {
               </div>
             )}
             
+            {/* Install PWA Button */}
+            {canInstallPwa && (
+              <div className="mt-4 px-6 pb-2">
+                <button
+                  onClick={installPwa}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl text-xs font-bold hover:bg-[#F36A2D] dark:hover:bg-[#F36A2D] dark:hover:text-white transition-all shadow-lg active:scale-95"
+                >
+                  📱 Instalar Abita AI
+                </button>
+              </div>
+            )}
+
             {/* Theme Toggle in Settings Sidebar */}
             <div className="mt-auto border-t border-[#DEDAD0] dark:border-zinc-800/60 p-4">
               <div className="flex items-center justify-between">
