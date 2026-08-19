@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
-
 export const metadata: Metadata = {
-  title: "abita.ai",
+  title: "Abita AI",
   description: "Plataforma de ventas y atención al cliente con Inteligencia Artificial",
   manifest: "/manifest.json",
   icons: {
