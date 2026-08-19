@@ -209,7 +209,7 @@ export default function AdminPage() {
   const [editTemplateGroup, setEditTemplateGroup] = useState('');
   const [editSubscriptionStatus, setEditSubscriptionStatus] = useState('ACTIVE');
   const [editSubscriptionEndsAt, setEditSubscriptionEndsAt] = useState<string | undefined>('');
-  const [editMessageLimit, setEditMessageLimit] = useState<number | ''>(1000);
+  const [editMessageLimit, setEditMessageLimit] = useState<number | '' | null>(1000);
   const [editSubscriptionResetDay, setEditSubscriptionResetDay] = useState<number>(1);
   const [isSavingUser, setIsSavingUser] = useState(false);
 
@@ -449,7 +449,7 @@ export default function AdminPage() {
     setEditTemplateGroup(client.templateGroup || '');
     setEditSubscriptionStatus(client.subscriptionStatus || 'ACTIVE');
     setEditSubscriptionEndsAt(client.subscriptionEndsAt ? new Date(client.subscriptionEndsAt).toISOString().split('T')[0] : '');
-    setEditMessageLimit(client.messageLimit ?? 1000);
+    setEditMessageLimit(client.messageLimit); // can be null
     setEditSubscriptionResetDay(client.subscriptionResetDay ?? 1);
     setDeleteConfirmText('');
 
@@ -524,7 +524,7 @@ export default function AdminPage() {
         templateGroup: editTemplateGroup,
         subscriptionStatus: editSubscriptionStatus,
         subscriptionEndsAt: editSubscriptionEndsAt ? new Date(editSubscriptionEndsAt) : null,
-        messageLimit: editMessageLimit === '' ? 0 : editMessageLimit,
+        messageLimit: editMessageLimit === '' ? null : editMessageLimit,
         subscriptionResetDay: editSubscriptionResetDay,
         // Si el admin manualmente lo pasa a ACTIVE, reiniciamos intentos por si acaso
         resetFailedLogins: editSubscriptionStatus === 'ACTIVE'
@@ -1774,16 +1774,29 @@ export default function AdminPage() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                             <div>
-                              <label className="text-[10px] font-bold text-zinc-500 mb-2 block uppercase tracking-widest leading-none">Límite de Mensajes (Mensual)</label>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none">Límite de Mensajes (Mensual)</label>
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-zinc-400">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={editMessageLimit === null}
+                                    onChange={(e) => setEditMessageLimit(e.target.checked ? null : 1000)}
+                                    className="accent-orange-500"
+                                  />
+                                  <span>Sin límite</span>
+                                </label>
+                              </div>
                               <input
                                 type="number"
                                 min={1}
-                                value={editMessageLimit}
+                                disabled={editMessageLimit === null}
+                                value={editMessageLimit === null ? '' : editMessageLimit}
                                 onChange={e => {
                                   const val = e.target.value;
                                   setEditMessageLimit(val === '' ? '' : Number(val));
                                 }}
-                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100"
+                                className="w-full text-[13px] px-4 py-2.5 border border-zinc-200 rounded-2xl dark:bg-[#121214] dark:border-zinc-800 outline-none focus:border-orange-500 transition-colors text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:bg-zinc-100 dark:disabled:bg-zinc-900"
+                                placeholder={editMessageLimit === null ? "Ilimitado" : ""}
                               />
                             </div>
                             <div>

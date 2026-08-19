@@ -63,6 +63,7 @@ export async function hasExceededLimit(clientId: string): Promise<boolean> {
   });
 
   if (!client) return true; // Fail safe
+  if (client.messageLimit === null) return false; // Infinite limit
 
   const currentUsage = await getCurrentMonthUsage(clientId);
   

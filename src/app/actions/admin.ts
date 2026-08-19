@@ -165,7 +165,7 @@ export async function updateBotConfig(projectId: string, configData: any) {
   }
 }
 
-export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string, templateGroup?: string, subscriptionStatus?: string, subscriptionEndsAt?: Date | null, resetFailedLogins?: boolean, messageLimit?: number, subscriptionResetDay?: number }) {
+export async function updateClient(clientId: string, data: { name?: string, email?: string, password?: string, templateGroup?: string, subscriptionStatus?: string, subscriptionEndsAt?: Date | null, resetFailedLogins?: boolean, messageLimit?: number | null, subscriptionResetDay?: number }) {
   await checkAdminAuth();
   const updateData: any = {};
   if (data.name) updateData.name = data.name;

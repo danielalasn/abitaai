@@ -99,7 +99,7 @@ export async function getSubscriptionUsageAction() {
   const usage = await getCurrentMonthUsage(project.clientId);
   
   return {
-    limit: client.messageLimit || 1000,
+    limit: client.messageLimit,
     usage
   };
 }

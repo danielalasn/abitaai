@@ -19,7 +19,7 @@ export function Sidebar() {
   const { theme, resolvedTheme, setTheme } = useTheme()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
-  const [usageData, setUsageData] = useState<{ limit: number, usage: number } | null>(null)
+  const [usageData, setUsageData] = useState<{ limit: number | null, usage: number } | null>(null)
 
   useEffect(() => {
     const fetchUsage = () => {
@@ -34,7 +34,7 @@ export function Sidebar() {
     return () => clearInterval(interval);
   }, [pathname])
 
-  const usagePct = usageData ? Math.round((usageData.usage / usageData.limit) * 100) : 0;
+  const usagePct = usageData && usageData.limit ? Math.round((usageData.usage / usageData.limit) * 100) : 0;
   
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
 
@@ -113,25 +113,27 @@ export function Sidebar() {
       <div className="space-y-1 mt-4 border-t border-[#DEDAD0]/50 dark:border-zinc-800/50 pt-4 shrink-0">
         
         {/* Usage Progress Bar */}
-        <div className={`h-10 group relative cursor-pointer flex items-center transition-all duration-300 ${isCollapsed ? 'px-[14px]' : 'px-3'}`}>
-          <div className="flex-1 bg-black/10 dark:bg-white/10 rounded-full h-1.5 transition-all duration-300">
-            <div 
-              className={`h-1.5 rounded-full ${usagePct >= 100 ? 'bg-red-500' : usagePct >= 80 ? 'bg-orange-500' : 'bg-[#111111]/30 dark:bg-white/30'}`}
-              style={{ width: `${Math.min(usagePct, 100)}%` }}
-            />
-          </div>
-          
-          <span className={`text-[10px] font-bold whitespace-nowrap overflow-hidden transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100 w-8 ml-3'} ${usagePct >= 100 ? 'text-red-500' : usagePct >= 80 ? 'text-orange-500' : 'text-[#6F6F6F]'}`}>
-            {usagePct}%
-          </span>
-          
-          {/* Tooltip for collapsed state */}
-          {isCollapsed && (
-            <div className="absolute left-16 bg-zinc-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[100] shadow-xl border border-zinc-800">
-              Uso de suscripción: {usagePct}%
+        {usageData?.limit !== null && (
+          <div className={`h-10 group relative cursor-pointer flex items-center transition-all duration-300 ${isCollapsed ? 'px-[14px]' : 'px-3'}`}>
+            <div className="flex-1 bg-black/10 dark:bg-white/10 rounded-full h-1.5 transition-all duration-300">
+              <div 
+                className={`h-1.5 rounded-full ${usagePct >= 100 ? 'bg-red-500' : usagePct >= 80 ? 'bg-orange-500' : 'bg-[#111111]/30 dark:bg-white/30'}`}
+                style={{ width: `${Math.min(usagePct, 100)}%` }}
+              />
             </div>
-          )}
-        </div>
+            
+            <span className={`text-[10px] font-bold whitespace-nowrap overflow-hidden transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 ml-0' : 'opacity-100 w-8 ml-3'} ${usagePct >= 100 ? 'text-red-500' : usagePct >= 80 ? 'text-orange-500' : 'text-[#6F6F6F]'}`}>
+              {usagePct}%
+            </span>
+            
+            {/* Tooltip for collapsed state */}
+            {isCollapsed && (
+              <div className="absolute left-16 bg-zinc-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[100] shadow-xl border border-zinc-800">
+                Uso de suscripción: {usagePct}%
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 

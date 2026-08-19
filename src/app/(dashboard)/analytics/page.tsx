@@ -367,40 +367,42 @@ export default function AnalyticsDashboard() {
               </div>
 
               {/* ABITA LIMIT CARD */}
-              <div className={`border rounded-2xl p-6 shadow-sm border-orange-200 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-900/10`}>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Zap size={16} className="text-orange-500" />
-                      <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Suscripción Abita</span>
+              {data?.abitaMessageLimit !== null && (
+                <div className={`border rounded-2xl p-6 shadow-sm border-orange-200 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-900/10`}>
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Zap size={16} className="text-orange-500" />
+                        <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Suscripción Abita</span>
+                      </div>
+                      <div className="flex items-baseline gap-3 mt-1">
+                        <span className={`text-2xl font-bold text-orange-600 dark:text-orange-400`}>Límite Mensual</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300`}>
+                          {data?.abitaMessageUsage || 0} / {data?.abitaMessageLimit || 1000} mensajes
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#6F6F6F] mt-2 leading-relaxed">
+                        Límite de mensajes automatizados (bot y campañas) para tu ciclo de facturación actual.
+                      </p>
                     </div>
-                    <div className="flex items-baseline gap-3 mt-1">
-                      <span className={`text-2xl font-bold text-orange-600 dark:text-orange-400`}>Límite Mensual</span>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300`}>
-                        {data?.abitaMessageUsage || 0} / {data?.abitaMessageLimit || 1000} mensajes
-                      </span>
+                    <div className="w-full sm:w-48 shrink-0">
+                      <div className="flex justify-between text-xs text-[#6F6F6F] mb-1.5">
+                        <span>Uso mensual</span>
+                        <span className={`font-bold ${abitaUsagePct > 90 ? 'text-red-500' : 'text-orange-500'}`}>{abitaUsagePct}%</span>
+                      </div>
+                      <div className="w-full bg-white/50 dark:bg-black/20 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all duration-700 ${abitaUsagePct > 90 ? 'bg-red-500' : abitaUsagePct > 70 ? 'bg-amber-500' : 'bg-orange-500'}`}
+                          style={{ width: `${abitaUsagePct}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-[#6F6F6F] mt-1.5">
+                        Cuenta los mensajes enviados por tu Agente IA y las Campañas. Los mensajes manuales enviados por ti a través del Inbox no consumen esta cuota.
+                      </p>
                     </div>
-                    <p className="text-sm text-[#6F6F6F] mt-2 leading-relaxed">
-                      Límite de mensajes automatizados (bot y campañas) para tu ciclo de facturación actual.
-                    </p>
-                  </div>
-                  <div className="w-full sm:w-48 shrink-0">
-                    <div className="flex justify-between text-xs text-[#6F6F6F] mb-1.5">
-                      <span>Uso mensual</span>
-                      <span className={`font-bold ${abitaUsagePct > 90 ? 'text-red-500' : 'text-orange-500'}`}>{abitaUsagePct}%</span>
-                    </div>
-                    <div className="w-full bg-white/50 dark:bg-black/20 rounded-full h-2.5">
-                      <div
-                        className={`h-2.5 rounded-full transition-all duration-700 ${abitaUsagePct > 90 ? 'bg-red-500' : abitaUsagePct > 70 ? 'bg-amber-500' : 'bg-orange-500'}`}
-                        style={{ width: `${abitaUsagePct}%` }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-[#6F6F6F] mt-1.5">
-                      Cuenta los mensajes enviados por tu Agente IA y las Campañas. Los mensajes manuales enviados por ti a través del Inbox no consumen esta cuota.
-                    </p>
                   </div>
                 </div>
-              </div>
+              )}
 
             </div>
 
