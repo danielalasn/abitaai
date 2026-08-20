@@ -880,7 +880,7 @@ function PreviewModal({ template, onClose }: { template: MetaTemplate; onClose: 
 const STATUS_FILTERS: { value: FilterStatus; label: string }[] = [
   { value: 'ALL',       label: 'Todas' },
   { value: 'APPROVED',  label: 'Aprobadas' },
-  { value: 'PENDING',   label: 'En revisión' },
+  { value: 'PENDING',   label: 'Revisión' },
   { value: 'REJECTED',  label: 'Rechazadas' },
   { value: 'PAUSED',    label: 'Pausadas' },
 ];
@@ -984,13 +984,13 @@ export default function TemplatesPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: 'Aprobadas',    count: counts['APPROVED'] || 0,  color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
-              { label: 'En revisión',  count: counts['PENDING'] || 0,   color: 'text-amber-600',   bg: 'bg-amber-500/10' },
+              { label: 'Revisión',     count: counts['PENDING'] || 0,   color: 'text-amber-600',   bg: 'bg-amber-500/10' },
               { label: 'Rechazadas',   count: counts['REJECTED'] || 0,  color: 'text-red-500',     bg: 'bg-red-500/10' },
               { label: 'Otras',        count: (counts['PAUSED'] || 0) + (counts['DISABLED'] || 0) + (counts['IN_APPEAL'] || 0), color: 'text-zinc-500', bg: 'bg-zinc-500/10' },
             ].map(stat => (
-              <div key={stat.label} className={`p-4 rounded-2xl ${stat.bg} flex flex-col gap-1`}>
-                <span className={`text-2xl font-black ${stat.color}`}>{stat.count}</span>
-                <span className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-wider">{stat.label}</span>
+              <div key={stat.label} className={`p-4 rounded-2xl ${stat.bg} flex flex-col justify-center gap-1 h-24`}>
+                <span className={`text-2xl font-black leading-none ${stat.color}`}>{stat.count}</span>
+                <span className="text-[9px] font-bold text-[#6F6F6F] uppercase tracking-wider truncate" title={stat.label}>{stat.label}</span>
               </div>
             ))}
           </div>
@@ -1027,14 +1027,14 @@ export default function TemplatesPage() {
             </div>
 
             {/* Status filter tabs */}
-            <div className="flex items-center gap-1 bg-white/60 dark:bg-white/5 rounded-xl p-1 border border-[#DEDAD0] dark:border-zinc-800">
+            <div className="flex items-center gap-1 bg-white/60 dark:bg-white/5 rounded-xl p-1 border border-[#DEDAD0] dark:border-zinc-800 overflow-x-auto max-w-full w-full sm:w-auto scrollbar-hide">
               {STATUS_FILTERS.map(f => {
                 const count = f.value === 'ALL' ? templates.length : (counts[f.value] || 0);
                 return (
                   <button
                     key={f.value}
                     onClick={() => setStatusFilter(f.value)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${statusFilter === f.value ? 'bg-white dark:bg-[#111111]/60 text-[#111111] dark:text-[#EDE9E0] shadow-sm' : 'text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0]'}`}
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0 ${statusFilter === f.value ? 'bg-white dark:bg-[#111111]/60 text-[#111111] dark:text-[#EDE9E0] shadow-sm' : 'text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0]'}`}
                   >
                     {f.label} {count > 0 && <span className="ml-0.5 opacity-60">({count})</span>}
                   </button>
