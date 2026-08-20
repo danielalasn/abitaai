@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import webpush from 'web-push';
 import { sendWhatsAppMessage, sendWhatsAppTemplate, sendWhatsAppMedia, WaMediaType } from '@/lib/whatsapp';
 import { getCurrentProject, resolveProjectCredentials } from '@/lib/auth-server';
 import { updateLeadAISummaryInternal } from '@/app/actions/leads';
@@ -279,6 +280,38 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
           },
         }).catch((e) => console.error('[WA Handoff] Error enviando notificación:', e))
       );
+    }
+
+    const pushSubscriptions = await prisma.pushSubscription.findMany({
+      where: { clientId: lead.project.clientId }
+    });
+
+    if (pushSubscriptions.length > 0 && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+      webpush.setVapidDetails(
+        'mailto:contacto@abitaai.com',
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+      );
+
+      const payload = JSON.stringify({
+        title: 'Handoff Requerido',
+        body: `El lead ${lead.name || lead.phone} requiere atención manual.`,
+        chatId: chatId,
+      });
+
+      for (const sub of pushSubscriptions) {
+        promises.push(
+          webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            payload
+          ).catch((e: any) => {
+            console.error('[Web Push] Error enviando push:', e);
+            if (e.statusCode === 410 || e.statusCode === 404) {
+               prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(()=>{});
+            }
+          })
+        );
+      }
     }
 
     await Promise.allSettled(promises);

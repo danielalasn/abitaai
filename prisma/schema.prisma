@@ -25,6 +25,7 @@ model Client {
   auditLogs          AuditLog[]
   integrations       Integration[]
   projects           Project[]
+  pushSubscriptions  PushSubscription[]
 }
 
 model Integration {
@@ -336,4 +337,14 @@ enum SubscriptionStatus {
   ACTIVE
   INACTIVE
   BLOCKED
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  clientId  String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }

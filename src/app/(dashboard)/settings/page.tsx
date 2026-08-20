@@ -137,6 +137,75 @@ export default function SettingsPage() {
   const [isCheckingTemplate, setIsCheckingTemplate] = useState(false)
   const [checkTemplateFeedback, setCheckTemplateFeedback] = useState<string | null>(null)
   
+  // Web Push Notifications
+  const [isSubscribingPush, setIsSubscribingPush] = useState(false)
+  const [pushStatus, setPushStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [pushErrorMsg, setPushErrorMsg] = useState<string | null>(null)
+  const [pushPermissionGranted, setPushPermissionGranted] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushPermissionGranted(Notification.permission === 'granted')
+    }
+  }, [])
+
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  const handleSubscribePush = async () => {
+    setIsSubscribingPush(true)
+    setPushStatus('idle')
+    setPushErrorMsg(null)
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        throw new Error('Notificaciones Push no soportadas en este navegador.');
+      }
+      const permission = await Notification.requestPermission();
+      setPushPermissionGranted(permission === 'granted')
+      if (permission !== 'granted') {
+        throw new Error('Permiso denegado por el usuario.');
+      }
+      
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!publicVapidKey) throw new Error('VAPID public key no configurada.');
+        
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+        });
+      }
+
+      const res = await fetch('/api/notifications/push-subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription)
+      });
+      
+      if (!res.ok) throw new Error('Error guardando la suscripción.');
+      
+      setPushStatus('success')
+      setTimeout(() => setPushStatus('idle'), 4000)
+    } catch (e: any) {
+      console.error(e)
+      setPushStatus('error')
+      setPushErrorMsg(e.message)
+    } finally {
+      setIsSubscribingPush(false)
+    }
+  }
+
   const loadIgStatus = useCallback(async () => {
     const integration = await getIntegrationStatus('meta_instagram')
     setIgIntegration(integration as any)
@@ -1287,6 +1356,28 @@ export default function SettingsPage() {
                         {isSavingNotificationEmails ? <Loader2 size={16} className="animate-spin" /> : notificationEmailsStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar correos'}
                       </button>
                     </div>
+                  </div>
+                  
+                  {/* Web Push Notifications Card */}
+                  <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
+                        <Bell className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones Web (Push)</h3>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Recibe una notificación push en este dispositivo cuando ocurra un handoff.</p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={handleSubscribePush}
+                      disabled={isSubscribingPush || pushPermissionGranted}
+                      className={`w-full bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all flex items-center justify-center gap-2 ${pushPermissionGranted ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'}`}
+                    >
+                      {isSubscribingPush ? <Loader2 size={16} className="animate-spin" /> : pushStatus === 'success' || pushPermissionGranted ? <><CheckCircle2 size={16} /> ¡Activo en este dispositivo!</> : 'Activar Notificaciones Web'}
+                    </button>
+                    {pushStatus === 'error' && <p className="text-red-500 text-xs mt-2 text-center">{pushErrorMsg}</p>}
                   </div>
                 </div>
               </div>
