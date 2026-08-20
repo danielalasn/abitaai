@@ -73,10 +73,15 @@ export function MobileNav() {
         </div>
       </nav>
 
-      {/* Full Screen Menu Overlay */}
+      {/* Drawer Menu Overlay */}
       {isMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[60] bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col animate-in slide-in-from-bottom-full duration-300">
-          <div className="flex flex-col h-full overflow-y-auto pb-6">
+        <>
+          <div 
+            className="md:hidden fixed inset-0 z-[60] bg-black/40 animate-in fade-in duration-300"
+            onClick={() => setIsMenuOpen(false)}
+          />
+          <div className="md:hidden fixed inset-y-0 right-0 z-[70] w-[280px] bg-[#E9E4D8] dark:bg-[#1A1714] shadow-2xl flex flex-col animate-in slide-in-from-right-full duration-300">
+            <div className="flex flex-col h-full overflow-y-auto pb-6">
             
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-[#DEDAD0] dark:border-zinc-800/60">
@@ -135,9 +140,9 @@ export function MobileNav() {
                 Cerrar Sesión
               </button>
             </div>
-            
+            </div>
           </div>
-        </div>
+        </>
       )}
     </>
   )

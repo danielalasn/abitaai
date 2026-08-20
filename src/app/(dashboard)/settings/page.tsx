@@ -760,40 +760,40 @@ export default function SettingsPage() {
         </div>
 
         {/* Main Layout = Sidebar + Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex relative overflow-hidden">
           {/* ─── Sidebar ─── */}
-          <aside className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-white/50 dark:bg-[#111111]/30 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-72' : 'w-0 opacity-0 pointer-events-none'}`}>
+          <aside className={`absolute inset-y-0 left-0 z-40 md:relative shrink-0 md:border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#111111] md:bg-white/50 md:dark:bg-[#111111]/30 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none h-full w-[280px] md:w-72 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 md:pointer-events-none'}`}>
             <div className="flex-1 overflow-y-auto flex flex-col">
 
               {/* Navigation for non-admins (or shared) */}
               <div className="p-4 space-y-1">
                 <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 px-2">Configuración General</h3>
                 <button
-                  onClick={() => { setActiveSection('profile'); setSelectedAgentId(null); }}
+                  onClick={() => { setActiveSection('profile'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'profile' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
                 >
                   <User size={18} /> Mi Perfil
                 </button>
                 <button
-                  onClick={() => { setActiveSection('notifications'); setSelectedAgentId(null); }}
+                  onClick={() => { setActiveSection('notifications'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'notifications' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
                 >
                   <Bell size={18} /> Notificaciones
                 </button>
                 <button
-                  onClick={() => { setActiveSection('connections'); setSelectedAgentId(null); }}
+                  onClick={() => { setActiveSection('connections'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'connections' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
                 >
                   <Globe size={18} /> Conexiones
                 </button>
                 <button
-                  onClick={() => { setActiveSection('tools'); setSelectedAgentId(null); }}
+                  onClick={() => { setActiveSection('tools'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'tools' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
                 >
                   <Puzzle size={18} /> Herramientas
                 </button>
                 <button
-                  onClick={() => { setActiveSection('botConfig'); setSelectedAgentId(null); }}
+                  onClick={() => { setActiveSection('botConfig'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'botConfig' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
                 >
                   <Bot size={18} /> Asistente IA
@@ -829,7 +829,7 @@ export default function SettingsPage() {
                     {agents.map(agent => (
                       <button
                         key={agent.id}
-                        onClick={() => { selectAgent(agent); setActiveSection('agent'); }}
+                        onClick={() => { selectAgent(agent); setActiveSection('agent'); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
                         className={`w-full text-left p-3 rounded-xl border transition-all group ${activeSection === 'agent' && selectedAgentId === agent.id
                           ? 'border-[#F36A2D] bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 shadow-sm'
                           : 'border-transparent hover:border-[#DEDAD0] dark:hover:border-zinc-700 hover:bg-white/60 dark:hover:bg-zinc-900/40'
@@ -928,6 +928,14 @@ export default function SettingsPage() {
               </div>
             </div>
           </aside>
+
+          {/* Backdrop para móviles */}
+          {isSidebarOpen && (
+            <div 
+              className="md:hidden absolute inset-0 bg-black/40 z-30"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
 
           {/* ─── Main Content ─── */}
           <div className="flex-1 overflow-auto bg-zinc-50/50 dark:bg-transparent">

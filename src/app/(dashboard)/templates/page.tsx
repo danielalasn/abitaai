@@ -945,7 +945,7 @@ export default function TemplatesPage() {
           </div>
           <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Templates</h1>
           <span className="text-[10px] font-black text-[#6F6F6F] bg-white/60 dark:bg-white/5 px-2 py-0.5 rounded-full">
-            {templates.length} total
+            {templates.length}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -959,10 +959,10 @@ export default function TemplatesPage() {
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#F36A2D] text-white rounded-xl font-bold text-sm hover:bg-[#e0601a] transition-colors shadow-lg shadow-[#F36A2D]/20"
+            className="flex items-center justify-center h-9 w-9 bg-[#F36A2D] text-white rounded-xl hover:bg-[#e0601a] transition-colors shadow-lg shadow-[#F36A2D]/20"
+            title="Nueva plantilla"
           >
             <Plus size={16} />
-            Nueva plantilla
           </button>
         </div>
       </header>
