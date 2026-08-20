@@ -474,7 +474,22 @@ export async function getHandoffTemplateStatus(): Promise<string | null> {
   return (project as any).handoffTemplateStatus || null;
 }
 
+export async function getPushSubscriptionSettings(endpoint: string) {
+  const sub = await prisma.pushSubscription.findUnique({ where: { endpoint } });
+  if (!sub) return null;
+  return {
+    notifyHandoffs: sub.notifyHandoffs,
+    notifyAllMessages: sub.notifyAllMessages
+  };
+}
 
+export async function updatePushSubscriptionSettings(endpoint: string, notifyHandoffs: boolean, notifyAllMessages: boolean) {
+  await prisma.pushSubscription.update({
+    where: { endpoint },
+    data: { notifyHandoffs, notifyAllMessages }
+  });
+  return { success: true };
+}
 
 
 // ──────────────────────────────────────────────

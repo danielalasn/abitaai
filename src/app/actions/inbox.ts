@@ -20,12 +20,12 @@ export async function getActiveChats(_timestamp?: number) {
   const chats = await prisma.chat.findMany({
     where: {
       isArchived: false,
-      lead: { 
+      lead: {
         projectId: project.id,
         NOT: { channel: 'simulator' }
       }
     },
-    include: { 
+    include: {
       lead: {
         include: {
           project: { select: { leadScoringEnabled: true } },
@@ -73,7 +73,7 @@ export async function getChatMessages(chatId: string) {
     where: { id: chatId },
     include: {
       lead: {
-        include: { 
+        include: {
           project: true,
           latestCampaign: { select: { name: true } }
         }
@@ -97,7 +97,7 @@ export async function getChatMessages(chatId: string) {
     select: { campaign: { select: { id: true, name: true } } },
     distinct: ['campaignId']
   });
-  
+
   (chat.lead as any).allCampaigns = campaignLogs.map(l => l.campaign);
 
   return {
@@ -114,13 +114,13 @@ export async function getChatMessagesPaginated(chatId: string, limit = 30) {
 
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
-    include: { 
-      lead: { 
-        include: { 
+    include: {
+      lead: {
+        include: {
           project: true,
           latestCampaign: { select: { name: true } }
-        } 
-      } 
+        }
+      }
     }
   });
 
@@ -201,7 +201,7 @@ export async function toggleBotActive(chatId: string, botActive: boolean) {
     data: { botActive, lastActiveAt: new Date() },
     select: { leadId: true }
   });
-  
+
   if (botActive && chat?.leadId) {
     // Si la IA vuelve a encenderse, el status se reinicia a PENDING
     await prisma.lead.update({
@@ -214,7 +214,7 @@ export async function toggleBotActive(chatId: string, botActive: boolean) {
 export async function toggleAutoWakeBot(chatId: string, autoWakeBot: boolean) {
   const project = await getCurrentProject();
   if (!project) throw new Error("No project found");
-  
+
   const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
   if (!chatToVerify || chatToVerify.lead.projectId !== project.id) {
     throw new Error("Chat not found or project mismatch");
@@ -283,7 +283,7 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
     }
 
     const pushSubscriptions = await prisma.pushSubscription.findMany({
-      where: { clientId: lead.project.clientId }
+      where: { clientId: lead.project.clientId, notifyHandoffs: true }
     });
 
     if (pushSubscriptions.length > 0 && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -294,7 +294,7 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
       );
 
       const payload = JSON.stringify({
-        title: 'Handoff Requerido',
+        title: 'Handoff',
         body: `El lead ${lead.name || lead.phone} requiere atención manual.`,
         chatId: chatId,
       });
@@ -307,7 +307,7 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
           ).catch((e: any) => {
             console.error('[Web Push] Error enviando push:', e);
             if (e.statusCode === 410 || e.statusCode === 404) {
-               prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(()=>{});
+              prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => { });
             }
           })
         );
@@ -317,15 +317,15 @@ export async function requestHandoff(chatId: string, skipAuth = false) {
     await Promise.allSettled(promises);
   }
 
-  try { revalidatePath('/') } catch (e) {};
+  try { revalidatePath('/') } catch (e) { };
 }
 
 // Simula la recepción de un mensaje a través del webhook guardándolo en BD (Chat + Mensajes)
 export async function simulateIncomingMessage(
-  phone: string, 
-  text: string, 
-  name?: string, 
-  phoneId?: string, 
+  phone: string,
+  text: string,
+  name?: string,
+  phoneId?: string,
   channel: 'whatsapp' | 'instagram' = 'whatsapp',
   fallbackProjectId?: string,
   mediaUrl?: string,
@@ -371,9 +371,9 @@ export async function simulateIncomingMessage(
 
   // Buscar o crear Lead
   let currentLead = await prisma.lead.findFirst({
-    where: { 
-        projectId: project.id,
-        phone: { in: possiblePhones }
+    where: {
+      projectId: project.id,
+      phone: { in: possiblePhones }
     },
     include: { chat: true }
   });
@@ -405,8 +405,8 @@ export async function simulateIncomingMessage(
   let chat = currentLead.chat;
   if (!chat) {
     chat = await prisma.chat.create({
-      data: { 
-        leadId: currentLead.id, 
+      data: {
+        leadId: currentLead.id,
         channel,
         botActive: project.defaultBotActive ?? true,
         autoWakeBot: project.defaultBotActive ?? true
@@ -418,7 +418,7 @@ export async function simulateIncomingMessage(
   const isImage = mediaType === 'image';
   // Si el tipo de mensaje es 'button', marcar como button_reply para reportes de campaña
   const effectiveMediaType = messageType === 'button' ? 'button_reply' : mediaType;
-  
+
   await prisma.message.create({
     data: {
       chatId: chat.id,
@@ -437,17 +437,58 @@ export async function simulateIncomingMessage(
     data: { lastActiveAt: new Date(), isArchived: false }
   });
 
-  try { try { revalidatePath('/') } catch (e) {}; } catch (e) {}
+  // Notificación Push para TODOS los mensajes (si el usuario lo tiene activo)
+  const allMsgSubs = await prisma.pushSubscription.findMany({
+    where: { clientId: project.clientId, notifyAllMessages: true }
+  });
+
+  if (allMsgSubs.length > 0 && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      'mailto:contacto@abitaai.com',
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+
+    const displayName = name || phone;
+    let truncatedText = text.length > 50 ? text.substring(0, 47) + '...' : text;
+    if (!truncatedText.trim() && (mediaType || messageType)) {
+      truncatedText = `Envio un archivo adjunto.`;
+    }
+
+    const payload = JSON.stringify({
+      title: displayName,
+      body: truncatedText,
+      chatId: chat.id,
+    });
+
+    const promises = [];
+    for (const sub of allMsgSubs) {
+      promises.push(
+        webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload
+        ).catch((e: any) => {
+          console.error('[Web Push] Error enviando push para mensaje normal:', e);
+          if (e.statusCode === 410 || e.statusCode === 404) {
+            prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => { });
+          }
+        })
+      );
+    }
+    await Promise.allSettled(promises);
+  }
+
+  try { try { revalidatePath('/') } catch (e) { }; } catch (e) { }
   return chat.id;
 }
 
 // Guarda la respuesta generada por la IA en la BD
 export async function saveAssistantReply(
-  chatId: string, 
-  text: string, 
-  scoreBump: number = 0, 
-  inputTokens: number = 0, 
-  outputTokens: number = 0, 
+  chatId: string,
+  text: string,
+  scoreBump: number = 0,
+  inputTokens: number = 0,
+  outputTokens: number = 0,
   waCategory: string = 'SERVICE',
   agentName?: string,
   scoreReason?: string,
@@ -459,9 +500,9 @@ export async function saveAssistantReply(
   const safeInputTokens = inputTokens ?? 0;
   const safeOutputTokens = outputTokens ?? 0;
   const safeWaCategory = waCategory || 'SERVICE';
-  
+
   console.log(`[saveAssistantReply] chatId=${chatId} inputTokens=${safeInputTokens} outputTokens=${safeOutputTokens} waCategory=${safeWaCategory} (agent: ${agentName})`);
-  
+
   if (wamid) {
     const existing = await prisma.message.findUnique({ where: { wamid } });
     if (existing) {
@@ -486,16 +527,16 @@ export async function saveAssistantReply(
       sendError: sendError || null
     }
   });
-  
+
   await prisma.chat.update({
     where: { id: chatId },
     data: { lastActiveAt: new Date() }
   });
 
   // Lógica de puntuación
-  const chat = await prisma.chat.findUnique({ 
-    where: { id: chatId }, 
-    include: { lead: true, _count: { select: { messages: true } } } 
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: { lead: true, _count: { select: { messages: true } } }
   });
 
   if (chat?.lead) {
@@ -511,15 +552,15 @@ export async function saveAssistantReply(
     if (finalScoreBump !== 0 || (extractedEmail && chat.lead.email !== extractedEmail)) {
       let newScore = (chat.lead.score || 0) + finalScoreBump;
       newScore = Math.max(0, Math.min(100, newScore));
-      
+
       let newHeat = "FRIO";
       if (newScore >= 80) newHeat = "CALIENTE";
       else if (newScore >= 40) newHeat = "TIBIO";
 
       await prisma.lead.update({
         where: { id: chat.lead.id },
-        data: { 
-          score: newScore, 
+        data: {
+          score: newScore,
           heat: newHeat,
           email: extractedEmail || chat.lead.email
         }
@@ -532,7 +573,7 @@ export async function saveAssistantReply(
     console.error('[AI Summary] Error en disparo asíncrono:', e)
   );
 
-  try { revalidatePath('/') } catch (e) {};
+  try { revalidatePath('/') } catch (e) { };
 }
 
 // Guarda respuestas y acciones del Agente Humano en el frontend (bot desactivado)
@@ -546,11 +587,12 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
   const chat = await prisma.chat.update({
     where: { id: chatId },
     data: { lastActiveAt: new Date() },
-    include: { 
-      lead: { 
-        include: {           project: true
-        } 
-      } 
+    include: {
+      lead: {
+        include: {
+          project: true
+        }
+      }
     }
   });
 
@@ -575,24 +617,24 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
 
     const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
     console.log(`[Manual Agent Text] Sending to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
-    
-    if (phone && phoneId && resolvedToken) {
-        const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
-        console.log(`[Manual Agent Text] Result:`, result);
-        waSendSuccess = result.success;
-        waCategory = result.category;
-        wamid = result.messageId;
 
-        if (!result.success) {
-          waSendError = result.friendlyError || 'Error desconocido al enviar mensaje';
-          console.error(`[Manual Agent] FALLO al enviar a ${phone}: ${waSendError}`);
-        } else {
-          console.log(`[Manual Agent] Mensaje enviado a ${phone} (categoría: ${waCategory})`);
-        }
+    if (phone && phoneId && resolvedToken) {
+      const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
+      console.log(`[Manual Agent Text] Result:`, result);
+      waSendSuccess = result.success;
+      waCategory = result.category;
+      wamid = result.messageId;
+
+      if (!result.success) {
+        waSendError = result.friendlyError || 'Error desconocido al enviar mensaje';
+        console.error(`[Manual Agent] FALLO al enviar a ${phone}: ${waSendError}`);
+      } else {
+        console.log(`[Manual Agent] Mensaje enviado a ${phone} (categoría: ${waCategory})`);
+      }
     } else {
-        waSendSuccess = false;
-        waSendError = 'Configura el Phone Number ID y el CRM Token en Ajustes antes de enviar mensajes.';
-        console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas.');
+      waSendSuccess = false;
+      waSendError = 'Configura el Phone Number ID y el CRM Token en Ajustes antes de enviar mensajes.';
+      console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas.');
     }
   }
 
@@ -606,18 +648,18 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
 
   // Guardar en BD local — el mensaje se guarda siempre para que quede en el historial
   await prisma.message.create({
-    data: { 
-      chatId, 
-      role: 'agent', 
-      content: text, 
-      waCategory, 
+    data: {
+      chatId,
+      role: 'agent',
+      content: text,
+      waCategory,
       wamid,
       status: waSendSuccess ? "SENT" : "ERROR",
       sendError: waSendError || null
     }
   });
 
-  try { revalidatePath('/') } catch (e) {};
+  try { revalidatePath('/') } catch (e) { };
   return { success: waSendSuccess, error: waSendError };
 }
 
@@ -659,7 +701,7 @@ export async function sendAgentMedia(
 
     const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
     console.log(`[Manual Agent Media] Sending media to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
-    
+
     if (phone && phoneId && resolvedToken) {
       const result = await sendWhatsAppMedia(
         phone, mediaUrl, mediaType, phoneId, resolvedToken, caption, filename
@@ -702,7 +744,7 @@ export async function sendAgentMedia(
     }
   });
 
-  try { revalidatePath('/') } catch (e) {};
+  try { revalidatePath('/') } catch (e) { };
   return { success: waSendSuccess, error: waSendError };
 }
 
@@ -717,7 +759,7 @@ export async function deleteChat(chatId: string) {
     where: { id: chatId },
     data: { isArchived: true }
   });
-  try { revalidatePath('/') } catch (e) {};
+  try { revalidatePath('/') } catch (e) { };
 }
 
 // --- ACCIONES EN MASA ---
@@ -739,7 +781,7 @@ export async function bulkArchiveChats(chatIds: string[]) {
       data: { isArchived: true }
     });
   }
-  try { revalidatePath('/') } catch (e) {};
+  try { revalidatePath('/') } catch (e) { };
 }
 
 // Desactiva la IA SOLO en chats donde actualmente está activa
@@ -778,7 +820,7 @@ export async function bulkEnableBot(chatIds: string[]) {
       data: { botActive: true }
     });
   }
-  
+
   // También reiniciamos los leads a PENDING
 
   const leadIds = chats.map(c => c.leadId).filter(Boolean) as string[];
@@ -806,7 +848,7 @@ export async function startIndividualChatAction(
   try {
     const project = await getCurrentProject();
     if (!project) return { success: false, error: 'No se encontró el proyecto base.' };
-    
+
     if (!project.whatsappPhoneId || !project.whatsappToken) {
       return { success: false, error: 'Configura el Phone Number ID y el CRM Token en Ajustes antes de iniciar chats.' };
     }
@@ -881,12 +923,12 @@ export async function startIndividualChatAction(
     // 2. Upsert Chat
     let chat = await prisma.chat.findUnique({ where: { leadId: lead.id } });
     if (!chat) {
-      chat = await prisma.chat.create({ 
-        data: { 
+      chat = await prisma.chat.create({
+        data: {
           leadId: lead.id,
           botActive: botActive,
           autoWakeBot: botActive
-        } 
+        }
       });
     } else {
       chat = await prisma.chat.update({
@@ -918,9 +960,9 @@ export async function startIndividualChatAction(
 
     // 4. Guardar mensaje en el historial (como agente ya que es una acción proactiva nuestra)
     await prisma.message.create({
-      data: { 
-        chatId: chat.id, 
-        role: 'agent', 
+      data: {
+        chatId: chat.id,
+        role: 'agent',
         content: previewText,
         waCategory: waResult.category || 'MARKETING',
         wamid: waResult.messageId,
@@ -935,13 +977,13 @@ export async function startIndividualChatAction(
     // 5. Actualizar última actividad y estado del bot
     await prisma.chat.update({
       where: { id: chat.id },
-      data: { 
+      data: {
         lastActiveAt: new Date(),
-        botActive: botActive 
+        botActive: botActive
       }
     });
 
-    try { try { revalidatePath('/') } catch (e) {}; } catch (e) {}
+    try { try { revalidatePath('/') } catch (e) { }; } catch (e) { }
     return { success: true, chatId: chat.id };
   } catch (error: any) {
     console.error('[startIndividualChatAction] Error:', error);

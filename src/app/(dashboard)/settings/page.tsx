@@ -18,7 +18,7 @@ import {
   updateUserProfile, updateUserPassword,
   getNotificationEmails, saveNotificationEmails,
   getNotificationPhones, saveNotificationPhones,
-  getHandoffTemplateStatus,
+  getHandoffTemplateStatus, getPushSubscriptionSettings, updatePushSubscriptionSettings,
   disconnectWhatsApp
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
@@ -142,10 +142,33 @@ export default function SettingsPage() {
   const [pushStatus, setPushStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [pushErrorMsg, setPushErrorMsg] = useState<string | null>(null)
   const [pushPermissionGranted, setPushPermissionGranted] = useState(false)
+  const [pushEndpoint, setPushEndpoint] = useState<string | null>(null)
+  const [notifyHandoffs, setNotifyHandoffs] = useState(true)
+  const [notifyAllMessages, setNotifyAllMessages] = useState(false)
+  const [isUpdatingPushSettings, setIsUpdatingPushSettings] = useState(false)
+  const [showHandoffConfirmModal, setShowHandoffConfirmModal] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPushPermissionGranted(Notification.permission === 'granted')
+      const granted = Notification.permission === 'granted';
+      setPushPermissionGranted(granted);
+      if (granted && 'serviceWorker' in navigator && 'PushManager' in window) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.pushManager.getSubscription().then(sub => {
+            if (sub) {
+              setPushEndpoint(sub.endpoint);
+              import('@/app/actions/settings').then(m => {
+                m.getPushSubscriptionSettings(sub.endpoint).then(settings => {
+                  if (settings) {
+                    setNotifyHandoffs(settings.notifyHandoffs);
+                    setNotifyAllMessages(settings.notifyAllMessages);
+                  }
+                });
+              });
+            }
+          });
+        });
+      }
     }
   }, [])
 
@@ -195,16 +218,38 @@ export default function SettingsPage() {
       
       if (!res.ok) throw new Error('Error guardando la suscripción.');
       
+      setPushEndpoint(subscription.endpoint)
       setPushStatus('success')
       setTimeout(() => setPushStatus('idle'), 4000)
     } catch (e: any) {
-      console.error(e)
+      setPushErrorMsg(e.message || 'Error desconocido.')
       setPushStatus('error')
-      setPushErrorMsg(e.message)
     } finally {
       setIsSubscribingPush(false)
     }
   }
+
+  const handleTogglePushSetting = async (key: 'handoff' | 'all') => {
+    if (!pushEndpoint) return;
+    setIsUpdatingPushSettings(true);
+    try {
+      let newHandoff = notifyHandoffs;
+      let newAll = notifyAllMessages;
+      
+      if (key === 'handoff') newHandoff = !newHandoff;
+      if (key === 'all') newAll = !newAll;
+
+      await updatePushSubscriptionSettings(pushEndpoint, newHandoff, newAll);
+      setNotifyHandoffs(newHandoff);
+      setNotifyAllMessages(newAll);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsUpdatingPushSettings(false);
+      setShowHandoffConfirmModal(false);
+    }
+  };
+
 
   const loadIgStatus = useCallback(async () => {
     const integration = await getIntegrationStatus('meta_instagram')
@@ -1367,25 +1412,71 @@ export default function SettingsPage() {
                   </div>
                   
                   {/* Web Push Notifications Card */}
-                  <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500">
+                  <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500 relative overflow-hidden">
+                    {/* Modal Confirmación Handoff */}
+                    {showHandoffConfirmModal && (
+                      <div className="absolute inset-0 bg-white/95 dark:bg-[#111111]/95 z-10 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm animate-in fade-in">
+                        <AlertCircle className="text-red-500 mb-3" size={32} />
+                        <h4 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0] mb-2">¿Desactivar Handoffs?</h4>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">Si desactivas esto, podrías no enterarte cuando un cliente necesite atención humana urgente.</p>
+                        <div className="flex gap-3 w-full max-w-[200px]">
+                          <button onClick={() => setShowHandoffConfirmModal(false)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+                          <button onClick={() => handleTogglePushSetting('handoff')} className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-colors flex items-center justify-center">
+                            {isUpdatingPushSettings ? <Loader2 size={14} className="animate-spin" /> : 'Sí, apagar'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-3 mb-6">
                       <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
                         <Bell className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones Web (Push)</h3>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Recibe una notificación push en este dispositivo cuando ocurra un handoff.</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Recibe alertas en este dispositivo.</p>
                       </div>
                     </div>
                     
-                    <button
-                      onClick={handleSubscribePush}
-                      disabled={isSubscribingPush || pushPermissionGranted}
-                      className={`w-full bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all flex items-center justify-center gap-2 ${pushPermissionGranted ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'}`}
-                    >
-                      {isSubscribingPush ? <Loader2 size={16} className="animate-spin" /> : pushStatus === 'success' || pushPermissionGranted ? <><CheckCircle2 size={16} /> ¡Activo en este dispositivo!</> : 'Activar Notificaciones Web'}
-                    </button>
-                    {pushStatus === 'error' && <p className="text-red-500 text-xs mt-2 text-center">{pushErrorMsg}</p>}
+                    {!pushPermissionGranted ? (
+                      <button
+                        onClick={handleSubscribePush}
+                        disabled={isSubscribingPush}
+                        className={`w-full bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all flex items-center justify-center gap-2 active:scale-[0.98]`}
+                      >
+                        {isSubscribingPush ? <Loader2 size={16} className="animate-spin" /> : 'Activar Notificaciones Web'}
+                      </button>
+                    ) : (
+                      <div className="space-y-5 border-t border-[#DEDAD0] dark:border-zinc-800/80 pt-5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col pr-4">
+                            <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Handoffs</span>
+                            <span className="text-xs text-zinc-500 mt-0.5">Alerta cuando requieran atención manual.</span>
+                          </div>
+                          <button
+                            onClick={() => notifyHandoffs ? setShowHandoffConfirmModal(true) : handleTogglePushSetting('handoff')}
+                            disabled={isUpdatingPushSettings && !showHandoffConfirmModal}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyHandoffs ? 'bg-[#F36A2D]' : 'bg-zinc-300 dark:bg-zinc-700'} ${(isUpdatingPushSettings && !showHandoffConfirmModal) ? 'opacity-50' : ''}`}
+                          >
+                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyHandoffs ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col pr-4">
+                            <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Todos los mensajes</span>
+                            <span className="text-xs text-zinc-500 mt-0.5">Recibe notificación por cada mensaje.</span>
+                          </div>
+                          <button
+                            onClick={() => handleTogglePushSetting('all')}
+                            disabled={isUpdatingPushSettings}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyAllMessages ? 'bg-[#F36A2D]' : 'bg-zinc-300 dark:bg-zinc-700'} ${isUpdatingPushSettings ? 'opacity-50' : ''}`}
+                          >
+                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyAllMessages ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {pushStatus === 'error' && <p className="text-red-500 text-xs mt-3 text-center">{pushErrorMsg}</p>}
                   </div>
                 </div>
               </div>

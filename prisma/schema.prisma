@@ -342,9 +342,11 @@ enum SubscriptionStatus {
 model PushSubscription {
   id        String   @id @default(cuid())
   clientId  String
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  createdAt DateTime @default(now())
+  endpoint          String   @unique
+  p256dh            String
+  auth              String
+  notifyHandoffs    Boolean  @default(true)
+  notifyAllMessages Boolean  @default(false)
+  createdAt         DateTime @default(now())
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
