@@ -551,7 +551,7 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      <div className="flex-1 overflow-auto p-8 pb-24 md:pb-8">
+      <div className="flex-1 overflow-auto p-8 pb-8">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
           
           <div className="space-y-6 flex flex-col lg:h-[calc(100vh-180px)]">

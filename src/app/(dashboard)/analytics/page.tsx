@@ -319,7 +319,7 @@ export default function AnalyticsDashboard() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-8 pb-24 md:pb-8">
+        <div className="flex-1 overflow-auto p-8 pb-8">
           <div className="max-w-7xl mx-auto space-y-8">
 
             {/* TIER CARD AND ABITA LIMIT CARD */}

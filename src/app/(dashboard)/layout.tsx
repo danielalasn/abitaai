@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex h-dvh w-full bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans">
+    <div className="flex flex-col md:flex-row h-dvh w-full bg-zinc-50 dark:bg-zinc-950 overflow-hidden font-sans">
       {/* Sidebar solo visible en desktop */}
       <div className="hidden md:flex">
         <Sidebar />

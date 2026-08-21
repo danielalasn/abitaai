@@ -1277,7 +1277,7 @@ export default function InboxPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto w-full p-2 pb-24 md:pb-2 space-y-1 relative min-h-0">
+        <div className="flex-1 overflow-y-auto w-full p-2 space-y-1 relative min-h-0">
           {isLoading && chats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-zinc-400">
               <Loader2 className="animate-spin mb-2" size={20} />

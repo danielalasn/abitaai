@@ -402,7 +402,7 @@ export function FilesClientPage() {
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-auto p-8 pb-24 md:pb-8">
+        <div className="flex-1 overflow-auto p-8 pb-8">
           <div className="max-w-7xl mx-auto space-y-8">
             {/* Description card */}
             <div className="bg-white/60 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-5 flex items-start gap-4">
