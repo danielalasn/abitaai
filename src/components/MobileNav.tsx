@@ -31,8 +31,6 @@ export function MobileNav() {
 
   return (
     <>
-      {/* Spacer to prevent content from being hidden behind the fixed bottom nav */}
-      <div className="h-16 md:hidden shrink-0" />
 
       {/* Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#E9E4D8] dark:bg-[#1A1714] border-t border-[#DEDAD0] dark:border-zinc-800/60 pb-safe">
