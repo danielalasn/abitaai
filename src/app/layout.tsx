@@ -30,8 +30,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" suppressHydrationWarning className="h-full antialiased">
-      <body suppressHydrationWarning className="min-h-full flex flex-col">
+    <html lang="es" suppressHydrationWarning className="h-dvh overflow-hidden antialiased">
+      <body suppressHydrationWarning className="h-dvh overflow-hidden flex flex-col">
         <VersionChecker />
         <Providers>{children}</Providers>
         <script

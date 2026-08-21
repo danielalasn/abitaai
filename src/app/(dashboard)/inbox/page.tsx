@@ -495,13 +495,14 @@ export default function InboxPage() {
     const firstMsg = activeChat.messages?.[0];
     if (!firstMsg) return;
 
+    const container = messagesScrollRef.current;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+    const prevScrollTop = container?.scrollTop ?? 0;
+
     setIsLoadingMore(true);
     try {
       const older = await loadMoreMessages(activeChat.id, firstMsg.createdAt, 30);
       if (older && older.length > 0) {
-        const container = messagesScrollRef.current;
-        const prevScrollHeight = container?.scrollHeight ?? 0;
-
         setActiveChat((prev: any) => {
           if (!prev) return prev;
           const newMessages = [...older, ...prev.messages];
@@ -510,11 +511,14 @@ export default function InboxPage() {
           return { ...prev, messages: newMessages, hasMore: newHasMore };
         });
 
-        // Mantener posición de scroll después de prepend
+        // Double rAF: first frame queues the paint, second fires after DOM is updated
         requestAnimationFrame(() => {
-          if (container) {
-            container.scrollTop = container.scrollHeight - prevScrollHeight;
-          }
+          requestAnimationFrame(() => {
+            if (container) {
+              const newScrollHeight = container.scrollHeight;
+              container.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
+            }
+          });
         });
       } else {
         setHasMoreMessages(false);
