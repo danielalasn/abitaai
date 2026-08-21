@@ -141,8 +141,8 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1A1714] w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#1A1714] w-full max-w-4xl h-[95vh] md:h-[85vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
@@ -172,10 +172,10 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
             {error}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
             
             {/* LEFT PANEL: Calendar Grid */}
-            <div className="w-full md:w-[60%] border-r border-[#DEDAD0] dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-black/20">
+            <div className="w-full md:w-[60%] shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-black/20">
               
               {/* Calendar Selector (Filter) */}
               {calendars.length > 1 && (
@@ -238,7 +238,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
                       <button
                         key={idx}
                         onClick={() => setSelectedDate(day)}
-                        className={`relative flex flex-col items-center p-1 rounded-xl transition-all min-h-[60px] ${
+                        className={`relative flex flex-col items-center p-1 rounded-xl transition-all min-h-[45px] md:min-h-[60px] ${
                           !isCurrentMonth ? 'opacity-30' : 'opacity-100'
                         } ${
                           isSelected 
@@ -273,7 +273,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
             </div>
 
             {/* RIGHT PANEL: Events List */}
-            <div className="w-full md:w-[40%] flex flex-col bg-white dark:bg-[#1A1714]">
+            <div className="w-full md:w-[40%] shrink-0 min-h-[300px] md:min-h-0 flex flex-col bg-white dark:bg-[#1A1714]">
               <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800">
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white capitalize">
                   {format(selectedDate, 'EEEE, d MMMM', { locale: es })}

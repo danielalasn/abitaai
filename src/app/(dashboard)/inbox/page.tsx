@@ -1139,7 +1139,7 @@ export default function InboxPage() {
     <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714] min-w-0">
       {/* 1. SIDEBAR DE CHATS */}
       {/* Desktop: controlado por isInboxSidebarOpen | Móvil: pantalla completa solo si mobileView === 'list' */}
-      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out
+      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out min-h-0 overflow-hidden
         ${isInboxSidebarOpen ? 'md:w-[300px]' : 'md:w-0 md:opacity-0 md:pointer-events-none'}
         ${mobileView === 'list' ? 'flex w-full' : 'hidden md:flex'}
       `}>
@@ -1277,7 +1277,7 @@ export default function InboxPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto w-full p-2 space-y-1 relative">
+        <div className="flex-1 overflow-y-auto w-full p-2 pb-24 md:pb-2 space-y-1 relative min-h-0">
           {isLoading && chats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-zinc-400">
               <Loader2 className="animate-spin mb-2" size={20} />
@@ -1424,8 +1424,8 @@ export default function InboxPage() {
 
       {/* 2. VENTANA DE CHAT CENTRAL */}
       {/* Desktop: siempre visible | Móvil: solo si mobileView === 'chat' */}
-      <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#1A1714] relative
-        ${mobileView === 'chat' ? 'flex w-full' : 'hidden md:flex'}
+      <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#1A1714]
+        ${mobileView === 'chat' ? 'flex fixed inset-0 z-[60]' : 'hidden md:flex relative'}
       `}>
         {/* Loader de transición rápida */}
         {isChatLoading && (
@@ -1774,7 +1774,7 @@ export default function InboxPage() {
             </div>
 
             {/* CONTROLES DE SIMULACIÓN MVP */}
-            <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-[80px] md:pb-2">
+            <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-4 md:pb-2">
 
               {/* AGENT INPUT */}
               {(() => {
@@ -1965,7 +1965,7 @@ export default function InboxPage() {
 
       {/* 3. SIDEBAR DE PERFIL DE CONTACTO — solo en desktop */}
       <div
-        className={`${mobileView === 'profile' ? 'flex w-full absolute inset-0 z-50' : 'hidden'} md:flex shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'md:w-[300px]' : 'md:w-0 opacity-0 pointer-events-none border-l-0'
+        className={`${mobileView === 'profile' ? 'flex w-full fixed inset-0 z-[60]' : 'hidden'} md:flex shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'md:w-[300px]' : 'md:w-0 opacity-0 pointer-events-none border-l-0'
           }`}
       >
         {activeChat && (isProfileSidebarOpen || mobileView === 'profile') && (

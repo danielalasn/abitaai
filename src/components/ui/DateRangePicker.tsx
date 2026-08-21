@@ -137,16 +137,16 @@ export default function DateRangePicker({ value, onChange, onClear }: Props) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-11 z-[100] flex shadow-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0b0b0d] overflow-hidden animate-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-11 z-[100] flex flex-col md:flex-row shadow-2xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0b0b0d] overflow-hidden animate-in slide-in-from-top-2 duration-150 w-[320px] md:w-auto max-w-[calc(100vw-2rem)]">
           
           {/* Presets */}
-          <div className="w-44 border-r border-zinc-100 dark:border-zinc-800 p-2 flex flex-col gap-0.5">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-400 px-2 py-1">Períodos</p>
+          <div className="w-full md:w-44 border-b md:border-b-0 md:border-r border-zinc-100 dark:border-zinc-800 p-2 flex flex-row md:flex-col overflow-x-auto md:overflow-visible gap-2 md:gap-0.5 no-scrollbar shrink-0">
+            <p className="hidden md:block text-[10px] uppercase font-bold tracking-widest text-zinc-400 px-2 py-1">Períodos</p>
             {PRESETS.map(preset => (
               <button
                 key={preset.label}
                 onClick={() => handlePreset(preset)}
-                className="text-left text-sm px-2.5 py-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                className="shrink-0 whitespace-nowrap text-left text-sm px-3 py-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors bg-zinc-50 dark:bg-zinc-900 md:bg-transparent"
               >
                 {preset.label}
               </button>
@@ -154,7 +154,7 @@ export default function DateRangePicker({ value, onChange, onClear }: Props) {
           </div>
 
           {/* Calendar */}
-          <div className="p-4 w-72">
+          <div className="p-4 w-full md:w-72 shrink-0">
 
             {/* Month nav */}
             <div className="flex items-center justify-between mb-4">
