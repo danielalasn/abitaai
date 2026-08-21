@@ -114,16 +114,18 @@ export default function DateRangePicker({ value, onChange, onClear }: Props) {
       {/* Trigger */}
       <button
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-2 h-9 px-3 rounded-lg border text-sm font-medium transition-all
+        className={`flex items-center justify-between gap-2 h-auto md:h-9 py-2 md:py-0 px-3 rounded-lg border text-xs md:text-sm font-medium transition-all w-full sm:w-auto
           ${open
             ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 dark:border-indigo-500/60 text-indigo-700 dark:text-indigo-300'
             : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700'
           } shadow-sm`}
       >
-        <Calendar size={14} className={open ? 'text-indigo-500' : 'text-zinc-400'} />
-        <span className={hasValue ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}>
-          {displayLabel}
-        </span>
+        <div className="flex items-center gap-2 overflow-hidden">
+          <Calendar size={14} className={`shrink-0 ${open ? 'text-indigo-500' : 'text-zinc-400'}`} />
+          <span className={`whitespace-nowrap truncate ${hasValue ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`}>
+            {displayLabel}
+          </span>
+        </div>
         {hasValue && (
           <span
             role="button"

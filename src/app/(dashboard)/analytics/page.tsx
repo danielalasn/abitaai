@@ -301,7 +301,7 @@ export default function AnalyticsDashboard() {
     <DesktopOnlyGuard>
       <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
         {/* Header */}
-        <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-50 sticky top-0">
+        <header className="shrink-0 min-h-[64px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 md:px-8 py-3 md:py-0 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-50 sticky top-0">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
               <BarChart3 size={18} />
