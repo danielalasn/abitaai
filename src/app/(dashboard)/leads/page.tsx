@@ -175,7 +175,7 @@ export default function LeadsPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto p-8 pb-8">
+      <div className="flex-1 overflow-auto p-8 pb-24 md:pb-8">
         <div className="max-w-7xl mx-auto space-y-6 pb-12">
           
           {/* Toolbar */}
