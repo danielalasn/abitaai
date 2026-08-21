@@ -1136,7 +1136,7 @@ export default function InboxPage() {
   if (!session) return null;
 
   return (
-    <div className="flex h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714] min-w-0">
+    <div className="flex flex-1 h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714] min-w-0 min-h-0">
       {/* 1. SIDEBAR DE CHATS */}
       {/* Desktop: controlado por isInboxSidebarOpen | Móvil: pantalla completa solo si mobileView === 'list' */}
       <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out min-h-0 overflow-hidden

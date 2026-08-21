@@ -22,7 +22,7 @@ export default async function DashboardLayout({
       <div className="hidden md:flex">
         <Sidebar />
       </div>
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0 bg-[#E9E4D8] dark:bg-[#1A1714]">
+      <main className="flex-1 flex flex-col overflow-hidden relative min-w-0 min-h-0 bg-[#E9E4D8] dark:bg-[#1A1714]">
         {children}
       </main>
       <MobileNav />
