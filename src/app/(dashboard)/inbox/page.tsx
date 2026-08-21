@@ -1145,7 +1145,7 @@ export default function InboxPage() {
       {/* Desktop: controlado por isInboxSidebarOpen | Móvil: pantalla completa solo si mobileView === 'list' */}
       <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out min-h-0 overflow-hidden
         ${isInboxSidebarOpen ? 'md:w-[300px]' : 'md:w-0 md:opacity-0 md:pointer-events-none'}
-        ${mobileView === 'list' ? 'flex flex-1 w-full' : 'hidden md:flex'}
+        ${mobileView === 'list' ? 'flex flex-1 md:flex-none w-full' : 'hidden md:flex'}
       `}>
         <div className="relative h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#DEDAD0]/50 dark:bg-[#141210] min-w-[300px]">
           {/* Logo centrado en móvil */}
@@ -1429,7 +1429,7 @@ export default function InboxPage() {
       {/* 2. VENTANA DE CHAT CENTRAL */}
       {/* Desktop: siempre visible | Móvil: solo si mobileView === 'chat' */}
       <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#1A1714]
-        ${mobileView === 'chat' ? 'flex fixed inset-0 z-[60]' : 'hidden md:flex relative'}
+        ${mobileView === 'chat' ? 'flex fixed inset-0 z-[60] md:relative md:inset-auto md:z-auto' : 'hidden md:flex relative'}
       `}>
         {/* Loader de transición rápida */}
         {isChatLoading && (
