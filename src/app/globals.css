@@ -66,8 +66,7 @@ body {
   color: var(--foreground);
   font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
 }
 
 .font-display {
