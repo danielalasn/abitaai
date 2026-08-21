@@ -96,8 +96,8 @@ export default function LearningPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-8">
-        <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <div className="flex-1 overflow-auto p-8 pb-24 md:pb-8">
+        <div className="max-w-6xl mx-auto space-y-8 pb-12">
 
           <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
             <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

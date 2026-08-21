@@ -1212,13 +1212,7 @@ export default function InboxPage() {
                 >
                   <Plus size={18} />
                 </button>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="md:hidden p-1.5 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 rounded-lg transition-all shadow-sm"
-                  title="Cerrar Sesión"
-                >
-                  <LogOut size={18} />
-                </button>
+
               </div>
             </>
           )}
@@ -1780,7 +1774,7 @@ export default function InboxPage() {
             </div>
 
             {/* CONTROLES DE SIMULACIÓN MVP */}
-            <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-2">
+            <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-[80px] md:pb-2">
 
               {/* AGENT INPUT */}
               {(() => {
