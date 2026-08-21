@@ -31,6 +31,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning className="h-full antialiased">
+      <head>
+        {/* 
+          Viewport lock: captura la altura REAL del dispositivo en el primer frame,
+          antes de cualquier scroll. Esto evita el bug de Android Chrome donde la
+          barra de URL al desaparecer/aparecer cambia el viewport height y genera
+          un scrollbar fantasma al hacer refresh.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            var h = window.innerHeight;
+            document.documentElement.style.setProperty('--app-height', h + 'px');
+          })();
+        `}} />
+      </head>
       <body suppressHydrationWarning className="min-h-full flex flex-col">
         <VersionChecker />
         <Providers>{children}</Providers>
