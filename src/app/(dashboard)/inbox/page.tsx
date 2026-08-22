@@ -638,7 +638,22 @@ export default function InboxPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+
+      // WhatsApp acepta: audio/ogg (opus), audio/mp4, audio/aac, audio/mpeg, audio/amr
+      // audio/webm NO está soportado por WhatsApp → usar ogg/opus o mp4
+      const preferredMimeTypes = [
+        'audio/ogg; codecs=opus',
+        'audio/mp4',
+        'audio/webm; codecs=opus',
+        'audio/webm',
+      ];
+      const supportedMime = preferredMimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+      const recorder = supportedMime
+        ? new MediaRecorder(stream, { mimeType: supportedMime })
+        : new MediaRecorder(stream);
+      const actualMime = recorder.mimeType || supportedMime || 'audio/webm';
+
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -647,9 +662,9 @@ export default function InboxPage() {
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
         if (audioBlob.size > 0) {
-          await handleSendVoiceNote(audioBlob);
+          await handleSendVoiceNote(audioBlob, actualMime);
         }
         stream.getTracks().forEach(track => track.stop());
       };
@@ -693,7 +708,7 @@ export default function InboxPage() {
   const MAX_FILE_SIZE_MB = 10;
   const MAX_VOICE_SIZE_MB = 5;
 
-  const handleSendVoiceNote = async (blob: Blob) => {
+  const handleSendVoiceNote = async (blob: Blob, mimeType?: string) => {
     if (!activeChat) return;
 
     // Validar tamaño antes de subir
@@ -705,16 +720,27 @@ export default function InboxPage() {
 
     setIsUploadingMedia(true);
     try {
-      const fileName = `voice-note-${Date.now()}.webm`;
-      const file = new File([blob], fileName, { type: 'audio/webm' });
+      // Determinar extensión según el mime type real del recorder
+      const mime = mimeType || blob.type || 'audio/ogg';
+      let ext = 'ogg';
+      if (mime.includes('mp4')) ext = 'mp4';
+      else if (mime.includes('webm')) ext = 'webm';
+      else if (mime.includes('mpeg') || mime.includes('mp3')) ext = 'mp3';
+
+      const fileName = `voice-note-${Date.now()}.${ext}`;
+      const file = new File([blob], fileName, { type: mime });
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('path', `chats/${activeChat.id}`);
 
       const uploadResult = await uploadFileAction(formData);
-      if (uploadResult.url) {
-        await sendAgentMedia(activeChat.id, uploadResult.url, 'audio', fileName);
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error((uploadResult as any).error || 'Error al subir el audio');
+      }
+
+      const result = await sendAgentMedia(activeChat.id, uploadResult.url, 'audio', fileName);
+      if (!result.success) {
+        alert('Error al enviar la nota de voz: ' + (result.error || 'Error desconocido'));
       }
     } catch (err) {
       console.error("Error enviando nota de voz:", err);
