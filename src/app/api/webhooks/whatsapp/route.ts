@@ -89,9 +89,19 @@ export async function POST(req: NextRequest) {
     }
 
     if (status) {
-      // Lógica de actualización de estados (simplificada para el ejemplo, pero mantenemos la funcionalidad)
       const currentStatus = status.status.toUpperCase();
-      await prisma.message.updateMany({ where: { wamid: status.id }, data: { status: currentStatus } });
+      if (currentStatus === 'FAILED') {
+        console.error('[Webhook WhatsApp] Mensaje fallido. Estado completo:', JSON.stringify(status, null, 2));
+        
+        // Si hay errores, guardarlos en el mensaje para verlos en la UI
+        const errorMsg = status.errors?.[0]?.message || status.errors?.[0]?.title || 'Error desconocido asíncrono';
+        await prisma.message.updateMany({ 
+          where: { wamid: status.id }, 
+          data: { status: currentStatus, sendError: `Meta Error: ${errorMsg}` } 
+        });
+      } else {
+        await prisma.message.updateMany({ where: { wamid: status.id }, data: { status: currentStatus } });
+      }
       await prisma.campaignLog.updateMany({ where: { wamid: status.id }, data: { status: currentStatus } });
       return NextResponse.json({ status: 'ok' });
     }
