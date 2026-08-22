@@ -38,7 +38,7 @@ export async function uploadFileAction(formData: FormData) {
     if (actualType.startsWith('audio/') || fileName.includes('voice-note')) {
       try {
         console.log('[Storage] Transcodificando audio para WhatsApp...');
-        buffer = await convertToWhatsAppVoiceNote(buffer);
+        buffer = (await convertToWhatsAppVoiceNote(buffer)) as any;
         actualType = 'audio/ogg';
         fileName = fileName.replace(/\.[^/.]+$/, "") + ".ogg";
         filePath = `uploads/${fileName}`;
