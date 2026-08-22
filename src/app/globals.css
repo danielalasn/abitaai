@@ -101,6 +101,15 @@ body {
   }
 }
 
+/* ─── No Scrollbar utility ─── */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── Utility helpers ─── */
 .abita-accent          { color: var(--abita-accent); }
 .abita-accent-bg       { background-color: var(--abita-accent); }
