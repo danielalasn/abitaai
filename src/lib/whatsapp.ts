@@ -115,6 +115,50 @@ export async function sendWhatsAppMessage(
 // ──────────────────────────────────────────────
 export type WaMediaType = 'image' | 'document' | 'video' | 'audio'
 
+// ──────────────────────────────────────────────
+// Upload media to WhatsApp Media API and return the media ID.
+// This is required to send Voice Notes (audio as voice note, not audio file).
+// ──────────────────────────────────────────────
+async function uploadMediaToWhatsApp(
+  mediaUrl: string,
+  mimeType: string,
+  phoneNumberId: string,
+  accessToken: string
+): Promise<string | null> {
+  const API_VERSION = process.env.GRAPH_API_VERSION || 'v25.0';
+  try {
+    // Descargar el archivo desde Supabase
+    const fileRes = await fetch(mediaUrl);
+    if (!fileRes.ok) {
+      console.error('[WA Upload] Error descargando archivo:', mediaUrl);
+      return null;
+    }
+    const fileBuffer = await fileRes.arrayBuffer();
+    const fileBlob = new Blob([fileBuffer], { type: mimeType });
+
+    const formData = new FormData();
+    formData.append('messaging_product', 'whatsapp');
+    formData.append('file', fileBlob, 'voice-note.ogg');
+
+    const uploadRes = await fetch(`https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/media`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: formData,
+    });
+
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok || !uploadData.id) {
+      console.error('[WA Upload] Error al subir media a Meta:', uploadData);
+      return null;
+    }
+    console.log('[WA Upload] Media subida a Meta con ID:', uploadData.id);
+    return uploadData.id as string;
+  } catch (err) {
+    console.error('[WA Upload] Network error:', err);
+    return null;
+  }
+}
+
 export async function sendWhatsAppMedia(
   to: string,
   mediaUrl: string,
@@ -132,9 +176,22 @@ export async function sendWhatsAppMedia(
   const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`
   const cleanTo = to.replace(/[^0-9]/g, '');
 
-  const mediaPayload: any = { link: mediaUrl }
-  if (caption && (mediaType === 'image' || mediaType === 'video')) mediaPayload.caption = caption
-  if (filename && mediaType === 'document') mediaPayload.filename = filename
+  const mediaPayload: any = {}
+  if (mediaType === 'audio') {
+    // Para que WhatsApp muestre como Voice Note, subir primero a Meta Media API y enviar por ID
+    const mediaId = await uploadMediaToWhatsApp(mediaUrl, 'audio/ogg', phoneNumberId, accessToken);
+    if (mediaId) {
+      mediaPayload.id = mediaId;
+    } else {
+      // Fallback: enviar por link (puede salir como audio file generico)
+      console.warn('[WA] No se pudo subir audio a Meta, enviando por link como fallback.');
+      mediaPayload.link = mediaUrl;
+    }
+  } else {
+    mediaPayload.link = mediaUrl;
+    if (caption && (mediaType === 'image' || mediaType === 'video')) mediaPayload.caption = caption;
+    if (filename && mediaType === 'document') mediaPayload.filename = filename;
+  }
 
   try {
     const payload = {
