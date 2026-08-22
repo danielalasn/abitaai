@@ -97,7 +97,7 @@ export function initWorker() {
       if (firstMedia?.mediaType === 'audio' && firstMedia?.mediaUrl) {
         const transcript = await transcribeAudioWithGemini(firstMedia.mediaUrl);
         if (transcript) {
-           finalCombinedText = `[Audio Transcrito]: "${transcript}"\n${finalCombinedText}`.trim();
+           finalCombinedText = `${transcript}\n${finalCombinedText}`.trim();
         }
       }
 

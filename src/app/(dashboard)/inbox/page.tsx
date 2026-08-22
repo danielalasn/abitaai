@@ -730,6 +730,8 @@ export default function InboxPage() {
 
     const fileName = `voice-note-${Date.now()}.${ext}`;
     const chatId = activeChat.id;
+    const formattedTime = `${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}`;
+    const voiceNoteCaption = `Mensaje de voz (${formattedTime})`;
 
     // UI optimista: mostrar la burbuja con relojito INMEDIATAMENTE
     const tempId = 'temp-voice-' + Date.now();
@@ -742,7 +744,7 @@ export default function InboxPage() {
         messages: [...prev.messages, {
           id: tempId,
           role: 'agent',
-          content: fileName,
+          content: voiceNoteCaption,
           mediaUrl: localUrl,
           mediaType: 'audio',
           mediaFilename: fileName,
@@ -764,7 +766,7 @@ export default function InboxPage() {
         throw new Error((uploadResult as any).error || 'Error al subir el audio');
       }
 
-      const result = await sendAgentMedia(chatId, uploadResult.url, 'audio', fileName);
+      const result = await sendAgentMedia(chatId, uploadResult.url, 'audio', fileName, voiceNoteCaption);
 
       // Actualizar el mensaje optimista con el resultado real
       setActiveChat((prev: any) => {
@@ -1457,7 +1459,11 @@ export default function InboxPage() {
                             </div>
                           )}
                           <span className="truncate">
-                            {lastMsg ? lastMsg.content : <span className="italic opacity-50 text-[10px]">Sin mensajes</span>}
+                            {lastMsg ? (
+                              lastMsg.mediaType === 'audio' 
+                                ? (lastMsg.content && lastMsg.content.startsWith('Mensaje de voz') ? lastMsg.content : 'Mensaje de voz') 
+                                : lastMsg.content
+                            ) : <span className="italic opacity-50 text-[10px]">Sin mensajes</span>}
                           </span>
                         </div>
 
@@ -1753,7 +1759,7 @@ export default function InboxPage() {
                         )}
 
                         {/* 5. Contenido del mensaje (sin el tag de respuesta) */}
-                        {msg.content && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && !(msg.role === 'assistant' && msg.mediaUrl) && (
+                        {msg.content && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && msg.mediaType !== 'audio' && !(msg.role === 'assistant' && msg.mediaUrl) && (
                           <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()) }}>
                           </div>
                         )}
