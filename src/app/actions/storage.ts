@@ -13,6 +13,20 @@ export async function uploadFileAction(formData: FormData) {
     const MAX_SIZE = 20 * 1024 * 1024; // 20MB
     if (file.size > MAX_SIZE) throw new Error('El archivo no puede superar 20MB');
 
+    // Inferir mime type real si FormData pierde el tipo (Next.js/Safari issue)
+    let actualType = file.type;
+    if (!actualType || actualType === 'application/octet-stream') {
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith('.ogg')) actualType = 'audio/ogg';
+      else if (lowerName.endsWith('.mp4')) actualType = 'audio/mp4';
+      else if (lowerName.endsWith('.mp3')) actualType = 'audio/mpeg';
+      else if (lowerName.endsWith('.webm')) actualType = 'audio/webm';
+      else if (lowerName.endsWith('.pdf')) actualType = 'application/pdf';
+      else if (lowerName.endsWith('.png')) actualType = 'image/png';
+      else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) actualType = 'image/jpeg';
+      else if (lowerName.endsWith('.mp4')) actualType = 'video/mp4'; // fallback will overlap with audio, but audio is checked first. Better use a simple fallback.
+    }
+
     const fileName = `${uuidv4()}-${file.name.replace(/\s+/g, '_')}`;
     const filePath = `uploads/${fileName}`;
 
@@ -22,7 +36,7 @@ export async function uploadFileAction(formData: FormData) {
     let { data, error } = await supabaseAdmin
       .storage
       .from('media')
-      .upload(filePath, buffer, { contentType: file.type, upsert: false });
+      .upload(filePath, buffer, { contentType: actualType, upsert: false });
 
     if (error && (error.message.includes('not found') || (error as any).status === 404)) {
       await supabaseAdmin.storage.createBucket('media', {
@@ -30,7 +44,7 @@ export async function uploadFileAction(formData: FormData) {
         fileSizeLimit: MAX_SIZE,
       });
       const retry = await supabaseAdmin.storage.from('media').upload(filePath, buffer, {
-        contentType: file.type,
+        contentType: actualType,
         upsert: false,
       });
       data = retry.data;
@@ -44,9 +58,9 @@ export async function uploadFileAction(formData: FormData) {
     return {
       success: true,
       url: publicUrl,
-      mediaType: getWaMediaType(file.type),
+      mediaType: getWaMediaType(actualType),
       filename: file.name,
-      mimeType: file.type,
+      mimeType: actualType,
     };
   } catch (error: any) {
     console.error('[Storage Error]', error);
