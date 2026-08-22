@@ -637,6 +637,10 @@ export default function InboxPage() {
 
   const startRecording = async () => {
     try {
+      // Activar UI inmediatamente para que no se sienta lag
+      setIsRecording(true);
+      setRecordingTime(0);
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       // WhatsApp acepta: audio/ogg (opus), audio/mp4, audio/aac, audio/mpeg, audio/amr
@@ -670,12 +674,11 @@ export default function InboxPage() {
       };
 
       recorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
       recordingIntervalRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
     } catch (err) {
+      setIsRecording(false);
       console.error("Error al acceder al micrófono:", err);
       alert("No se pudo acceder al micrófono. Por favor, revisa los permisos.");
     }
