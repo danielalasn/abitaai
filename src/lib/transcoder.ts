@@ -18,6 +18,9 @@ export async function convertToWhatsAppVoiceNote(inputBuffer: Buffer): Promise<B
     ffmpeg(inputPath)
       .toFormat('ogg')
       .audioCodec('libopus')
+      .audioChannels(1) // WhatsApp exige Mono para renderizar como Voice Note
+      .audioBitrate('32k') // Bitrate estándar de notas de voz
+      .outputOptions('-application', 'voip') // Optimización para voz
       .on('end', () => {
         try {
           const outputBuffer = fs.readFileSync(outputPath);
