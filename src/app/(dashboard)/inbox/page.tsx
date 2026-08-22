@@ -1468,9 +1468,6 @@ export default function InboxPage() {
                 >
                   {isInboxSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
                 </button>
-                <div className="h-10 w-10 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-bold shadow-sm">
-                  {activeChat.lead.name?.[0]?.toUpperCase() || 'a'}
-                </div>
                 <div className="min-w-0 flex-1">
                   <h2 
                     className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
