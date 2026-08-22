@@ -1497,7 +1497,7 @@ export default function InboxPage() {
                   <Trash2 size={18} />
                 </button>
                 <div className="w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
-                <span className="text-sm font-medium text-[#6F6F6F]">IA Activa</span>
+                <span className="text-sm font-medium text-[#6F6F6F]">IA</span>
                 <button
                   onClick={() => setIsBotConfirmModalOpen(true)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${activeChat.botActive ? 'bg-[#F36A2D]' : 'bg-[#DEDAD0] dark:bg-zinc-700'
