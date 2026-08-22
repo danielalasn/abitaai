@@ -183,10 +183,10 @@ export async function sendWhatsAppMedia(
     if (mediaId) {
       mediaPayload.id = mediaId;
     } else {
-      // Fallback: enviar por link (puede salir como audio file generico)
       console.warn('[WA] No se pudo subir audio a Meta, enviando por link como fallback.');
       mediaPayload.link = mediaUrl;
     }
+    mediaPayload.voice = true; // CLAVE: sin esto WhatsApp lo trata como audio basico
   } else {
     mediaPayload.link = mediaUrl;
     if (caption && (mediaType === 'image' || mediaType === 'video')) mediaPayload.caption = caption;
