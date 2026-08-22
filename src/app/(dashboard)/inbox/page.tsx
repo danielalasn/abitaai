@@ -718,18 +718,41 @@ export default function InboxPage() {
       return;
     }
 
+    // Determinar extensión según el mime type real del recorder
+    const mime = mimeType || blob.type || 'audio/ogg';
+    let ext = 'ogg';
+    if (mime.includes('mp4')) ext = 'mp4';
+    else if (mime.includes('webm')) ext = 'webm';
+    else if (mime.includes('mpeg') || mime.includes('mp3')) ext = 'mp3';
+
+    const fileName = `voice-note-${Date.now()}.${ext}`;
+    const chatId = activeChat.id;
+
+    // UI optimista: mostrar la burbuja con relojito INMEDIATAMENTE
+    const tempId = 'temp-voice-' + Date.now();
+    const localUrl = URL.createObjectURL(blob);
+    pendingOptimistic.current.add(tempId);
+    setActiveChat((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        messages: [...prev.messages, {
+          id: tempId,
+          role: 'agent',
+          content: fileName,
+          mediaUrl: localUrl,
+          mediaType: 'audio',
+          mediaFilename: fileName,
+          createdAt: new Date().toISOString(),
+          status: 'pending',
+          sendError: null,
+        }]
+      };
+    });
+
     setIsUploadingMedia(true);
     try {
-      // Determinar extensión según el mime type real del recorder
-      const mime = mimeType || blob.type || 'audio/ogg';
-      let ext = 'ogg';
-      if (mime.includes('mp4')) ext = 'mp4';
-      else if (mime.includes('webm')) ext = 'webm';
-      else if (mime.includes('mpeg') || mime.includes('mp3')) ext = 'mp3';
-
-      const fileName = `voice-note-${Date.now()}.${ext}`;
       const file = new File([blob], fileName, { type: mime });
-
       const formData = new FormData();
       formData.append('file', file);
 
@@ -738,15 +761,34 @@ export default function InboxPage() {
         throw new Error((uploadResult as any).error || 'Error al subir el audio');
       }
 
-      const result = await sendAgentMedia(activeChat.id, uploadResult.url, 'audio', fileName);
-      if (!result.success) {
-        alert('Error al enviar la nota de voz: ' + (result.error || 'Error desconocido'));
-      }
-    } catch (err) {
+      const result = await sendAgentMedia(chatId, uploadResult.url, 'audio', fileName);
+
+      // Actualizar el mensaje optimista con el resultado real
+      setActiveChat((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m: any) =>
+            m.id === tempId
+              ? { ...m, mediaUrl: uploadResult.url, status: result.success ? 'sent' : 'failed', sendError: result.error || null }
+              : m
+          )
+        };
+      });
+    } catch (err: any) {
       console.error("Error enviando nota de voz:", err);
-      alert('Error al enviar la nota de voz. Por favor intenta de nuevo.');
+      setActiveChat((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m: any) =>
+            m.id === tempId ? { ...m, status: 'failed', sendError: err.message || 'Error al enviar' } : m
+          )
+        };
+      });
     } finally {
       setIsUploadingMedia(false);
+      setTimeout(() => { pendingOptimistic.current.delete(tempId); }, 5000);
     }
   };
 
@@ -1751,7 +1793,7 @@ export default function InboxPage() {
                               hour12: true
                             })}
                           </span>
-                          {(isAgent || isBot) && (msg.status === 'failed' || msg.status === 'FAILED') && (
+                          {(isAgent || isBot) && (msg.status === 'failed' || msg.status === 'FAILED' || msg.status === 'ERROR') && (
                             <AlertCircle size={10} className="text-red-400" />
                           )}
                           {(isAgent || isBot) && msg.status === 'pending' && (
@@ -1766,7 +1808,7 @@ export default function InboxPage() {
                           {(isAgent || isBot) && msg.status === 'READ' && (
                             <CheckCheck size={10} className="text-blue-400 opacity-100 dark:text-blue-400" />
                           )}
-                          {(isAgent || isBot) && !['failed', 'FAILED', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
+                          {(isAgent || isBot) && !['failed', 'FAILED', 'ERROR', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
                             <Check size={10} className="opacity-60" />
                           )}
                         </div>
