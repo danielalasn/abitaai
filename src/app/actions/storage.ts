@@ -3,6 +3,7 @@
 import { supabaseAdmin } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { getWaMediaType } from '@/lib/whatsapp';
+import { convertToWhatsAppVoiceNote } from '@/lib/transcoder';
 
 export async function uploadFileAction(formData: FormData) {
 
@@ -24,14 +25,28 @@ export async function uploadFileAction(formData: FormData) {
       else if (lowerName.endsWith('.pdf')) actualType = 'application/pdf';
       else if (lowerName.endsWith('.png')) actualType = 'image/png';
       else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) actualType = 'image/jpeg';
-      else if (lowerName.endsWith('.mp4')) actualType = 'video/mp4'; // fallback will overlap with audio, but audio is checked first. Better use a simple fallback.
+      else if (lowerName.endsWith('.mp4')) actualType = 'video/mp4'; 
     }
 
-    const fileName = `${uuidv4()}-${file.name.replace(/\s+/g, '_')}`;
-    const filePath = `uploads/${fileName}`;
+    let fileName = `${uuidv4()}-${file.name.replace(/\s+/g, '_')}`;
+    let filePath = `uploads/${fileName}`;
 
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    let buffer = Buffer.from(bytes);
+
+    // TRANSCODIFICACIÓN PARA NOTAS DE VOZ (Evita el rechazo de Meta por fMP4/WebM)
+    if (actualType.startsWith('audio/') || fileName.includes('voice-note')) {
+      try {
+        console.log('[Storage] Transcodificando audio para WhatsApp...');
+        buffer = await convertToWhatsAppVoiceNote(buffer);
+        actualType = 'audio/ogg';
+        fileName = fileName.replace(/\.[^/.]+$/, "") + ".ogg";
+        filePath = `uploads/${fileName}`;
+        console.log('[Storage] Audio transcodificado a OGG/Opus exitosamente.');
+      } catch (transcodeErr) {
+        console.error('[Storage] Error al transcodificar audio, usando archivo original:', transcodeErr);
+      }
+    }
 
     let { data, error } = await supabaseAdmin
       .storage
