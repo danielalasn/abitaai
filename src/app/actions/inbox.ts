@@ -452,7 +452,7 @@ export async function simulateIncomingMessage(
     const displayName = name || phone;
     let truncatedText = text.length > 50 ? text.substring(0, 47) + '...' : text;
     if (!truncatedText.trim() && (mediaType || messageType)) {
-      truncatedText = `Envio un archivo adjunto.`;
+      truncatedText = messageType === 'sticker' ? 'Envió un sticker.' : `Envio un archivo adjunto.`;
     }
 
     const payload = JSON.stringify({
