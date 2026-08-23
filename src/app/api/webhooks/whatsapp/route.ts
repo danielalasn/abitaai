@@ -114,8 +114,7 @@ export async function POST(req: NextRequest) {
                message.button?.text || 
                message.interactive?.button_reply?.title || 
                message.interactive?.list_reply?.title ||
-               (message.type === 'reaction' ? `Reaccionó con ${message.reaction?.emoji || 'un emoji'}` : null) ||
-               (message.type === 'sticker' ? '🎪 [Sticker]' : null);
+               (message.type === 'reaction' ? `Reaccionó con ${message.reaction?.emoji || 'un emoji'}` : null);
     const messageType = message.type; // 'text', 'button', 'interactive', 'image', etc.
 
     // Handle reply context
@@ -128,7 +127,7 @@ export async function POST(req: NextRequest) {
 
     // Media processing
     let mediaData: any = {};
-    const mediaTypes = ['image', 'document', 'audio', 'video', 'voice'];
+    const mediaTypes = ['image', 'document', 'audio', 'video', 'voice', 'sticker'];
     if (mediaTypes.includes(message.type)) {
       const mediaObj = message[message.type];
       let project = await prisma.project.findFirst({ where: { whatsappPhoneId: phoneId } });
