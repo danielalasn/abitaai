@@ -186,6 +186,7 @@ export default function InboxPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimeRef = useRef<number>(0); // ref para leer en closures
   
   // Refs para Debounce del Simulador de Cliente (Inbox)
   const clientPendingMessages = useRef<string[]>([]);
@@ -640,6 +641,7 @@ export default function InboxPage() {
       // Activar UI inmediatamente para que no se sienta lag
       setIsRecording(true);
       setRecordingTime(0);
+      recordingTimeRef.current = 0;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -668,14 +670,15 @@ export default function InboxPage() {
       recorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
         if (audioBlob.size > 0) {
-          await handleSendVoiceNote(audioBlob, actualMime);
+          await handleSendVoiceNote(audioBlob, actualMime, recordingTimeRef.current);
         }
         stream.getTracks().forEach(track => track.stop());
       };
 
       recorder.start();
       recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+        recordingTimeRef.current += 1;
+        setRecordingTime(recordingTimeRef.current);
       }, 1000);
     } catch (err) {
       setIsRecording(false);
@@ -711,7 +714,7 @@ export default function InboxPage() {
   const MAX_FILE_SIZE_MB = 10;
   const MAX_VOICE_SIZE_MB = 5;
 
-  const handleSendVoiceNote = async (blob: Blob, mimeType?: string) => {
+  const handleSendVoiceNote = async (blob: Blob, mimeType?: string, elapsedSeconds: number = 0) => {
     if (!activeChat) return;
 
     // Validar tamaño antes de subir
@@ -730,7 +733,7 @@ export default function InboxPage() {
 
     const fileName = `voice-note-${Date.now()}.${ext}`;
     const chatId = activeChat.id;
-    const formattedTime = `${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}`;
+    const formattedTime = `${Math.floor(elapsedSeconds / 60)}:${(elapsedSeconds % 60).toString().padStart(2, '0')}`;
     const voiceNoteCaption = `Mensaje de voz (${formattedTime})`;
 
     // UI optimista: mostrar la burbuja con relojito INMEDIATAMENTE

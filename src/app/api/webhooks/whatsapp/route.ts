@@ -145,6 +145,13 @@ export async function POST(req: NextRequest) {
         if (file) mediaData = { mediaUrl: file.url, mediaType: file.mediaType, mediaFilename: file.filename };
       }
       if (mediaObj.caption) text = mediaObj.caption;
+      // Para notas de voz entrantes, construir texto con duración si viene disponible
+      if ((message.type === 'audio' || message.type === 'voice') && !text) {
+        const durationSec = mediaObj.duration || 0;
+        const mins = Math.floor(durationSec / 60);
+        const secs = durationSec % 60;
+        text = `Mensaje de voz (${mins}:${secs.toString().padStart(2, '0')})`;
+      }
     }
 
     // ─── CHECK BOT ACTIVE STATUS ───
