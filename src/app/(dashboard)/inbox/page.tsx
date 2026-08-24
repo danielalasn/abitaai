@@ -1744,7 +1744,7 @@ export default function InboxPage() {
                         {/* 3. Audio adjunto */}
                         {msg.mediaUrl && msg.mediaType === 'audio' && (
                           <div className="mb-2 w-full pt-1">
-                            <VoiceNotePlayer url={msg.mediaUrl} />
+                            <VoiceNotePlayer url={msg.mediaUrl} variant={isUser ? 'user' : isBot ? 'bot' : 'agent'} />
                           </div>
                         )}
 

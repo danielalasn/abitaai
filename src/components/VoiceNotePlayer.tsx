@@ -5,9 +5,11 @@ import { Play, Pause, Download } from 'lucide-react';
 
 interface VoiceNotePlayerProps {
   url: string;
+  /** 'user' = mensaje entrante (fondo claro), 'agent' = mensaje saliente (fondo oscuro/brand) */
+  variant?: 'user' | 'agent' | 'bot';
 }
 
-export function VoiceNotePlayer({ url }: VoiceNotePlayerProps) {
+export function VoiceNotePlayer({ url, variant = 'user' }: VoiceNotePlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -57,8 +59,37 @@ export function VoiceNotePlayer({ url }: VoiceNotePlayerProps) {
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
+  // Paleta según variante
+  const isAgent = variant === 'agent';
+  const isBot = variant === 'bot';
+
+  // Botón play: naranja siempre, pero fondo del track y texto cambian
+  const trackBg = isAgent
+    ? 'bg-white/20'
+    : isBot
+    ? 'bg-white/20'
+    : 'bg-zinc-400/30';
+
+  const timeColor = isAgent
+    ? 'text-white/60'
+    : isBot
+    ? 'text-white/60'
+    : 'text-[#6F6F6F] dark:text-zinc-400';
+
+  const downloadColor = isAgent
+    ? 'text-white/70 hover:text-white'
+    : isBot
+    ? 'text-white/70 hover:text-white'
+    : 'text-[#F36A2D]';
+
+  const wrapperBg = isAgent
+    ? 'bg-white/5'
+    : isBot
+    ? 'bg-white/5'
+    : 'bg-white/5 dark:bg-white/10';
+
   return (
-    <div className="flex flex-col gap-1.5 w-full max-w-[260px] bg-white/5 dark:bg-white/10 p-3 rounded-2xl border border-white/10 group">
+    <div className={`flex flex-col gap-1.5 w-full max-w-[260px] ${wrapperBg} p-3 rounded-2xl border border-white/10 group`}>
       <audio ref={audioRef} src={url} preload="metadata" />
       
       <div className="flex items-center gap-3">
@@ -77,9 +108,9 @@ export function VoiceNotePlayer({ url }: VoiceNotePlayerProps) {
             value={currentTime}
             onChange={handleSeek}
             onClick={(e) => e.stopPropagation()}
-            className="w-full h-1.5 bg-zinc-400/30 rounded-full appearance-none cursor-pointer accent-[#F36A2D]"
+            className={`w-full h-1.5 ${trackBg} rounded-full appearance-none cursor-pointer accent-[#F36A2D]`}
           />
-          <div className="flex justify-between text-[10px] font-medium text-[#6F6F6F] dark:text-zinc-400">
+          <div className={`flex justify-between text-[10px] font-medium ${timeColor}`}>
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
@@ -92,7 +123,7 @@ export function VoiceNotePlayer({ url }: VoiceNotePlayerProps) {
           target="_blank" 
           download 
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1 text-[10px] font-bold text-[#F36A2D] opacity-0 group-hover:opacity-100 transition-opacity"
+          className={`flex items-center gap-1 text-[10px] font-bold ${downloadColor} opacity-0 group-hover:opacity-100 transition-opacity`}
         >
           <Download size={12} /> Descargar
         </a>
