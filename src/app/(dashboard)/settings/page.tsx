@@ -958,7 +958,7 @@ export default function SettingsPage() {
             )}
             
             {/* Theme Toggle in Settings Sidebar */}
-            <div className="mt-auto border-t border-[#DEDAD0] dark:border-zinc-800/60 p-4">
+            <div className="mt-auto border-t border-[#DEDAD0] dark:border-zinc-800/60 p-4 pb-24 md:pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-1.5 bg-[#F36A2D]/10 rounded-lg">
