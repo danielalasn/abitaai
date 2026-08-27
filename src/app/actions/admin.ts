@@ -68,6 +68,13 @@ export async function getClients() {
     }
   }
   
+  // Mover abita-bot al principio
+  clients.sort((a, b) => {
+    if (a.email === 'abita-bot@abitaai.com') return -1;
+    if (b.email === 'abita-bot@abitaai.com') return 1;
+    return 0;
+  });
+  
   return clients;
 }
 
@@ -469,7 +476,10 @@ export async function getUsageStats(projectId: string, startDate?: string, endDa
 
 export async function getGlobalStats(startDate?: Date, endDate?: Date) {
   await checkAdminAuth();
-  const notSimulator = { phone: { not: 'SIMULADOR_TEST' } };
+  const notSimulator = { 
+    phone: { not: 'SIMULADOR_TEST' },
+    project: { client: { email: { notIn: ['info@abitaai.com', 'abita-bot@abitaai.com'] } } }
+  };
   
   const dateFilter = startDate && endDate ? { createdAt: { gte: startDate, lte: endDate } } : {};
   
@@ -482,10 +492,10 @@ export async function getGlobalStats(startDate?: Date, endDate?: Date) {
     handoffs,
     totalLeads
   ] = await Promise.all([
-    prisma.client.count({ where: { email: { not: 'info@abitaai.com' } } }),
+    prisma.client.count({ where: { email: { notIn: ['info@abitaai.com', 'abita-bot@abitaai.com'] } } }),
     prisma.client.count({ 
       where: { 
-        email: { not: 'info@abitaai.com' }, 
+        email: { notIn: ['info@abitaai.com', 'abita-bot@abitaai.com'] }, 
         subscriptionStatus: 'ACTIVE',
         projects: {
           some: {
@@ -516,8 +526,8 @@ export async function getGlobalStats(startDate?: Date, endDate?: Date) {
       chat: { lead: notSimulator },
       ...dateFilter
     }}),
-    prisma.lead.count({ where: { status: 'NEEDS_AGENT', phone: { not: 'SIMULADOR_TEST' }, ...dateFilter } }),
-    prisma.lead.count({ where: { phone: { not: 'SIMULADOR_TEST' }, ...dateFilter } })
+    prisma.lead.count({ where: { status: 'NEEDS_AGENT', ...notSimulator, ...dateFilter } }),
+    prisma.lead.count({ where: { ...notSimulator, ...dateFilter } })
   ]);
 
   const tokenAgg = await prisma.message.groupBy({
@@ -543,14 +553,30 @@ export async function getGlobalStats(startDate?: Date, endDate?: Date) {
   const waMarketing = await prisma.message.count({ 
     where: { 
       waCategory: 'MARKETING', 
-      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } },
+      chat: { 
+        lead: { 
+          phone: { not: 'SIMULADOR_TEST' }, 
+          project: { 
+            whatsappBusinessId: defaultWabaId,
+            client: { email: { notIn: ['info@abitaai.com', 'abita-bot@abitaai.com'] } }
+          } 
+        } 
+      },
       ...dateFilter
     } 
   });
   const waUtility = await prisma.message.count({ 
     where: { 
       waCategory: 'UTILITY', 
-      chat: { lead: { ...notSimulator, project: { whatsappBusinessId: defaultWabaId } } },
+      chat: { 
+        lead: { 
+          phone: { not: 'SIMULADOR_TEST' }, 
+          project: { 
+            whatsappBusinessId: defaultWabaId,
+            client: { email: { notIn: ['info@abitaai.com', 'abita-bot@abitaai.com'] } }
+          } 
+        } 
+      },
       ...dateFilter
     } 
   });
@@ -600,7 +626,9 @@ export async function getMessageTimeSeries(startDate?: Date, endDate?: Date, pro
       FROM "Message" m
       INNER JOIN "Chat" c ON m."chatId" = c.id
       INNER JOIN "Lead" l ON c."leadId" = l.id
-      WHERE l.phone != 'SIMULADOR_TEST' ${dateFilter} ${projectFilter}
+      INNER JOIN "Project" p ON l."projectId" = p.id
+      INNER JOIN "Client" cl ON p."clientId" = cl.id
+      WHERE l.phone != 'SIMULADOR_TEST' AND cl.email NOT IN ('info@abitaai.com', 'abita-bot@abitaai.com') ${dateFilter} ${projectFilter}
       GROUP BY TO_CHAR(m."createdAt", 'YYYY-MM-DD')
       ORDER BY TO_CHAR(m."createdAt", 'YYYY-MM-DD') ASC
     `;

@@ -608,33 +608,40 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
       data: { status: 'IN_PROGRESS' }
     });
 
-    // 2. Enviar mensaje REAL a WhatsApp vía Meta API
-    const phone = chat.lead.phone;
-    // Aplicar misma lógica que el worker: si el proyecto usa el WABA de Abita, usar SYSTEM_USER_TOKEN
-    const resolvedProject = resolveProjectCredentials(chat.lead.project as any);
-    const phoneId = resolvedProject?.whatsappPhoneId;
-    const token = resolvedProject?.whatsappToken;
-
-    const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
-    console.log(`[Manual Agent Text] Sending to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
-
-    if (phone && phoneId && resolvedToken) {
-      const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
-      console.log(`[Manual Agent Text] Result:`, result);
-      waSendSuccess = result.success;
-      waCategory = result.category;
-      wamid = result.messageId;
-
-      if (!result.success) {
-        waSendError = result.friendlyError || 'Error desconocido al enviar mensaje';
-        console.error(`[Manual Agent] FALLO al enviar a ${phone}: ${waSendError}`);
-      } else {
-        console.log(`[Manual Agent] Mensaje enviado a ${phone} (categoría: ${waCategory})`);
-      }
+    if (chat.lead.channel === 'abita_bot') {
+      // Es un chat interno (Soporte Abita), no intentamos usar WhatsApp
+      waSendSuccess = true;
+      waCategory = 'SERVICE';
+      console.log(`[Manual Agent Text] Respuesta interna guardada para el bot de Abita (${chat.lead.phone})`);
     } else {
-      waSendSuccess = false;
-      waSendError = 'Configura el Phone Number ID y el CRM Token en Ajustes antes de enviar mensajes.';
-      console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas.');
+      // 2. Enviar mensaje REAL a WhatsApp vía Meta API
+      const phone = chat.lead.phone;
+      // Aplicar misma lógica que el worker: si el proyecto usa el WABA de Abita, usar SYSTEM_USER_TOKEN
+      const resolvedProject = resolveProjectCredentials(chat.lead.project as any);
+      const phoneId = resolvedProject?.whatsappPhoneId;
+      const token = resolvedProject?.whatsappToken;
+
+      const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+      console.log(`[Manual Agent Text] Sending to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
+
+      if (phone && phoneId && resolvedToken) {
+        const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
+        console.log(`[Manual Agent Text] Result:`, result);
+        waSendSuccess = result.success;
+        waCategory = result.category;
+        wamid = result.messageId;
+
+        if (!result.success) {
+          waSendError = result.friendlyError || 'Error desconocido al enviar mensaje';
+          console.error(`[Manual Agent] FALLO al enviar a ${phone}: ${waSendError}`);
+        } else {
+          console.log(`[Manual Agent] Mensaje enviado a ${phone} (categoría: ${waCategory})`);
+        }
+      } else {
+        waSendSuccess = false;
+        waSendError = 'Configura el Phone Number ID y el CRM Token en Ajustes antes de enviar mensajes.';
+        console.error('[Manual Agent] No hay credenciales de WhatsApp configuradas.');
+      }
     }
   }
 

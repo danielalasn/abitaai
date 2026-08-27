@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { getSubscriptionUsageAction, getProfileWithMeta } from '@/app/actions/settings'
+import { AbitaBotBubble } from '@/components/AbitaBotBubble'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -140,6 +141,9 @@ export function Sidebar() {
             )}
           </div>
         )}
+
+        <AbitaBotBubble isCollapsed={isCollapsed} />
+        <div className="h-2"></div> {/* Separator */}
 
       </div>
 

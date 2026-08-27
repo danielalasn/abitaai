@@ -1167,21 +1167,34 @@ export default function AdminPage() {
           const campCount = project?._count?.campaigns || 0;
           const status = getClientStatus(client);
 
+          const isBot = client.email === 'abita-bot@abitaai.com';
+
           return (
             <button
               key={client.id}
               onClick={() => handleSelectClient(client)}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-left hover:border-orange-400 dark:hover:border-orange-500 hover:shadow-lg hover:-translate-y-1 transition-all group relative overflow-hidden"
+              className={`border rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-1 transition-all group relative overflow-hidden ${
+                isBot 
+                ? 'bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border-indigo-200 dark:border-indigo-800/60 hover:border-indigo-400 dark:hover:border-indigo-500' 
+                : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-orange-400 dark:hover:border-orange-500'
+              }`}
             >
               <div className="absolute top-0 right-0 p-4 text-zinc-200 dark:text-zinc-800 opacity-60 group-hover:opacity-100 transition-opacity">
-                <Users size={80} />
+                {isBot ? <Bot size={80} className="text-indigo-200 dark:text-indigo-900/40" /> : <Users size={80} />}
               </div>
 
               <div className="relative z-10 flex flex-col h-full">
-                <div className="h-10 w-10 bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-xl flex items-center justify-center font-bold text-xl mb-4">
-                  {client.name.charAt(0).toUpperCase()}
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold text-xl mb-4 ${
+                  isBot
+                  ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+                  : 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400'
+                }`}>
+                  {isBot ? <Bot size={20} /> : client.name.charAt(0).toUpperCase()}
                 </div>
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white line-clamp-1">{client.name}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white line-clamp-1">{client.name}</h3>
+                  {isBot && <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-[9px] uppercase tracking-widest font-bold">Bot Interno</span>}
+                </div>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">{client.email}</p>
                 <div className="flex items-center gap-1.5 mt-2 mb-6">
                   <div className={`h-2 w-2 rounded-full shrink-0 ${status.color}`} title={status.label} />
