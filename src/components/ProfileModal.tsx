@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { updateProfile, verifyCurrentPassword } from '@/app/actions/client';
+import { getProfileWithMeta } from '@/app/actions/settings';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -37,6 +39,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       setIsPasswordVerified(false);
       setIsVerifying(false);
       setMessage(null);
+      // Load avatar
+      getProfileWithMeta().then(p => { if (p.avatarUrl) setAvatarUrl(p.avatarUrl) }).catch(() => {})
     }
   }, [isOpen, session]);
 
@@ -103,8 +107,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-zinc-900 dark:bg-[#EDE9E0] text-white dark:text-zinc-900 rounded-lg flex items-center justify-center font-bold">
-              {name.charAt(0).toUpperCase() || 'U'}
+            <div className="h-8 w-8 bg-zinc-900 dark:bg-[#EDE9E0] text-white dark:text-zinc-900 rounded-lg flex items-center justify-center font-bold overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                name.charAt(0).toUpperCase() || 'U'
+              )}
             </div>
             <h2 className="text-lg font-semibold text-[#111111] dark:text-[#EDE9E0]">Mi Perfil</h2>
           </div>

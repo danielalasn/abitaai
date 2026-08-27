@@ -10,6 +10,7 @@ import {
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
   Mic, Square, ChevronDown, LogOut
 } from "lucide-react";
+import { getProfileWithMeta } from '@/app/actions/settings';
 import { formatWhatsAppText } from '@/lib/utils';
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
@@ -128,6 +129,13 @@ const formatSidebarDate = (date: Date) => {
 
 export default function InboxPage() {
   const { data: session, status } = useSession();
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    getProfileWithMeta().then(p => {
+      if (p.avatarUrl) setUserAvatarUrl(p.avatarUrl);
+    }).catch(console.error);
+  }, []);
   const router = useRouter();
 
   const [chats, setChats] = useState<any[]>([]);
@@ -1744,7 +1752,7 @@ export default function InboxPage() {
                         {/* 3. Audio adjunto */}
                         {msg.mediaUrl && msg.mediaType === 'audio' && (
                           <div className="mb-2 w-full pt-1">
-                            <VoiceNotePlayer url={msg.mediaUrl} variant={isUser ? 'user' : isBot ? 'bot' : 'agent'} />
+                            <VoiceNotePlayer url={msg.mediaUrl} variant={isUser ? 'user' : isBot ? 'bot' : 'agent'} avatarUrl={userAvatarUrl} />
                           </div>
                         )}
 

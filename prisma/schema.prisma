@@ -22,6 +22,7 @@ model Client {
   messageLimit       Int?               @default(1000)
   subscriptionResetDay Int              @default(1)
   failedLoginAttempts Int               @default(0)
+  avatarUrl          String?
   auditLogs          AuditLog[]
   integrations       Integration[]
   projects           Project[]

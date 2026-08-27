@@ -382,7 +382,120 @@ export async function updateUserTheme(userId: string, theme: 'light' | 'dark') {
   return { success: true };
 }
 
-export async function updateUserProfile(userId: string, name: string, email: string) {
+// ──────────────────────────────────────────────
+// Profile with Meta sync
+// ──────────────────────────────────────────────
+
+export async function getProfileWithMeta() {
+  const project = await getCurrentProject();
+  if (!project) throw new Error('Proyecto no encontrado.');
+
+  const client = await prisma.client.findUnique({
+    where: { id: project.clientId },
+    select: { id: true, name: true, email: true, avatarUrl: true }
+  });
+  if (!client) throw new Error('Cliente no encontrado.');
+
+  // Check WhatsApp embedded signup integration
+  const waIntegration = await prisma.integration.findUnique({
+    where: { clientId_provider: { clientId: client.id, provider: 'meta_whatsapp' } },
+    select: { status: true }
+  });
+
+  // WhatsApp embedded signup is active if integration exists OR if project has whatsappPhoneId
+  const phoneId = project.whatsappPhoneId;
+  const rawToken = decrypt(project.whatsappToken) || '';
+  const hasMetaConnected = !!(waIntegration?.status === 'active' || (phoneId && rawToken));
+
+  let metaName: string | null = null;
+  let metaProfilePic: string | null = null;
+
+  if (hasMetaConnected && phoneId && rawToken) {
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v26.0/${phoneId}/whatsapp_business_profile?fields=about,profile_picture_url&access_token=${rawToken}`,
+        { cache: 'no-store' }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const profile = data.data?.[0] || data;
+        metaProfilePic = profile.profile_picture_url || null;
+      }
+      // Also fetch business display name from the phone number
+      const phoneRes = await fetch(
+        `https://graph.facebook.com/v26.0/${phoneId}?fields=verified_name,display_phone_number&access_token=${rawToken}`,
+        { cache: 'no-store' }
+      );
+      if (phoneRes.ok) {
+        const phoneData = await phoneRes.json();
+        metaName = phoneData.verified_name || null;
+      }
+    } catch (e) {
+      console.error('[getProfileWithMeta] Error fetching WA profile:', e);
+    }
+  }
+
+  return {
+    id: client.id,
+    name: client.name,
+    email: client.email,
+    avatarUrl: client.avatarUrl,
+    hasMetaConnected,
+    metaName,
+    metaProfilePic,
+  };
+}
+
+export async function syncProfileFromMeta(): Promise<{ success: boolean; name?: string; avatarUrl?: string; error?: string }> {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, error: 'Proyecto no encontrado.' };
+
+  const phoneId = project.whatsappPhoneId;
+  const rawToken = decrypt(project.whatsappToken) || '';
+
+  if (!phoneId || !rawToken) {
+    return { success: false, error: 'No hay integración de WhatsApp activa. Conecta tu cuenta en Conexiones.' };
+  }
+
+  let profilePicUrl = '';
+  let verifiedName = '';
+
+  // Fetch business profile picture
+  const picRes = await fetch(
+    `https://graph.facebook.com/v26.0/${phoneId}/whatsapp_business_profile?fields=about,profile_picture_url&access_token=${rawToken}`,
+    { cache: 'no-store' }
+  );
+  if (picRes.ok) {
+    const picData = await picRes.json();
+    const profile = picData.data?.[0] || picData;
+    profilePicUrl = profile.profile_picture_url || '';
+  }
+
+  // Fetch verified name
+  const phoneRes = await fetch(
+    `https://graph.facebook.com/v26.0/${phoneId}?fields=verified_name&access_token=${rawToken}`,
+    { cache: 'no-store' }
+  );
+  if (!phoneRes.ok) {
+    const err = await phoneRes.json();
+    return { success: false, error: err.error?.message || 'Error al obtener perfil de WhatsApp.' };
+  }
+  const phoneData = await phoneRes.json();
+  verifiedName = phoneData.verified_name || '';
+
+  await prisma.client.update({
+    where: { id: project.clientId },
+    data: {
+      ...(verifiedName ? { name: verifiedName } : {}),
+      ...(profilePicUrl ? { avatarUrl: profilePicUrl } : {}),
+    }
+  });
+
+  revalidatePath('/settings');
+  return { success: true, name: verifiedName, avatarUrl: profilePicUrl };
+}
+
+export async function updateUserProfile(userId: string, name: string, email: string, avatarUrl?: string) {
   // Check if email already exists for another user
   const existing = await prisma.client.findFirst({
     where: { 
@@ -394,7 +507,7 @@ export async function updateUserProfile(userId: string, name: string, email: str
 
   await prisma.client.update({
     where: { id: userId },
-    data: { name, email }
+    data: { name, email, ...(avatarUrl !== undefined ? { avatarUrl } : {}) }
   });
 
   const { createAuditLog } = await import('@/app/actions/compliance');

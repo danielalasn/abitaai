@@ -11,7 +11,7 @@ import {
 
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { getSubscriptionUsageAction } from '@/app/actions/settings'
+import { getSubscriptionUsageAction, getProfileWithMeta } from '@/app/actions/settings'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -20,6 +20,7 @@ export function Sidebar() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [usageData, setUsageData] = useState<{ limit: number | null, usage: number } | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchUsage = () => {
@@ -29,7 +30,12 @@ export function Sidebar() {
     };
 
     fetchUsage();
-    const interval = setInterval(fetchUsage, 30000); // Refrescar cada 30 segundos
+    const interval = setInterval(fetchUsage, 30000);
+
+    // Load avatar
+    getProfileWithMeta().then(p => {
+      if (p.avatarUrl) setAvatarUrl(p.avatarUrl)
+    }).catch(() => {})
 
     return () => clearInterval(interval);
   }, [pathname])
@@ -163,8 +169,12 @@ export function Sidebar() {
           className="flex items-center gap-4 px-3 py-2 w-full rounded-xl hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left group relative overflow-hidden"
         >
           <div className="w-6 flex items-center justify-center shrink-0">
-            <div className="h-8 w-8 rounded-xl bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-sm font-bold shadow-sm shrink-0 group-hover:scale-105 transition-transform">
-              {userInitial}
+            <div className="h-8 w-8 rounded-xl bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-sm font-bold shadow-sm shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                userInitial
+              )}
             </div>
           </div>
           <div className={`flex flex-col justify-center text-left transition-all duration-300 ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none' : 'opacity-100'}`}>

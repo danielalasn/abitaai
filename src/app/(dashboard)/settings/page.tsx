@@ -19,7 +19,7 @@ import {
   getNotificationEmails, saveNotificationEmails,
   getNotificationPhones, saveNotificationPhones,
   getHandoffTemplateStatus, getPushSubscriptionSettings, updatePushSubscriptionSettings,
-  disconnectWhatsApp
+  disconnectWhatsApp, getProfileWithMeta, syncProfileFromMeta
 } from '@/app/actions/settings'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
 import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
@@ -46,7 +46,7 @@ type AgentSummary = {
 }
 
 export default function SettingsPage() {
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
   const isAdmin = session?.user?.email === 'info@abitaai.com'
 
   // Project-level
@@ -94,6 +94,14 @@ export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'notifications' | 'connections' | 'botConfig' | 'tools'>(isAdmin ? 'agent' : 'profile')
   const [userName, setUserName] = useState("")
   const [userEmail, setUserEmail] = useState("")
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
+  const [hasMetaConnected, setHasMetaConnected] = useState(false)
+  const [metaName, setMetaName] = useState<string | null>(null)
+  const [metaProfilePic, setMetaProfilePic] = useState<string | null>(null)
+  const [isSyncingMeta, setIsSyncingMeta] = useState(false)
+  const [syncMetaStatus, setSyncMetaStatus] = useState<'success' | 'error' | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [avatarUploadStatus, setAvatarUploadStatus] = useState<'success' | 'error' | null>(null)
   const [oldPassword, setOldPassword] = useState("")
   const [userPassword, setUserPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -261,10 +269,23 @@ export default function SettingsPage() {
     setWaIntegration(integration as any)
   }, [])
 
+  const loadProfile = useCallback(async () => {
+    try {
+      const profile = await getProfileWithMeta()
+      setUserName(profile.name)
+      setUserEmail(profile.email)
+      setUserAvatarUrl(profile.avatarUrl)
+      setHasMetaConnected(profile.hasMetaConnected)
+      setMetaName(profile.metaName)
+      setMetaProfilePic(profile.metaProfilePic)
+    } catch (e) { console.error(e) }
+  }, [])
+
   useEffect(() => {
     loadProject()
     loadIgStatus()
     loadWaStatus()
+    loadProfile()
     const tab = searchParams.get('tab')
     const success = searchParams.get('success')
     const error = searchParams.get('error')
@@ -379,6 +400,45 @@ export default function SettingsPage() {
     setIsSaving(false)
   }
 
+  const handleSyncMeta = async () => {
+    setIsSyncingMeta(true); setSyncMetaStatus(null)
+    const result = await syncProfileFromMeta()
+    if (result.success) {
+      if (result.name) setUserName(result.name)
+      if (result.avatarUrl) setUserAvatarUrl(result.avatarUrl)
+      setSyncMetaStatus('success')
+      setTimeout(() => setSyncMetaStatus(null), 3000)
+    } else {
+      setSyncMetaStatus('error')
+      setTimeout(() => setSyncMetaStatus(null), 3000)
+    }
+    setIsSyncingMeta(false)
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploadingAvatar(true); setAvatarUploadStatus(null)
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch('/api/profile/upload-avatar', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (data.success) {
+        setUserAvatarUrl(data.avatarUrl)
+        setAvatarUploadStatus('success')
+        setTimeout(() => setAvatarUploadStatus(null), 3000)
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error al subir la imagen')
+      setAvatarUploadStatus('error')
+    }
+    setIsUploadingAvatar(false)
+    e.target.value = ''
+  }
+
   const handleUpdateProfile = async () => {
     const user = session?.user as any
     if (!user?.id) return
@@ -386,6 +446,8 @@ export default function SettingsPage() {
     try {
       await updateUserProfile(user.id, userName, userEmail)
       setProfileStatus('success')
+      // Update session so sidebar name refreshes immediately
+      await updateSession({ ...session, user: { ...session?.user, name: userName, email: userEmail } })
       setTimeout(() => setProfileStatus(null), 3000)
     } catch (e: any) {
       alert(e.message)
@@ -1000,15 +1062,27 @@ export default function SettingsPage() {
                   {/* Visual Identity Card */}
                   <div className="group h-full">
                     <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500 h-full">
-                      <div className="relative mb-6">
+
+                      {/* Avatar */}
+                      <div className="relative mb-5">
                         <div className="absolute inset-0 bg-gradient-to-tr from-[#F36A2D] to-[#FF9E7A] rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-                        <div className="relative w-20 h-20 bg-[#F36A2D]/10 text-[#F36A2D] rounded-full flex items-center justify-center ring-4 ring-[#F36A2D]/5 transition-transform duration-500 group-hover:scale-105">
-                          <User size={40} strokeWidth={1.5} />
+                        <div className={`relative w-24 h-24 rounded-full ring-4 ring-[#F36A2D]/10 overflow-hidden transition-transform duration-500 ${!hasMetaConnected ? 'group-hover:scale-105' : ''}`}>
+                          {userAvatarUrl ? (
+                            <img src={userAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-[#F36A2D]/10 text-[#F36A2D] flex items-center justify-center">
+                              <User size={40} strokeWidth={1.5} />
+                            </div>
+                          )}
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 bg-emerald-500 border-2 border-white dark:border-[#111111] w-5 h-5 rounded-full shadow-md" />
+                        {hasMetaConnected && (
+                          <div className="absolute -bottom-1 -right-1 border-2 border-white dark:border-[#111111] w-7 h-7 rounded-full flex items-center justify-center shadow-md bg-[#25D366]" title="Foto de WhatsApp Business">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="space-y-1 mb-6">
+                      <div className="space-y-1 mb-4">
                         <h3 className="text-xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">{userName || 'Usuario'}</h3>
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-full">
                           <ShieldCheck size={10} className="text-[#F36A2D]" />
@@ -1016,7 +1090,52 @@ export default function SettingsPage() {
                         </div>
                       </div>
 
-                      <div className="w-full space-y-3 pt-6 border-t border-zinc-100 dark:border-zinc-800/60 flex-1">
+                      {/* WhatsApp Business sync — always visible */}
+                      {hasMetaConnected ? (
+                        <div className="w-full mb-4 p-3 rounded-2xl bg-[#25D366]/8 dark:bg-[#25D366]/10 border border-[#25D366]/20 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366" className="shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-black text-[#25D366] uppercase tracking-widest">WhatsApp Business conectado</p>
+                              {metaName && <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate">{metaName}</p>}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSyncMeta}
+                            disabled={isSyncingMeta}
+                            className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 ${
+                              syncMetaStatus === 'success' ? 'bg-emerald-500 text-white' :
+                              syncMetaStatus === 'error' ? 'bg-red-500 text-white' :
+                              'bg-[#25D366] hover:bg-[#1da851] text-white'
+                            }`}
+                          >
+                            {isSyncingMeta ? <Loader2 size={11} className="animate-spin" /> :
+                             syncMetaStatus === 'success' ? <><CheckCircle2 size={11} /> Listo</> :
+                             syncMetaStatus === 'error' ? 'Error' :
+                             'Sincronizar'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-full mb-4 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-zinc-400 shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">WhatsApp Business</p>
+                              <p className="text-[10px] text-zinc-400 truncate">Conecta para importar foto y nombre de Meta</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setActiveSection('connections')}
+                            className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-[#F36A2D] transition-all whitespace-nowrap"
+                          >
+                            Conectar
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="w-full space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800/60 flex-1">
                         <div className="flex flex-col items-start gap-1">
                           <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Correo Electrónico</label>
                           <div className="w-full text-left px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-300 text-xs font-medium">
@@ -1031,9 +1150,31 @@ export default function SettingsPage() {
                             value={userName}
                             onChange={e => setUserName(e.target.value)}
                             placeholder="Tu nombre"
-                            className="w-full text-xs px-4 py-2.5 bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                            disabled={hasMetaConnected}
+                            className={`w-full text-xs px-4 py-2.5 rounded-xl outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner ${
+                              hasMetaConnected 
+                                ? 'bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 text-zinc-500 cursor-not-allowed'
+                                : 'bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D]'
+                            }`}
                           />
                         </div>
+
+                        {!hasMetaConnected && (
+                          <div className="flex flex-col items-start gap-1">
+                            <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Foto de Perfil</label>
+                            <label className="w-full flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer hover:border-[#F36A2D] hover:bg-[#F36A2D]/5 transition-all group/upload">
+                              {isUploadingAvatar ? (
+                                <Loader2 size={14} className="text-[#F36A2D] animate-spin shrink-0" />
+                              ) : (
+                                <Camera size={14} className="text-zinc-400 group-hover/upload:text-[#F36A2D] transition-colors shrink-0" />
+                              )}
+                              <span className={`text-xs transition-colors ${avatarUploadStatus === 'success' ? 'text-emerald-500 font-bold' : 'text-zinc-500 dark:text-zinc-400 group-hover/upload:text-[#F36A2D]'}`}>
+                                {isUploadingAvatar ? 'Subiendo...' : avatarUploadStatus === 'success' ? '¡Foto actualizada!' : 'Subir foto · JPG, PNG, WEBP · máx 5MB'}
+                              </span>
+                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={isUploadingAvatar} />
+                            </label>
+                          </div>
+                        )}
                       </div>
 
                       <button
