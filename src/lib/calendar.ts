@@ -129,12 +129,16 @@ export async function checkAvailability(projectId: string, dateStr: string, star
   // --- Import prisma here to avoid circular deps ---
   const { prisma } = await import('@/lib/prisma');
 
-  // Get the CalendarConfig to read maxCapacityPerSlot
+  // Get the CalendarConfig to read maxCapacityPerSlot and selectedCalendarIds
   const calConfig = await prisma.calendarConfig.findUnique({
     where: { projectId },
-    select: { maxCapacityPerSlot: true }
+    select: { maxCapacityPerSlot: true, selectedCalendarIds: true }
   });
   const maxCapacity = calConfig?.maxCapacityPerSlot ?? 1;
+  const selectedCals = calConfig?.selectedCalendarIds?.length ? calConfig.selectedCalendarIds : ['primary'];
+
+  console.log(`[DEBUG CALENDAR] CHECK_AVAILABILITY date: ${resolvedDate} ${startTime}-${endTime}`);
+  console.log(`[DEBUG CALENDAR] Project: ${projectId}, Selected Calendars:`, selectedCals);
 
   // ── Mode: Unlimited (0) ──────────────────────────────────────────────────
   if (maxCapacity === 0) {
@@ -165,7 +169,7 @@ export async function checkAvailability(projectId: string, dateStr: string, star
       timeMin,
       timeMax,
       timeZone: TIMEZONE,
-      items: [{ id: 'primary' }]
+      items: selectedCals.map(id => ({ id }))
     };
 
     const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
@@ -186,7 +190,14 @@ export async function checkAvailability(projectId: string, dateStr: string, star
     }
 
     const data = await res.json();
-    const busySlots = data.calendars?.primary?.busy || [];
+    let busySlots: any[] = [];
+    if (data.calendars) {
+      for (const calId of Object.keys(data.calendars)) {
+        if (data.calendars[calId].busy) {
+          busySlots = busySlots.concat(data.calendars[calId].busy);
+        }
+      }
+    }
 
     return {
       available: busySlots.length === 0,
@@ -273,7 +284,14 @@ export async function createEvent(
     end: { dateTime: endRFC, timeZone: TIMEZONE }
   };
 
-  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+  const { prisma } = await import('@/lib/prisma');
+  const calConfig = await prisma.calendarConfig.findUnique({
+    where: { projectId },
+    select: { selectedCalendarIds: true }
+  });
+  const targetCalendarId = calConfig?.selectedCalendarIds?.[0] || 'primary';
+
+  const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
