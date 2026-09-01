@@ -107,6 +107,25 @@ function _resolveDate(dateStr: string): string {
 export async function checkAvailability(projectId: string, dateStr: string, startTime: string, endTime: string) {
   const resolvedDate = _resolveDate(dateStr);
 
+  const startRFC = _toRFC3339(resolvedDate, startTime);
+  const endRFC = _toRFC3339(resolvedDate, endTime);
+
+  if (!startRFC || !endRFC) {
+    return { available: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
+  }
+
+  const startMs = new Date(startRFC).getTime();
+  const nowMs = Date.now();
+  
+  // Margen de gracia de 1 hora para el pasado
+  if (startMs < nowMs - 60 * 60 * 1000) {
+    return { available: false, error: `ERROR: La fecha/hora consultada (${resolvedDate} ${startTime}) está en el pasado. El año actual es ${new Date().getFullYear()}. Por favor corrige y usa una fecha futura.` };
+  }
+  // Límite de 6 meses en el futuro
+  if (startMs > nowMs + 180 * 24 * 60 * 60 * 1000) {
+    return { available: false, error: `ERROR: La fecha/hora consultada (${resolvedDate}) es demasiado lejana (más de 6 meses). Verifica si te equivocaste de año.` };
+  }
+
   // --- Import prisma here to avoid circular deps ---
   const { prisma } = await import('@/lib/prisma');
 
@@ -139,12 +158,8 @@ export async function checkAvailability(projectId: string, dateStr: string, star
     const token = await _getAccessToken(connectionId);
     if (!token) return { available: false, error: 'No se pudo obtener token de Google.' };
 
-    const timeMin = _toRFC3339(resolvedDate, startTime);
-    const timeMax = _toRFC3339(resolvedDate, endTime);
-
-    if (!timeMin || !timeMax) {
-      return { available: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
-    }
+    const timeMin = startRFC;
+    const timeMax = endRFC;
 
     const payload = {
       timeMin,
@@ -186,12 +201,8 @@ export async function checkAvailability(projectId: string, dateStr: string, star
   }
 
   // ── Mode: Capped (N > 1) — count UserBookings in DB for this slot ────────
-  const slotStartRFC = _toRFC3339(resolvedDate, startTime);
-  const slotEndRFC   = _toRFC3339(resolvedDate, endTime);
-
-  if (!slotStartRFC || !slotEndRFC) {
-    return { available: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
-  }
+  const slotStartRFC = startRFC;
+  const slotEndRFC   = endRFC;
 
   // Count bookings that overlap with the requested slot:
   // A booking overlaps if its startTime < slotEnd AND its endTime > slotStart
@@ -244,6 +255,15 @@ export async function createEvent(
 
   if (!startRFC || !endRFC) {
     return { success: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
+  }
+
+  const startMs = new Date(startRFC).getTime();
+  const nowMs = Date.now();
+  if (startMs < nowMs - 60 * 60 * 1000) {
+    return { success: false, error: `ERROR: La fecha/hora que intentas reservar (${resolvedDate} ${startTime}) está en el pasado. Por favor pide disculpas al cliente y pídele una fecha u hora en el futuro.` };
+  }
+  if (startMs > nowMs + 180 * 24 * 60 * 60 * 1000) {
+    return { success: false, error: `ERROR: La fecha (${resolvedDate}) es demasiado lejana (más de 6 meses).` };
   }
 
   const payload = {
@@ -304,6 +324,15 @@ export async function updateEvent(
 
   if (!startRFC || !endRFC) {
     return { success: false, error: 'La fecha o la hora proporcionada tienen un formato inválido. Asegúrate de usar YYYY-MM-DD y HH:MM.' };
+  }
+
+  const startMs = new Date(startRFC).getTime();
+  const nowMs = Date.now();
+  if (startMs < nowMs - 60 * 60 * 1000) {
+    return { success: false, error: `ERROR: La fecha/hora que intentas actualizar (${resolvedDate} ${startTime}) está en el pasado.` };
+  }
+  if (startMs > nowMs + 180 * 24 * 60 * 60 * 1000) {
+    return { success: false, error: `ERROR: La fecha (${resolvedDate}) es demasiado lejana (más de 6 meses).` };
   }
 
   const payload: any = {
