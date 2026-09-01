@@ -144,45 +144,54 @@ export async function sendTestMessage(
 
     calendarInstructions = `
 <calendar_tools>
-Tienes acceso a Google Calendar para gestionar reservas/citas del cliente.
+Tienes acceso a Google Calendar para gestionar reservas y consultar disponibilidad.
 
-CUÁNDO USARLO: Solo cuando el cliente solicite explícitamente agendar, consultar disponibilidad, modificar o cancelar una cita/reserva. Para preguntas generales del negocio (precios, ubicación, servicios, etc.) responde normalmente SIN usar ningún ACTION de calendario.
+CUÁNDO USARLO: Solo cuando el cliente pregunte por disponibilidad, quiera agendar, modificar o cancelar. Para preguntas de precios, ubicación, etc., responde normalmente sin usar ningún ACTION.
 
-FLUJO OBLIGATORIO:
-1. Cliente quiere reservar → usa [ACTION: CHECK_AVAILABILITY] inmediatamente.
-2. Disponible → informa y recopila los datos faltantes (ver DATOS REQUERIDOS abajo). NO hagas CREATE_BOOKING aún.
-3. Ocupado → informa que está ocupado. Si vas a sugerir otro horario, DEBES verificarlo primero con CHECK_AVAILABILITY antes de mencionarlo.
-4. Tienes disponibilidad confirmada + todos los datos → ejecuta [ACTION: CREATE_BOOKING].
-5. Cliente quiere modificar/cancelar → el sistema te proveerá sus reservas activas. Identifica la correcta y ejecuta [ACTION: UPDATE_BOOKING] o [ACTION: CANCEL_BOOKING] con el event_id exacto.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+¿QUÉ ACTION USAR?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-REGLAS DE SEGURIDAD:
-- NUNCA digas "ya agendé", "ya cancelé" o "ya actualicé" sin haber recibido [SYSTEM DATA] con success:true.
-- Si el [SYSTEM DATA] de una acción de calendario devuelve success:false o un error, NUNCA le digas al cliente que la acción fue exitosa. Explícale de forma atenta que hubo un problema de conexión o que la cita ya no existe en el sistema, y ofrécele de inmediato transferirlo con un asesor humano (si acepta, usa [ACTION: HANDOFF] en tu siguiente respuesta).
-- Solo puedes modificar/cancelar citas del cliente actual. El sistema te lista sus reservas con event_id exacto.
-- Si el ACTION falla 2 veces seguidas, usa [ACTION: HANDOFF] directamente.
-- Si necesitas modificar el calendario Y hacer HANDOFF, completa el ACTION del calendario primero, espera la confirmación, y LUEGO usa HANDOFF.
-- VERIFICACIÓN PREVIA: Antes de ejecutar [ACTION: CHECK_AVAILABILITY], comprueba si la fecha u hora cae en un día o rango horario en que el negocio está CERRADO según tus instrucciones/conocimientos. Si está cerrado, NO ejecutes ninguna acción de calendario: responde directamente indicando que está cerrado y sugiere un horario de atención válido.
-- Respeta los horarios de atención del negocio definidos en tu base de conocimientos. Solo ofrece o verifica slots dentro de ese rango horario.
-- Si el cliente dice "mañana", "hoy" o un día de la semana, calcula la fecha ESTRICTAMENTE con la fecha_y_hora_actual del sistema. No uses fechas de conversaciones anteriores.
-- Formato de hora: 24h ("3pm" = "15:00", "10am" = "10:00").
+1. El cliente dice una HORA EXACTA (ej: "quiero las 7pm")
+   → USA: CHECK_AVAILABILITY
+   [ACTION: CHECK_AVAILABILITY date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
+
+2. El cliente pregunta qué ESPACIOS HAY EN UN DÍA (ej: "¿qué tiene disponible el viernes?", "¿a qué horas hay espacio mañana?")
+   → USA: CHECK_DAY con los horarios de atención del negocio
+   [ACTION: CHECK_DAY date="YYYY-MM-DD" business_start="HH:MM" business_end="HH:MM"]
+   El sistema te devolverá la lista exacta de horas libres. Preséntala al cliente.
+
+3. El cliente pregunta qué DÍAS tienen un horario libre (ej: "¿qué día de la siguiente semana tienen disponible a las 8pm?", "¿cuándo hay a las 7pm esta semana?")
+   → USA: CHECK_MULTIPLE_DAYS con el rango de fechas y la hora específica
+   [ACTION: CHECK_MULTIPLE_DAYS start_date="YYYY-MM-DD" end_date="YYYY-MM-DD" time="HH:MM"]
+   El sistema revisará todos esos días de una vez y te dirá cuáles están libres.
+
+4. Ya tiene hora confirmada + todos los datos → RESERVA
+   [ACTION: CREATE_BOOKING date="YYYY-MM-DD" start="HH:MM" end="HH:MM" VARIABLE_1="valor"]
+
+5. Cliente quiere modificar/cancelar → usa el event_id exacto de sus reservas activas
+   [ACTION: UPDATE_BOOKING event_id="REAL_EVENT_ID" date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
+   [ACTION: CANCEL_BOOKING event_id="REAL_EVENT_ID"]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGLAS OBLIGATORIAS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - El [ACTION: ...] va SIEMPRE al inicio de tu respuesta y SOLO UNO por mensaje.
-
-CÁLCULO DE TIEMPO OBLIGATORIO:
-- Duración por cita: ${calConfig.durationMinutes} minutos.
-- 'end' = 'start' + ${calConfig.durationMinutes} minutos. Ejemplo: start="15:00" → end="${exampleEnd}". NUNCA omitas 'end'.
+- NUNCA digas "ya agendé", "ya cancelé" o similar sin haber recibido [SYSTEM DATA] con success:true.
+- Si el [SYSTEM DATA] devuelve error, informa al cliente que hubo un problema y ofrece transferirlo con un asesor. Si acepta, usa [ACTION: HANDOFF].
+- Si el ACTION falla 2 veces seguidas, usa [ACTION: HANDOFF] directamente.
+- Si el cliente dice "mañana", "hoy", "el viernes" o "la próxima semana", calcula la fecha ESTRICTAMENTE con la fecha_y_hora_actual del sistema. No inventes fechas.
+- Formato de hora siempre en 24h: "7pm" = "19:00", "3pm" = "15:00".
+- Respeta los horarios de atención. No ofrezcas ni verifiques horas fuera del horario.
+- Para CHECK_AVAILABILITY: 'end' = 'start' + ${calConfig.durationMinutes} minutos. Ejemplo: start="15:00" → end="${exampleEnd}".
+- Para CHECK_DAY: usa los horarios REALES de apertura y cierre del negocio como business_start y business_end.
+- Para CHECK_MULTIPLE_DAYS: si el cliente dice "la siguiente semana", calcula start_date como el lunes y end_date como el domingo de esa semana.
+- VERIFICACIÓN PREVIA: Si la fecha/hora está fuera del horario de atención o es día cerrado, NO ejecutes ningún ACTION. Responde directamente indicando que están cerrados.
+- Solo puedes modificar/cancelar citas del cliente actual.
 
 DATOS REQUERIDOS antes de CREATE_BOOKING: [ ${requiredFields} ]
-Para CREATE_BOOKING, incluye cada dato recopilado como parámetro en el ACTION tag (ej: nombre_cliente="Daniel" tipo_servicio="Corte"). El sistema los usará para armar el evento en el calendario.
-NOTA: Si ya conoces alguno de los datos requeridos (ej. por el historial o contexto), úsalo directamente sin volver a preguntarlo.
-
-ACTIONS DISPONIBLES:
-[ACTION: CHECK_AVAILABILITY date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
-[ACTION: CREATE_BOOKING date="YYYY-MM-DD" start="HH:MM" end="HH:MM" VARIABLE_1="valor" VARIABLE_2="valor"]
-[ACTION: UPDATE_BOOKING event_id="REAL_EVENT_ID" date="YYYY-MM-DD" start="HH:MM" end="HH:MM"]
-[ACTION: CANCEL_BOOKING event_id="REAL_EVENT_ID"]
-[ACTION: HANDOFF]
-
-NOTA: Para UPDATE_BOOKING y CANCEL_BOOKING usa siempre el event_id EXACTO de la lista de reservas del cliente. NUNCA inventes un event_id.
+Para CREATE_BOOKING incluye cada dato como parámetro en el tag (ej: nombre_cliente="Daniel").
+NOTA: Si ya conoces algún dato requerido del historial, úsalo directamente sin volver a preguntar.
 </calendar_tools>
 `;
   }
@@ -421,6 +430,68 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
       }
       
       // --- CALENDAR ACTIONS ---
+      else if (rawReply.includes('[ACTION: CHECK_DAY')) {
+        const match = rawReply.match(/\[ACTION:\s*CHECK_DAY\s+date=["']?([^"'\]\s]+)["']?\s+business_start=["']?([^"'\]\s]+)["']?\s+business_end=["']?([^"'\]\s]+)["']?.*?\]/i);
+        if (match) {
+          actionFound = true;
+          const { checkDayFreeSlots } = await import('@/lib/calendar');
+          const res: any = await checkDayFreeSlots(project.id, match[1], match[2], match[3], calConfig?.durationMinutes ?? 60);
+          if (res.error) {
+            systemData = `[SYSTEM DATA: CHECK_DAY_RESULT]\n{"error":"${res.error}", "system_instruction":"Hubo un problema consultando el calendario. Informa al cliente y ofrece transferirlo con un asesor."}`;
+          } else if (res.free_slots?.length === 0) {
+            systemData = `[SYSTEM DATA: CHECK_DAY_RESULT]\n{"free_slots":[], "system_instruction":"No hay espacios libres en ese día. Informa al cliente que el día está completamente ocupado y sugiere otro día."}`;
+          } else {
+            // Helper: convert "HH:MM" to 12h string
+            const toReadable = (t: string) => {
+              const [h, m] = t.split(':').map(Number);
+              const period = h >= 12 ? 'pm' : 'am';
+              const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+              return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+            };
+
+            // Group consecutive slots into ranges
+            // Two slots are consecutive if slot[i].end === slot[i+1].start
+            const slots: { start: string; end: string }[] = res.free_slots;
+            const ranges: string[] = [];
+            let i = 0;
+            while (i < slots.length) {
+              let j = i;
+              // Extend range while slots are consecutive
+              while (j + 1 < slots.length && slots[j].end === slots[j + 1].start) {
+                j++;
+              }
+              if (j > i) {
+                // Multiple consecutive slots → show as range
+                ranges.push(`de ${toReadable(slots[i].start)} a ${toReadable(slots[j].end)}`);
+              } else {
+                // Single isolated slot
+                ranges.push(toReadable(slots[i].start));
+              }
+              i = j + 1;
+            }
+
+            const formattedSlots = ranges.join(', ');
+            systemData = `[SYSTEM DATA: CHECK_DAY_RESULT]\nFecha: ${res.date}\nHorarios disponibles: ${formattedSlots}\nINSTRUCCIÓN: Presenta EXACTAMENTE estos horarios al cliente. No añadas ni quites ninguno.`;
+          }
+          console.log(`[Agentic Loop] CHECK_DAY date=${match[1]} → ${res.free_slots?.length ?? 'error'} free slots`);
+        }
+      }
+      else if (rawReply.includes('[ACTION: CHECK_MULTIPLE_DAYS')) {
+        const match = rawReply.match(/\[ACTION:\s*CHECK_MULTIPLE_DAYS\s+start_date=["']?([^"'\]\s]+)["']?\s+end_date=["']?([^"'\]\s]+)["']?\s+time=["']?([^"'\]\s]+)["']?.*?\]/i);
+        if (match) {
+          actionFound = true;
+          const { checkMultipleDays } = await import('@/lib/calendar');
+          const res: any = await checkMultipleDays(project.id, match[1], match[2], match[3], calConfig?.durationMinutes ?? 60);
+          if (res.error) {
+            systemData = `[SYSTEM DATA: CHECK_MULTIPLE_DAYS_RESULT]\n{"error":"${res.error}", "system_instruction":"Hubo un problema consultando el calendario. Informa al cliente y ofrece transferirlo con un asesor."}`;
+          } else if (res.free_days?.length === 0) {
+            systemData = `[SYSTEM DATA: CHECK_MULTIPLE_DAYS_RESULT]\n{"free_days":[], "system_instruction":"No hay días disponibles a las ${match[3]} en ese rango. Informa al cliente y sugiere otro horario o rango de fechas."}`;
+          } else {
+            systemData = `[SYSTEM DATA: CHECK_MULTIPLE_DAYS_RESULT]\n${JSON.stringify(res)}\nINSTRUCCIÓN: Presenta los free_days al cliente en formato legible (ej: "lunes 7 de septiembre", "miércoles 9"). No inventes días, usa exactamente los que están en free_days.`;
+          }
+          console.log(`[Agentic Loop] CHECK_MULTIPLE_DAYS ${match[1]}→${match[2]} at ${match[3]} → free: ${JSON.stringify(res.free_days)}`);
+        }
+      }
       else if (rawReply.includes('[ACTION: CHECK_AVAILABILITY')) {
         const match = rawReply.match(/\[ACTION:\s*CHECK_AVAILABILITY\s+date=["']?([^"'\]]+)["']?\s+start=["']?([^"'\]]+)["']?(?:\s+end=["']?([^"'\]]+)["']?)?.*?\]/i);
         if (match) {

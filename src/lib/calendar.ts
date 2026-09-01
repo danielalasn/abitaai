@@ -244,6 +244,227 @@ export async function checkAvailability(projectId: string, dateStr: string, star
   };
 }
 
+/**
+ * CHECK_DAY: Devuelve todos los huecos libres de un día completo.
+ * Hace UNA sola llamada a Google FreeBusy y calcula los slots libres
+ * basándose en el horario de atención del negocio (business_start / business_end).
+ */
+export async function checkDayFreeSlots(
+  projectId: string,
+  dateStr: string,
+  businessStart: string, // "HH:MM"
+  businessEnd: string,   // "HH:MM"
+  slotDurationMinutes: number = 60
+) {
+  const resolvedDate = _resolveDate(dateStr);
+
+  console.log(`[DEBUG CALENDAR] CHECK_DAY date: ${resolvedDate} | hours: ${businessStart}-${businessEnd}`);
+
+  const { prisma } = await import('@/lib/prisma');
+  const calConfig = await prisma.calendarConfig.findUnique({
+    where: { projectId },
+    select: { selectedCalendarIds: true, maxCapacityPerSlot: true }
+  });
+  const selectedCals = calConfig?.selectedCalendarIds?.length ? calConfig.selectedCalendarIds : ['primary'];
+
+  console.log(`[DEBUG CALENDAR] CHECK_DAY Selected Calendars:`, selectedCals);
+
+  const timeMin = _toRFC3339(resolvedDate, businessStart);
+  const timeMax = _toRFC3339(resolvedDate, businessEnd);
+
+  if (!timeMin || !timeMax) {
+    return { error: 'Formato de hora inválido.' };
+  }
+
+  // Validate not in the past (1h grace)
+  const nowMs = Date.now();
+  if (new Date(timeMax).getTime() < nowMs - 60 * 60 * 1000) {
+    return { error: `ERROR: La fecha ${resolvedDate} ya pasó. Usa una fecha futura.` };
+  }
+  if (new Date(timeMin).getTime() > nowMs + 180 * 24 * 60 * 60 * 1000) {
+    return { error: `ERROR: La fecha ${resolvedDate} es demasiado lejana (más de 6 meses).` };
+  }
+
+  const connectionId = await _getNangoConnectionId(projectId);
+  if (!connectionId) return { error: 'Google Calendar no está conectado.' };
+
+  const token = await _getAccessToken(connectionId);
+  if (!token) return { error: 'No se pudo obtener token de Google.' };
+
+  const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      timeMin,
+      timeMax,
+      timeZone: TIMEZONE,
+      items: selectedCals.map(id => ({ id }))
+    })
+  });
+
+  if (!res.ok) return { error: await res.text() };
+
+  const data = await res.json();
+  let busySlots: { start: string; end: string }[] = [];
+  if (data.calendars) {
+    for (const calId of Object.keys(data.calendars)) {
+      if (data.calendars[calId].busy) {
+        busySlots = busySlots.concat(data.calendars[calId].busy);
+      }
+    }
+  }
+
+  // Sort and deduplicate busy blocks
+  busySlots.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+  // Build all possible hour-slots within business hours
+  const [startH, startM] = businessStart.split(':').map(Number);
+  const [endH, endM] = businessEnd.split(':').map(Number);
+  const businessStartMin = startH * 60 + startM;
+  const businessEndMin = endH * 60 + endM;
+
+  const freeSlots: { start: string; end: string }[] = [];
+  for (let t = businessStartMin; t + slotDurationMinutes <= businessEndMin; t += slotDurationMinutes) {
+    const slotStart = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    const slotEnd = `${String(Math.floor((t + slotDurationMinutes) / 60)).padStart(2, '0')}:${String((t + slotDurationMinutes) % 60).padStart(2, '0')}`;
+
+    const slotStartMs = new Date(_toRFC3339(resolvedDate, slotStart)!).getTime();
+    const slotEndMs = new Date(_toRFC3339(resolvedDate, slotEnd)!).getTime();
+
+    // Skip slots already in the past
+    if (slotEndMs < nowMs) continue;
+
+    const isBusy = busySlots.some(b => {
+      const bStart = new Date(b.start).getTime();
+      const bEnd = new Date(b.end).getTime();
+      return bStart < slotEndMs && bEnd > slotStartMs;
+    });
+
+    if (!isBusy) {
+      freeSlots.push({ start: slotStart, end: slotEnd });
+    }
+  }
+
+  console.log(`[DEBUG CALENDAR] CHECK_DAY ${resolvedDate}: ${freeSlots.length} free slots, ${busySlots.length} busy blocks`);
+
+  return {
+    date: resolvedDate,
+    free_slots: freeSlots,
+    busy_count: busySlots.length,
+    total_checked: Math.floor((businessEndMin - businessStartMin) / slotDurationMinutes),
+    error: null
+  };
+}
+
+/**
+ * CHECK_MULTIPLE_DAYS: Verifica un horario específico en varios días de un tirón.
+ * Hace UNA sola llamada a Google FreeBusy para todo el rango de fechas.
+ * Ideal para "¿qué día de la siguiente semana tienen a las 8pm?"
+ */
+export async function checkMultipleDays(
+  projectId: string,
+  startDateStr: string,  // primer día del rango "YYYY-MM-DD"
+  endDateStr: string,    // último día del rango "YYYY-MM-DD"
+  timeStr: string,       // hora a verificar "HH:MM"
+  slotDurationMinutes: number = 60
+) {
+  const resolvedStart = _resolveDate(startDateStr);
+  const resolvedEnd = _resolveDate(endDateStr);
+
+  console.log(`[DEBUG CALENDAR] CHECK_MULTIPLE_DAYS ${resolvedStart} → ${resolvedEnd} at ${timeStr}`);
+
+  const { prisma } = await import('@/lib/prisma');
+  const calConfig = await prisma.calendarConfig.findUnique({
+    where: { projectId },
+    select: { selectedCalendarIds: true }
+  });
+  const selectedCals = calConfig?.selectedCalendarIds?.length ? calConfig.selectedCalendarIds : ['primary'];
+
+  // Query Google for the whole date range at once
+  const timeMin = _toRFC3339(resolvedStart, timeStr);
+  // timeMax = end of last day (timeStr + duration)
+  const [h, m] = timeStr.split(':').map(Number);
+  const endMinutes = h * 60 + m + slotDurationMinutes;
+  const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+  const timeMax = _toRFC3339(resolvedEnd, endTime);
+
+  if (!timeMin || !timeMax) {
+    return { error: 'Formato de fecha/hora inválido.' };
+  }
+
+  const nowMs = Date.now();
+  if (new Date(timeMax).getTime() > nowMs + 180 * 24 * 60 * 60 * 1000) {
+    return { error: `ERROR: El rango de fechas es demasiado lejano (más de 6 meses).` };
+  }
+
+  const connectionId = await _getNangoConnectionId(projectId);
+  if (!connectionId) return { error: 'Google Calendar no está conectado.' };
+
+  const token = await _getAccessToken(connectionId);
+  if (!token) return { error: 'No se pudo obtener token de Google.' };
+
+  // Make one request covering the entire range
+  const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      timeMin,
+      timeMax,
+      timeZone: TIMEZONE,
+      items: selectedCals.map(id => ({ id }))
+    })
+  });
+
+  if (!res.ok) return { error: await res.text() };
+
+  const data = await res.json();
+  let busySlots: { start: string; end: string }[] = [];
+  if (data.calendars) {
+    for (const calId of Object.keys(data.calendars)) {
+      if (data.calendars[calId].busy) {
+        busySlots = busySlots.concat(data.calendars[calId].busy);
+      }
+    }
+  }
+
+  // For each day in range, check if the specific timeslot is free
+  const slotDurationMs = slotDurationMinutes * 60 * 1000;
+  const results: { date: string; available: boolean }[] = [];
+  const startD = parseISO(resolvedStart);
+  const endD = parseISO(resolvedEnd);
+
+  for (let d = startD; d <= endD; d = addDays(d, 1)) {
+    const dateStr = format(d, 'yyyy-MM-dd');
+    const slotStartRFC = _toRFC3339(dateStr, timeStr);
+    if (!slotStartRFC) continue;
+
+    const slotStartMs = new Date(slotStartRFC).getTime();
+    const slotEndMs = slotStartMs + slotDurationMs;
+
+    // Skip past slots
+    if (slotEndMs < nowMs) continue;
+
+    const isBusy = busySlots.some(b => {
+      const bStart = new Date(b.start).getTime();
+      const bEnd = new Date(b.end).getTime();
+      return bStart < slotEndMs && bEnd > slotStartMs;
+    });
+
+    results.push({ date: dateStr, available: !isBusy });
+  }
+
+  const freeDays = results.filter(r => r.available).map(r => r.date);
+  const busyDays = results.filter(r => !r.available).map(r => r.date);
+
+  console.log(`[DEBUG CALENDAR] CHECK_MULTIPLE_DAYS at ${timeStr}: ${freeDays.length} free, ${busyDays.length} busy`);
+
+  return {
+    time_checked: timeStr,
+    free_days: freeDays,
+    busy_days: busyDays,
+    error: null
+  };
+}
 
 export async function createEvent(
   projectId: string,
