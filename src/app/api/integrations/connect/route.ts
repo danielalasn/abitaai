@@ -120,5 +120,15 @@ export async function DELETE(req: NextRequest) {
     data: { status: 'DISCONNECTED' },
   });
 
+  // Si se desconecta Google Calendar, limpiar los calendarios seleccionados
+  // para que no queden IDs de cuentas anteriores al reconectar
+  if (providerConfigKey === 'google-calendar') {
+    await prisma.calendarConfig.updateMany({
+      where: { projectId },
+      data: { selectedCalendarIds: [] },
+    });
+    console.log(`[Calendar] selectedCalendarIds limpiados para proyecto ${projectId} al desconectar Google Calendar.`);
+  }
+
   return NextResponse.json({ success: true });
 }

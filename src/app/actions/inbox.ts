@@ -997,3 +997,55 @@ export async function startIndividualChatAction(
     return { success: false, error: 'Ocurrió un error inesperado al iniciar el chat.' };
   }
 }
+
+// Reintenta enviar un mensaje que falló (status: ERROR/failed) por WhatsApp
+export async function retryFailedMessage(messageId: string): Promise<{ success: boolean; error?: string }> {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, error: 'No autorizado' };
+
+  const message = await prisma.message.findUnique({
+    where: { id: messageId },
+    include: {
+      chat: {
+        include: {
+          lead: { include: { project: true } }
+        }
+      }
+    }
+  });
+
+  if (!message) return { success: false, error: 'Mensaje no encontrado' };
+  if (message.chat.lead.projectId !== project.id) return { success: false, error: 'No autorizado' };
+  if (!['failed', 'FAILED', 'ERROR'].includes(message.status)) {
+    return { success: false, error: 'El mensaje no está en estado de error' };
+  }
+  if (!message.content) return { success: false, error: 'El mensaje no tiene contenido' };
+
+  const resolvedProject = resolveProjectCredentials(message.chat.lead.project as any);
+  const phoneId = resolvedProject?.whatsappPhoneId;
+  const token = resolvedProject?.whatsappToken;
+  const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+  const phone = message.chat.lead.phone;
+
+  if (!phone || !phoneId || !resolvedToken) {
+    return { success: false, error: 'Credenciales de WhatsApp no configuradas' };
+  }
+
+  console.log(`[RetryMessage] Reintentando mensaje ${messageId} para ${phone}`);
+
+  const result = await sendWhatsAppMessage(phone, message.content, phoneId, resolvedToken);
+
+  await prisma.message.update({
+    where: { id: messageId },
+    data: {
+      status: result.success ? 'SENT' : 'ERROR',
+      sendError: result.success ? null : (result.friendlyError || 'Error al reintentar'),
+      wamid: result.messageId || message.wamid || null,
+    }
+  });
+
+  console.log(`[RetryMessage] Resultado: ${result.success ? 'ÉXITO' : 'FALLO'} para ${phone}`);
+
+  try { revalidatePath('/') } catch (e) { }
+  return { success: result.success, error: result.success ? undefined : (result.friendlyError || 'Error al reintentar') };
+}

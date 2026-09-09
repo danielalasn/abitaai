@@ -1834,12 +1834,39 @@ export default function InboxPage() {
                         </div>
                       </div>
                       {/* Error banner debajo de la burbuja */}
-                      {(msg.status === 'failed' || msg.status === 'FAILED') && msg.sendError && (
+                      {(msg.status === 'failed' || msg.status === 'FAILED' || msg.status === 'ERROR') && msg.sendError && (
                         <div className="mt-1 px-3 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl max-w-full">
                           <p className="text-[10px] font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
                             <AlertCircle size={10} /> No se envió por WhatsApp
                           </p>
                           <p className="text-[10px] text-red-500 dark:text-red-400/80 mt-0.5 break-words">{msg.sendError}</p>
+                          {(msg.role === 'agent' || msg.role === 'assistant') && (
+                            <button
+                              onClick={async () => {
+                                const { retryFailedMessage } = await import('@/app/actions/inbox');
+                                const result = await retryFailedMessage(msg.id);
+                                if (result.success) {
+                                  setActiveChat((prev: any) => prev ? {
+                                    ...prev,
+                                    messages: prev.messages.map((m: any) =>
+                                      m.id === msg.id ? { ...m, status: 'SENT', sendError: null } : m
+                                    )
+                                  } : prev);
+                                } else {
+                                  setActiveChat((prev: any) => prev ? {
+                                    ...prev,
+                                    messages: prev.messages.map((m: any) =>
+                                      m.id === msg.id ? { ...m, sendError: result.error || m.sendError } : m
+                                    )
+                                  } : prev);
+                                }
+                              }}
+                              className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors underline underline-offset-2"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                              Reintentar envío
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
