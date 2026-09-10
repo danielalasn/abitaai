@@ -1840,33 +1840,43 @@ export default function InboxPage() {
                             <AlertCircle size={10} /> No se envió por WhatsApp
                           </p>
                           <p className="text-[10px] text-red-500 dark:text-red-400/80 mt-0.5 break-words">{msg.sendError}</p>
-                          {(msg.role === 'agent' || msg.role === 'assistant') && (
-                            <button
-                              onClick={async () => {
-                                const { retryFailedMessage } = await import('@/app/actions/inbox');
-                                const result = await retryFailedMessage(msg.id);
-                                if (result.success) {
-                                  setActiveChat((prev: any) => prev ? {
-                                    ...prev,
-                                    messages: prev.messages.map((m: any) =>
-                                      m.id === msg.id ? { ...m, status: 'SENT', sendError: null } : m
-                                    )
-                                  } : prev);
-                                } else {
-                                  setActiveChat((prev: any) => prev ? {
-                                    ...prev,
-                                    messages: prev.messages.map((m: any) =>
-                                      m.id === msg.id ? { ...m, sendError: result.error || m.sendError } : m
-                                    )
-                                  } : prev);
-                                }
-                              }}
-                              className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors underline underline-offset-2"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                              Reintentar envío
-                            </button>
-                          )}
+                          {(msg.role === 'agent' || msg.role === 'assistant') && (() => {
+                            const lastUserMsg = [...(activeChat.messages || [])].reverse().find((m: any) => m.role === 'user');
+                            const lastUserDate = lastUserMsg ? new Date(lastUserMsg.createdAt).getTime() : 0;
+                            const within24h = lastUserDate > 0 && (Date.now() - lastUserDate) < 24 * 60 * 60 * 1000;
+                            return within24h ? (
+                              <button
+                                onClick={async () => {
+                                  const { retryFailedMessage } = await import('@/app/actions/inbox');
+                                  const result = await retryFailedMessage(msg.id);
+                                  if (result.success) {
+                                    setActiveChat((prev: any) => prev ? {
+                                      ...prev,
+                                      messages: prev.messages.map((m: any) =>
+                                        m.id === msg.id ? { ...m, status: 'SENT', sendError: null } : m
+                                      )
+                                    } : prev);
+                                  } else {
+                                    setActiveChat((prev: any) => prev ? {
+                                      ...prev,
+                                      messages: prev.messages.map((m: any) =>
+                                        m.id === msg.id ? { ...m, sendError: result.error || m.sendError } : m
+                                      )
+                                    } : prev);
+                                  }
+                                }}
+                                className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors underline underline-offset-2"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                Reintentar envío
+                              </button>
+                            ) : (
+                              <p className="mt-1.5 text-[10px] text-red-400/60 dark:text-red-500/50 flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                No se puede reenviar — ventana de 24h expirada
+                              </p>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
