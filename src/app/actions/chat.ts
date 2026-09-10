@@ -8,6 +8,20 @@ import { redactPII } from '@/lib/pii';
 import { buildSystemPrompt } from '@/app/actions/prompt-builder';
 import { AI_MODELS } from '@/lib/models';
 
+// Helper: given a YYYY-MM-DD string, returns e.g. "domingo 27 de septiembre de 2026"
+function dateWithWeekday(dateStr: string): string {
+  // Parse as local date (noon to avoid DST shifts)
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d, 12, 0, 0);
+  return dt.toLocaleDateString('es-GT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'America/Guatemala',
+  });
+}
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -471,7 +485,8 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
             }
 
             const formattedSlots = ranges.join(', ');
-            systemData = `[SYSTEM DATA: CHECK_DAY_RESULT]\nFecha: ${res.date}\nHorarios disponibles: ${formattedSlots}\nINSTRUCCIÓN: Presenta EXACTAMENTE estos horarios al cliente. No añadas ni quites ninguno.`;
+            const fechaLegible = dateWithWeekday(res.date);
+            systemData = `[SYSTEM DATA: CHECK_DAY_RESULT]\nFecha: ${res.date} (${fechaLegible})\nHorarios disponibles: ${formattedSlots}\nINSTRUCCIÓN: Usa EXACTAMENTE el día "${fechaLegible}" al referirte a esta fecha. No cambies el nombre del día. Presenta EXACTAMENTE estos horarios al cliente. No añadas ni quites ninguno.`;
           }
           console.log(`[Agentic Loop] CHECK_DAY date=${match[1]} → ${res.free_slots?.length ?? 'error'} free slots`);
         }
@@ -487,7 +502,15 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
           } else if (res.free_days?.length === 0) {
             systemData = `[SYSTEM DATA: CHECK_MULTIPLE_DAYS_RESULT]\n{"free_days":[], "system_instruction":"No hay días disponibles a las ${match[3]} en ese rango. Informa al cliente y sugiere otro horario o rango de fechas."}`;
           } else {
-            systemData = `[SYSTEM DATA: CHECK_MULTIPLE_DAYS_RESULT]\n${JSON.stringify(res)}\nINSTRUCCIÓN: Presenta los free_days al cliente en formato legible (ej: "lunes 7 de septiembre", "miércoles 9"). No inventes días, usa exactamente los que están en free_days.`;
+            // Enrich each free_day with server-calculated weekday
+            const enrichedRes = {
+              ...res,
+              free_days: (res.free_days || []).map((fd: any) => ({
+                ...fd,
+                weekday_label: dateWithWeekday(fd.date)
+              }))
+            };
+            systemData = `[SYSTEM DATA: CHECK_MULTIPLE_DAYS_RESULT]\n${JSON.stringify(enrichedRes)}\nINSTRUCCIÓN: Presenta los free_days al cliente usando el campo "weekday_label" de cada día (ya calculado por el servidor). NO calcules ni supongas el día de la semana tú mismo, usa EXACTAMENTE el weekday_label provisto.`;
           }
           console.log(`[Agentic Loop] CHECK_MULTIPLE_DAYS ${match[1]}→${match[2]} at ${match[3]} → free: ${JSON.stringify(res.free_days)}`);
         }
