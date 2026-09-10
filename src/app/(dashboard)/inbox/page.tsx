@@ -2260,7 +2260,9 @@ export default function InboxPage() {
                     ) : null}
 
                     {/* Luego los demás datos de metadata */}
-                    {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && Object.entries(activeChat.lead.metadata).map(([key, val]) => (
+                    {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && Object.entries(activeChat.lead.metadata)
+                      .filter(([key]) => !key.toLowerCase().startsWith('__empty'))
+                      .map(([key, val]) => (
                       <div key={key} className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 px-3 py-2.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 flex flex-col gap-0.5">
                         <span className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-wider">{key}</span>
                         <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0] truncate">{String(val)}</span>
