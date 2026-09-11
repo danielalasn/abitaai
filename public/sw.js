@@ -6,9 +6,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener('fetch', (event) => {
-  // Pass-through fetch to satisfy PWA requirements
-});
+
 
 self.addEventListener('push', function(event) {
   if (event.data) {

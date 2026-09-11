@@ -54,7 +54,7 @@ export default function RootLayout({
             __html: `
               window.deferredPwaPrompt = null;
               window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
+                // e.preventDefault(); // Comentado para permitir el banner nativo
                 window.deferredPwaPrompt = e;
                 window.dispatchEvent(new Event('pwa-prompt-ready'));
               });
