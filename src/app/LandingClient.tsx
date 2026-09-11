@@ -22,8 +22,7 @@ export function LandingClient() {
       <nav className={`landing-nav ${scrolled ? 'scrolled' : ''}`}>
         <div className="nav-logo">
           <div className="w-8 h-8 relative mr-2 shrink-0">
-            <img src="/assets/logos/logo-dark.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl dark:hidden" />
-            <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl hidden dark:block" />
+            <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl" />
           </div>
           <span className="nav-logo-text">abita.ai</span>
         </div>
@@ -314,8 +313,7 @@ export function LandingClient() {
         <div className="footer-inner">
           <div className="footer-brand">
             <div className="w-8 h-8 relative mr-2 shrink-0">
-              <img src="/assets/logos/logo-dark.png" alt="abita.ai" className="w-full h-full object-contain dark:hidden" />
-              <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain hidden dark:block" />
+              <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl" />
             </div>
             <span className="footer-brand-text">abita.ai</span>
           </div>
