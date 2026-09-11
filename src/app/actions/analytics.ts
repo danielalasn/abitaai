@@ -271,8 +271,8 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     SELECT 
       TO_CHAR(m."createdAt", 'YYYY-MM-DD') as date,
       CAST(SUM(CASE WHEN m.role = 'assistant' THEN 1 ELSE 0 END) AS INTEGER) as ai_messages,
-      CAST(SUM(CASE WHEN m.role = 'agent' THEN 1 ELSE 0 END) AS INTEGER) as agent_messages,
-      CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY') THEN 1 ELSE 0 END) AS INTEGER) as template_messages
+      CAST(SUM(CASE WHEN m.role = 'agent' AND (m."waCategory" = 'SERVICE' OR m."waCategory" IS NULL) THEN 1 ELSE 0 END) AS INTEGER) as agent_messages,
+      CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY', 'AUTHENTICATION') THEN 1 ELSE 0 END) AS INTEGER) as template_messages
     FROM "Message" m
     INNER JOIN "Chat" c ON m."chatId" = c.id
     INNER JOIN "Lead" l ON c."leadId" = l.id
