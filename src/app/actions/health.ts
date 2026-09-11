@@ -97,6 +97,11 @@ export async function checkWhatsAppConnections() {
     const { verifyWhatsappConnection } = await import('@/app/actions/settings');
 
     const projects = await prisma.project.findMany({
+      where: {
+        client: {
+          role: 'CLIENT'
+        }
+      },
       select: { id: true, name: true, whatsappToken: true, whatsappPhoneId: true, client: { select: { name: true } } }
     });
 
