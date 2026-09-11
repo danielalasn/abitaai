@@ -97,9 +97,6 @@ export async function checkWhatsAppConnections() {
     const { verifyWhatsappConnection } = await import('@/app/actions/settings');
 
     const projects = await prisma.project.findMany({
-      where: {
-        whatsappPhoneId: { not: null }
-      },
       select: { id: true, name: true, whatsappToken: true, whatsappPhoneId: true, client: { select: { name: true } } }
     });
 
@@ -111,7 +108,12 @@ export async function checkWhatsAppConnections() {
     for (const project of projects) {
       const displayName = project.client?.name || project.name;
       try {
-        const verifyResult = await verifyWhatsappConnection(project.whatsappPhoneId || undefined, decrypt(project.whatsappToken) || undefined);
+        if (!project.whatsappPhoneId) {
+          details.push({ name: displayName, status: 'error', message: 'No configurado (Falta Phone ID)' });
+          continue;
+        }
+
+        const verifyResult = await verifyWhatsappConnection(project.whatsappPhoneId, decrypt(project.whatsappToken) || undefined);
         
         if (!verifyResult.success) {
           details.push({ name: displayName, status: 'error', message: verifyResult.message });
