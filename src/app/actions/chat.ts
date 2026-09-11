@@ -286,6 +286,23 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
   // Logs eliminados para limpiar consola
   console.log(`🚀 [AI REQUEST] Lead: ${finalName} | Proyecto: ${project?.name} | Calendar Active: ${!!hasCalendar} | BotFiles Available: ${botFiles.length}`);
 
+  // Helper: fetch a URL and return base64 + mediaType for multimodal messages
+  async function fetchImageAsBase64(url: string): Promise<{ base64: string; mediaType: string } | null> {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const contentType = res.headers.get('content-type') || 'image/jpeg';
+      // Only handle image types supported by Claude: jpeg, png, gif, webp
+      const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      const mediaType = supportedTypes.find(t => contentType.startsWith(t)) || 'image/jpeg';
+      const buffer = await res.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      return { base64, mediaType };
+    } catch {
+      return null;
+    }
+  }
+
   try {
     // We filter history down to what anthropic expects: assistant and user
     const messages = history.map(h => {
@@ -301,7 +318,34 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
       };
     }) as Anthropic.MessageParam[];
 
-    messages.push({ role: 'user', content: redactPII(message) });
+    // Build the current user message — include image if present
+    const incomingImageUrl: string | undefined = metadata?.mediaUrl;
+    const incomingMediaType: string | undefined = metadata?.mediaType;
+    const isIncomingImage = incomingImageUrl && incomingMediaType === 'image';
+
+    if (isIncomingImage) {
+      const imgData = await fetchImageAsBase64(incomingImageUrl);
+      if (imgData) {
+        const contentParts: Anthropic.MessageParam['content'] = [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: imgData.mediaType as any, data: imgData.base64 },
+          },
+        ];
+        if (message && message.trim()) {
+          contentParts.push({ type: 'text', text: redactPII(message) });
+        }
+        messages.push({ role: 'user', content: contentParts });
+      } else {
+        // Fallback: couldn't fetch image, send text only with context note
+        const fallbackText = message?.trim()
+          ? `[El usuario envió una imagen que no pudo cargarse]\n${redactPII(message)}`
+          : '[El usuario envió una imagen que no pudo cargarse]';
+        messages.push({ role: 'user', content: fallbackText });
+      }
+    } else {
+      messages.push({ role: 'user', content: redactPII(message) });
+    }
 
     let rawReply = '';
     let loopCount = 0;

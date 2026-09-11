@@ -192,7 +192,7 @@ export function initWorker() {
             chatDetails.lead.name || metadata.profileName || 'Desconocido',
             chatDetails.lead.projectId,
             chatDetails.lead.agentId ?? undefined,
-            { phone: chatDetails.lead.phone }
+            { phone: chatDetails.lead.phone, mediaUrl: firstMedia?.mediaUrl, mediaType: firstMedia?.mediaType }
           );
 
           if (botData && botData.reply !== null) {
