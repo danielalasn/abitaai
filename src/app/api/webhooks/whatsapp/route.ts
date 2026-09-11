@@ -139,9 +139,9 @@ export async function POST(req: NextRequest) {
         });
       }
       const resolvedProject = resolveProjectCredentials(project);
-      const decryptedToken = decrypt(resolvedProject?.whatsappToken);
-      if (decryptedToken) {
-        const file = await downloadAndUploadMetaMedia(mediaObj.id, decryptedToken, mediaObj.mime_type, mediaObj.filename);
+      const tokenForMedia = process.env.SYSTEM_USER_TOKEN || decrypt(resolvedProject?.whatsappToken);
+      if (tokenForMedia) {
+        const file = await downloadAndUploadMetaMedia(mediaObj.id, tokenForMedia, mediaObj.mime_type, mediaObj.filename);
         if (file) mediaData = { mediaUrl: file.url, mediaType: file.mediaType, mediaFilename: file.filename };
       }
       if (mediaObj.caption) text = mediaObj.caption;

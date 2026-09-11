@@ -321,7 +321,7 @@ export async function verifyWhatsappConnection(
     if (!project) return { success: false, message: 'No se encontró el proyecto.' };
     
     phoneId = phoneId || project.whatsappPhoneId || '';
-    token = token || decrypt(project.whatsappToken) || '';
+    token = token || process.env.SYSTEM_USER_TOKEN || decrypt(project.whatsappToken) || '';
   }
 
   if (!phoneId || !token) {
@@ -404,8 +404,8 @@ export async function getProfileWithMeta() {
 
   // WhatsApp embedded signup is active if integration exists OR if project has whatsappPhoneId
   const phoneId = project.whatsappPhoneId;
-  const rawToken = decrypt(project.whatsappToken) || '';
-  const hasMetaConnected = !!(waIntegration?.status === 'active' || (phoneId && rawToken));
+  const rawToken = process.env.SYSTEM_USER_TOKEN || decrypt(project.whatsappToken) || '';
+  const hasMetaConnected = !!(waIntegration?.status === 'active' || phoneId);
 
   let metaName: string | null = null;
   let metaProfilePic: string | null = null;
@@ -451,9 +451,9 @@ export async function syncProfileFromMeta(): Promise<{ success: boolean; name?: 
   if (!project) return { success: false, error: 'Proyecto no encontrado.' };
 
   const phoneId = project.whatsappPhoneId;
-  const rawToken = decrypt(project.whatsappToken) || '';
+  const rawToken = process.env.SYSTEM_USER_TOKEN || decrypt(project.whatsappToken) || '';
 
-  if (!phoneId || !rawToken) {
+  if (!phoneId) {
     return { success: false, error: 'No hay integración de WhatsApp activa. Conecta tu cuenta en Conexiones.' };
   }
 
