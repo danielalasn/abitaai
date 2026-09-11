@@ -618,7 +618,12 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
       const phone = chat.lead.phone;
       const resolvedToken = process.env.SYSTEM_USER_TOKEN;
       const phoneId = chat.lead.project?.whatsappPhoneId;
-      console.log(`[Manual Agent Text] Sending to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
+      const projectName = chat.lead.project?.name || 'Desconocido';
+      const previewText = text.length > 60 ? text.substring(0, 60) + '...' : text;
+      
+      console.log(`[Manual Agent Text] 💬 Project: "${projectName}" | Lead: ${phone}`);
+      console.log(`[Manual Agent Text] 💬 Text: "${previewText}"`);
+      console.log(`[Manual Agent Text] 💬 Sending using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
 
       if (phone && phoneId && resolvedToken) {
         const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
@@ -631,7 +636,7 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
           waSendError = result.friendlyError || 'Error desconocido al enviar mensaje';
           console.error(`[Manual Agent] FALLO al enviar a ${phone}: ${waSendError}`);
         } else {
-          console.log(`[Manual Agent] Mensaje enviado a ${phone} (categoría: ${waCategory})`);
+          console.log(`[Manual Agent Text] ✅ Mensaje enviado a ${phone} (categoría: ${waCategory})`);
         }
       } else {
         waSendSuccess = false;
@@ -700,7 +705,11 @@ export async function sendAgentMedia(
     // Aplicar misma lógica que el worker: si el proyecto usa el WABA de Abita, usar SYSTEM_USER_TOKEN
     const resolvedToken = process.env.SYSTEM_USER_TOKEN;
     const phoneId = chat.lead.project?.whatsappPhoneId;
-    console.log(`[Manual Agent Media] Sending media to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
+    const projectName = chat.lead.project?.name || 'Desconocido';
+
+    console.log(`[Manual Agent Media] 📎 Project: "${projectName}" | Lead: ${phone}`);
+    console.log(`[Manual Agent Media] 📎 Media: ${mediaType} - ${filename || 'sin-nombre'}`);
+    console.log(`[Manual Agent Media] 📎 Sending using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
 
     if (phone && phoneId && resolvedToken) {
       const result = await sendWhatsAppMedia(

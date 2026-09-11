@@ -47,7 +47,7 @@ export async function fetchAllTemplates(): Promise<{ templates: MetaTemplate[]; 
   noStore();
   try {
     const project = await getCurrentProject() as any;
-    if (!project?.whatsappBusinessId || !project?.whatsappToken) {
+    if (!project?.whatsappBusinessId) {
       return { error: 'Configura WhatsApp en Configuración primero.', templates: [] };
     }
 
@@ -130,7 +130,7 @@ export interface CreateTemplateInput {
 export async function createMetaTemplate(input: CreateTemplateInput): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
     const project = await getCurrentProject() as any;
-    if (!project?.whatsappBusinessId || !project?.whatsappToken || !project?.whatsappPhoneId) {
+    if (!project?.whatsappBusinessId || !project?.whatsappPhoneId) {
       return { success: false, error: 'Configura WhatsApp en Configuración primero (faltan credenciales).' };
     }
 

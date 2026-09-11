@@ -313,15 +313,20 @@ export async function verifyWhatsappConnection(
   explicitToken?: string
 ): Promise<{ success: boolean; message: string }> {
   let phoneId = explicitPhoneId;
-  let token = explicitToken;
+  // Como somos Tech Provider, SIEMPRE usamos nuestro token maestro para la verificación
+  let token = process.env.SYSTEM_USER_TOKEN;
 
   // Si no se pasan credenciales explícitas, usamos las del proyecto actual (con fallback)
-  if (!phoneId || !token) {
+  if (!phoneId) {
     const project = await getCurrentProject();
     if (!project) return { success: false, message: 'No se encontró el proyecto.' };
     
-    phoneId = phoneId || project.whatsappPhoneId || '';
-    token = token || process.env.SYSTEM_USER_TOKEN || decrypt(project.whatsappToken) || '';
+    phoneId = project.whatsappPhoneId || '';
+  }
+
+  // Fallback por si acaso SYSTEM_USER_TOKEN no está (aunque siempre debería)
+  if (!token) {
+    token = explicitToken || '';
   }
 
   if (!phoneId || !token) {
