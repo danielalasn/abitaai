@@ -621,7 +621,7 @@ export async function getMessageTimeSeries(startDate?: Date, endDate?: Date, pro
     // Convert to explicit strings for raw SQL safely, since prisma raw uses parameterized queries
     const query = `
       SELECT 
-        TO_CHAR(m."createdAt", 'YYYY-MM-DD') as date,
+        TO_CHAR(m."createdAt" - INTERVAL '6 hours', 'YYYY-MM-DD') as date,
         CAST(SUM(CASE WHEN m.role = 'assistant' THEN 1 ELSE 0 END) AS INTEGER) as ai_messages,
         CAST(SUM(CASE WHEN m.role = 'agent' AND (m."waCategory" = 'SERVICE' OR m."waCategory" IS NULL) THEN 1 ELSE 0 END) AS INTEGER) as agent_messages,
         CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY', 'AUTHENTICATION') THEN 1 ELSE 0 END) AS INTEGER) as template_messages
@@ -631,8 +631,8 @@ export async function getMessageTimeSeries(startDate?: Date, endDate?: Date, pro
       INNER JOIN "Project" p ON l."projectId" = p.id
       INNER JOIN "Client" cl ON p."clientId" = cl.id
       WHERE l.phone != 'SIMULADOR_TEST' AND cl.email NOT IN ('info@abitaai.com', 'abita-bot@abitaai.com') ${dateFilter} ${projectFilter}
-      GROUP BY TO_CHAR(m."createdAt", 'YYYY-MM-DD')
-      ORDER BY TO_CHAR(m."createdAt", 'YYYY-MM-DD') ASC
+      GROUP BY TO_CHAR(m."createdAt" - INTERVAL '6 hours', 'YYYY-MM-DD')
+      ORDER BY TO_CHAR(m."createdAt" - INTERVAL '6 hours', 'YYYY-MM-DD') ASC
     `;
     
     const results = await prisma.$queryRawUnsafe<any[]>(query, ...params);
