@@ -98,27 +98,20 @@ export async function checkWhatsAppConnections() {
 
     const projects = await prisma.project.findMany({
       where: {
-        whatsappToken: { not: null },
         whatsappPhoneId: { not: null }
       },
       select: { id: true, name: true, whatsappToken: true, whatsappPhoneId: true, client: { select: { name: true } } }
     });
 
     if (projects.length === 0) {
-      return { status: 'success', message: 'No hay proyectos con tokens de WA', details: [] };
+      return { status: 'success', message: 'No hay proyectos conectados a WhatsApp', details: [] };
     }
 
     const details = [];
     for (const project of projects) {
       const displayName = project.client?.name || project.name;
       try {
-        const decryptedToken = decrypt(project.whatsappToken) || '';
-        if (!decryptedToken) {
-          details.push({ name: displayName, status: 'error', message: 'Token no pudo ser descifrado' });
-          continue;
-        }
-
-        const verifyResult = await verifyWhatsappConnection(project.whatsappPhoneId || undefined, decryptedToken);
+        const verifyResult = await verifyWhatsappConnection(project.whatsappPhoneId || undefined, decrypt(project.whatsappToken) || undefined);
         
         if (!verifyResult.success) {
           details.push({ name: displayName, status: 'error', message: verifyResult.message });
