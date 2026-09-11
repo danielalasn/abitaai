@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: "Plataforma de ventas y atención al cliente con Inteligencia Artificial",
   manifest: "/manifest.json",
   icons: {
+    icon: "/tab-ico.png?v=2",
     apple: "/icon-192x192.png",
   },
   other: {

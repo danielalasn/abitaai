@@ -72,8 +72,9 @@ export function Sidebar() {
       <div className="flex flex-col mb-8 shrink-0 overflow-hidden">
         <div className="flex items-center gap-4 px-3">
           <div className="w-6 flex items-center justify-center shrink-0">
-            <div className="h-8 w-8 bg-[#111111] dark:bg-[#E9E4D8] rounded-xl flex items-center justify-center shadow-md shrink-0 transition-transform hover:rotate-12">
-              <span className="text-[#F36A2D] font-bold tracking-tight">a</span>
+            <div className="h-8 w-8 relative flex items-center justify-center shrink-0 transition-transform hover:scale-110">
+              <img src="/assets/logos/logo-dark.png" alt="Abita" className="w-full h-full object-contain rounded-xl dark:hidden" />
+              <img src="/assets/logos/logo-light.png" alt="Abita" className="w-full h-full object-contain rounded-xl hidden dark:block" />
             </div>
           </div>
           <span className={`font-semibold text-xl tracking-tight text-[#111111] dark:text-[#EDE9E0] whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'opacity-0 -translate-x-4 pointer-events-none' : 'opacity-100'}`}>
