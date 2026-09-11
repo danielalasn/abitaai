@@ -204,8 +204,7 @@ export function initWorker() {
             if (botData.reply.trim()) {
               if (channel === 'whatsapp') {
                 const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
-                const rawToken = chatDetails.lead.project?.whatsappToken;
-                const projectToken = rawToken ? decrypt(rawToken) : process.env.SYSTEM_USER_TOKEN;
+                const projectToken = process.env.SYSTEM_USER_TOKEN;
                 if (projectPhoneId && projectToken) {
                   const waResult = await sendWhatsAppMessage(from, botData.reply, projectPhoneId, projectToken);
                   waCategory = waResult.category || 'SERVICE';
@@ -260,8 +259,7 @@ export function initWorker() {
             // 7. Enviar y guardar archivos adjuntos solicitados por la IA
             if (botData.sentFiles && botData.sentFiles.length > 0 && channel === 'whatsapp') {
               const projectPhoneId = chatDetails.lead.project?.whatsappPhoneId;
-              const rawToken = chatDetails.lead.project?.whatsappToken;
-              const projectToken = rawToken ? decrypt(rawToken) : process.env.SYSTEM_USER_TOKEN;
+              const projectToken = process.env.SYSTEM_USER_TOKEN;
 
               if (projectPhoneId && projectToken) {
                 for (const file of botData.sentFiles) {

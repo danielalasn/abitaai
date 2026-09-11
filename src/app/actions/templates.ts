@@ -51,7 +51,7 @@ export async function fetchAllTemplates(): Promise<{ templates: MetaTemplate[]; 
       return { error: 'Configura WhatsApp en Configuración primero.', templates: [] };
     }
 
-    const token = decrypt(project.whatsappToken);
+    const token = process.env.SYSTEM_USER_TOKEN;
     const url = `https://graph.facebook.com/${API_VERSION}/${project.whatsappBusinessId}/message_templates?fields=id,name,status,category,language,components,quality_score,rejected_reason&limit=100`;
 
     const res = await fetch(url, {
@@ -134,9 +134,9 @@ export async function createMetaTemplate(input: CreateTemplateInput): Promise<{ 
       return { success: false, error: 'Configura WhatsApp en Configuración primero (faltan credenciales).' };
     }
 
-    const token = decrypt(project.whatsappToken);
+    const token = process.env.SYSTEM_USER_TOKEN;
     if (!token) {
-      return { success: false, error: 'Credenciales inválidas (token nulo).' };
+      return { success: false, error: 'SYSTEM_USER_TOKEN no configurado.' };
     }
     const url = `https://graph.facebook.com/${API_VERSION}/${project.whatsappBusinessId}/message_templates`;
 
@@ -239,7 +239,7 @@ export async function deleteMetaTemplate(templateName: string): Promise<{ succes
       return { success: false, error: 'Sin credenciales.' };
     }
 
-    const token = decrypt(project.whatsappToken);
+    const token = process.env.SYSTEM_USER_TOKEN;
     const url = `https://graph.facebook.com/${API_VERSION}/${project.whatsappBusinessId}/message_templates?name=${encodeURIComponent(templateName)}`;
 
     const res = await fetch(url, {

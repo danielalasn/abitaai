@@ -30,7 +30,7 @@ export async function fetchMetaTemplates() {
       console.log("[fetchMetaTemplates] Missing credentials, returning empty.");
       return { error: 'Configura el WhatsApp Business ID y el Access Token en Configuración.', templates: [] };
     }
-    const decryptedToken = decrypt(project.whatsappToken);
+    const decryptedToken = process.env.SYSTEM_USER_TOKEN;
     let templates = await getApprovedTemplates(project.whatsappBusinessId, decryptedToken!);
     
     // Filtro por Grupo de Plantillas (Prefijo) - solo si el cliente tiene uno configurado
@@ -66,8 +66,8 @@ export async function launchCampaignAction(
 ) {
   const project = await getProjectWithCredentials();
 
-  if (!project.whatsappPhoneId || !project.whatsappToken) {
-    throw new Error('Configura el Phone Number ID y el Access Token en Configuración antes de lanzar campañas.');
+  if (!project.whatsappPhoneId) {
+    throw new Error('Configura el Phone Number ID en Configuración antes de lanzar campañas.');
   }
 
   // --- Verificación de Límite de Suscripción ---
@@ -135,7 +135,7 @@ export async function processCampaignLead(
 
   if (!campaign || !campaign.csvData) throw new Error("Campaña no encontrada o sin datos");
   if (campaign.projectId !== project.id) throw new Error("Acceso denegado");
-  if (!project.whatsappPhoneId || !project.whatsappToken) throw new Error("Credenciales de WhatsApp faltantes");
+  if (!project.whatsappPhoneId) throw new Error("Credenciales de WhatsApp faltantes");
 
   const leadsData = JSON.parse(campaign.csvData);
   const leadData = leadsData[leadIndex];
@@ -279,7 +279,7 @@ export async function processCampaignLead(
         languageCode, 
         components, 
         project.whatsappPhoneId!, 
-        decrypt(project.whatsappToken)!,
+        process.env.SYSTEM_USER_TOKEN!,
         (campaign.templateCategory as any) || 'MARKETING'
       );
     }

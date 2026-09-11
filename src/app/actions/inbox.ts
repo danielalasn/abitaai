@@ -616,12 +616,8 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
     } else {
       // 2. Enviar mensaje REAL a WhatsApp vía Meta API
       const phone = chat.lead.phone;
-      // Aplicar misma lógica que el worker: si el proyecto usa el WABA de Abita, usar SYSTEM_USER_TOKEN
-      const resolvedProject = resolveProjectCredentials(chat.lead.project as any);
-      const phoneId = resolvedProject?.whatsappPhoneId;
-      const token = resolvedProject?.whatsappToken;
-
-      const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+      const resolvedToken = process.env.SYSTEM_USER_TOKEN;
+      const phoneId = chat.lead.project?.whatsappPhoneId;
       console.log(`[Manual Agent Text] Sending to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
 
       if (phone && phoneId && resolvedToken) {
@@ -702,11 +698,8 @@ export async function sendAgentMedia(
 
     const phone = chat.lead.phone;
     // Aplicar misma lógica que el worker: si el proyecto usa el WABA de Abita, usar SYSTEM_USER_TOKEN
-    const resolvedProject = resolveProjectCredentials(chat.lead.project as any);
-    const phoneId = resolvedProject?.whatsappPhoneId;
-    const token = resolvedProject?.whatsappToken;
-
-    const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+    const resolvedToken = process.env.SYSTEM_USER_TOKEN;
+    const phoneId = chat.lead.project?.whatsappPhoneId;
     console.log(`[Manual Agent Media] Sending media to ${phone} using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
 
     if (phone && phoneId && resolvedToken) {
@@ -856,8 +849,8 @@ export async function startIndividualChatAction(
     const project = await getCurrentProject();
     if (!project) return { success: false, error: 'No se encontró el proyecto base.' };
 
-    if (!project.whatsappPhoneId || !project.whatsappToken) {
-      return { success: false, error: 'Configura el Phone Number ID y el CRM Token en Ajustes antes de iniciar chats.' };
+    if (!project.whatsappPhoneId) {
+      return { success: false, error: 'Configura el Phone Number ID en Ajustes antes de iniciar chats.' };
     }
 
     const cleanPhone = phone.replace(/[^0-9]/g, '');
@@ -944,7 +937,7 @@ export async function startIndividualChatAction(
       });
     }
 
-    const resolvedToken = project.whatsappToken ? decrypt(project.whatsappToken) : null;
+    const resolvedToken = process.env.SYSTEM_USER_TOKEN;
     if (!resolvedToken) {
       return { success: false, error: 'Token de WhatsApp inválido o no configurado.' };
     }
@@ -1021,10 +1014,8 @@ export async function retryFailedMessage(messageId: string): Promise<{ success: 
   }
   if (!message.content) return { success: false, error: 'El mensaje no tiene contenido' };
 
-  const resolvedProject = resolveProjectCredentials(message.chat.lead.project as any);
-  const phoneId = resolvedProject?.whatsappPhoneId;
-  const token = resolvedProject?.whatsappToken;
-  const resolvedToken = token ? decrypt(token) : process.env.SYSTEM_USER_TOKEN;
+  const resolvedToken = process.env.SYSTEM_USER_TOKEN;
+  const phoneId = message.chat.lead.project?.whatsappPhoneId;
   const phone = message.chat.lead.phone;
 
   if (!phone || !phoneId || !resolvedToken) {

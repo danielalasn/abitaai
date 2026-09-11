@@ -278,16 +278,12 @@ export function LandingClient() {
       <section className="stats-section">
         <div className="stats-bar">
           <div className="stat-item">
-            <div className="stat-number">2.1s</div>
+            <div className="stat-number">15s</div>
             <div className="stat-label">Tiempo promedio de respuesta</div>
           </div>
           <div className="stat-item">
             <div className="stat-number">24/7</div>
             <div className="stat-label">Disponibilidad continua</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">85%</div>
-            <div className="stat-label">Respuestas resueltas por IA</div>
           </div>
         </div>
       </section>
