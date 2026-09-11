@@ -5,6 +5,7 @@ import { signIn, getSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { Turnstile } from '@marsidev/react-turnstile'
 
 function LoginContent() {
   const router = useRouter()
@@ -14,6 +15,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
 
   // Limpiar la URL si tiene callbackUrl redundante
   useEffect(() => {
@@ -31,6 +33,7 @@ function LoginContent() {
     const result = await signIn('credentials', {
       email,
       password,
+      turnstileToken,
       redirect: false,
     })
 
@@ -162,6 +165,16 @@ function LoginContent() {
             {error && (
               <div className="text-xs font-medium text-rose-500 bg-rose-500/5 py-3 px-4 rounded-lg border border-rose-500/10 animate-in fade-in slide-in-from-top-2">
                 {error}
+              </div>
+            )}
+
+            {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+              <div className="flex justify-center py-2">
+                <Turnstile 
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} 
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  options={{ theme: 'light' }}
+                />
               </div>
             )}
 

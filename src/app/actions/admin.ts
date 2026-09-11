@@ -150,7 +150,7 @@ export async function updateBotConfig(projectId: string, configData: any) {
   }
 
   // 2. Actualizar o Crear el Agente (Bot Config)
-  let agent = await prisma.agent.findFirst({ where: { projectId } });
+  const agent = await prisma.agent.findFirst({ where: { projectId } });
   
   if (agent) {
     const updated = await prisma.agent.update({

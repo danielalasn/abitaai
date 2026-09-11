@@ -45,6 +45,26 @@ export function Sidebar() {
   
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
 
+  const handleLogout = async () => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        const reg = await navigator.serviceWorker.ready
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) {
+          await fetch('/api/notifications/push-unsubscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint })
+          })
+          await sub.unsubscribe()
+        }
+      } catch (e) {
+        console.error('Error unsubscribing from push:', e)
+      }
+    }
+    signOut({ callbackUrl: '/login' })
+  }
+
   return (
     <aside className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col pt-6 pb-4 px-4 shrink-0 transition-[width] duration-300 ease-in-out relative z-50`}>
       
@@ -160,7 +180,7 @@ export function Sidebar() {
               Mi Perfil
             </Link>
             <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-left"
             >
               <LogOut size={16} />

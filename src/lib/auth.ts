@@ -10,12 +10,39 @@ export const authOptions = {
       credentials: {
         email:    { label: 'Email',    type: 'email' },
         password: { label: 'Password', type: 'password' },
+        turnstileToken: { label: 'Token', type: 'text' },
       },
       async authorize(credentials) {
         console.log('[AUTH DEBUG] Intento de login para:', credentials?.email)
         if (!credentials?.email || !credentials?.password) {
           console.log('[AUTH DEBUG] Faltan credenciales')
           return null
+        }
+
+        // Validación de Turnstile
+        if (process.env.TURNSTILE_SECRET_KEY) {
+          if (!credentials.turnstileToken) {
+            console.log('[AUTH DEBUG] Intento de login sin Turnstile token');
+            throw new Error('Por favor, completa la verificación de seguridad.');
+          }
+          try {
+            const verifyResponse = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: `secret=${process.env.TURNSTILE_SECRET_KEY}&response=${credentials.turnstileToken}`
+            });
+            const outcome = await verifyResponse.json();
+            if (!outcome.success) {
+              console.log('[AUTH DEBUG] Turnstile Token Inválido', outcome);
+              throw new Error('Verificación de seguridad fallida. Eres un bot?');
+            }
+          } catch (e: any) {
+            console.error('[AUTH DEBUG] Error validando Turnstile', e);
+            throw new Error(e.message || 'Error validando seguridad.');
+          }
+        } else if (process.env.NODE_ENV === 'production' && !credentials.turnstileToken) {
+           console.log('[AUTH DEBUG] Intento de login sin token en producción');
+           // Opcional: throw new Error('Validación de seguridad requerida.');
         }
 
         try {

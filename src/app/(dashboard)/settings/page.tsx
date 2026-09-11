@@ -489,7 +489,7 @@ export default function SettingsPage() {
   const handleSaveNotificationEmails = async () => {
     setIsSavingNotificationEmails(true); setNotificationEmailsStatus(null)
     try {
-      let finalEmails = [...notificationEmails]
+      const finalEmails = [...notificationEmails]
       const trimmedInput = notificationEmailInput.trim()
       if (trimmedInput && !finalEmails.includes(trimmedInput)) {
         finalEmails.push(trimmedInput)
@@ -547,7 +547,7 @@ export default function SettingsPage() {
   const handleSaveNotificationPhones = async () => {
     setIsSavingNotificationPhones(true); setNotificationPhonesStatus(null)
     try {
-      let finalPhones = [...notificationPhones]
+      const finalPhones = [...notificationPhones]
       const trimmedInput = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
       if (trimmedInput && !finalPhones.includes(trimmedInput)) {
         finalPhones.push(trimmedInput)

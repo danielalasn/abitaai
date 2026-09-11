@@ -50,7 +50,7 @@ function _toRFC3339(dateStr: string, timeStr: string): string | null {
   console.log(`[DEBUG CALENDAR] _toRFC3339 received - dateStr: '${dateStr}', timeStr: '${timeStr}'`);
   // Ej: 2024-05-15 15:00 en America/El_Salvador
   // Limpieza robusta por si la IA envía "3:00 PM" o "3 pm" en lugar de "15:00"
-  let cleanTime = (timeStr || '').trim().toLowerCase();
+  const cleanTime = (timeStr || '').trim().toLowerCase();
   let hours = 0;
   let minutes = 0;
   

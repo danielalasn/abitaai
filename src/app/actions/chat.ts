@@ -352,7 +352,7 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
     const maxLoops = 3;
     let currentInputTokens = 0;
     let currentOutputTokens = 0;
-    let failedSlots: string[] = [];
+    const failedSlots: string[] = [];
 
     // --- Inject active bookings for this phone into the system prompt (so AI knows what to update/cancel) ---
     let finalSystemPromptWithBookings = finalSystemPrompt;
@@ -649,7 +649,7 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
               console.log(`[Agentic Loop] MULTI CREATE_BOOKING (update) date=${bookDate} start=${bookStart} attendees=${allNames.length}`);
             } else {
               // First booking for this slot — create a new event with static title
-              let staticTitle = (calConfig?.eventTitle || 'Reserva')
+              const staticTitle = (calConfig?.eventTitle || 'Reserva')
                 .replace(/\{\{nombre_cliente\}\}/gi, '').replace(/\s{2,}/g, ' ').trim();
               const baseDesc = (calConfig?.eventDescription || '').replace(/\{\{[^}]+\}\}/g, '').trim();
               const initialDesc = (baseDesc ? baseDesc + '\n\n' : '') +

@@ -29,6 +29,26 @@ export function MobileNav() {
     { icon: Settings, label: 'Configuración', href: '/settings' },
   ]
 
+  const handleLogout = async () => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        const reg = await navigator.serviceWorker.ready
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) {
+          await fetch('/api/notifications/push-unsubscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint })
+          })
+          await sub.unsubscribe()
+        }
+      } catch (e) {
+        console.error('Error unsubscribing from push:', e)
+      }
+    }
+    signOut({ callbackUrl: '/login' })
+  }
+
   return (
     <>
 
@@ -131,7 +151,7 @@ export function MobileNav() {
             {/* Logout */}
             <div className="px-6 mt-auto pt-6 border-t border-[#DEDAD0]/50 dark:border-zinc-800/50">
               <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-3 px-4 py-4 rounded-2xl text-sm font-bold bg-rose-500/10 text-rose-600 active:scale-95 transition-transform"
               >
                 <LogOut size={18} />

@@ -70,7 +70,7 @@ function normalizeScoringRules(raw: string | any[]): string {
     if (total === 100) return JSON.stringify(rules);
 
     // Scale proportionally so the sum is exactly 100
-    let normalized = rules.map(r => ({
+    const normalized = rules.map(r => ({
       condition: r.condition,
       score: Math.round((Number(r.score) / total) * 100),
     }));
