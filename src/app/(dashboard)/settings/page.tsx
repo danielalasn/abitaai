@@ -90,6 +90,10 @@ export default function SettingsPage() {
   const [newAgentDesc, setNewAgentDesc] = useState("")
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
+  // Track which sections have already loaded their data
+  const [sectionLoaded, setSectionLoaded] = useState<Record<string, boolean>>({})
+  const [isLoadingSection, setIsLoadingSection] = useState(false)
+
   // Profile management
   const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'notifications' | 'connections' | 'botConfig' | 'tools'>(isAdmin ? 'agent' : 'profile')
   const [userName, setUserName] = useState("")
@@ -281,33 +285,44 @@ export default function SettingsPage() {
     } catch (e) { console.error(e) }
   }, [])
 
-  useEffect(() => {
-    loadProject()
-    loadIgStatus()
-    loadWaStatus()
-    loadProfile()
-    const tab = searchParams.get('tab')
-    const success = searchParams.get('success')
-    const error = searchParams.get('error')
-    if (tab === 'connections') {
-      setActiveSection('connections')
-      if (success === 'instagram') { setIgFeedback('success'); loadIgStatus() }
-      if (error === 'instagram_denied') setIgFeedback('denied')
-      if (error === 'oauth_failed' || error === 'invalid_state') setIgFeedback('error')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // Load notifications section data (lazy)
+  const loadNotificationsSection = useCallback(async () => {
+    if (sectionLoaded['notifications']) return
+    setIsLoadingSection(true)
+    try {
+      const [emails, phones, tStatus] = await Promise.all([
+        getNotificationEmails(),
+        getNotificationPhones(),
+        getHandoffTemplateStatus(),
+      ])
+      setNotificationEmails(emails)
+      setNotificationPhones(phones)
+      setHandoffTemplateStatus(tStatus)
+    } catch (e) { console.error(e) }
+    setSectionLoaded(prev => ({ ...prev, notifications: true }))
+    setIsLoadingSection(false)
+  }, [sectionLoaded])
 
-  const handleDisconnectIg = async () => {
-    setIgLoading(true)
-    await disconnectIntegration('meta_instagram')
-    setIgIntegration(null)
-    setIgFeedback(null)
-    setIgLoading(false)
-  }
+  // Load connections section data (lazy)
+  const loadConnectionsSection = useCallback(async (projectIdVal: string) => {
+    if (sectionLoaded['connections']) return
+    setIsLoadingSection(true)
+    try {
+      await Promise.all([
+        loadIgStatus(),
+        loadWaStatus(),
+        projectIdVal ? fetch(`/api/integrations/status?projectId=${projectIdVal}&provider=google-calendar`).then(r => r.ok ? r.json() : null).then(j => j && setGcalConnected(j.connected === true)) : Promise.resolve(),
+        projectIdVal ? fetch(`/api/integrations/status?projectId=${projectIdVal}&provider=google-sheet`).then(r => r.ok ? r.json() : null).then(j => j && setGsheetsConnected(j.connected === true)) : Promise.resolve(),
+      ])
+    } catch (e) { console.error(e) }
+    setSectionLoaded(prev => ({ ...prev, connections: true }))
+    setIsLoadingSection(false)
+  }, [sectionLoaded, loadIgStatus, loadWaStatus])
 
-  const loadProject = async () => {
-    setIsLoading(true)
+  // Load agent/botConfig section data (lazy)
+  const loadAgentSection = useCallback(async () => {
+    if (sectionLoaded['agent']) return
+    setIsLoadingSection(true)
     try {
       const data = await getProjectConfig()
       setProjectId(data.projectId)
@@ -317,43 +332,64 @@ export default function SettingsPage() {
       setDefaultBotActive(data.defaultBotActive ?? true)
       setBotAutoWakeHours(data.botAutoWakeHours ?? null)
       setAgents(data.agents as AgentSummary[])
-
-      // Load user profile from data
-      if (data.client) {
-        setUserName(data.client.name || "")
-        setUserEmail(data.client.email || "")
-      }
-
-      if (data.agents.length > 0) {
-        selectAgent(data.agents[0] as AgentSummary)
-      }
-
-      // Load notification emails
-      const emails = await getNotificationEmails()
-      setNotificationEmails(emails)
-
-      // Load notification phones & template status
-      const phones = await getNotificationPhones()
-      setNotificationPhones(phones)
-      const tStatus = await getHandoffTemplateStatus()
-      setHandoffTemplateStatus(tStatus)
-
-      // Load Nango connections for this project
-      if (data.projectId) {
-        const resCal = await fetch(`/api/integrations/status?projectId=${data.projectId}&provider=google-calendar`)
-        if (resCal.ok) {
-          const json = await resCal.json()
-          setGcalConnected(json.connected === true)
-        }
-
-        const resSheets = await fetch(`/api/integrations/status?projectId=${data.projectId}&provider=google-sheet`)
-        if (resSheets.ok) {
-          const json = await resSheets.json()
-          setGsheetsConnected(json.connected === true)
-        }
-      }
+      if (data.agents.length > 0) selectAgent(data.agents[0] as AgentSummary)
     } catch (e) { console.error(e) }
-    setIsLoading(false)
+    setSectionLoaded(prev => ({ ...prev, agent: true, botConfig: true }))
+    setIsLoadingSection(false)
+  }, [sectionLoaded])
+
+  // On mount: only load profile (fast path)
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true)
+      await loadProfile()
+      setIsLoading(false)
+
+      // Handle OAuth redirects
+      const tab = searchParams.get('tab')
+      const success = searchParams.get('success')
+      const error = searchParams.get('error')
+      if (tab === 'connections') {
+        setActiveSection('connections')
+        if (success === 'instagram') setIgFeedback('success')
+        if (error === 'instagram_denied') setIgFeedback('denied')
+        if (error === 'oauth_failed' || error === 'invalid_state') setIgFeedback('error')
+      }
+    }
+    init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Lazy-load data when switching sections
+  useEffect(() => {
+    if (activeSection === 'notifications') loadNotificationsSection()
+    if (activeSection === 'connections') loadConnectionsSection(projectId)
+    if (activeSection === 'agent' || activeSection === 'botConfig') loadAgentSection()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection])
+
+  const handleDisconnectIg = async () => {
+    setIgLoading(true)
+    await disconnectIntegration('meta_instagram')
+    setIgIntegration(null)
+    setIgFeedback(null)
+    setIgLoading(false)
+  }
+
+  // loadProject is kept for cases where we need to refresh agent/project data directly
+  const loadProject = async () => {
+    try {
+      const data = await getProjectConfig()
+      setProjectId(data.projectId)
+      setWhatsappToken(data.whatsappToken)
+      setWhatsappPhoneId(data.whatsappPhoneId)
+      setWhatsappBusinessId(data.whatsappBusinessId)
+      setDefaultBotActive(data.defaultBotActive ?? true)
+      setBotAutoWakeHours(data.botAutoWakeHours ?? null)
+      setAgents(data.agents as AgentSummary[])
+      if (data.agents.length > 0) selectAgent(data.agents[0] as AgentSummary)
+      setSectionLoaded(prev => ({ ...prev, agent: true, botConfig: true }))
+    } catch (e) { console.error(e) }
   }
 
   const selectAgent = (agent: AgentSummary) => {
@@ -1346,6 +1382,11 @@ export default function SettingsPage() {
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Notificaciones</h2>
                 </header>
 
+                {isLoadingSection && !sectionLoaded['notifications'] ? (
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 size={28} className="animate-spin text-[#F36A2D]" />
+                  </div>
+                ) : (
                 <div className="flex flex-col gap-6">
 
                   {/* Web Push Notifications Card */}
@@ -1620,6 +1661,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
+                )}
               </div>
             )}
 
