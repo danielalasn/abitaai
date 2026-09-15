@@ -83,9 +83,9 @@ function LoginContent() {
 
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 relative flex items-center justify-center shrink-0">
-              <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl" />
+              <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="w-full h-full object-contain rounded-xl" />
             </div>
-            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">abita.ai</span>
+            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">Abita <span className="text-[#F36A2D]">AI</span></span>
           </div>
         </div>
 
@@ -110,9 +110,9 @@ function LoginContent() {
         {/* Mobile Header */}
         <div className="md:hidden absolute top-8 left-8 flex items-center gap-2">
           <div className="h-8 w-8 relative flex items-center justify-center shrink-0">
-            <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl" />
+            <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="w-full h-full object-contain rounded-xl" />
           </div>
-          <span className="font-semibold text-lg tracking-tight text-[#111111]">abita.ai</span>
+          <span className="font-semibold text-lg tracking-tight text-[#111111]">Abita <span className="text-[#F36A2D]">AI</span></span>
         </div>
 
         <div className="w-full max-w-sm space-y-10">

@@ -22,15 +22,15 @@ export function LandingClient() {
       <nav className={`landing-nav ${scrolled ? 'scrolled' : ''}`}>
         <div className="nav-logo">
           <div className="w-8 h-8 relative mr-2 shrink-0">
-            <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl" />
+            <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="w-full h-full object-contain rounded-xl" />
           </div>
-          <span className="nav-logo-text">abita.ai</span>
+          <span className="nav-logo-text">Abita <span className="text-[#F36A2D]">AI</span></span>
         </div>
 
         <div className="nav-actions">
           <a href="#contact" className="btn-contact">Contacto</a>
           <Link href="/login" className="btn-login">
-            Iniciar sesion
+            Login
             <ArrowRight size={14} />
           </Link>
         </div>
@@ -313,9 +313,9 @@ export function LandingClient() {
         <div className="footer-inner">
           <div className="footer-brand">
             <div className="w-8 h-8 relative mr-2 shrink-0">
-              <img src="/assets/logos/logo-light.png" alt="abita.ai" className="w-full h-full object-contain rounded-xl" />
+              <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="w-full h-full object-contain rounded-xl" />
             </div>
-            <span className="footer-brand-text">abita.ai</span>
+            <span className="footer-brand-text">Abita <span className="text-[#F36A2D]">AI</span></span>
           </div>
 
           <div className="footer-links">
