@@ -9,7 +9,7 @@ import { compileKnowledgeWithAI, saveAgentConfig } from '@/app/actions/settings'
 import { getPromptBlocks, updatePromptBlock, reorderPromptBlocks, createPromptBlock, deletePromptBlock, resetToDefaultBlocks } from '@/app/actions/prompt-builder';
 import { generateBotConfigFromFile, generateBotConfigFromUrl, type GeneratedBotConfig } from '@/app/actions/bot-builder';
 import { runTestSimulation, getTestSuiteStatus, getTestSuiteResults } from '@/app/actions/testing';
-import { MessageChart, type ChartDataPoint } from '@/components/admin/MessageChart';
+import { MessageChart, type ChartDataPoint, type ChartClient } from '@/components/admin/MessageChart';
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -26,6 +26,53 @@ export default function AdminPage() {
   const [statsEndDate, setStatsEndDate] = useState('');
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [filteredProjectIds, setFilteredProjectIds] = useState<string[] | null>(null);
+
+  const handleClientFilterChange = async (projectIds: string[] | null) => {
+    setFilteredProjectIds(projectIds);
+    setIsStatsLoading(true);
+    try {
+      const start = statsStartDate || undefined;
+      const end = statsEndDate || undefined;
+      // Build per-project time series and sum them
+      if (projectIds === null) {
+        const [, timeSeries] = await Promise.all([
+          Promise.resolve(),
+          getMessageTimeSeries(
+            start ? new Date(start) : undefined,
+            end ? new Date(`${end}T23:59:59.999Z`) : undefined
+          )
+        ]);
+        setChartData(timeSeries);
+      } else if (projectIds.length === 0) {
+        setChartData([]);
+      } else {
+        // Fetch each project's series and merge by date
+        const series = await Promise.all(
+          projectIds.map(pid =>
+            getMessageTimeSeries(
+              start ? new Date(start) : undefined,
+              end ? new Date(`${end}T23:59:59.999Z`) : undefined,
+              pid
+            )
+          )
+        );
+        const merged: Record<string, ChartDataPoint> = {};
+        series.flat().forEach((row: any) => {
+          if (!merged[row.date]) {
+            merged[row.date] = { date: row.date, ai_messages: 0, agent_messages: 0, template_messages: 0 };
+          }
+          merged[row.date].ai_messages += row.ai_messages;
+          merged[row.date].agent_messages += row.agent_messages;
+          merged[row.date].template_messages += row.template_messages;
+        });
+        setChartData(Object.values(merged).sort((a, b) => a.date.localeCompare(b.date)));
+      }
+    } catch (err) {
+      console.error('Error filtering chart data', err);
+    }
+    setIsStatsLoading(false);
+  };
 
   // Create User state
   const [showCreate, setShowCreate] = useState(false);
@@ -1142,8 +1189,18 @@ export default function AdminPage() {
       {/* CHART ROW */}
       {globalStats && (
         <div className="mb-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-6">Volumen de Mensajes</h2>
-          <MessageChart data={chartData} />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Volumen de Mensajes</h2>
+            {isStatsLoading && <span className="text-xs text-zinc-400 animate-pulse">Actualizando...</span>}
+          </div>
+          <MessageChart
+            data={chartData}
+            clients={clients
+              .filter(c => c.projects?.[0]?.id)
+              .map(c => ({ id: c.id, name: c.name, projectId: c.projects[0].id } as ChartClient))
+            }
+            onClientFilterChange={handleClientFilterChange}
+          />
         </div>
       )}
 
