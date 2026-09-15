@@ -81,15 +81,22 @@ export async function sendHandoffWhatsAppNotification(
   const displayName = leadName || leadPhone;
   const time = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
 
-  const phoneNumberId = project.whatsappPhoneId;
-  const rawToken = project.whatsappToken;
+  const phoneNumberId = project.whatsappPhoneId
+    || process.env.WHATSAPP_PHONE_ID
+    || null;
+
+  const rawToken = project.whatsappToken
+    || (process.env.SYSTEM_USER_TOKEN ? process.env.SYSTEM_USER_TOKEN : null);
 
   if (!phoneNumberId || !rawToken) {
-    console.warn('[WA Handoff] Sin credenciales WA en el proyecto. Saltando notificación.');
+    console.warn('[WA Handoff] Sin credenciales WA (proyecto ni globales). Saltando notificación.');
     return;
   }
 
-  const accessToken = decrypt(rawToken) || rawToken;
+  // If it's the project's own stored token it may be encrypted; env token is plain text
+  const accessToken = project.whatsappToken
+    ? (decrypt(rawToken) || rawToken)
+    : rawToken;
 
   for (const phone of notificationPhones) {
     try {
