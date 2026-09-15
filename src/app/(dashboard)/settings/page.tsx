@@ -591,7 +591,7 @@ export default function SettingsPage() {
     setIsSavingNotificationPhones(true); setNotificationPhonesStatus(null)
     try {
       const finalPhones = [...notificationPhones]
-      const trimmedInput = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
+      const trimmedInput = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
       if (trimmedInput && !finalPhones.includes(trimmedInput)) {
         finalPhones.push(trimmedInput)
         setNotificationPhones(finalPhones)
