@@ -21,15 +21,14 @@ import {
   getNotificationEmails, saveNotificationEmails,
   getNotificationPhones, saveNotificationPhones,
   getHandoffTemplateStatus, getPushSubscriptionSettings, updatePushSubscriptionSettings,
-  disconnectWhatsApp, getProfileWithMeta, syncProfileFromMeta,
-  sendTestWhatsApp, sendTestEmail, getHealthStatus
+  disconnectWhatsApp, getProfileWithMeta, syncProfileFromMeta
 } from '@/app/actions/settings'
 import { updateUserTheme } from '@/app/actions/user'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
 import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
 import CalendarConfigPanel from '@/components/bot-builder/CalendarConfigPanel'
 import GoogleSheetsConnect from '@/components/integrations/GoogleSheetsConnect'
-import SheetsConfigPanel from '@/components/bot-builder/SheetsConfigPanel'
+import SheetsConfigPanel from '@/components/integrations/SheetsConfigPanel'
 import ThemeSwitch from '@/components/ui/theme-switch'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
@@ -157,7 +156,7 @@ export default function SettingsPage() {
   // Notification phones (WhatsApp)
   const [notificationPhones, setNotificationPhones] = useState<string[]>([])
   const [notificationPhoneInput, setNotificationPhoneInput] = useState<string | undefined>('')
-  const [phoneCountry, setPhoneCountry] = useState<Country>('SV')
+  const [phoneCountry, setPhoneCountry] = useState<Country | undefined>('SV')
   const [isSavingNotificationPhones, setIsSavingNotificationPhones] = useState(false)
   const [notificationPhonesStatus, setNotificationPhonesStatus] = useState<'success' | 'error' | null>(null)
   const [handoffTemplateStatus, setHandoffTemplateStatus] = useState<string | null>(null)
@@ -1579,8 +1578,7 @@ export default function SettingsPage() {
                                 onChange={setNotificationPhoneInput}
                                 inputComponent={CustomPhoneInput}
                                 callingCode={phoneCountry ? getCountryCallingCode(phoneCountry) : ''}
-                                className="w-full h-full text-xs custom-phone-input"
-                                className="flex-1 bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs placeholder-zinc-400 h-full py-2.5"
+                                className="flex-1 bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs placeholder-zinc-400 h-full py-2.5 custom-phone-input"
                                 onKeyDown={(e: any) => {
                                   if (e.key === 'Enter') {
                                     e.preventDefault();
