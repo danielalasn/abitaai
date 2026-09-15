@@ -831,7 +831,6 @@ export default function SettingsPage() {
   }
 
 
-
   const selectedAgent = agents.find(a => a.id === selectedAgentId)
 
   return (
@@ -1094,17 +1093,16 @@ export default function SettingsPage() {
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Mi Perfil</h2>
                 </header>
-                
+
                 {isLoading ? (
                   <div className="flex items-center justify-center py-20">
                     <Loader2 size={28} className="animate-spin text-[#F36A2D]" />
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                  {/* Visual Identity Card */}
-                  <div className="group h-full">
+                  <>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                      {/* Visual Identity Card */}
+                      <div className="group h-full">
                     <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500 h-full">
 
                       {/* Avatar */}
@@ -1373,7 +1371,8 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
-                  </div>
+                </div>
+                  </>
                 )}
               </div>
             )}
