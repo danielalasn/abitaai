@@ -830,11 +830,7 @@ export default function SettingsPage() {
     } catch (e: any) { alert(e.message) }
   }
 
-  if (isLoading) return (
-    <div className="flex-1 flex items-center justify-center bg-[#E9E4D8] dark:bg-[#1A1714]">
-      <Loader2 className="animate-spin text-[#F36A2D]" size={32} />
-    </div>
-  )
+
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId)
 
@@ -1098,6 +1094,13 @@ export default function SettingsPage() {
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Mi Perfil</h2>
                 </header>
+                
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 size={28} className="animate-spin text-[#F36A2D]" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                   {/* Visual Identity Card */}
@@ -1370,7 +1373,8 @@ export default function SettingsPage() {
                       </button>
                     </div>
                   </div>
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
