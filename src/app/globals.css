@@ -306,3 +306,39 @@ body {
 .dark .btn-disconnect {
   border-color: rgba(255,255,255,0.08);
 }
+
+/* ─── PhoneInput overrides ─── */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+}
+.PhoneInputCountry {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+.PhoneInputCountrySelect {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 1; border: 0; opacity: 0; cursor: pointer;
+}
+.PhoneInputCountryIcon {
+  width: 24px;
+  height: 16px;
+}
+.PhoneInputCountryIcon--border {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+.PhoneInputCountryIconImg {
+  display: block; width: 100%; height: 100%; border-radius: 2px;
+}
+.PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  outline: none;
+  border: none;
+}

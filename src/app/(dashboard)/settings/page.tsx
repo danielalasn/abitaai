@@ -11,6 +11,8 @@ import {
   Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings,
   Sun, Moon
 } from 'lucide-react'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
   createAgent, deleteAgent, saveAgentConfig, toggleAgent,
@@ -140,7 +142,7 @@ export default function SettingsPage() {
 
   // Notification phones (WhatsApp)
   const [notificationPhones, setNotificationPhones] = useState<string[]>([])
-  const [notificationPhoneInput, setNotificationPhoneInput] = useState('')
+  const [notificationPhoneInput, setNotificationPhoneInput] = useState<string | undefined>('')
   const [isSavingNotificationPhones, setIsSavingNotificationPhones] = useState(false)
   const [notificationPhonesStatus, setNotificationPhonesStatus] = useState<'success' | 'error' | null>(null)
   const [handoffTemplateStatus, setHandoffTemplateStatus] = useState<string | null>(null)
@@ -1540,7 +1542,7 @@ export default function SettingsPage() {
                             <div className="flex flex-wrap gap-2 mb-2">
                               {notificationPhones.map((phone) => (
                                 <div key={phone} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                  <span>+{phone}</span>
+                                  <span>{phone.startsWith('+') ? phone : `+${phone}`}</span>
                                   <button
                                     onClick={() => setNotificationPhones(prev => prev.filter(p => p !== phone))}
                                     className="hover:text-red-500 transition-colors"
@@ -1552,28 +1554,29 @@ export default function SettingsPage() {
                             </div>
                           )}
 
-                          <div className="flex gap-2">
-                            <input
-                              id="notification-phone-input"
-                              type="tel"
-                              placeholder="50378901234 (con código de país, sin +)"
-                              value={notificationPhoneInput}
-                              onChange={e => setNotificationPhoneInput(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const trimmed = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
-                                  if (trimmed && !notificationPhones.includes(trimmed)) {
-                                    setNotificationPhones(prev => [...prev, trimmed])
-                                    setNotificationPhoneInput('')
+                          <div className="flex gap-2 items-stretch">
+                            <div className="flex-1 px-4 py-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all flex items-center text-zinc-900 dark:text-zinc-100">
+                              <PhoneInput
+                                international
+                                defaultCountry="SV"
+                                value={notificationPhoneInput}
+                                onChange={setNotificationPhoneInput}
+                                onKeyDown={(e: any) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
+                                    if (trimmed && !notificationPhones.includes(trimmed)) {
+                                      setNotificationPhones(prev => [...prev, trimmed])
+                                      setNotificationPhoneInput('')
+                                    }
                                   }
-                                }
-                              }}
-                              className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all text-zinc-900 dark:text-zinc-100"
-                            />
+                                }}
+                                className="w-full h-full text-xs"
+                              />
+                            </div>
                             <button
                               onClick={() => {
-                                const trimmed = notificationPhoneInput.trim().replace(/[^0-9]/g, '')
+                                const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
                                 if (trimmed && !notificationPhones.includes(trimmed)) {
                                   setNotificationPhones(prev => [...prev, trimmed])
                                   setNotificationPhoneInput('')
