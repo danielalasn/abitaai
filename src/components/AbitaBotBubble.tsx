@@ -27,6 +27,7 @@ export function AbitaBotBubble({ isCollapsed = false }: { isCollapsed?: boolean 
   };
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastMessageCount = useRef(0);
 
   const scrollToBottom = (force = false) => {
@@ -64,6 +65,9 @@ export function AbitaBotBubble({ isCollapsed = false }: { isCollapsed?: boolean 
     if (!input.trim() || isLoading) return;
     const userText = input.trim();
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     
     // Add optimistic message
     setMessages(prev => [...prev, { role: 'user', content: userText }]);
@@ -193,15 +197,25 @@ export function AbitaBotBubble({ isCollapsed = false }: { isCollapsed?: boolean 
 
           {/* Input Area */}
           <div className="p-3 bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
-            <input
-              type="text"
+            <textarea
+              ref={textareaRef}
+              name="chat-message"
+              autoComplete="off"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 80)}px`;
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSend();
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
               }}
               placeholder="Escribe tu mensaje..."
-              className="flex-1 bg-zinc-100 dark:bg-zinc-900 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              rows={1}
+              className="flex-1 bg-zinc-100 dark:bg-zinc-900 border-none rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 resize-none max-h-[80px] min-h-[40px] overflow-y-auto"
               disabled={isLoading}
             />
             <button
