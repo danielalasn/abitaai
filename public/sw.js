@@ -13,8 +13,8 @@ self.addEventListener('push', function(event) {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: '/icon-192x192.png',
-      badge: '/icon-192x192.png',
+      icon: '/tab-ico.png',
+      badge: '/tab-ico.png',
       data: {
         chatId: data.chatId
       }
