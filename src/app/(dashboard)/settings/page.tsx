@@ -290,6 +290,11 @@ export default function SettingsPage() {
     if (sectionLoaded['notifications']) return
     setIsLoadingSection(true)
     try {
+      // Need project config for whatsappPhoneId to render the WhatsApp card
+      if (!sectionLoaded['botConfig']) {
+        await loadProject()
+      }
+      
       const [emails, phones, tStatus] = await Promise.all([
         getNotificationEmails(),
         getNotificationPhones(),
