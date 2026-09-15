@@ -69,7 +69,7 @@ export function Sidebar() {
     <aside className={`${isCollapsed ? 'w-20' : 'w-64'} border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8] dark:bg-[#1A1714] flex flex-col pt-6 pb-4 px-4 shrink-0 transition-[width] duration-300 ease-in-out relative z-50`}>
       
       {/* Header Container */}
-      <div className="flex flex-col mb-8 shrink-0 overflow-hidden">
+      <div className="flex flex-col mb-8 shrink-0">
         <div className="flex items-center gap-4 px-3">
           <div className="w-6 flex items-center justify-center shrink-0">
             <div className="h-8 w-8 relative flex items-center justify-center shrink-0 transition-transform hover:scale-110">

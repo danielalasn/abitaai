@@ -100,6 +100,44 @@ export async function sendAbitaBotMessage(message: string) {
     }
   });
 
+  // Enviar notificación Push si está configurado
+  const allMsgSubs = await prisma.pushSubscription.findMany({
+    where: { clientId: project.clientId, notifyAllMessages: true }
+  });
+
+  if (allMsgSubs.length > 0 && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    const webpush = (await import('web-push')).default;
+    webpush.setVapidDetails(
+      'mailto:contacto@abitaai.com',
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+
+    let truncatedText = message.length > 50 ? message.substring(0, 47) + '...' : message;
+
+    const payload = JSON.stringify({
+      title: leadName,
+      body: truncatedText,
+      chatId: lead.chat.id,
+    });
+
+    const promises = [];
+    for (const sub of allMsgSubs) {
+      promises.push(
+        webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload
+        ).catch((e: any) => {
+          console.error('[Web Push] Error enviando push para mensaje normal (Abita Bot):', e);
+          if (e.statusCode === 410 || e.statusCode === 404) {
+            prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => { });
+          }
+        })
+      );
+    }
+    await Promise.allSettled(promises);
+  }
+
   // Re-obtener historial para pasarlo a la IA
   const chatHistory = await prisma.message.findMany({
     where: { chatId: lead.chat.id },
