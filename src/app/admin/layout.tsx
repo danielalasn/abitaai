@@ -31,13 +31,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-dvh bg-zinc-50 dark:bg-[#09090b] font-sans selection:bg-orange-500/20">
       <header className="h-20 flex items-center justify-between px-8 bg-white dark:bg-[#121214] border-b border-zinc-200 dark:border-zinc-800 shadow-sm sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-zinc-900 dark:bg-white rounded-xl flex items-center justify-center">
-             <span className="text-white dark:text-zinc-900 font-bold text-lg italic">a</span>
+        <div className="flex items-center gap-4">
+          <div className="h-9 w-9 relative flex items-center justify-center shrink-0">
+            {mounted ? (
+              <img
+                src={theme === 'dark' ? '/assets/logos/logo-light.png' : '/assets/logos/logo-dark.png'}
+                alt="Abita"
+                className="w-full h-full object-contain rounded-xl"
+              />
+            ) : (
+              <img src="/assets/logos/logo-dark.png" alt="Abita" className="w-full h-full object-contain rounded-xl" />
+            )}
           </div>
-          <div>
-            <span className="font-bold text-xl tracking-tight text-zinc-900 dark:text-zinc-100 block">abita.ai</span>
-            <span className="text-xs text-orange-600 font-medium uppercase tracking-wider">Panel de Administración</span>
+          <div className="flex flex-col justify-center">
+            <span className="font-semibold text-xl tracking-tight text-[#111111] dark:text-[#EDE9E0] block leading-none mb-1.5">
+              Abita <span className="text-[#F36A2D]">AI</span>
+            </span>
+            <span className="text-[9px] text-[#F36A2D] font-black uppercase tracking-[0.15em] leading-none">Panel de Admin</span>
           </div>
         </div>
 
