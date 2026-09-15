@@ -35,9 +35,11 @@ import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 const CustomPhoneInput = forwardRef<HTMLInputElement, any>(({ callingCode, ...props }, ref) => {
   return (
     <div className="flex items-center w-full h-full">
-      <div className="px-2 py-1 mr-2 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 font-bold border border-zinc-200 dark:border-zinc-700 select-none">
-        +{callingCode}
-      </div>
+      {callingCode && (
+        <div className="px-2 py-1 mr-2 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 font-bold border border-zinc-200 dark:border-zinc-700 select-none">
+          +{callingCode}
+        </div>
+      )}
       <input ref={ref} {...props} />
     </div>
   )
@@ -156,7 +158,7 @@ export default function SettingsPage() {
   // Notification phones (WhatsApp)
   const [notificationPhones, setNotificationPhones] = useState<string[]>([])
   const [notificationPhoneInput, setNotificationPhoneInput] = useState<string | undefined>('')
-  const [phoneCountry, setPhoneCountry] = useState<Country | undefined>('SV')
+  const [phoneCountry, setPhoneCountry] = useState<Country | undefined>()
   const [isSavingNotificationPhones, setIsSavingNotificationPhones] = useState(false)
   const [notificationPhonesStatus, setNotificationPhonesStatus] = useState<'success' | 'error' | null>(null)
   const [handoffTemplateStatus, setHandoffTemplateStatus] = useState<string | null>(null)
