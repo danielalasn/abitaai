@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, forwardRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Script from 'next/script'
 import { useSession } from 'next-auth/react'
@@ -11,7 +11,7 @@ import {
   Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings,
   Sun, Moon
 } from 'lucide-react'
-import PhoneInput from 'react-phone-number-input'
+import PhoneInput, { getCountryCallingCode, type Country } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
 import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
@@ -21,15 +21,29 @@ import {
   getNotificationEmails, saveNotificationEmails,
   getNotificationPhones, saveNotificationPhones,
   getHandoffTemplateStatus, getPushSubscriptionSettings, updatePushSubscriptionSettings,
-  disconnectWhatsApp, getProfileWithMeta, syncProfileFromMeta
+  disconnectWhatsApp, getProfileWithMeta, syncProfileFromMeta,
+  sendTestWhatsApp, sendTestEmail, getHealthStatus
 } from '@/app/actions/settings'
+import { updateUserTheme } from '@/app/actions/user'
 import { getIntegrationStatus, disconnectIntegration } from '@/app/actions/integrations'
 import GoogleCalendarConnect from '@/components/integrations/GoogleCalendarConnect'
 import CalendarConfigPanel from '@/components/bot-builder/CalendarConfigPanel'
 import GoogleSheetsConnect from '@/components/integrations/GoogleSheetsConnect'
-import SheetsConfigPanel from '@/components/integrations/SheetsConfigPanel'
+import SheetsConfigPanel from '@/components/bot-builder/SheetsConfigPanel'
 import ThemeSwitch from '@/components/ui/theme-switch'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
+
+const CustomPhoneInput = forwardRef<HTMLInputElement, any>(({ callingCode, ...props }, ref) => {
+  return (
+    <div className="flex items-center w-full h-full">
+      <div className="px-2 py-1 mr-2 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 font-bold border border-zinc-200 dark:border-zinc-700 select-none">
+        +{callingCode}
+      </div>
+      <input ref={ref} {...props} />
+    </div>
+  )
+})
+CustomPhoneInput.displayName = 'CustomPhoneInput'
 
 // Instagram logo SVG (lucide doesn't include it)
 const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -143,6 +157,7 @@ export default function SettingsPage() {
   // Notification phones (WhatsApp)
   const [notificationPhones, setNotificationPhones] = useState<string[]>([])
   const [notificationPhoneInput, setNotificationPhoneInput] = useState<string | undefined>('')
+  const [phoneCountry, setPhoneCountry] = useState<Country>('SV')
   const [isSavingNotificationPhones, setIsSavingNotificationPhones] = useState(false)
   const [notificationPhonesStatus, setNotificationPhonesStatus] = useState<'success' | 'error' | null>(null)
   const [handoffTemplateStatus, setHandoffTemplateStatus] = useState<string | null>(null)
@@ -1554,13 +1569,18 @@ export default function SettingsPage() {
                             </div>
                           )}
 
-                          <div className="flex gap-2 items-stretch">
-                            <div className="flex-1 px-4 py-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all flex items-center text-zinc-900 dark:text-zinc-100">
+                          <div className="flex gap-2 items-stretch h-[42px]">
+                            <div className="flex-1 px-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all flex items-center text-zinc-900 dark:text-zinc-100">
                               <PhoneInput
-                                international
-                                defaultCountry="SV"
+                                international={false}
+                                country={phoneCountry}
+                                onCountryChange={setPhoneCountry}
                                 value={notificationPhoneInput}
                                 onChange={setNotificationPhoneInput}
+                                inputComponent={CustomPhoneInput}
+                                callingCode={phoneCountry ? getCountryCallingCode(phoneCountry) : ''}
+                                className="w-full h-full text-xs custom-phone-input"
+                                className="flex-1 bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs placeholder-zinc-400 h-full py-2.5"
                                 onKeyDown={(e: any) => {
                                   if (e.key === 'Enter') {
                                     e.preventDefault();
@@ -1571,7 +1591,6 @@ export default function SettingsPage() {
                                     }
                                   }
                                 }}
-                                className="w-full h-full text-xs"
                               />
                             </div>
                             <button
