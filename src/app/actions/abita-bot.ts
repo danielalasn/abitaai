@@ -113,7 +113,7 @@ export async function sendAbitaBotMessage(message: string) {
       process.env.VAPID_PRIVATE_KEY
     );
 
-    let truncatedText = message.length > 50 ? message.substring(0, 47) + '...' : message;
+    let truncatedText = message;
 
     const payload = JSON.stringify({
       title: leadName,

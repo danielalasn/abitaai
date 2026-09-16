@@ -186,12 +186,14 @@ export default function SettingsPage() {
         navigator.serviceWorker.ready.then(reg => {
           reg.pushManager.getSubscription().then(sub => {
             if (sub) {
-              setPushEndpoint(sub.endpoint);
               import('@/app/actions/settings').then(m => {
                 m.getPushSubscriptionSettings(sub.endpoint).then(settings => {
                   if (settings) {
+                    setPushEndpoint(sub.endpoint);
                     setNotifyHandoffs(settings.notifyHandoffs);
                     setNotifyAllMessages(settings.notifyAllMessages);
+                  } else {
+                    setPushEndpoint(null);
                   }
                 });
               });
@@ -1442,7 +1444,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     
-                    {!pushPermissionGranted ? (
+                    {(!pushPermissionGranted || !pushEndpoint) ? (
                       <button
                         onClick={handleSubscribePush}
                         disabled={isSubscribingPush}

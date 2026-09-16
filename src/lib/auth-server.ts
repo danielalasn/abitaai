@@ -29,10 +29,21 @@ export async function getCurrentProject() {
   const session = await getServerSession(authOptions) as any;
   if (!session?.user?.id) return null;
   
-  let project = await prisma.project.findFirst({
-    where: { clientId: session.user.id },
-    include: { agents: true, client: true }
-  });
+  let project;
+  try {
+    project = await prisma.project.findFirst({
+      where: { clientId: session.user.id },
+      include: { agents: true, client: true }
+    });
+  } catch (error: any) {
+    console.error('[getCurrentProject] First attempt failed:', error.message);
+    // Transient connection error from Supabase pooler, wait and retry
+    await new Promise(res => setTimeout(res, 1000));
+    project = await prisma.project.findFirst({
+      where: { clientId: session.user.id },
+      include: { agents: true, client: true }
+    });
+  }
 
   // Auto-create project if user has none (e.g. embedded signup users)
   if (!project) {

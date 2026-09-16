@@ -593,8 +593,12 @@ export async function getHandoffTemplateStatus(): Promise<string | null> {
 }
 
 export async function getPushSubscriptionSettings(endpoint: string) {
+  const project = await getCurrentProject();
+  if (!project) return null;
+
   const sub = await prisma.pushSubscription.findUnique({ where: { endpoint } });
-  if (!sub) return null;
+  if (!sub || sub.clientId !== project.clientId) return null;
+  
   return {
     notifyHandoffs: sub.notifyHandoffs,
     notifyAllMessages: sub.notifyAllMessages
