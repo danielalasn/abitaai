@@ -349,7 +349,7 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
 
     let rawReply = '';
     let loopCount = 0;
-    const maxLoops = 3;
+    const maxLoops = 5;
     let currentInputTokens = 0;
     let currentOutputTokens = 0;
     const failedSlots: string[] = [];
@@ -846,6 +846,23 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
         messages.push({ role: 'assistant', content: rawReply });
         messages.push({ role: 'user', content: systemData });
         console.log(`[Agentic Loop] Iteration ${loopCount}: SYSTEM DATA injected`);
+        
+        // Safety net: if we hit the limit, do one last call to get a text response
+        if (loopCount === maxLoops) {
+          console.log(`[Agentic Loop] Reached maxLoops (${maxLoops}), forcing final text response.`);
+          const finalResponse = await anthropic.messages.create({
+            model: AI_MODELS.CLAUDE_MAIN,
+            max_tokens: 1024,
+            system: finalSystemPromptWithBookings + "\n\nREGLA GLOBAL OBLIGATORIA: Has alcanzado el límite de acciones internas. DEBES RESPONDER AL CLIENTE AHORA MISMO basándote en los datos recibidos. NO intentes usar más [ACTION:...].",
+            messages: messages,
+          });
+          currentInputTokens += finalResponse.usage?.input_tokens || 0;
+          currentOutputTokens += finalResponse.usage?.output_tokens || 0;
+          rawReply = finalResponse.content
+            .filter((c: any) => c.type === 'text')
+            .map((c: any) => c.text)
+            .join('\n');
+        }
       } else {
         break;
       }
