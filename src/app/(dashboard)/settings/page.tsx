@@ -363,6 +363,37 @@ export default function SettingsPage() {
     setIsLoadingSection(false)
   }, [sectionLoaded])
 
+  // Load tools section data (lazy)
+  const loadToolsSection = useCallback(async () => {
+    if (sectionLoaded['tools']) return
+    setIsLoadingSection(true)
+    try {
+      let currentProjectId = projectId
+      if (!currentProjectId) {
+        const data = await getProjectConfig()
+        setProjectId(data.projectId)
+        setWhatsappToken(data.whatsappToken)
+        setWhatsappPhoneId(data.whatsappPhoneId)
+        setWhatsappBusinessId(data.whatsappBusinessId)
+        setDefaultBotActive(data.defaultBotActive ?? true)
+        setBotAutoWakeHours(data.botAutoWakeHours ?? null)
+        setAgents(data.agents as AgentSummary[])
+        currentProjectId = data.projectId
+      }
+
+      if (currentProjectId) {
+        const [calRes, sheetRes] = await Promise.all([
+          fetch(`/api/integrations/status?projectId=${currentProjectId}&provider=google-calendar`).then(r => r.ok ? r.json() : null),
+          fetch(`/api/integrations/status?projectId=${currentProjectId}&provider=google-sheet`).then(r => r.ok ? r.json() : null),
+        ])
+        if (calRes) setGcalConnected(calRes.connected === true)
+        if (sheetRes) setGsheetsConnected(sheetRes.connected === true)
+      }
+    } catch (e) { console.error(e) }
+    setSectionLoaded(prev => ({ ...prev, tools: true }))
+    setIsLoadingSection(false)
+  }, [sectionLoaded, projectId])
+
   // On mount: only load profile (fast path)
   useEffect(() => {
     const init = async () => {
@@ -379,6 +410,8 @@ export default function SettingsPage() {
         if (success === 'instagram') setIgFeedback('success')
         if (error === 'instagram_denied') setIgFeedback('denied')
         if (error === 'oauth_failed' || error === 'invalid_state') setIgFeedback('error')
+      } else if (tab === 'tools') {
+        setActiveSection('tools')
       }
     }
     init()
@@ -390,6 +423,7 @@ export default function SettingsPage() {
     if (activeSection === 'notifications') loadNotificationsSection()
     if (activeSection === 'connections') loadConnectionsSection(projectId)
     if (activeSection === 'agent' || activeSection === 'botConfig') loadAgentSection()
+    if (activeSection === 'tools') loadToolsSection()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection])
 
@@ -1878,32 +1912,38 @@ export default function SettingsPage() {
                 </header>
 
                 <div className="w-full">
-                  {projectId && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                      <GoogleCalendarConnect
-                        projectId={projectId}
-                        isConnected={gcalConnected}
-                        onStatusChange={(connected) => setGcalConnected(connected)}
-                        onOpenConfig={() => setShowCalendarConfig(true)}
-                      />
-                      <CalendarConfigPanel
-                        isOpen={showCalendarConfig && gcalConnected}
-                        onClose={() => setShowCalendarConfig(false)}
-                        projectId={projectId || undefined}
-                      />
-
-                      <GoogleSheetsConnect
-                        projectId={projectId}
-                        isConnected={gsheetsConnected}
-                        onStatusChange={(connected) => setGsheetsConnected(connected)}
-                        onOpenConfig={() => setShowSheetsConfig(true)}
-                      />
-                      <SheetsConfigPanel
-                        isOpen={showSheetsConfig && gsheetsConnected}
-                        onClose={() => setShowSheetsConfig(false)}
-                        projectId={projectId || undefined}
-                      />
+                  {isLoadingSection && !sectionLoaded['tools'] ? (
+                    <div className="flex items-center justify-center py-20">
+                      <Loader2 size={28} className="animate-spin text-[#F36A2D]" />
                     </div>
+                  ) : (
+                    projectId && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                        <GoogleCalendarConnect
+                          projectId={projectId}
+                          isConnected={gcalConnected}
+                          onStatusChange={(connected) => setGcalConnected(connected)}
+                          onOpenConfig={() => setShowCalendarConfig(true)}
+                        />
+                        <CalendarConfigPanel
+                          isOpen={showCalendarConfig && gcalConnected}
+                          onClose={() => setShowCalendarConfig(false)}
+                          projectId={projectId || undefined}
+                        />
+
+                        <GoogleSheetsConnect
+                          projectId={projectId}
+                          isConnected={gsheetsConnected}
+                          onStatusChange={(connected) => setGsheetsConnected(connected)}
+                          onOpenConfig={() => setShowSheetsConfig(true)}
+                        />
+                        <SheetsConfigPanel
+                          isOpen={showSheetsConfig && gsheetsConnected}
+                          onClose={() => setShowSheetsConfig(false)}
+                          projectId={projectId || undefined}
+                        />
+                      </div>
+                    )
                   )}
                 </div>
               </div>
