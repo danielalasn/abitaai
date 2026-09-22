@@ -549,9 +549,9 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
             // Enrich each free_day with server-calculated weekday
             const enrichedRes = {
               ...res,
-              free_days: (res.free_days || []).map((fd: any) => ({
-                ...fd,
-                weekday_label: dateWithWeekday(fd.date)
+              free_days: (res.free_days || []).map((fd: string) => ({
+                date: fd,
+                weekday_label: dateWithWeekday(fd)
               }))
             };
             systemData = `[SYSTEM DATA: CHECK_MULTIPLE_DAYS_RESULT]\n${JSON.stringify(enrichedRes)}\nINSTRUCCIÓN: Presenta los free_days al cliente usando el campo "weekday_label" de cada día (ya calculado por el servidor). NO calcules ni supongas el día de la semana tú mismo, usa EXACTAMENTE el weekday_label provisto.`;
@@ -964,9 +964,11 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
       }
       
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const fallbackPrompt = finalSystemPrompt + "\n\n[SISTEMA - ALERTA CRÍTICA]: Estás operando en modo de emergencia (fallback) debido a un error. Las integraciones de calendario y base de datos NO están disponibles. NO intentes usar [ACTION: CHECK_DAY], [ACTION: CREATE_BOOKING] ni ninguna otra acción externa. Si el usuario te pidió consultar disponibilidad, agendar, o hacer algo que requiera sistema, DEBES decirle amablemente que estás experimentando problemas técnicos y usar OBLIGATORIAMENTE [ACTION: HANDOFF] para transferirlo con un asesor humano.";
+      
       const model = genAI.getGenerativeModel({ 
         model: AI_MODELS.GEMINI_FALLBACK,
-        systemInstruction: finalSystemPrompt 
+        systemInstruction: fallbackPrompt 
       });
       
       const geminiHistory = history.map(h => ({
@@ -1048,8 +1050,8 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
     } catch (geminiError: any) {
       console.error("Gemini Fallback Error:", geminiError);
       return { 
-        reply: null, // No enviar nada al cliente
-        isHandoff: false, 
+        reply: "He tenido un problema técnico y no puedo procesar tu solicitud en este momento. Te transferiré con un asesor para que te ayude.",
+        isHandoff: true, 
         scoreBump: 0, 
         scoreReason: "AI_ERROR",
         inputTokens: 0, 
