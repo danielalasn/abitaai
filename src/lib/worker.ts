@@ -120,7 +120,7 @@ export function initWorker() {
         where: { id: chatId },
         include: { 
           lead: { include: { project: true } }, 
-          messages: { orderBy: { createdAt: 'desc' }, take: 15 } 
+          messages: { orderBy: { createdAt: 'desc' }, take: 25 } 
         }
       });
 
