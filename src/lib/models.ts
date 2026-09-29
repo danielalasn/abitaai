@@ -4,17 +4,17 @@
  */
 export const AI_MODELS = {
   // Modelo principal (Claude)
-  CLAUDE_MAIN: 'claude-sonnet-5',
-  
+  CLAUDE_MAIN: 'claude-sonnet-5-5',
+
   // Modelo para resúmenes automáticos (Claude)
   CLAUDE_SUMMARY: 'claude-haiku-4-5',
 
   // Modelo de Gemini para el "Plan B" (si falla Claude en el chat)
-  GEMINI_FALLBACK: 'gemini-3.7-flash',
+  GEMINI_FALLBACK: 'gemini-3.8-flash',
 
   // Modelo de Gemini para transcripción de notas de voz
-  GEMINI_TRANSCRIBE: 'gemini-3.7-flash',
-  
+  GEMINI_TRANSCRIBE: 'gemini-3.5-transcribe',
+
   // Modelo de Gemini para resúmenes (fallback si falla Claude)
-  GEMINI_SUMMARY: 'gemini-3.7-flash'
+  GEMINI_SUMMARY: 'gemini-3.8-flash'
 };

@@ -8,38 +8,70 @@ import { AI_MODELS } from '@/lib/models';
 export async function checkAIModelsConnections() {
   const details = [];
 
-  // Check Claude
+  // --- Claude MAIN ---
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const claudeModel = AI_MODELS.CLAUDE_MAIN || 'claude-3-haiku-20240307';
     await anthropic.messages.create({
-      model: claudeModel,
+      model: AI_MODELS.CLAUDE_MAIN,
       max_tokens: 1,
       messages: [{ role: 'user', content: 'ping' }],
     });
-    details.push({ name: `Claude (${claudeModel})`, status: 'success', message: 'Conectado' });
+    details.push({ name: `Claude Main (${AI_MODELS.CLAUDE_MAIN})`, status: 'success', message: 'Conectado' });
   } catch (error: any) {
-    details.push({ name: `Claude (${AI_MODELS.CLAUDE_MAIN || 'claude-3-haiku-20240307'})`, status: 'error', message: error.message || 'Error de conexión' });
+    details.push({ name: `Claude Main (${AI_MODELS.CLAUDE_MAIN})`, status: 'error', message: error.message || 'Error de conexión' });
   }
 
-  // Check Gemini
+  // --- Claude SUMMARY ---
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    await anthropic.messages.create({
+      model: AI_MODELS.CLAUDE_SUMMARY,
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'ping' }],
+    });
+    details.push({ name: `Claude Summary (${AI_MODELS.CLAUDE_SUMMARY})`, status: 'success', message: 'Conectado' });
+  } catch (error: any) {
+    details.push({ name: `Claude Summary (${AI_MODELS.CLAUDE_SUMMARY})`, status: 'error', message: error.message || 'Error de conexión' });
+  }
+
+  // --- Gemini FALLBACK ---
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const geminiModel = AI_MODELS.GEMINI_FALLBACK || 'gemini-1.5-flash';
-    const model = genAI.getGenerativeModel({ model: geminiModel });
+    const model = genAI.getGenerativeModel({ model: AI_MODELS.GEMINI_FALLBACK });
     await model.generateContent('ping');
-    details.push({ name: `Gemini (${geminiModel})`, status: 'success', message: 'Conectado' });
+    details.push({ name: `Gemini Fallback (${AI_MODELS.GEMINI_FALLBACK})`, status: 'success', message: 'Conectado' });
   } catch (error: any) {
-    details.push({ name: `Gemini (${AI_MODELS.GEMINI_FALLBACK || 'gemini-1.5-flash'})`, status: 'error', message: error.message || 'Error de conexión' });
+    details.push({ name: `Gemini Fallback (${AI_MODELS.GEMINI_FALLBACK})`, status: 'error', message: error.message || 'Error de conexión' });
+  }
+
+  // --- Gemini TRANSCRIBE ---
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    const model = genAI.getGenerativeModel({ model: AI_MODELS.GEMINI_TRANSCRIBE });
+    await model.generateContent('ping');
+    details.push({ name: `Gemini Transcribe (${AI_MODELS.GEMINI_TRANSCRIBE})`, status: 'success', message: 'Conectado' });
+  } catch (error: any) {
+    details.push({ name: `Gemini Transcribe (${AI_MODELS.GEMINI_TRANSCRIBE})`, status: 'error', message: error.message || 'Error de conexión' });
+  }
+
+  // --- Gemini SUMMARY ---
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    const model = genAI.getGenerativeModel({ model: AI_MODELS.GEMINI_SUMMARY });
+    await model.generateContent('ping');
+    details.push({ name: `Gemini Summary (${AI_MODELS.GEMINI_SUMMARY})`, status: 'success', message: 'Conectado' });
+  } catch (error: any) {
+    details.push({ name: `Gemini Summary (${AI_MODELS.GEMINI_SUMMARY})`, status: 'error', message: error.message || 'Error de conexión' });
   }
 
   const hasError = details.some(d => d.status === 'error');
   return {
     status: hasError ? 'error' : 'success',
-    message: hasError ? 'Algunos modelos fallaron' : 'Todos conectados',
+    message: hasError ? `${details.filter(d => d.status === 'error').length} modelo(s) fallaron` : `${details.length}/5 modelos conectados`,
     details
   };
 }
+
 
 export async function checkDatabaseConnection() {
   const details = [];

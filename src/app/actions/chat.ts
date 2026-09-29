@@ -373,6 +373,7 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
     // Agentic Loop para Calendar Actions
     while (loopCount < maxLoops) {
       loopCount++;
+      console.log(`\n🔷 [AI MODEL DEBUG] Llamando modelo: "${AI_MODELS.CLAUDE_MAIN}" | Iteración: ${loopCount} | Lead: ${finalName}`);
       const response = await anthropic.messages.create({
         model: AI_MODELS.CLAUDE_MAIN,
         max_tokens: 1024,
@@ -387,6 +388,8 @@ REGLAS DE ENVÍO DE ARCHIVOS (¡MUY IMPORTANTE!):
         .filter((c: any) => c.type === 'text')
         .map((c: any) => c.text)
         .join('\n');
+      
+      console.log(`🔷 [AI MODEL DEBUG] Respuesta OK | Input tokens: ${response.usage?.input_tokens} | Output tokens: ${response.usage?.output_tokens} | Preview: "${rawReply.slice(0, 80).replace(/\n/g,' ')}..."`);
       
       // Solo entrar al loop de acciones si hay calendario/sheets Y hay un ACTION tag
       if ((!hasCalendar && !hasSheets) || !rawReply.includes('[ACTION: ')) {
