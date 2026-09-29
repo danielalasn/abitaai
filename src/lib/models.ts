@@ -13,7 +13,7 @@ export const AI_MODELS = {
   GEMINI_FALLBACK: 'gemini-3.8-flash',
 
   // Modelo de Gemini para transcripción de notas de voz
-  GEMINI_TRANSCRIBE: 'gemini-3.5-transcribe',
+  GEMINI_TRANSCRIBE: 'gemini-3.8-flash',
 
   // Modelo de Gemini para resúmenes (fallback si falla Claude)
   GEMINI_SUMMARY: 'gemini-3.8-flash'
