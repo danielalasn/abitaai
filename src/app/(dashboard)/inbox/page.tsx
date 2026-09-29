@@ -1752,7 +1752,7 @@ export default function InboxPage() {
                         {/* 3. Audio adjunto */}
                         {msg.mediaUrl && msg.mediaType === 'audio' && (
                           <div className="mb-2 w-full pt-1">
-                            <VoiceNotePlayer url={msg.mediaUrl} variant={isUser ? 'user' : isBot ? 'bot' : 'agent'} avatarUrl={userAvatarUrl} />
+                            <VoiceNotePlayer url={msg.mediaUrl} variant={isUser ? 'user' : isBot ? 'bot' : 'agent'} avatarUrl={userAvatarUrl} transcript={msg.content} />
                           </div>
                         )}
 
