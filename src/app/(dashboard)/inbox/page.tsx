@@ -1634,6 +1634,7 @@ export default function InboxPage() {
                 const isUser = msg.role === 'user';
                 const isBot = msg.role === 'assistant';
                 const isAgent = msg.role === 'agent';
+                const isAudio = msg.mediaType === 'audio';
 
                 const isSystem = msg.role === 'system';
 
@@ -1671,7 +1672,7 @@ export default function InboxPage() {
                       </div>
                     )}
 
-                    <div className={`flex items-end gap-2 max-w-[85%] mb-4 ${isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
+                    <div className={`flex items-end gap-2 mb-4 ${isAudio ? 'w-[80%] md:w-[40%]' : 'max-w-[85%]'} ${isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
                       }`}>
                       {/* Avatar icon */}
                       {isBot && (
@@ -1685,7 +1686,7 @@ export default function InboxPage() {
                         </div>
                       )}
 
-                      <div className={`relative p-3 pb-6 rounded-2xl text-sm min-w-[90px] w-fit font-sans transition-opacity duration-300 ${isUser
+                      <div className={`relative p-3 pb-6 rounded-2xl text-sm min-w-[90px] ${isAudio ? 'w-full' : 'w-fit'} font-sans transition-opacity duration-300 ${isUser
                         ? 'bg-white text-[#111111] dark:bg-[#111111]/40 dark:text-zinc-200 rounded-tl-sm border border-[#DEDAD0] dark:border-zinc-800'
                         : isBot
                           ? 'bg-[#F36A2D] text-white rounded-tr-sm shadow-md'
