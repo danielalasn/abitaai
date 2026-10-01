@@ -8,7 +8,7 @@ import {
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
-  Mic, Square, ChevronDown, LogOut
+  Mic, Square, ChevronDown, LogOut, Camera, MapPin
 } from "lucide-react";
 import { getProfileWithMeta } from '@/app/actions/settings';
 import { formatWhatsAppText } from '@/lib/utils';
@@ -161,7 +161,11 @@ export default function InboxPage() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingFilePreview, setPendingFilePreview] = useState<string | null>(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
@@ -216,6 +220,9 @@ export default function InboxPage() {
     function handleClickOutside(event: MouseEvent) {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
         setShowEmojiPicker(false);
+      }
+      if (attachMenuRef.current && !attachMenuRef.current.contains(event.target as Node)) {
+        setShowAttachMenu(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -1958,9 +1965,24 @@ export default function InboxPage() {
                         <>
                           <input
                             type="file"
-                            ref={fileInputRef}
+                            ref={docInputRef}
                             className="hidden"
-                            accept="image/*,application/pdf,video/*,audio/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                            accept="application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                            onChange={handleFileSelect}
+                          />
+                          <input
+                            type="file"
+                            ref={galleryInputRef}
+                            className="hidden"
+                            accept="image/*,video/*"
+                            onChange={handleFileSelect}
+                          />
+                          <input
+                            type="file"
+                            ref={cameraInputRef}
+                            className="hidden"
+                            accept="image/*,video/*"
+                            capture="environment"
                             onChange={handleFileSelect}
                           />
 
@@ -1992,13 +2014,47 @@ export default function InboxPage() {
                             </div>
                           ) : (
                             <>
-                              <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="shrink-0 p-2.5 bg-white dark:bg-zinc-800 border border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D] rounded-xl transition-all"
-                                title="Adjuntar archivo"
-                              >
-                                <Paperclip size={16} />
-                              </button>
+                              <div className="relative" ref={attachMenuRef}>
+                                <button
+                                  onClick={() => setShowAttachMenu(!showAttachMenu)}
+                                  className={`shrink-0 p-2.5 border rounded-xl transition-all ${showAttachMenu ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
+                                  title="Adjuntar"
+                                >
+                                  <Paperclip size={16} />
+                                </button>
+                                {showAttachMenu && (
+                                  <div className="absolute bottom-full left-0 mb-4 z-[70] bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-700 rounded-2xl shadow-2xl p-2 w-48 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                                    <div className="flex flex-col gap-1">
+                                      <button onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
+                                        <div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg"><FileText size={16} /></div>
+                                        Documento
+                                      </button>
+                                      <button onClick={() => { setShowAttachMenu(false); cameraInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
+                                        <div className="p-1.5 bg-pink-500/10 text-pink-500 rounded-lg"><Camera size={16} /></div>
+                                        Cámara
+                                      </button>
+                                      <button onClick={() => { setShowAttachMenu(false); galleryInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
+                                        <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg"><ImageIcon size={16} /></div>
+                                        Galería
+                                      </button>
+                                      <button onClick={() => {
+                                        setShowAttachMenu(false);
+                                        if (navigator.geolocation) {
+                                          navigator.geolocation.getCurrentPosition((pos) => {
+                                            const url = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                                            setAgentInput(prev => prev ? prev + '\nMi ubicación: ' + url : 'Mi ubicación: ' + url);
+                                          }, (err) => alert("Error de ubicación: " + err.message));
+                                        } else {
+                                          alert("Tu navegador no soporta ubicación.");
+                                        }
+                                      }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
+                                        <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"><MapPin size={16} /></div>
+                                        Ubicación
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
 
                               <div className="relative" ref={emojiPickerRef}>
                                 <button
