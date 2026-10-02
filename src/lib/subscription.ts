@@ -29,6 +29,7 @@ export async function getCurrentMonthUsage(clientId: string): Promise<number> {
       createdAt: {
         gte: startOfMonth
       },
+      status: { not: 'FAILED' }, // No contar mensajes fallidos
       OR: [
         {
           role: 'assistant',

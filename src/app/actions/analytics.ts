@@ -50,12 +50,13 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
   const yesterday24h = new Date()
   yesterday24h.setHours(yesterday24h.getHours() - 24)
 
-  // Chats únicos donde enviamos un template (BIC) en las últimas 24h
+  // Chats únicos donde enviamos un template (BIC) en las últimas 24h (excluir fallidos)
   const bicChats24h = await prisma.message.findMany({
     where: {
       createdAt: { gte: yesterday24h },
       role: 'agent',
       waCategory: { in: ['MARKETING', 'UTILITY'] },
+      status: { not: 'FAILED' }, // No contar mensajes fallidos en el tier
       chat: { lead: { projectId: project.id, channel: 'whatsapp' } }
     },
     select: { chatId: true },
@@ -87,9 +88,10 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     where: { projectId: project.id, status: 'NEEDS_AGENT', ...notSimulator }
   })
 
-  // Uso del plan de todo el tiempo: Mensajes de IA (assistant) + Mensajes de plantilla proactivos (MARKETING/UTILITY)
+  // Uso del plan de todo el tiempo: Mensajes de IA (assistant) + Mensajes de plantilla proactivos (MARKETING/UTILITY) — excluir fallidos
   const planUsageAllTime = await prisma.message.count({
     where: {
+      status: { not: 'FAILED' },
       chat: {
         lead: {
           projectId: project.id
@@ -135,15 +137,16 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
     where: { projectId: project.id, ...dateFilter }
   })
 
-  // Nuevas métricas: Campañas y Mensajes Humanos
+  // Nuevas métricas: Campañas y Mensajes Humanos (excluir fallidos)
   const campaignMessagesCount = await prisma.campaignLog.count({
-    where: { campaign: { projectId: project.id }, ...dateFilter }
+    where: { campaign: { projectId: project.id }, status: { not: 'FAILED' }, ...dateFilter }
   })
 
-  // Mensajes iniciales (proactivos): todas las plantillas (campañas + WhatsApp Directo)
+  // Mensajes iniciales (proactivos): todas las plantillas (campañas + WhatsApp Directo) — excluir fallidos
   const proactiveMessagesCount = await prisma.message.count({
     where: {
       role: 'agent',
+      status: { not: 'FAILED' },
       waCategory: { in: ['MARKETING', 'UTILITY', 'AUTHENTICATION'] },
       chat: { lead: { projectId: project.id, phone: { not: 'SIMULADOR_TEST' } } },
       ...dateFilter
@@ -272,7 +275,7 @@ export async function getAnalyticsData(dateRange?: { start?: string, end?: strin
       TO_CHAR(m."createdAt", 'YYYY-MM-DD') as date,
       CAST(SUM(CASE WHEN m.role = 'assistant' THEN 1 ELSE 0 END) AS INTEGER) as ai_messages,
       CAST(SUM(CASE WHEN m.role = 'agent' AND (m."waCategory" = 'SERVICE' OR m."waCategory" IS NULL) THEN 1 ELSE 0 END) AS INTEGER) as agent_messages,
-      CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY', 'AUTHENTICATION') THEN 1 ELSE 0 END) AS INTEGER) as template_messages
+      CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY', 'AUTHENTICATION') AND m.status != 'FAILED' THEN 1 ELSE 0 END) AS INTEGER) as template_messages
     FROM "Message" m
     INNER JOIN "Chat" c ON m."chatId" = c.id
     INNER JOIN "Lead" l ON c."leadId" = l.id

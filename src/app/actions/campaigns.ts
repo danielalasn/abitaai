@@ -166,6 +166,16 @@ export async function processCampaignLead(
   if (!templateText) templateText = "Plantilla WhatsApp";
   const languageCode = campaign.languageCode || "es";
 
+  // Limpia caracteres invisibles y espacios extra que vienen del CSV/Excel
+  const sanitizeTemplateVar = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/[\u00A0\u200B\u200C\u200D\uFEFF\u2060]/g, ' ') // non-breaking spaces y zero-width chars
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')       // caracteres de control
+      .replace(/\s+/g, ' ')                                     // múltiples espacios → uno
+      .trim();
+  };
+
   try {
     const rawPhone = leadData['#'];
     if (!rawPhone) return { success: false, log: 'Sin número' };
@@ -185,7 +195,7 @@ export async function processCampaignLead(
 
     const bodyParams = bodyEntries.map(([, colName]) => ({
       type: 'text' as const,
-      text: String(leadData[colName] ?? ''),
+      text: sanitizeTemplateVar(leadData[colName]),
     }));
 
     const components: any[] = bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams }] : [];
@@ -195,7 +205,7 @@ export async function processCampaignLead(
     Object.entries(variableMapping).forEach(([k, colName]) => {
       if (k.startsWith('button_')) {
         const btnIdx = k.replace('button_', '');
-        buttonParamsMap[btnIdx] = String(leadData[colName] ?? '');
+        buttonParamsMap[btnIdx] = sanitizeTemplateVar(leadData[colName]);
       }
     });
 
@@ -243,7 +253,7 @@ export async function processCampaignLead(
     const metadataToSave = { ...leadData };
     delete metadataToSave['#'];
     const nameKey = Object.keys(leadData).find(k => ['nombre', 'nombres', 'name', 'names'].includes(k.toLowerCase().trim()));
-    const leadName = nameKey ? String(leadData[nameKey]).trim() : cleanPhone;
+    const leadName = nameKey ? sanitizeTemplateVar(leadData[nameKey]) : cleanPhone;
 
     const lead = await prisma.lead.upsert({
       where: { phone_projectId: { phone: cleanPhone, projectId: project.id } },

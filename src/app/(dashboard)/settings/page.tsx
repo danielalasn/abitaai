@@ -1139,7 +1139,7 @@ export default function SettingsPage() {
 
             {/* PROFILE SECTION */}
             {activeSection === 'profile' && (
-              <div className="h-full flex flex-col p-6 pb-24 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
@@ -1435,7 +1435,7 @@ export default function SettingsPage() {
 
             {/* NOTIFICATIONS SECTION */}
             {activeSection === 'notifications' && (
-              <div className="h-full flex flex-col p-6 pb-24 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
@@ -1733,7 +1733,7 @@ export default function SettingsPage() {
 
             {/* BOT CONFIG SECTION */}
             {activeSection === 'botConfig' && (
-              <div className="h-full flex flex-col p-6 pb-24 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
@@ -1828,7 +1828,7 @@ export default function SettingsPage() {
 
             {/* CONNECTIONS SECTION */}
             {activeSection === 'connections' && (
-              <div className="h-full flex flex-col p-6 pb-24 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
@@ -1902,7 +1902,7 @@ export default function SettingsPage() {
 
             {/* TOOLS SECTION */}
             {activeSection === 'tools' && (
-              <div className="h-full flex flex-col p-6 pb-24 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
@@ -1988,7 +1988,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Form Content */}
-                <div className="p-8 max-w-4xl mx-auto space-y-8 pb-12">
+                <div className="p-8 max-w-4xl mx-auto space-y-8 pb-36 lg:pb-12">
                   {/* Description */}
                   <div>
                     <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Descripción del Agente</label>
