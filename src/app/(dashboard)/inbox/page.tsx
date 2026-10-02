@@ -259,6 +259,8 @@ export default function InboxPage() {
   };
 
   useEffect(() => {
+    // No hacer scroll al fondo si estamos cargando mensajes anteriores (scroll hacia arriba)
+    if (isLoadingMore) return;
     scrollToBottom();
   }, [activeChat?.messages, activeChat?.id]);
 
