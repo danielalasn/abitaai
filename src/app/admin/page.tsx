@@ -60,11 +60,13 @@ export default function AdminPage() {
         const merged: Record<string, ChartDataPoint> = {};
         series.flat().forEach((row: any) => {
           if (!merged[row.date]) {
-            merged[row.date] = { date: row.date, ai_messages: 0, agent_messages: 0, template_messages: 0 };
+            merged[row.date] = { date: row.date, ai_messages: 0, agent_messages: 0, template_messages: 0, failed_ai_messages: 0, failed_template_messages: 0 };
           }
           merged[row.date].ai_messages += row.ai_messages;
           merged[row.date].agent_messages += row.agent_messages;
           merged[row.date].template_messages += row.template_messages;
+          merged[row.date].failed_ai_messages! += row.failed_ai_messages || 0;
+          merged[row.date].failed_template_messages! += row.failed_template_messages || 0;
         });
         setChartData(Object.values(merged).sort((a, b) => a.date.localeCompare(b.date)));
       }

@@ -8,6 +8,8 @@ export interface ChartDataPoint {
   ai_messages: number;
   agent_messages: number;
   template_messages: number;
+  failed_ai_messages?: number;
+  failed_template_messages?: number;
 }
 
 export interface ChartClient {
@@ -25,9 +27,11 @@ interface MessageChartProps {
 }
 
 const SERIES = [
-  { key: 'ai_messages',       label: 'Mensajes IA',       color: '#10b981' },
-  { key: 'agent_messages',    label: 'Mensajes Nosotros', color: '#f59e0b' },
-  { key: 'template_messages', label: 'Mensajes Template', color: '#6366f1' },
+  { key: 'ai_messages',               label: 'Mensajes IA',              color: '#10b981', dashed: false },
+  { key: 'agent_messages',            label: 'Mensajes Nosotros',         color: '#f59e0b', dashed: false },
+  { key: 'template_messages',         label: 'Mensajes Template',         color: '#6366f1', dashed: false },
+  { key: 'failed_ai_messages',        label: 'Fallidos IA',              color: '#f87171', dashed: true  },
+  { key: 'failed_template_messages',  label: 'Fallidos Template',        color: '#fb923c', dashed: true  },
 ] as const;
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -180,6 +184,7 @@ export function MessageChart({ data, clients, onClientFilterChange }: MessageCha
                   dataKey={s.key}
                   stroke={s.color}
                   strokeWidth={hiddenSeries.has(s.key) ? 0 : 2.5}
+                  strokeDasharray={s.dashed ? '5 3' : undefined}
                   dot={hiddenSeries.has(s.key) ? false : { r: 2.5, fill: s.color, strokeWidth: 0 }}
                   activeDot={hiddenSeries.has(s.key) ? false : { r: 5 }}
                   hide={hiddenSeries.has(s.key)}

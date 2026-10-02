@@ -624,7 +624,9 @@ export async function getMessageTimeSeries(startDate?: Date, endDate?: Date, pro
         TO_CHAR(m."createdAt" - INTERVAL '6 hours', 'YYYY-MM-DD') as date,
         CAST(SUM(CASE WHEN m.role = 'assistant' THEN 1 ELSE 0 END) AS INTEGER) as ai_messages,
         CAST(SUM(CASE WHEN m.role = 'agent' AND (m."waCategory" = 'SERVICE' OR m."waCategory" IS NULL) THEN 1 ELSE 0 END) AS INTEGER) as agent_messages,
-        CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY', 'AUTHENTICATION') THEN 1 ELSE 0 END) AS INTEGER) as template_messages
+        CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY', 'AUTHENTICATION') AND m.status != 'FAILED' THEN 1 ELSE 0 END) AS INTEGER) as template_messages,
+        CAST(SUM(CASE WHEN m.role = 'assistant' AND m.status = 'FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed_ai_messages,
+        CAST(SUM(CASE WHEN m."waCategory" IN ('MARKETING', 'UTILITY', 'AUTHENTICATION') AND m.status = 'FAILED' THEN 1 ELSE 0 END) AS INTEGER) as failed_template_messages
       FROM "Message" m
       INNER JOIN "Chat" c ON m."chatId" = c.id
       INNER JOIN "Lead" l ON c."leadId" = l.id
