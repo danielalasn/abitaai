@@ -31,7 +31,7 @@ const SERIES = [
   { key: 'agent_messages',            label: 'Mensajes Nosotros',         color: '#f59e0b', dashed: false },
   { key: 'template_messages',         label: 'Mensajes Template',         color: '#6366f1', dashed: false },
   { key: 'failed_ai_messages',        label: 'Fallidos IA',              color: '#f87171', dashed: true  },
-  { key: 'failed_template_messages',  label: 'Fallidos Template',        color: '#fb923c', dashed: true  },
+  { key: 'failed_template_messages',  label: 'Fallidos Template',        color: '#d946ef', dashed: true  },
 ] as const;
 
 const CustomTooltip = ({ active, payload, label }: any) => {
