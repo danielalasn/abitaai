@@ -36,11 +36,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {mounted ? (
               <img
                 src={theme === 'dark' ? '/assets/logos/logo-light.png' : '/assets/logos/logo-dark.png'}
-                alt="Abita"
+                alt="Abita AI"
                 className="w-full h-full object-contain rounded-xl"
               />
             ) : (
-              <img src="/assets/logos/logo-dark.png" alt="Abita" className="w-full h-full object-contain rounded-xl" />
+              <img src="/assets/logos/logo-dark.png" alt="Abita AI" className="w-full h-full object-contain rounded-xl" />
             )}
           </div>
           <div className="flex flex-col justify-center">
@@ -89,7 +89,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button
             onClick={() => window.dispatchEvent(new Event('open-global-config'))}
             className="flex items-center gap-2 p-2 rounded-xl text-zinc-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-all group"
-            title="Configuración Global Abita"
+            title="Configuración Global Abita AI"
           >
             <Settings size={20} className="group-hover:rotate-45 transition-transform" />
           </button>

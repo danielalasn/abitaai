@@ -24,14 +24,16 @@ interface MessageChartProps {
   clients?: ChartClient[];
   /** Called when user toggles client selection — parent should re-fetch */
   onClientFilterChange?: (selectedProjectIds: string[] | null) => void;
+  /** Whether to show admin-only data like failed messages */
+  isAdmin?: boolean;
 }
 
-const SERIES = [
+const BASE_SERIES = [
   { key: 'ai_messages',               label: 'Mensajes IA',              color: '#10b981', dashed: false },
   { key: 'agent_messages',            label: 'Mensajes Nosotros',         color: '#f59e0b', dashed: false },
   { key: 'template_messages',         label: 'Mensajes Template',         color: '#6366f1', dashed: false },
-  { key: 'failed_ai_messages',        label: 'Fallidos IA',              color: '#f87171', dashed: true  },
-  { key: 'failed_template_messages',  label: 'Fallidos Template',        color: '#d946ef', dashed: true  },
+  { key: 'failed_ai_messages',        label: 'Fallidos IA',              color: '#f87171', dashed: true, adminOnly: true  },
+  { key: 'failed_template_messages',  label: 'Fallidos Template',        color: '#d946ef', dashed: true, adminOnly: true  },
 ] as const;
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -52,7 +54,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export function MessageChart({ data, clients, onClientFilterChange }: MessageChartProps) {
+export function MessageChart({ data, clients, onClientFilterChange, isAdmin = false }: MessageChartProps) {
+  const activeSeries = useMemo(() => 
+    BASE_SERIES.filter(s => isAdmin || !('adminOnly' in s) || !s.adminOnly),
+  [isAdmin]);
+
   const [hiddenSeries, setHiddenSeries] = useState<Set<string>>(new Set());
   const [hiddenClients, setHiddenClients] = useState<Set<string>>(new Set());
 
@@ -99,7 +105,7 @@ export function MessageChart({ data, clients, onClientFilterChange }: MessageCha
       <div className="flex flex-wrap items-start gap-3">
         {/* Series toggles */}
         <div className="flex flex-wrap gap-2">
-          {SERIES.map(s => {
+          {activeSeries.map(s => {
             const active = !hiddenSeries.has(s.key);
             return (
               <button
@@ -176,7 +182,7 @@ export function MessageChart({ data, clients, onClientFilterChange }: MessageCha
                 tick={{ fill: '#71717a', fontSize: 11 }}
               />
               <Tooltip content={<CustomTooltip />} />
-              {SERIES.map(s => (
+              {activeSeries.map(s => (
                 <Line
                   key={s.key}
                   type="monotone"

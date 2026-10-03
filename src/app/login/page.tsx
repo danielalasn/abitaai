@@ -62,70 +62,71 @@ function LoginContent() {
     }
   }
 
+  const glass = {
+    background: 'rgba(255,255,255,.40)',
+    backdropFilter: 'blur(20px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+    boxShadow: 'inset 0 1px 0 rgba(255,255,255,.85), inset 0 0 0 1px rgba(255,255,255,.30), 0 1px 2px rgba(66,54,36,.05), 0 10px 26px rgba(66,54,36,.07), 0 28px 60px rgba(66,54,36,.06)',
+  } as const
+  const field = 'w-full rounded-xl bg-white/60 px-4 py-3.5 text-sm text-[#1A1A1A] placeholder-[#8A8172] outline-none shadow-[inset_0_0_0_1px_rgba(138,129,114,.35)] focus:shadow-[inset_0_0_0_2px_#FF4D00]'
+
   return (
-    <div className="min-h-dvh bg-[#E9E4D8] flex flex-col md:flex-row items-stretch overflow-hidden font-sans selection:bg-[#F36A2D]/20">
+    <div className="min-h-dvh flex flex-col md:flex-row items-stretch font-sans selection:bg-[#FF4D00]/25">
 
-      {/* Columna Izquierda: Branding & Mood */}
-      <div className="hidden md:flex flex-col justify-between p-16 w-1/2 border-r border-[#DEDAD0]/60 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#F36A2D]/5 rounded-full blur-[120px]" />
-
-        <div className="relative z-10 flex flex-col gap-8">
-          <Link
-            href="/"
-            className="group flex items-center gap-2 text-xs font-bold text-[#6F6F6F] hover:text-[#F36A2D] transition-all w-fit"
-          >
-            <div className="w-6 h-6 rounded-full border border-[#DEDAD0] flex items-center justify-center group-hover:border-[#F36A2D] transition-all">
-              <ArrowRight size={12} className="rotate-180" />
-            </div>
+      {/* Izquierda: marca (negro, como el hero) */}
+      <div
+        className="hidden md:flex flex-col justify-between p-16 w-1/2 bg-black text-[#EBE4D6] relative overflow-hidden"
+        style={{ backgroundImage: 'radial-gradient(52% 46% at 8% 6%, rgba(255,77,0,.18), transparent 70%), radial-gradient(48% 44% at 96% 88%, rgba(255,77,0,.12), transparent 72%)' }}
+      >
+        <div className="relative z-10 flex flex-col gap-10">
+          <Link href="/" className="flex items-center gap-2 text-sm font-semibold text-[#B8B0A3] hover:text-[#EBE4D6] w-fit">
+            <ArrowRight size={14} className="rotate-180" />
             Regresar
           </Link>
-
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 relative flex items-center justify-center shrink-0">
-              <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="w-full h-full object-contain rounded-xl" />
-            </div>
-            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">Abita <span className="text-[#F36A2D]">AI</span></span>
+            <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="h-10 w-10 object-contain rounded-xl" />
+            <span className="text-2xl font-extrabold tracking-tight text-[#EBE4D6]">Abita AI</span>
           </div>
         </div>
 
         <div className="relative z-10 max-w-md my-auto">
-          <h1 className="text-5xl lg:text-6xl font-display text-[#111111] leading-[1.1] mb-8">
-            El futuro de la <br />
-            <span className="italic">comunicación</span> <br />
-            es <span className="text-[#F36A2D]">inteligente</span>
+          <span
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-[.07em] text-[#FF4D00] mb-8"
+            style={{ background: 'rgba(255,77,0,.14)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1px rgba(255,77,0,.3)' }}
+          >
+            <span className="w-[7px] h-[7px] rounded-full bg-[#FF4D00]" />
+            AI Powered Platform
+          </span>
+          <h1 className="text-5xl lg:text-6xl font-extrabold tracking-[-.035em] leading-[1.06] text-[#EBE4D6] mb-6">
+            El futuro de la comunicación es inteligente<span className="text-[#FF4D00]">.</span>
           </h1>
-          <p className="text-[#6F6F6F] text-lg leading-relaxed font-light">
+          <p className="text-[#B8B0A3] text-lg leading-relaxed">
             Escala tu capacidad de respuesta con IA. Automatización perfecta, interacciones precisas y resultados que impulsan tu crecimiento.
           </p>
         </div>
 
-        <div className="relative z-10 text-[10px] text-[#9A9A9A] font-bold uppercase tracking-[0.2em] opacity-40">
-          AI Powered Platform
-        </div>
+        <div className="relative z-10 text-xs text-[#A3A3A3]">© 2026 Abita AI</div>
       </div>
 
-      {/* Columna Derecha: Formulario */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-16 relative">
-        {/* Mobile Header */}
-        <div className="md:hidden absolute top-8 left-8 flex items-center gap-2">
-          <div className="h-8 w-8 relative flex items-center justify-center shrink-0">
-            <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="w-full h-full object-contain rounded-xl" />
-          </div>
-          <span className="font-semibold text-lg tracking-tight text-[#111111]">Abita <span className="text-[#F36A2D]">AI</span></span>
+      {/* Derecha: formulario (beige + vidrio) */}
+      <div
+        className="flex-1 flex flex-col items-center justify-center p-6 md:p-16 relative bg-[#EBE4D6]"
+        style={{ backgroundImage: 'radial-gradient(58% 52% at 88% 8%, rgba(255,77,0,.20), transparent 68%), radial-gradient(46% 46% at 4% 92%, rgba(255,77,0,.11), transparent 70%)' }}
+      >
+        <div className="md:hidden absolute top-6 left-6 flex items-center gap-2">
+          <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="h-8 w-8 object-contain rounded-xl" />
+          <span className="font-extrabold text-lg tracking-tight text-[#1A1A1A]">Abita AI</span>
         </div>
 
-        <div className="w-full max-w-sm space-y-10">
-          <div className="space-y-3">
-            <h2 className="text-3xl font-display text-[#111111]">Iniciar sesión</h2>
-            <p className="text-[#6F6F6F] text-sm">Ingresa tus credenciales para continuar.</p>
+        <div className="w-full max-w-md p-8 md:p-10 rounded-[28px] space-y-8" style={glass}>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-extrabold tracking-[-.025em] text-[#1A1A1A]">Iniciar sesión<span className="text-[#FF4D00]">.</span></h2>
+            <p className="text-[#5C5C5C] text-sm">Ingresa tus credenciales para continuar.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2 group">
-              <label className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest ml-1 transition-colors group-focus-within:text-[#F36A2D]">
-                Email Address
-              </label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[#B33500] uppercase tracking-[.09em]">Email</label>
               <input
                 type="email"
                 required
@@ -133,14 +134,12 @@ function LoginContent() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 placeholder="nombre@ejemplo.com"
-                className="w-full bg-transparent border-b-2 border-[#DEDAD0] py-3 text-[#111111] placeholder-[#9A9A9A] focus:outline-none focus:border-[#F36A2D] transition-all text-sm"
+                className={field}
               />
             </div>
 
-            <div className="space-y-2 group relative">
-              <label className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest ml-1 transition-colors group-focus-within:text-[#F36A2D]">
-                Password
-              </label>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[#B33500] uppercase tracking-[.09em]">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -149,12 +148,12 @@ function LoginContent() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   placeholder="••••••••••••"
-                  className="w-full bg-transparent border-b-2 border-[#DEDAD0] py-3 text-[#111111] placeholder-[#9A9A9A] focus:outline-none focus:border-[#F36A2D] transition-all text-sm pr-10"
+                  className={field + ' pr-12'}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-0 bottom-3 text-[#9A9A9A] hover:text-[#F36A2D] transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5C5C5C] hover:text-[#1A1A1A]"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -163,15 +162,15 @@ function LoginContent() {
             </div>
 
             {error && (
-              <div className="text-xs font-medium text-rose-500 bg-rose-500/5 py-3 px-4 rounded-lg border border-rose-500/10 animate-in fade-in slide-in-from-top-2">
+              <div className="text-xs font-semibold text-[#B33500] bg-[#FFE5DB] py-3 px-4 rounded-xl">
                 {error}
               </div>
             )}
 
             {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
-              <div className="flex justify-center py-2">
-                <Turnstile 
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} 
+              <div className="flex justify-center py-1">
+                <Turnstile
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
                   onSuccess={(token) => setTurnstileToken(token)}
                   options={{ theme: 'light' }}
                 />
@@ -181,25 +180,28 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 bg-[#111111] hover:bg-[#222] text-white rounded-full font-medium text-sm transition-all flex items-center justify-center group shadow-md"
+              className="w-full min-h-[50px] rounded-xl font-semibold text-base text-black flex items-center justify-center gap-2 disabled:opacity-70"
+              style={{
+                background: 'linear-gradient(180deg, #FF6220 0%, #FF4D00 46%, #F04400 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,.45), 0 1px 3px rgba(255,77,0,.24), 0 6px 16px rgba(255,77,0,.26)',
+              }}
             >
               {isLoading ? (
-                <Loader2 size={18} className="animate-spin" />
+                <Loader2 size={18} />
               ) : (
                 <>
                   Entrar a la plataforma
-                  <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight size={16} />
                 </>
               )}
             </button>
           </form>
 
-          <p className="text-center text-[10px] text-[#6F6F6F] leading-relaxed">
+          <p className="text-center text-xs text-[#5C5C5C] leading-relaxed">
             Al ingresar, aceptas nuestros{' '}
-            <a href="/terms" className="underline hover:text-[#111111] transition-colors">términos de servicio</a>{' '}
+            <a href="/terms" className="underline hover:text-[#1A1A1A]">términos de servicio</a>{' '}
             y{' '}
-            <a href="/privacy" className="underline hover:text-[#111111] transition-colors">políticas de privacidad</a>.<br />
-            © 2026 abita.ai
+            <a href="/privacy" className="underline hover:text-[#1A1A1A]">políticas de privacidad</a>.
           </p>
         </div>
       </div>
@@ -210,8 +212,8 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-dvh bg-[#E9E4D8] flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#F36A2D]" size={32} />
+      <div className="min-h-dvh bg-[#EBE4D6] flex items-center justify-center">
+        <Loader2 className="text-[#FF4D00]" size={32} />
       </div>
     }>
       <LoginContent />

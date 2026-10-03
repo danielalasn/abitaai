@@ -706,7 +706,7 @@ export default function AdminPage() {
             <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
                 <Settings size={20} className="text-orange-600" />
-                <h3 className="font-semibold">Configuración Maestra (Abita.ai)</h3>
+                <h3 className="font-semibold">Configuración Maestra (Abita AI)</h3>
               </div>
               <button onClick={() => setShowGlobalConfig(false)} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full text-zinc-400">
                 <X size={20} />
@@ -1202,6 +1202,7 @@ export default function AdminPage() {
               .map(c => ({ id: c.id, name: c.name, projectId: c.projects[0].id } as ChartClient))
             }
             onClientFilterChange={handleClientFilterChange}
+            isAdmin={true}
           />
         </div>
       )}
@@ -1540,7 +1541,7 @@ export default function AdminPage() {
                     {/* Chart Row */}
                     <div className="mb-10 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
                       <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-6">Volumen de Mensajes</h2>
-                      <MessageChart data={clientChartData} />
+                      <MessageChart data={clientChartData} isAdmin={true} />
                     </div>
 
                     {/* --- MÓDULO DE CONSUMO INTEGRADO --- */}

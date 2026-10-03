@@ -105,8 +105,8 @@ export function MobileNav() {
             <div className="flex items-center justify-between p-6 border-b border-[#DEDAD0] dark:border-zinc-800/60">
               <div className="flex items-center gap-4">
                 <div className="h-10 w-10 relative flex items-center justify-center shrink-0">
-                  <img src="/assets/logos/logo-dark.png" alt="Abita Logo" className="w-full h-full object-contain rounded-xl dark:hidden" />
-                  <img src="/assets/logos/logo-light.png" alt="Abita Logo" className="w-full h-full object-contain rounded-xl hidden dark:block" />
+                  <img src="/assets/logos/logo-dark.png" alt="Abita AI" className="w-full h-full object-contain rounded-xl dark:hidden" />
+                  <img src="/assets/logos/logo-light.png" alt="Abita AI" className="w-full h-full object-contain rounded-xl hidden dark:block" />
                 </div>
                 <div>
                   <h2 className="font-semibold text-lg tracking-tight text-[#111111] dark:text-[#EDE9E0]">

@@ -12,7 +12,7 @@ type Message = {
 
 const CHAT_SEQUENCE = [
   { sender: 'user', text: "Hola, me gustaría saber un poco de información sobre qué hacen.", delay: 1500 },
-  { sender: 'bot', text: "¡Hola! 👋 abita.ai automatiza tu atención en WhatsApp e Instagram usando inteligencia artificial. Tu cliente escribe, y nuestra IA responde al instante con el contexto de tu negocio, 24/7.", delay: 2500 },
+  { sender: 'bot', text: "¡Hola! 👋 Abita AI automatiza tu atención en WhatsApp e Instagram usando inteligencia artificial. Tu cliente escribe, y nuestra IA responde al instante con el contexto de tu negocio, 24/7.", delay: 2500 },
   { sender: 'user', text: "Suena genial. ¿Qué se necesita para poder empezar a usar la plataforma?", delay: 3000 },
   { sender: 'bot', text: "¡Es súper sencillo! Agendamos una reunión y con un pequeño cuestionario nosotros nos encargamos de armarte todo el bot.\n\nLe damos la personalidad, las reglas necesarias y todo el conocimiento de tu empresa que quieras que sepa. Tú no tienes que programar nada. 🚀", delay: 4000 }
 ];
@@ -95,7 +95,7 @@ export function HeroChatDemo() {
                 a
                 </div>
                 <div>
-                  <div className="text-white font-medium text-base">abita.ai Platform</div>
+                  <div className="text-white font-medium text-base">Abita AI Platform</div>
                   <div className="text-[#F36A2D] text-[10px] font-bold uppercase tracking-wider">AI Powered</div>
                 </div>
             </div>

@@ -12,7 +12,7 @@ export default function PrivacyPage() {
             <div className="h-10 w-10 bg-[#111111] rounded-xl flex items-center justify-center">
               <span className="text-[#F36A2D] font-bold text-xl">a</span>
             </div>
-            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">abita.ai</span>
+            <span className="text-2xl font-semibold tracking-tighter text-[#111111]">Abita AI</span>
           </div>
           <div className="flex items-center gap-6">
             <Link href="/terms" className="text-[10px] font-bold uppercase tracking-widest text-[#6F6F6F] hover:text-[#F36A2D] transition-colors">Términos</Link>
