@@ -640,25 +640,31 @@ button {
 /* Un solo isotipo. Cada sección muestra únicamente el trozo que le toca
    (todas tienen overflow:hidden), y JS le da a todas la MISMA posición de
    página — así lo que se ve es una sola marca atravesando el landing. */
+/* Estatico: position:fixed lo ancla al viewport; cada seccion lo recorta con
+   clip-path, asi parece una capa detras del contenido que si se mueve. */
 .bg-mark {
-  position: absolute;
-  top: 0;
+  position: fixed;
+  top: 50%;
   right: -5%;
   z-index: 0;
   pointer-events: none;
   width: min(680px, 86vw);
   aspect-ratio: 377.93/336.06;
   height: auto;
-  transform: translate3d(0, calc(var(--y, 50vh) - 50%), 0);
+  margin-top: calc(min(680px, 86vw) * 336.06 / 377.93 / -2);
   color: var(--orange);
-  will-change: transform;
-  backface-visibility: hidden;
+}
+
+:has(> .bg-mark),
+.mark-clip {
+  clip-path: inset(0);
 }
 
 @media(max-width:767px) {
   .bg-mark {
     right: -32%;
-    width: min(460px, 116vw)
+    width: min(460px, 116vw);
+    margin-top: calc(min(460px, 116vw) * 336.06 / 377.93 / -2)
   }
 }
 
@@ -1689,11 +1695,8 @@ button {
    Va sticky, igual que el teléfono, para que el navegador la sostenga quieta
    por compositor — sin JS de por medio y por tanto sin el frame de retraso. */
 .mark-clip {
-  position: sticky;
-  top: 0;
-  height: 100svh;
-  margin-bottom: -100svh;
-  overflow: hidden;
+  position: absolute;
+  inset: 0;
   pointer-events: none;
   z-index: 0;
 }

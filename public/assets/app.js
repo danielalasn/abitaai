@@ -130,7 +130,8 @@
      El scroll llega a saltos (una muesca de rueda son ~100px), así que en vez
      de seguirlo al pie, la marca persigue ese objetivo con una interpolación
      por frame: de ahí que baje continua en vez de a escalones. */
-  var bgMarks = Array.prototype.slice.call(document.querySelectorAll('.bg-mark'));
+  /* El isotipo ahora es CSS puro (position:fixed + clip-path): sin JS. */
+  var bgMarks = [];
   var hostTops = [];
   /* Suavizamos SOLO el descenso (la altura en pantalla), nunca el scroll.
      El scroll se aplica exacto: así la marca nunca se arrastra detrás de él. */
@@ -138,7 +139,7 @@
 
   /* Tramo en el que el teléfono queda fijo: ahí la marca se congela con él */
   var pinStart = 0, pinRange = 0, threadTop = 0, threadH = 0;
-  var pinnedMark = document.querySelector('.bg-mark--pinned');
+  var pinnedMark = null;
 
   function measureHosts(){
     var sy = window.pageYOffset;
@@ -205,7 +206,7 @@
     /* seguimos solo mientras el descenso no se asiente */
     markRaf = (offNow === offTarget) ? null : requestAnimationFrame(markLoop);
   }
-  function kickMark(){ if (markRaf === null) markRaf = requestAnimationFrame(markLoop); }
+  function kickMark(){}
 
   measureHosts();
   if (reduce){
@@ -341,6 +342,7 @@
                           si lo llena por scroll (arranque) o reproduciéndolo */
       showN(0);
     }
+    if (typeof colorDots === 'function') colorDots(body);
   }
 
   /* ---- Mostrar los primeros n mensajes ---- */
@@ -582,4 +584,39 @@
   } else {
     Array.prototype.forEach.call(steps, function(el){ el.classList.add('is-on'); });
   }
+
+  /* ---- Colorear todos los puntos ---- */
+  function colorDots(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      if (node.nodeValue.indexOf('.') !== -1) {
+        var p = node.parentNode;
+        if (p && p.tagName !== 'SCRIPT' && p.tagName !== 'STYLE' && p.tagName !== 'NOSCRIPT' && (!p.classList || !p.classList.contains('dot-colored'))) {
+          var parts = node.nodeValue.split('.');
+          if (parts.length > 1) {
+            var frag = document.createDocumentFragment();
+            for (var i = 0; i < parts.length; i++) {
+              if (parts[i]) frag.appendChild(document.createTextNode(parts[i]));
+              if (i < parts.length - 1) {
+                var span = document.createElement('span');
+                span.className = 'dot-colored';
+                span.style.color = '#FF4D00';
+                span.textContent = '.';
+                frag.appendChild(span);
+              }
+            }
+            p.replaceChild(frag, node);
+          }
+        }
+      }
+    } else if (node.nodeType === 1) {
+      if (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && node.tagName !== 'SVG' && (!node.classList || !node.classList.contains('dot-colored'))) {
+        var children = Array.prototype.slice.call(node.childNodes);
+        for (var j = 0; j < children.length; j++) {
+          colorDots(children[j]);
+        }
+      }
+    }
+  }
+  colorDots(document.body);
 })();

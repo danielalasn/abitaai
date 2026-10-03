@@ -111,8 +111,17 @@ function LoginContent() {
       {/* Derecha: formulario (beige + vidrio) */}
       <div
         className="flex-1 flex flex-col items-center justify-center p-6 md:p-16 relative bg-[#EBE4D6]"
-        style={{ backgroundImage: 'radial-gradient(58% 52% at 88% 8%, rgba(255,77,0,.20), transparent 68%), radial-gradient(46% 46% at 4% 92%, rgba(255,77,0,.11), transparent 70%)' }}
+        style={{ clipPath: 'inset(0)', backgroundImage: 'radial-gradient(58% 52% at 88% 8%, rgba(255,77,0,.20), transparent 68%), radial-gradient(46% 46% at 4% 92%, rgba(255,77,0,.11), transparent 70%)' }}
       >
+        <svg
+          viewBox="894.02 80 377.93 336.06"
+          aria-hidden="true"
+          className="pointer-events-none text-[#FF4D00] opacity-[.08]"
+          style={{ position: 'fixed', top: '50%', right: '-5%', width: 'min(680px, 86vw)', aspectRatio: '377.93/336.06', height: 'auto', marginTop: 'calc(min(680px, 86vw) * 336.06 / 377.93 / -2)', zIndex: 0 }}
+        >
+          <path fill="currentColor" d="M1184.09 248.293L1183.07 246.366C1177.73 236.181 1165.53 231.612 1165.04 231.419C1163.3 230.814 1160.5 230.043 1156.95 229.74C1156.17 229.658 1155.35 229.63 1154.41 229.63C1153.48 229.63 1152.57 229.658 1151.66 229.713H1151.25L1099.75 229.575H1038.17L1066.72 175.129L1092.87 125.28L1116.48 80H1037.21L1015.33 121.922L970.43 207.472H970.541L949.07 248.43C943.951 258.752 944.088 270.561 949.456 280.773C954.796 290.958 964.375 297.729 975.716 299.408C977.147 299.601 978.661 299.738 980.367 299.738H982.074L1050.09 299.656L1131.76 299.904L1158.05 350.028L1186.1 403.483C1186.1 403.483 1188.63 408.218 1192.73 415.98H1271.95L1206.05 290.325C1200.79 280.388 1192.73 265.056 1184.03 248.265L1184.09 248.293Z" />
+          <path fill="currentColor" d="M996.69 356.607C996.69 349.34 993.167 342.651 987.442 339.018L959.751 321.456C950.97 315.896 939.739 315.896 930.959 321.456L903.268 339.018C897.543 342.651 894.019 349.34 894.019 356.607V398.253C893.936 400.07 894.019 404.254 896.496 408.41C897.818 410.585 899.276 411.906 899.854 412.401C904.176 416.062 909.324 416.062 911.14 415.98C922.508 415.457 930.931 415.98 942.602 415.842C943.042 415.842 944.859 415.842 948.465 415.842C963.742 415.787 971.367 415.842 973.376 415.842C975.055 415.842 978.165 415.842 979.789 415.842C980.478 415.842 989.451 415.897 994.185 408.41C996.8 404.254 996.773 399.96 996.663 398.253V356.607H996.69Z" />
+        </svg>
         <div className="md:hidden absolute top-6 left-6 flex items-center gap-2">
           <img src="/assets/logos/logo-light.png?v=2" alt="Abita AI" className="h-8 w-8 object-contain rounded-xl" />
           <span className="font-extrabold text-lg tracking-tight text-[#1A1A1A]">Abita AI</span>
