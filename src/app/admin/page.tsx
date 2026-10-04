@@ -1270,7 +1270,26 @@ export default function AdminPage() {
                     </>
                   )}
                 </div>
-
+                <div className="mt-auto pt-4 border-t border-zinc-100 dark:border-zinc-800/50">
+                  <div className="flex justify-between items-end mb-1.5">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Límite Mensual</span>
+                    <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
+                      {client.messageLimit === null ? 'Ilimitado' : `${client.currentMonthUsage || 0} / ${client.messageLimit}`}
+                    </span>
+                  </div>
+                  {client.messageLimit !== null && (
+                    <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          ((client.currentMonthUsage || 0) / client.messageLimit) >= 0.8 
+                            ? 'bg-red-500' 
+                            : 'bg-zinc-400 dark:bg-zinc-500'
+                        }`}
+                        style={{ width: `${Math.min(((client.currentMonthUsage || 0) / client.messageLimit) * 100, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </button>
           )

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getCurrentMonthUsage } from '@/lib/subscription';
 
 async function checkAdminAuth() {
   const session = await getServerSession(authOptions) as any;
@@ -38,6 +39,9 @@ export async function getClients() {
   for (const client of clients) {
     // No exponer contraseñas en el frontend
     delete client.password;
+
+    // Obtener uso mensual
+    client.currentMonthUsage = await getCurrentMonthUsage(client.id);
 
     if (client.projects) {
       for (const project of client.projects) {
