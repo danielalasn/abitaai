@@ -37,7 +37,6 @@ const rawHTML = `<div class="progress" id="prog" aria-hidden="true"></div>
     </nav>
     <div style="display:flex; gap:12px; align-items:center;">
       <a class="btn nav__login" style="background:transparent; color:inherit; box-shadow:none; padding:0 12px; font-weight:500;" href="/login">Iniciar sesión</a>
-      <a class="btn btn--primary nav__cta" href="#precios" data-cta>Probar gratis</a>
     </div>
   </div>
 </header>
