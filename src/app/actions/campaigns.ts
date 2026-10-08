@@ -459,26 +459,54 @@ export async function updateCampaignStatus(campaignId: string, status: string) {
   revalidatePath('/campaigns');
 }
 
-export async function prepareRetryFailed(campaignId: string) {
+export async function createRetryCampaign(campaignId: string) {
   const project = await getCurrentProject();
   if (!project) throw new Error("Unauthenticated");
   
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
   if (!campaign || campaign.projectId !== project.id) throw new Error("Acceso denegado");
 
-  // Eliminar los logs fallidos de esta campaña
-  await prisma.campaignLog.deleteMany({
+  // Get failed logs
+  const failedLogs = await prisma.campaignLog.findMany({
     where: {
       campaignId,
       status: 'FAILED'
     }
   });
 
-  // Poner el estado de la campaña en RUNNING
-  await prisma.campaign.update({
-    where: { id: campaignId },
-    data: { status: 'RUNNING' }
+  if (failedLogs.length === 0) {
+    throw new Error("No hay mensajes fallidos para reintentar");
+  }
+
+  const failedPhones = new Set(failedLogs.map(l => l.phone));
+
+  const allLeads = JSON.parse(campaign.csvData || '[]');
+  const failedLeads = allLeads.filter((lead: any) => {
+    const rawPhone = lead['#'];
+    if (!rawPhone) return false;
+    let cleanPhone = String(rawPhone).replace(/[^0-9]/g, '');
+    if (cleanPhone.length === 8) {
+      cleanPhone = '503' + cleanPhone;
+    }
+    return failedPhones.has(cleanPhone);
+  });
+
+  const newCampaignName = `fallidos_${campaign.name}`.substring(0, 100);
+
+  const newCampaign = await prisma.campaign.create({
+    data: {
+      projectId: project.id,
+      name: newCampaignName,
+      status: 'RUNNING',
+      leadCount: failedLeads.length,
+      csvData: JSON.stringify(failedLeads),
+      templateName: campaign.templateName,
+      templateCategory: campaign.templateCategory,
+      languageCode: campaign.languageCode,
+      variableMapping: campaign.variableMapping,
+    }
   });
 
   revalidatePath('/campaigns');
+  return newCampaign;
 }

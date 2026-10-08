@@ -6,8 +6,9 @@ import {
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
   Sparkles, Download, Clock, Search, X, AlertCircle
 } from 'lucide-react';
-import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign, updateCampaignStatus, prepareRetryFailed } from '@/app/actions/campaigns';
+import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign, updateCampaignStatus, createRetryCampaign } from '@/app/actions/campaigns';
 import { uploadImageAction } from '@/app/actions/storage';
+import { getAnalyticsData } from '@/app/actions/analytics';
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
 
 // ──────────────────────────────────────────────
@@ -248,11 +249,19 @@ export default function CampaignsPage() {
           if (processedPhones.has(cleanPhone)) {
             continue;
           }
+          
+          await processCampaignLead(campaignId, i, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
+          
+          // Agregamos el número para evitar duplicados si el Excel trae números repetidos
+          processedPhones.add(cleanPhone);
+          sentInThisSession++;
+          setProgress({ current: sentInThisSession, total: targetCount });
+        } else {
+          // Si no hay teléfono igual lo intentamos para que marque el error
+          await processCampaignLead(campaignId, i, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
+          sentInThisSession++;
+          setProgress({ current: sentInThisSession, total: targetCount });
         }
-
-        await processCampaignLead(campaignId, i, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
-        sentInThisSession++;
-        setProgress({ current: sentInThisSession, total: targetCount });
 
         // Retardo de seguridad entre mensajes
         if (i < leads.length - 1) {
@@ -296,6 +305,29 @@ export default function CampaignsPage() {
 
     setIsSending(true);
     setSuccessStatus(null);
+
+    try {
+      const analyticsData = await getAnalyticsData();
+      if (analyticsData) {
+        const { tierLimit, tierUsage, abitaMessageLimit, abitaMessageUsage } = analyticsData;
+        const numLeads = parsedLeads.length;
+
+        if (tierLimit && (tierUsage + numLeads > tierLimit)) {
+          alert(`❌ Alerta: Límite de Meta superado.\n\nLímite de Meta: ${tierLimit} mensajes/día.\nEnviados hoy: ${tierUsage}\nIntentas enviar: ${numLeads}\nTe pasas por: ${(tierUsage + numLeads) - tierLimit} mensajes.\n\nPor favor, edita tu archivo y reduce la cantidad.`);
+          setIsSending(false);
+          return;
+        }
+
+        if (abitaMessageLimit !== null && (abitaMessageUsage + numLeads > abitaMessageLimit)) {
+          alert(`❌ Alerta: Límite de Abita superado.\n\nLímite de Abita: ${abitaMessageLimit} mensajes/mes.\nEnviados este mes: ${abitaMessageUsage}\nIntentas enviar: ${numLeads}\nTe pasas por: ${(abitaMessageUsage + numLeads) - abitaMessageLimit} mensajes.\n\nPor favor, edita tu archivo y reduce la cantidad.`);
+          setIsSending(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Error validando límites", e);
+    }
+
     setProgress({ current: 0, total: parsedLeads.length });
 
     try {
@@ -401,37 +433,27 @@ export default function CampaignsPage() {
     setProgress({ current: 0, total: campaign.leadCount || 100 });
     
     try {
-      // 1. Eliminar fallidos en base de datos y poner estado en RUNNING
-      await prepareRetryFailed(campaign.id);
+      // 1. Create a new campaign for failed leads
+      const newCampaign = await createRetryCampaign(campaign.id);
       
-      // 2. Cargar logs exitosos restantes
-      const logs = await fetchCampaignLogs(campaign.id);
-      const processed = new Set<string>();
-      logs.forEach((l: any) => {
-        if (l.status !== 'FAILED') {
-          processed.add(l.phone);
-        }
-      });
+      const leads = JSON.parse(newCampaign.csvData || '[]');
+      setProgress({ current: 0, total: leads.length });
 
-      const leads = JSON.parse(campaign.csvData || '[]');
-      const failedCount = leads.length - processed.size;
-      setProgress({ current: 0, total: failedCount });
-
-      // 3. Lanzar loop
+      // 2. Launch loop on new campaign
       const completed = await executeSendingLoop(
-        campaign.id,
+        newCampaign.id,
         leads,
-        processed,
-        false,
+        new Set<string>(), // no processed phones yet
+        false, // botActive read from variableMapping
         '',
         '',
         false
       );
 
       if (completed) {
-        setSuccessStatus(`¡Re-envío completado con éxito!`);
+        setSuccessStatus(`¡Re-envío completado en nueva campaña!`);
       } else {
-        setSuccessStatus(`Campaña pausada.`);
+        setSuccessStatus(`Nueva campaña pausada.`);
       }
       setTimeout(() => { loadCampaigns(); setSuccessStatus(null); }, 2000);
     } catch (err: any) {
@@ -974,7 +996,11 @@ export default function CampaignsPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     {(c.status === 'PAUSED' || c.status === 'RUNNING') && (
                       <button 
-                        onClick={() => handleResumeCampaign(c)}
+                        onClick={() => {
+                          if (window.confirm(`¿Estás seguro que deseas reanudar la campaña "${c.name}"?`)) {
+                            handleResumeCampaign(c);
+                          }
+                        }}
                         className="px-3 py-1.5 bg-blue-500/10 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
                       >
                         Reanudar
@@ -982,7 +1008,11 @@ export default function CampaignsPage() {
                     )}
                     {c.status === 'COMPLETED' && (
                       <button 
-                        onClick={() => handleRetryFailedCampaign(c)}
+                        onClick={() => {
+                          if (window.confirm(`¿Estás seguro que deseas reintentar los mensajes fallidos de la campaña "${c.name}"?`)) {
+                            handleRetryFailedCampaign(c);
+                          }
+                        }}
                         className="px-3 py-1.5 bg-amber-500/10 text-amber-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all"
                       >
                         Reintentar Fallidos

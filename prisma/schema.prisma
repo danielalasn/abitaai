@@ -27,6 +27,7 @@ model Client {
   integrations       Integration[]
   projects           Project[]
   pushSubscriptions  PushSubscription[]
+  systemErrors       SystemError[]
 }
 
 model Integration {
@@ -350,4 +351,13 @@ model PushSubscription {
   notifyAllMessages Boolean  @default(false)
   createdAt         DateTime @default(now())
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model SystemError {
+  id        String   @id @default(cuid())
+  clientId  String?
+  phone     String?
+  error     String
+  createdAt DateTime @default(now())
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 }

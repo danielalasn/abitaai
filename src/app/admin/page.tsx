@@ -2276,7 +2276,7 @@ export default function AdminPage() {
                               try {
                                 // Compile knowledge to JSON too
                                 let knowledgeJson = '{}';
-                                try { knowledgeJson = await compileKnowledgeWithAI(builderGenerated.knowledgeRaw); } catch { }
+                                try { knowledgeJson = await compileKnowledgeWithAI(builderGenerated.knowledgeRaw); try { knowledgeJson = JSON.stringify(JSON.parse(knowledgeJson), null, 2); } catch { } } catch { }
 
                                 await saveAgentConfig(
                                   agentId,
@@ -2465,7 +2465,7 @@ export default function AdminPage() {
                               <label className="text-[10px] font-bold text-zinc-500 block uppercase tracking-widest leading-none">Data Base (Precios, Info, etc.)</label>
                               <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/50 rounded-lg p-1">
                                 <button onClick={() => setIsDevMode(false)} className={`px-4 py-1 flex items-center gap-1.5 text-xs font-medium rounded-md transition-all ${!isDevMode ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5" : "text-zinc-500"}`}><BookOpen size={12} /> Natural</button>
-                                <button onClick={() => setIsDevMode(true)} className={`px-4 py-1 flex items-center gap-1.5 text-xs font-medium rounded-md transition-all ${isDevMode ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5" : "text-zinc-500"}`}><Code size={12} /> JSON</button>
+                                <button onClick={() => { setIsDevMode(true); try { const pretty = JSON.stringify(JSON.parse(configData.knowledgeData || ''), null, 2); if (pretty !== configData.knowledgeData) setConfigData({ ...configData, knowledgeData: pretty }); } catch { } }} className={`px-4 py-1 flex items-center gap-1.5 text-xs font-medium rounded-md transition-all ${isDevMode ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm ring-1 ring-black/5" : "text-zinc-500"}`}><Code size={12} /> JSON</button>
                               </div>
                             </div>
                             {!isDevMode ? (
@@ -2483,7 +2483,8 @@ export default function AdminPage() {
                                       onClick={async () => {
                                         setIsCompiling(true); setCompileStatus(null);
                                         try {
-                                          const json = await compileKnowledgeWithAI(configData.knowledgeRaw || '');
+                                          let json = await compileKnowledgeWithAI(configData.knowledgeRaw || '');
+                                          try { json = JSON.stringify(JSON.parse(json), null, 2); } catch { }
                                           setConfigData({ ...configData, knowledgeData: json });
                                           setCompileStatus("success");
                                           setTimeout(() => setCompileStatus(null), 4000);
