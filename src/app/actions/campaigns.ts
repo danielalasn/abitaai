@@ -459,6 +459,37 @@ export async function updateCampaignStatus(campaignId: string, status: string) {
   revalidatePath('/campaigns');
 }
 
+/**
+ * SOLO LECTURA. Indica si el mensaje de campaña para este teléfono ya se envió/registró.
+ * Se usa antes de reintentar tras un error de red, para no duplicar envíos.
+ * - true si existe un CampaignLog (no FAILED) para (campaña, teléfono), o
+ * - true si el lead de esa campaña tiene un mensaje 'agent' con wamid creado desde `sinceMs`.
+ */
+export async function checkLeadAlreadySent(campaignId: string, cleanPhone: string, sinceMs: number): Promise<boolean> {
+  const project = await getCurrentProject();
+  if (!project) throw new Error("Unauthenticated");
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId } });
+  if (!campaign || campaign.projectId !== project.id) throw new Error("Acceso denegado");
+
+  const log = await prisma.campaignLog.findFirst({
+    where: { campaignId, phone: cleanPhone, status: { not: 'FAILED' } },
+    select: { id: true }
+  });
+  if (log) return true;
+
+  const recentMsg = await prisma.message.findFirst({
+    where: {
+      role: 'agent',
+      wamid: { not: null },
+      createdAt: { gte: new Date(sinceMs) },
+      chat: { lead: { projectId: project.id, phone: cleanPhone, latestCampaignId: campaignId } }
+    },
+    select: { id: true }
+  });
+  return !!recentMsg;
+}
+
 export async function createRetryCampaign(campaignId: string) {
   const project = await getCurrentProject();
   if (!project) throw new Error("Unauthenticated");

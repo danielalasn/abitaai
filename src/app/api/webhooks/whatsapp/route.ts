@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { encrypt, decrypt } from '@/lib/encryption';
 import { enqueueMessage, redisConnection } from '@/lib/queue';
 import { resolveProjectCredentials } from '@/lib/auth-server';
+import { normalizePhone } from '@/lib/phone';
 // Lógica de procesamiento movida al Worker en src/lib/worker.ts
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -108,7 +109,8 @@ export async function POST(req: NextRequest) {
 
     if (!message) return NextResponse.json({ status: 'ok' });
 
-    const from = message.from;
+    // Meta envía móviles MX como 521XXXXXXXXXX; las campañas usan 52XXXXXXXXXX
+    const from = normalizePhone(message.from);
     const profileName = value?.contacts?.[0]?.profile?.name;
     let text = message.text?.body || 
                message.button?.text || 

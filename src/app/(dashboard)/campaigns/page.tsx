@@ -6,7 +6,7 @@ import {
   CheckCircle2, ChevronRight, ChevronLeft, RefreshCw, Link2,
   Sparkles, Download, Clock, Search, X, AlertCircle
 } from 'lucide-react';
-import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign, updateCampaignStatus, createRetryCampaign } from '@/app/actions/campaigns';
+import { fetchCampaigns, fetchMetaTemplates, launchCampaignAction, fetchCampaignLogs, processCampaignLead, finalizeCampaign, updateCampaignStatus, createRetryCampaign, checkLeadAlreadySent } from '@/app/actions/campaigns';
 import { uploadImageAction } from '@/app/actions/storage';
 import { getAnalyticsData } from '@/app/actions/analytics';
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
@@ -211,6 +211,50 @@ export default function CampaignsPage() {
   const headerComp = selectedTemplate?.components.find(c => c.type === 'HEADER') as any;
   const needsMediaHeader = headerComp && (headerComp.format === 'IMAGE' || headerComp.format === 'VIDEO' || headerComp.format === 'DOCUMENT');
 
+  /**
+   * Llama a processCampaignLead con reintentos ante errores de red/servidor (ej. ECONNRESET,
+   * "unexpected response"). Antes de CADA reintento verifica en el servidor si el mensaje
+   * anterior en realidad sí se envió, para no duplicarlo. Si no puede verificarlo, no reenvía.
+   * Los resultados {success:false} que devuelve el servidor NO se reintentan (son errores de negocio).
+   */
+  const sendLeadWithRetry = async (
+    campaignId: string,
+    index: number,
+    cleanPhone: string,
+    isBotActiveVal: boolean,
+    templateBodyText: string,
+    templateHeaderUrl: string,
+    dryRunVal: boolean
+  ) => {
+    const backoffMs = [2000, 5000, 15000];
+    let lastErr: any = null;
+    for (let attempt = 0; attempt <= backoffMs.length; attempt++) {
+      const attemptStartedAt = Date.now();
+      if (attempt > 0) {
+        await new Promise(r => setTimeout(r, backoffMs[attempt - 1]));
+        try {
+          const alreadySent = await checkLeadAlreadySent(campaignId, cleanPhone, attemptStartedAt - 60000 - backoffMs[attempt - 1]);
+          if (alreadySent) {
+            console.warn(`[Campaign] Lead #${index} (${cleanPhone}) ya estaba enviado; se omite el reintento.`);
+            return { success: true, recovered: true };
+          }
+        } catch (checkErr) {
+          // No se pudo verificar: NO reenviamos para evitar duplicados; pasamos al siguiente intento.
+          console.error(`[Campaign] No se pudo verificar el lead #${index} antes de reintentar (intento ${attempt + 1}):`, checkErr);
+          lastErr = checkErr;
+          continue;
+        }
+      }
+      try {
+        return await processCampaignLead(campaignId, index, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
+      } catch (err) {
+        lastErr = err;
+        console.error(`[Campaign] Fallo de red/servidor en lead #${index} (${cleanPhone}), intento ${attempt + 1}/${backoffMs.length + 1}:`, err);
+      }
+    }
+    throw lastErr;
+  };
+
   const executeSendingLoop = async (
     campaignId: string, 
     leads: any[], 
@@ -250,7 +294,7 @@ export default function CampaignsPage() {
             continue;
           }
           
-          await processCampaignLead(campaignId, i, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
+          await sendLeadWithRetry(campaignId, i, cleanPhone, isBotActiveVal, templateBodyText, templateHeaderUrl, dryRunVal);
           
           // Agregamos el número para evitar duplicados si el Excel trae números repetidos
           processedPhones.add(cleanPhone);
@@ -287,10 +331,17 @@ export default function CampaignsPage() {
       loadCampaigns();
       setRunningCampaignId(null);
       return true; // completado
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error en loop de envíos:", err);
+      // Corte automático: dejamos la campaña en PAUSED en la BD para que la UI sea fiel y se pueda reanudar.
+      try {
+        await updateCampaignStatus(campaignId, 'PAUSED');
+        loadCampaigns();
+      } catch (pauseErr) {
+        console.error("No se pudo marcar la campaña como PAUSED tras el error:", pauseErr);
+      }
       setRunningCampaignId(null);
-      throw err;
+      throw new Error(`Se detuvo el envío por un error de conexión y la campaña quedó en pausa. Revisa Logs y usa Reanudar cuando la conexión esté estable. Detalle: ${err?.message || err}`);
     }
   };
 
