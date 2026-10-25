@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import webpush from 'web-push';
-import { sendWhatsAppMessage, sendWhatsAppTemplate, sendWhatsAppMedia, WaMediaType } from '@/lib/whatsapp';
+import { sendWhatsAppMessage, sendWhatsAppTemplate, sendWhatsAppMedia, sendWhatsAppLocation, WaMediaType } from '@/lib/whatsapp';
 import { getCurrentProject, resolveProjectCredentials } from '@/lib/auth-server';
 import { updateLeadAISummaryInternal } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
@@ -746,6 +746,97 @@ export async function sendAgentMedia(
       mediaUrl,
       mediaFilename: filename,
       mediaType,
+      waCategory,
+      wamid,
+      status: waSendSuccess ? "SENT" : "ERROR",
+      sendError: waSendError || null
+    }
+  });
+
+  try { revalidatePath('/') } catch (e) { };
+  return { success: waSendSuccess, error: waSendError };
+}
+
+// Envía un mensaje de ubicación como agente humano
+export async function sendAgentLocation(
+  chatId: string,
+  latitude: number,
+  longitude: number,
+  name?: string,
+  address?: string
+): Promise<{ success: boolean; error?: string }> {
+  const project = await getCurrentProject();
+  if (!project) return { success: false, error: "No autorizado" };
+  const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
+  if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return { success: false, error: "No autorizado" };
+
+  const chat = await prisma.chat.update({
+    where: { id: chatId },
+    data: { lastActiveAt: new Date() },
+    include: { lead: { include: { project: true } } }
+  });
+
+  let waSendSuccess = true;
+  let waSendError: string | undefined;
+  let wamid: string | null = null;
+  let waCategory: string | null = null;
+
+  if (chat?.leadId) {
+    await prisma.lead.update({
+      where: { id: chat.leadId },
+      data: { status: 'IN_PROGRESS' }
+    });
+
+    const phone = chat.lead.phone;
+    const resolvedToken = process.env.SYSTEM_USER_TOKEN;
+    const phoneId = chat.lead.project?.whatsappPhoneId;
+    const projectName = chat.lead.project?.name || 'Desconocido';
+
+    console.log(`[Manual Agent Location] 📍 Project: "${projectName}" | Lead: ${phone}`);
+    console.log(`[Manual Agent Location] 📍 Coords: ${latitude}, ${longitude} (${name || 'Ubicación'})`);
+
+    if (phone && phoneId && resolvedToken) {
+      const result = await sendWhatsAppLocation(
+        phone, latitude, longitude, name, address, phoneId, resolvedToken
+      );
+      console.log(`[Manual Agent Location] Result:`, result);
+      waSendSuccess = result.success;
+      waCategory = result.category;
+      wamid = result.messageId;
+
+      if (!result.success) {
+        waSendError = result.friendlyError || 'Error desconocido al enviar ubicación';
+        console.error(`[Manual Agent Location] FALLO al enviar a ${phone}: ${waSendError}`);
+      } else {
+        console.log(`[Manual Agent Location] ✅ Ubicación enviada a ${phone}`);
+      }
+    } else {
+      waSendSuccess = false;
+      waSendError = 'Configura el Phone Number ID y el CRM Token en Ajustes antes de enviar ubicación.';
+      console.error('[Manual Agent Location] No hay credenciales de WhatsApp configuradas.');
+    }
+  }
+
+  if (wamid) {
+    const existing = await prisma.message.findUnique({ where: { wamid } });
+    if (existing) {
+      console.log(`[Manual Agent Location] Mensaje con wamid ${wamid} ya existe. Omitiendo duplicado.`);
+      return { success: waSendSuccess, error: waSendError };
+    }
+  }
+
+  const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  const locationLabel = name || 'Ubicación compartida';
+  const content = address ? `📍 ${locationLabel}\n${address}\n${mapsUrl}` : `📍 ${locationLabel}\n${mapsUrl}`;
+
+  await prisma.message.create({
+    data: {
+      chatId,
+      role: 'agent',
+      content,
+      mediaUrl: mapsUrl,
+      mediaFilename: JSON.stringify({ latitude, longitude, name: locationLabel, address: address || '' }),
+      mediaType: 'location',
       waCategory,
       wamid,
       status: waSendSuccess ? "SENT" : "ERROR",

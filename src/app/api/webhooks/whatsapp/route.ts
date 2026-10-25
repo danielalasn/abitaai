@@ -156,6 +156,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ─── PROCESAMIENTO DE UBICACIÓN (LOCATION) ───
+    if (message.type === 'location' && message.location) {
+      const loc = message.location;
+      const mapsUrl = `https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`;
+      const name = loc.name || 'Ubicación recibida';
+      const address = loc.address || '';
+      text = address ? `📍 ${name}\n${address}\n${mapsUrl}` : `📍 ${name}\n${mapsUrl}`;
+      mediaData = {
+        mediaUrl: mapsUrl,
+        mediaType: 'location',
+        mediaFilename: JSON.stringify({
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          name,
+          address
+        })
+      };
+    }
+
     // ─── CHECK BOT ACTIVE STATUS ───
     let isBotActive = true;
     if (phoneId) {

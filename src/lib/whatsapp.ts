@@ -343,3 +343,74 @@ export async function getApprovedTemplates(
     return []
   }
 }
+
+// ──────────────────────────────────────────────
+// Send a LOCATION message
+// ──────────────────────────────────────────────
+export async function sendWhatsAppLocation(
+  to: string,
+  latitude: number,
+  longitude: number,
+  name?: string,
+  address?: string,
+  phoneNumberId?: string,
+  accessToken?: string
+): Promise<{ success: boolean; messageId: string | null; category: string | null; friendlyError?: string; raw: any }> {
+  if (!phoneNumberId || !accessToken) {
+    console.error('[WA] sendWhatsAppLocation missing credentials:', { phoneNumberId, hasToken: !!accessToken });
+    return { success: false, messageId: null, category: null, friendlyError: 'Credenciales de WhatsApp incompletas', raw: null };
+  }
+
+  const API_VERSION = process.env.GRAPH_API_VERSION || 'v25.0';
+  const url = `https://graph.facebook.com/${API_VERSION}/${phoneNumberId}/messages`;
+  const cleanTo = to.replace(/[^0-9]/g, '');
+
+  try {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: cleanTo,
+      type: 'location',
+      location: {
+        latitude,
+        longitude,
+        name: name || 'Ubicación compartida',
+        address: address || ''
+      }
+    };
+    console.log('[WA] Sending location to:', cleanTo, 'Coords:', latitude, longitude);
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[WA] Error enviando ubicación:', {
+        status: res.status,
+        message: data.error?.message,
+        code: data.error?.code,
+      });
+      return {
+        success: false,
+        messageId: null,
+        category: null,
+        friendlyError: translateWaError(data.error),
+        raw: data
+      };
+    } else {
+      const msgId = data.messages?.[0]?.id || null;
+      console.log('[WA] Ubicación enviada correctamente. ID:', msgId);
+      return { success: true, messageId: msgId, category: 'SERVICE', raw: data };
+    }
+  } catch (err: any) {
+    console.error('[WA] sendWhatsAppLocation network error:', err);
+    return { success: false, messageId: null, category: null, friendlyError: err?.message || 'Error de red', raw: null };
+  }
+}
+

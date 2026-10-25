@@ -8,7 +8,7 @@ import {
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
-  Mic, Square, ChevronDown, LogOut, Camera, MapPin
+  Mic, Square, ChevronDown, LogOut, Camera, MapPin, ExternalLink
 } from "lucide-react";
 import { getProfileWithMeta } from '@/app/actions/settings';
 import { formatWhatsAppText } from '@/lib/utils';
@@ -32,7 +32,7 @@ const WaIcon = ({ size = 24, className = '' }: { size?: number; className?: stri
 const SimIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
   <Sparkles size={size} className={className} />
 );
-import { getActiveChats, getChatMessages, getChatMessagesPaginated, loadMoreMessages, toggleBotActive, toggleAutoWakeBot, requestHandoff, simulateIncomingMessage, saveAssistantReply, saveAgentMessage, sendAgentMedia, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
+import { getActiveChats, getChatMessages, getChatMessagesPaginated, loadMoreMessages, toggleBotActive, toggleAutoWakeBot, requestHandoff, simulateIncomingMessage, saveAssistantReply, saveAgentMessage, sendAgentMedia, sendAgentLocation, deleteChat, bulkArchiveChats, bulkDisableBot, bulkEnableBot } from "@/app/actions/inbox";
 import { updateLeadAISummary } from "@/app/actions/leads";
 import { uploadFileAction } from "@/app/actions/storage";
 import { sendTestMessage } from "@/app/actions/chat";
@@ -815,6 +815,88 @@ export default function InboxPage() {
       setIsUploadingMedia(false);
       setTimeout(() => { pendingOptimistic.current.delete(tempId); }, 5000);
     }
+  };
+
+  const [isSendingLocation, setIsSendingLocation] = useState(false);
+
+  const handleSendLocation = async () => {
+    if (!activeChat) return;
+    setShowAttachMenu(false);
+
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      alert("Tu navegador no soporta geolocalización.");
+      return;
+    }
+
+    setIsSendingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const tempId = `temp-loc-${Date.now()}`;
+        const chatId = activeChat.id;
+        const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+        const locLabel = 'Mi ubicación actual';
+
+        pendingOptimistic.current.add(tempId);
+        setActiveChat((prev: any) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: [...prev.messages, {
+              id: tempId,
+              role: 'agent',
+              content: `📍 ${locLabel}\n${mapsUrl}`,
+              mediaUrl: mapsUrl,
+              mediaType: 'location',
+              mediaFilename: JSON.stringify({ latitude, longitude, name: locLabel, address: '' }),
+              createdAt: new Date().toISOString(),
+              status: 'pending',
+              sendError: null,
+            }]
+          };
+        });
+        setTimeout(() => scrollToBottom(true), 50);
+
+        try {
+          const result = await sendAgentLocation(chatId, latitude, longitude, locLabel);
+          setActiveChat((prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              messages: prev.messages.map((m: any) =>
+                m.id === tempId
+                  ? { ...m, status: result.success ? 'sent' : 'failed', sendError: result.error || null }
+                  : m
+              )
+            };
+          });
+          if (!result.success) {
+            alert(result.error || "No se pudo enviar la ubicación por WhatsApp.");
+          }
+        } catch (err: any) {
+          console.error("Error al enviar ubicación:", err);
+          setActiveChat((prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              messages: prev.messages.map((m: any) =>
+                m.id === tempId ? { ...m, status: 'failed', sendError: err.message || 'Error al enviar' } : m
+              )
+            };
+          });
+          alert("Error al enviar ubicación: " + (err?.message || err));
+        } finally {
+          setIsSendingLocation(false);
+          setTimeout(() => { pendingOptimistic.current.delete(tempId); }, 5000);
+        }
+      },
+      (err) => {
+        setIsSendingLocation(false);
+        console.error("Error obteniendo geolocalización:", err);
+        alert(`No se pudo obtener tu ubicación: ${err.message}. Asegúrate de permitir el acceso a tu ubicación en el navegador.`);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   const handleDeleteChat = async () => {
@@ -1766,8 +1848,51 @@ export default function InboxPage() {
                           </div>
                         )}
 
+                        {/* 3.5. Ubicación / Location Card */}
+                        {(msg.mediaType === 'location' || (msg.mediaUrl && (msg.mediaUrl.includes('google.com/maps') || msg.mediaUrl.includes('maps.google.com')))) && (() => {
+                          let locData: { name?: string; address?: string; latitude?: number; longitude?: number } = {};
+                          if (msg.mediaFilename) {
+                            try { locData = JSON.parse(msg.mediaFilename); } catch (e) {}
+                          }
+                          const mapsUrl = msg.mediaUrl || (msg.content?.match(/https:\/\/(www\.)?(google\.com\/maps|maps\.google\.com)[^\s]+/)?.[0]) || '';
+                          const cleanContentLines = (msg.content || '').split('\n').filter(Boolean);
+                          const locationTitle = locData.name || (cleanContentLines[0]?.replace('📍', '').trim()) || 'Ubicación';
+                          const locationAddress = locData.address || (cleanContentLines[1]?.startsWith('http') ? '' : cleanContentLines[1]) || '';
+
+                          return (
+                            <div className="mb-2 p-3 bg-white/20 dark:bg-black/30 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-white/10 text-left min-w-[220px] max-w-xs shadow-sm">
+                              <div className="flex items-start gap-2.5">
+                                <div className="p-2 bg-rose-500/20 text-rose-500 dark:text-rose-400 rounded-xl shrink-0 mt-0.5">
+                                  <MapPin size={18} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0] truncate">
+                                    {locationTitle}
+                                  </p>
+                                  {locationAddress ? (
+                                    <p className="text-[11px] text-[#6F6F6F] dark:text-zinc-400 mt-0.5 line-clamp-2 leading-tight">
+                                      {locationAddress}
+                                    </p>
+                                  ) : null}
+                                  {mapsUrl ? (
+                                    <a
+                                      href={mapsUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] hover:opacity-90 rounded-xl text-[11px] font-bold shadow-sm transition-all"
+                                    >
+                                      <span>Ver en Google Maps</span>
+                                      <ExternalLink size={12} />
+                                    </a>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
                         {/* 4. Otros documentos */}
-                        {msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'audio' && (
+                        {msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'audio' && msg.mediaType !== 'location' && !msg.mediaUrl.includes('google.com/maps') && !msg.mediaUrl.includes('maps.google.com') && (
                           <a
                             href={msg.mediaUrl}
                             target="_blank"
@@ -1780,7 +1905,7 @@ export default function InboxPage() {
                         )}
 
                         {/* 5. Contenido del mensaje (sin el tag de respuesta) */}
-                        {msg.content && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && msg.mediaType !== 'audio' && !(msg.role === 'assistant' && msg.mediaUrl) && (
+                        {msg.content && msg.mediaType !== 'location' && !msg.content.includes('maps.google.com') && !msg.content.includes('google.com/maps') && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && msg.mediaType !== 'audio' && !(msg.role === 'assistant' && msg.mediaUrl) && (
                           <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()) }}>
                           </div>
                         )}
@@ -2039,19 +2164,15 @@ export default function InboxPage() {
                                         <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg"><ImageIcon size={16} /></div>
                                         Galería
                                       </button>
-                                      <button onClick={() => {
-                                        setShowAttachMenu(false);
-                                        if (navigator.geolocation) {
-                                          navigator.geolocation.getCurrentPosition((pos) => {
-                                            const url = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                                            setAgentInput(prev => prev ? prev + '\nMi ubicación: ' + url : 'Mi ubicación: ' + url);
-                                          }, (err) => alert("Error de ubicación: " + err.message));
-                                        } else {
-                                          alert("Tu navegador no soporta ubicación.");
-                                        }
-                                      }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
-                                        <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"><MapPin size={16} /></div>
-                                        Ubicación
+                                      <button 
+                                        onClick={handleSendLocation} 
+                                        disabled={isSendingLocation || isUploadingMedia}
+                                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white disabled:opacity-50"
+                                      >
+                                        <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                                          {isSendingLocation ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
+                                        </div>
+                                        <span>{isSendingLocation ? 'Enviando ubicación...' : 'Ubicación'}</span>
                                       </button>
                                     </div>
                                   </div>
