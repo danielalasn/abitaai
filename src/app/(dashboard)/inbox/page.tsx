@@ -1881,61 +1881,54 @@ export default function InboxPage() {
                               href={mapsUrl || '#'}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="group block mb-2 w-full max-w-[280px] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] bg-[#111111] text-white select-none relative"
+                              className="group block mb-2 w-[310px] sm:w-[340px] max-w-[85vw] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] bg-[#111111] text-white select-none relative"
                               onClick={(e) => { if (!mapsUrl) e.preventDefault(); }}
                             >
-                              {/* Visualizador de Mapa con Retícula Urbana y Radar Pin */}
-                              <div className="relative h-32 w-full bg-gradient-to-br from-[#1E1B18] via-[#141210] to-[#0A0908] overflow-hidden flex items-center justify-center">
+                              {/* Visualizador de Mapa con Retícula Urbana y Pin de Abita */}
+                              <div className="relative h-36 w-full bg-gradient-to-br from-[#1E1B18] via-[#141210] to-[#0A0908] overflow-hidden flex items-center justify-center">
                                 {/* Vector de Rutas Estilizadas y Bloques Urbanos */}
-                                <svg className="absolute inset-0 w-full h-full opacity-35 group-hover:opacity-50 transition-opacity duration-500" viewBox="0 0 280 128" fill="none">
+                                <svg className="absolute inset-0 w-full h-full opacity-35 group-hover:opacity-50 transition-opacity duration-500" viewBox="0 0 340 144" preserveAspectRatio="xMidYMid slice" fill="none">
                                   {/* Bloques de la ciudad */}
-                                  <rect x="14" y="12" width="48" height="34" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="70" y="12" width="58" height="34" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="156" y="12" width="52" height="34" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="216" y="12" width="50" height="34" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="15" y="14" width="60" height="40" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="85" y="14" width="75" height="40" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="190" y="14" width="65" height="40" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="265" y="14" width="60" height="40" rx="4" fill="white" fillOpacity="0.05" />
 
-                                  <rect x="14" y="70" width="48" height="42" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="70" y="70" width="58" height="42" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="156" y="70" width="52" height="42" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="216" y="70" width="50" height="42" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="15" y="78" width="60" height="50" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="85" y="78" width="75" height="50" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="190" y="78" width="65" height="50" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="265" y="78" width="60" height="50" rx="4" fill="white" fillOpacity="0.05" />
 
                                   {/* Parque / Área verde */}
-                                  <path d="M 156 14 L 202 14 L 202 42 L 156 42 Z" fill="#10B981" fillOpacity="0.15" />
+                                  <path d="M 190 16 L 245 16 L 245 50 L 190 50 Z" fill="#10B981" fillOpacity="0.15" />
 
                                   {/* Río / Agua */}
-                                  <path d="M-10 105 C 65 75, 115 115, 185 88 C 225 72, 255 98, 295 82" stroke="#0284C7" strokeWidth="5" strokeLinecap="round" opacity="0.35" />
+                                  <path d="M-15 115 C 80 82, 140 128, 220 98 C 270 80, 310 110, 360 92" stroke="#0284C7" strokeWidth="5.5" strokeLinecap="round" opacity="0.35" />
 
                                   {/* Calles secundarias */}
-                                  <line x1="0" y1="58" x2="280" y2="58" stroke="white" strokeWidth="1" opacity="0.12" />
-                                  <line x1="64" y1="0" x2="64" y2="128" stroke="white" strokeWidth="1" opacity="0.12" />
-                                  <line x1="140" y1="0" x2="140" y2="128" stroke="white" strokeWidth="1" opacity="0.12" />
-                                  <line x1="212" y1="0" x2="212" y2="128" stroke="white" strokeWidth="1" opacity="0.12" />
+                                  <line x1="0" y1="65" x2="340" y2="65" stroke="white" strokeWidth="1" opacity="0.12" />
+                                  <line x1="78" y1="0" x2="78" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
+                                  <line x1="170" y1="0" x2="170" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
+                                  <line x1="258" y1="0" x2="258" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
 
                                   {/* Arteria principal con resplandor naranja */}
-                                  <path d="M -10 28 Q 85 38 140 64 T 290 90" stroke="#F36A2D" strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
-                                  <path d="M -10 28 Q 85 38 140 64 T 290 90" stroke="white" strokeWidth="0.8" opacity="0.8" strokeDasharray="3 3" />
+                                  <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="#F36A2D" strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
+                                  <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="white" strokeWidth="0.8" opacity="0.8" strokeDasharray="3 3" />
 
-                                  {/* Ondas concéntricas de radar centradas en (140, 64) */}
-                                  <circle cx="140" cy="64" r="28" stroke="#F36A2D" strokeWidth="1" opacity="0.45" strokeDasharray="2 2" />
-                                  <circle cx="140" cy="64" r="50" stroke="white" strokeWidth="0.5" opacity="0.18" />
+                                  {/* Ondas concéntricas centradas en (170, 72) */}
+                                  <circle cx="170" cy="72" r="32" stroke="#F36A2D" strokeWidth="1" opacity="0.45" strokeDasharray="2 2" />
+                                  <circle cx="170" cy="72" r="58" stroke="white" strokeWidth="0.5" opacity="0.18" />
                                 </svg>
 
-                                {/* Pin con Radar Pulsante */}
+                                {/* Pin de Ubicación (Naranja de Abita) */}
                                 <div className="relative z-10 flex flex-col items-center">
-                                  <div className="absolute -inset-3.5 rounded-full bg-[#F36A2D]/30 animate-ping duration-1000" />
-                                  <div className="relative h-9 w-9 rounded-full bg-gradient-to-tr from-[#F36A2D] to-orange-400 text-white flex items-center justify-center shadow-lg shadow-[#F36A2D]/50 group-hover:scale-110 group-hover:-translate-y-0.5 transition-all">
-                                    <MapPin size={18} className="fill-white/30" />
+                                  <div className="relative h-10 w-10 rounded-full bg-gradient-to-tr from-[#F36A2D] to-orange-400 text-white flex items-center justify-center shadow-lg shadow-[#F36A2D]/50 group-hover:scale-105 transition-transform">
+                                    <MapPin size={20} className="fill-white/30" />
                                   </div>
                                 </div>
 
-                                {/* Coordenadas Top-Left */}
-                                <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-mono tracking-wider text-zinc-300 flex items-center gap-1.5">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                  <span>{coordLabel || 'GPS'}</span>
-                                </div>
-
                                 {/* Brújula Top-Right */}
-                                <div className="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-zinc-300 group-hover:text-white group-hover:bg-[#F36A2D] transition-colors shadow-sm">
+                                <div className="absolute top-2.5 right-2.5 z-20 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-zinc-300 group-hover:text-white group-hover:bg-[#F36A2D] transition-colors shadow-sm">
                                   <Navigation size={11} className="group-hover:rotate-45 transition-transform duration-300" />
                                 </div>
                               </div>
@@ -1943,25 +1936,12 @@ export default function InboxPage() {
                               {/* Barra de Información Inferior */}
                               <div className="p-3 bg-zinc-950/90 backdrop-blur-md flex items-center justify-between gap-2.5 border-t border-white/10">
                                 <div className="min-w-0 flex-1 text-left">
-                                  {locationTitle ? (
-                                    <>
-                                      <p className="text-xs font-bold text-white truncate group-hover:text-[#F36A2D] transition-colors">
-                                        {locationTitle}
-                                      </p>
-                                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                                        {locationAddress || (coordLabel || 'Google Maps')}
-                                      </p>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <p className="text-xs font-bold text-white truncate group-hover:text-[#F36A2D] transition-colors">
-                                        {coordLabel || 'Ubicación GPS'}
-                                      </p>
-                                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                                        {locationAddress || 'Google Maps'}
-                                      </p>
-                                    </>
-                                  )}
+                                  <p className="text-xs font-bold text-white truncate group-hover:text-[#F36A2D] transition-colors">
+                                    {locationTitle || 'Ubicación'}
+                                  </p>
+                                  <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                                    {locationAddress || 'Google Maps'}
+                                  </p>
                                 </div>
                                 <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 group-hover:bg-[#F36A2D] text-zinc-200 group-hover:text-white text-[11px] font-semibold transition-all shadow-sm">
                                   <span>Abrir</span>
