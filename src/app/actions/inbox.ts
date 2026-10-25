@@ -452,7 +452,11 @@ export async function simulateIncomingMessage(
     const displayName = name || phone;
     let truncatedText = text;
     if (!truncatedText.trim() && (mediaType || messageType)) {
-      truncatedText = messageType === 'sticker' ? 'Envió un sticker.' : `Envio un archivo adjunto.`;
+      truncatedText = messageType === 'sticker' 
+        ? 'Envió un sticker.' 
+        : mediaType === 'location' 
+          ? 'Compartió una ubicación.' 
+          : 'Envio un archivo adjunto.';
     }
 
     const payload = JSON.stringify({
@@ -826,8 +830,11 @@ export async function sendAgentLocation(
   }
 
   const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-  const locationLabel = name || 'Ubicación compartida';
-  const content = address ? `📍 ${locationLabel}\n${address}\n${mapsUrl}` : `📍 ${locationLabel}\n${mapsUrl}`;
+  const trimmedName = name?.trim() || '';
+  const trimmedAddress = address?.trim() || '';
+  const content = trimmedName 
+    ? (trimmedAddress ? `${trimmedName}\n${trimmedAddress}\n${mapsUrl}` : `${trimmedName}\n${mapsUrl}`)
+    : '';
 
   await prisma.message.create({
     data: {
@@ -835,7 +842,7 @@ export async function sendAgentLocation(
       role: 'agent',
       content,
       mediaUrl: mapsUrl,
-      mediaFilename: JSON.stringify({ latitude, longitude, name: locationLabel, address: address || '' }),
+      mediaFilename: JSON.stringify({ latitude, longitude, name: trimmedName, address: trimmedAddress }),
       mediaType: 'location',
       waCategory,
       wamid,

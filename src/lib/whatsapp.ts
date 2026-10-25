@@ -366,17 +366,19 @@ export async function sendWhatsAppLocation(
   const cleanTo = to.replace(/[^0-9]/g, '');
 
   try {
+    const locPayload: { latitude: number; longitude: number; name?: string; address?: string } = {
+      latitude,
+      longitude,
+    };
+    if (name?.trim()) locPayload.name = name.trim();
+    if (address?.trim()) locPayload.address = address.trim();
+
     const payload = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to: cleanTo,
       type: 'location',
-      location: {
-        latitude,
-        longitude,
-        name: name || 'Ubicación compartida',
-        address: address || ''
-      }
+      location: locPayload
     };
     console.log('[WA] Sending location to:', cleanTo, 'Coords:', latitude, longitude);
 

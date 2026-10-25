@@ -160,9 +160,9 @@ export async function POST(req: NextRequest) {
     if (message.type === 'location' && message.location) {
       const loc = message.location;
       const mapsUrl = `https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`;
-      const name = loc.name || 'Ubicación recibida';
-      const address = loc.address || '';
-      text = address ? `📍 ${name}\n${address}\n${mapsUrl}` : `📍 ${name}\n${mapsUrl}`;
+      const name = (loc.name || '').trim();
+      const address = (loc.address || '').trim();
+      text = name ? (address ? `${name}\n${address}\n${mapsUrl}` : `${name}\n${mapsUrl}`) : '';
       mediaData = {
         mediaUrl: mapsUrl,
         mediaType: 'location',

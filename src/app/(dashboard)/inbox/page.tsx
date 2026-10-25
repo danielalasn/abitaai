@@ -8,7 +8,7 @@ import {
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
-  Mic, Square, ChevronDown, LogOut, Camera, MapPin, ExternalLink
+  Mic, Square, ChevronDown, LogOut, Camera, MapPin, ExternalLink, Navigation, ArrowUpRight
 } from "lucide-react";
 import { getProfileWithMeta } from '@/app/actions/settings';
 import { formatWhatsAppText } from '@/lib/utils';
@@ -835,7 +835,6 @@ export default function InboxPage() {
         const tempId = `temp-loc-${Date.now()}`;
         const chatId = activeChat.id;
         const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
-        const locLabel = 'Mi ubicación actual';
 
         pendingOptimistic.current.add(tempId);
         setActiveChat((prev: any) => {
@@ -845,10 +844,10 @@ export default function InboxPage() {
             messages: [...prev.messages, {
               id: tempId,
               role: 'agent',
-              content: `📍 ${locLabel}\n${mapsUrl}`,
+              content: '',
               mediaUrl: mapsUrl,
               mediaType: 'location',
-              mediaFilename: JSON.stringify({ latitude, longitude, name: locLabel, address: '' }),
+              mediaFilename: JSON.stringify({ latitude, longitude, name: '', address: '' }),
               createdAt: new Date().toISOString(),
               status: 'pending',
               sendError: null,
@@ -858,7 +857,7 @@ export default function InboxPage() {
         setTimeout(() => scrollToBottom(true), 50);
 
         try {
-          const result = await sendAgentLocation(chatId, latitude, longitude, locLabel);
+          const result = await sendAgentLocation(chatId, latitude, longitude);
           setActiveChat((prev: any) => {
             if (!prev) return prev;
             return {
@@ -1564,7 +1563,9 @@ export default function InboxPage() {
                             {lastMsg ? (
                               lastMsg.mediaType === 'audio' 
                                 ? (lastMsg.content && lastMsg.content.startsWith('Mensaje de voz') ? lastMsg.content : 'Mensaje de voz') 
-                                : lastMsg.content
+                                : (lastMsg.mediaType === 'location' || lastMsg.mediaUrl?.includes('google.com/maps') || lastMsg.content?.includes('google.com/maps'))
+                                  ? '📍 Ubicación'
+                                  : lastMsg.content || (lastMsg.mediaType ? `[${lastMsg.mediaType}]` : '')
                             ) : <span className="italic opacity-50 text-[10px]">Sin mensajes</span>}
                           </span>
                         </div>
@@ -1848,46 +1849,126 @@ export default function InboxPage() {
                           </div>
                         )}
 
-                        {/* 3.5. Ubicación / Location Card */}
+                        {/* 3.5. Ubicación / Modern Location Card */}
                         {(msg.mediaType === 'location' || (msg.mediaUrl && (msg.mediaUrl.includes('google.com/maps') || msg.mediaUrl.includes('maps.google.com')))) && (() => {
                           let locData: { name?: string; address?: string; latitude?: number; longitude?: number } = {};
                           if (msg.mediaFilename) {
                             try { locData = JSON.parse(msg.mediaFilename); } catch (e) {}
                           }
                           const mapsUrl = msg.mediaUrl || (msg.content?.match(/https:\/\/(www\.)?(google\.com\/maps|maps\.google\.com)[^\s]+/)?.[0]) || '';
-                          const cleanContentLines = (msg.content || '').split('\n').filter(Boolean);
-                          const locationTitle = locData.name || (cleanContentLines[0]?.replace('📍', '').trim()) || 'Ubicación';
-                          const locationAddress = locData.address || (cleanContentLines[1]?.startsWith('http') ? '' : cleanContentLines[1]) || '';
+                          
+                          // Extraer coordenadas para el badge numérico
+                          let lat = locData.latitude;
+                          let lng = locData.longitude;
+                          if ((lat === undefined || lng === undefined) && mapsUrl) {
+                            const coordsMatch = mapsUrl.match(/q=([-\d.]+),([-\d.]+)/);
+                            if (coordsMatch) {
+                              lat = parseFloat(coordsMatch[1]);
+                              lng = parseFloat(coordsMatch[2]);
+                            }
+                          }
+                          const hasCoords = lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng);
+                          const coordLabel = hasCoords ? `${lat!.toFixed(4)}°, ${lng!.toFixed(4)}°` : '';
+
+                          // Filtrar nombres genéricos/sintéticos para que no aparezca "Mi ubicación actual" o "Ubicación recibida"
+                          const rawTitle = (locData.name || '').trim();
+                          const isGeneric = !rawTitle || ['ubicación', 'ubicacion', 'ubicación recibida', 'ubicacion recibida', 'mi ubicación actual', 'mi ubicacion actual', 'ubicación compartida', 'ubicacion compartida'].includes(rawTitle.toLowerCase());
+                          const locationTitle = isGeneric ? '' : rawTitle;
+                          const locationAddress = (locData.address || '').trim();
 
                           return (
-                            <div className="mb-2 p-3 bg-white/20 dark:bg-black/30 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-white/10 text-left min-w-[220px] max-w-xs shadow-sm">
-                              <div className="flex items-start gap-2.5">
-                                <div className="p-2 bg-rose-500/20 text-rose-500 dark:text-rose-400 rounded-xl shrink-0 mt-0.5">
-                                  <MapPin size={18} />
+                            <a
+                              href={mapsUrl || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group block mb-2 w-full max-w-[280px] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] bg-[#111111] text-white select-none relative"
+                              onClick={(e) => { if (!mapsUrl) e.preventDefault(); }}
+                            >
+                              {/* Visualizador de Mapa con Retícula Urbana y Radar Pin */}
+                              <div className="relative h-32 w-full bg-gradient-to-br from-[#1E1B18] via-[#141210] to-[#0A0908] overflow-hidden flex items-center justify-center">
+                                {/* Vector de Rutas Estilizadas y Bloques Urbanos */}
+                                <svg className="absolute inset-0 w-full h-full opacity-35 group-hover:opacity-50 transition-opacity duration-500" viewBox="0 0 280 128" fill="none">
+                                  {/* Bloques de la ciudad */}
+                                  <rect x="14" y="12" width="48" height="34" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="70" y="12" width="58" height="34" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="156" y="12" width="52" height="34" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="216" y="12" width="50" height="34" rx="4" fill="white" fillOpacity="0.05" />
+
+                                  <rect x="14" y="70" width="48" height="42" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="70" y="70" width="58" height="42" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="156" y="70" width="52" height="42" rx="4" fill="white" fillOpacity="0.05" />
+                                  <rect x="216" y="70" width="50" height="42" rx="4" fill="white" fillOpacity="0.05" />
+
+                                  {/* Parque / Área verde */}
+                                  <path d="M 156 14 L 202 14 L 202 42 L 156 42 Z" fill="#10B981" fillOpacity="0.15" />
+
+                                  {/* Río / Agua */}
+                                  <path d="M-10 105 C 65 75, 115 115, 185 88 C 225 72, 255 98, 295 82" stroke="#0284C7" strokeWidth="5" strokeLinecap="round" opacity="0.35" />
+
+                                  {/* Calles secundarias */}
+                                  <line x1="0" y1="58" x2="280" y2="58" stroke="white" strokeWidth="1" opacity="0.12" />
+                                  <line x1="64" y1="0" x2="64" y2="128" stroke="white" strokeWidth="1" opacity="0.12" />
+                                  <line x1="140" y1="0" x2="140" y2="128" stroke="white" strokeWidth="1" opacity="0.12" />
+                                  <line x1="212" y1="0" x2="212" y2="128" stroke="white" strokeWidth="1" opacity="0.12" />
+
+                                  {/* Arteria principal con resplandor naranja */}
+                                  <path d="M -10 28 Q 85 38 140 64 T 290 90" stroke="#F36A2D" strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
+                                  <path d="M -10 28 Q 85 38 140 64 T 290 90" stroke="white" strokeWidth="0.8" opacity="0.8" strokeDasharray="3 3" />
+
+                                  {/* Ondas concéntricas de radar centradas en (140, 64) */}
+                                  <circle cx="140" cy="64" r="28" stroke="#F36A2D" strokeWidth="1" opacity="0.45" strokeDasharray="2 2" />
+                                  <circle cx="140" cy="64" r="50" stroke="white" strokeWidth="0.5" opacity="0.18" />
+                                </svg>
+
+                                {/* Pin con Radar Pulsante */}
+                                <div className="relative z-10 flex flex-col items-center">
+                                  <div className="absolute -inset-3.5 rounded-full bg-[#F36A2D]/30 animate-ping duration-1000" />
+                                  <div className="relative h-9 w-9 rounded-full bg-gradient-to-tr from-[#F36A2D] to-orange-400 text-white flex items-center justify-center shadow-lg shadow-[#F36A2D]/50 group-hover:scale-110 group-hover:-translate-y-0.5 transition-all">
+                                    <MapPin size={18} className="fill-white/30" />
+                                  </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0] truncate">
-                                    {locationTitle}
-                                  </p>
-                                  {locationAddress ? (
-                                    <p className="text-[11px] text-[#6F6F6F] dark:text-zinc-400 mt-0.5 line-clamp-2 leading-tight">
-                                      {locationAddress}
-                                    </p>
-                                  ) : null}
-                                  {mapsUrl ? (
-                                    <a
-                                      href={mapsUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] hover:opacity-90 rounded-xl text-[11px] font-bold shadow-sm transition-all"
-                                    >
-                                      <span>Ver en Google Maps</span>
-                                      <ExternalLink size={12} />
-                                    </a>
-                                  ) : null}
+
+                                {/* Coordenadas Top-Left */}
+                                <div className="absolute top-2.5 left-2.5 z-10 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-mono tracking-wider text-zinc-300 flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  <span>{coordLabel || 'GPS'}</span>
+                                </div>
+
+                                {/* Brújula Top-Right */}
+                                <div className="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-zinc-300 group-hover:text-white group-hover:bg-[#F36A2D] transition-colors shadow-sm">
+                                  <Navigation size={11} className="group-hover:rotate-45 transition-transform duration-300" />
                                 </div>
                               </div>
-                            </div>
+
+                              {/* Barra de Información Inferior */}
+                              <div className="p-3 bg-zinc-950/90 backdrop-blur-md flex items-center justify-between gap-2.5 border-t border-white/10">
+                                <div className="min-w-0 flex-1 text-left">
+                                  {locationTitle ? (
+                                    <>
+                                      <p className="text-xs font-bold text-white truncate group-hover:text-[#F36A2D] transition-colors">
+                                        {locationTitle}
+                                      </p>
+                                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                                        {locationAddress || (coordLabel || 'Google Maps')}
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <p className="text-xs font-bold text-white truncate group-hover:text-[#F36A2D] transition-colors">
+                                        {coordLabel || 'Ubicación GPS'}
+                                      </p>
+                                      <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                                        {locationAddress || 'Google Maps'}
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 group-hover:bg-[#F36A2D] text-zinc-200 group-hover:text-white text-[11px] font-semibold transition-all shadow-sm">
+                                  <span>Abrir</span>
+                                  <ArrowUpRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                </div>
+                              </div>
+                            </a>
                           );
                         })()}
 
