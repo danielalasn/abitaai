@@ -7,6 +7,7 @@ import { getCurrentProject } from '@/lib/auth-server'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { AI_MODELS } from '@/lib/models'
 import { getCurrentMonthUsage } from '@/lib/subscription'
+import { supabaseAdmin } from '@/lib/supabase'
 
 // ──────────────────────────────────────────────
 // Project-level: WhatsApp Config & Agents list
@@ -464,8 +465,9 @@ export async function syncProfileFromMeta(): Promise<{ success: boolean; name?: 
 
   let profilePicUrl = '';
   let verifiedName = '';
+  let permanentAvatarUrl = '';
 
-  // Fetch business profile picture
+  // 1. Fetch business profile picture desde Meta
   const picRes = await fetch(
     `https://graph.facebook.com/v26.0/${phoneId}/whatsapp_business_profile?fields=about,profile_picture_url&access_token=${rawToken}`,
     { cache: 'no-store' }
@@ -476,7 +478,56 @@ export async function syncProfileFromMeta(): Promise<{ success: boolean; name?: 
     profilePicUrl = profile.profile_picture_url || '';
   }
 
-  // Fetch verified name
+  // 2. Si Meta nos devolvió foto, descargarla y guardarla en Supabase Storage de forma permanente
+  if (profilePicUrl) {
+    try {
+      const imgRes = await fetch(profilePicUrl);
+      if (imgRes.ok) {
+        const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+        const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+        const arrayBuffer = await imgRes.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        const bucketName = 'abita-assets';
+        const storagePath = `avatars/${project.clientId}.${ext}`;
+
+        // Asegurar que el bucket exista y sea público
+        const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+        const bucketExists = buckets?.some(b => b.name === bucketName);
+        if (!bucketExists) {
+          await supabaseAdmin.storage.createBucket(bucketName, { public: true });
+        }
+
+        const { error: uploadError } = await supabaseAdmin.storage
+          .from(bucketName)
+          .upload(storagePath, buffer, {
+            contentType,
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error('[syncProfileFromMeta] Error al subir foto a Supabase Storage:', uploadError);
+          // Fallback temporal si falla Supabase Storage
+          permanentAvatarUrl = profilePicUrl;
+        } else {
+          const { data: { publicUrl } } = supabaseAdmin.storage
+            .from(bucketName)
+            .getPublicUrl(storagePath);
+          
+          permanentAvatarUrl = `${publicUrl}?v=${Date.now()}`;
+          console.log(`[syncProfileFromMeta] Avatar persistido exitosamente en Supabase: ${permanentAvatarUrl}`);
+        }
+      } else {
+        console.warn(`[syncProfileFromMeta] No se pudo descargar la imagen de Meta (Status: ${imgRes.status})`);
+        permanentAvatarUrl = profilePicUrl;
+      }
+    } catch (storageErr) {
+      console.error('[syncProfileFromMeta] Excepción procesando avatar permanente:', storageErr);
+      permanentAvatarUrl = profilePicUrl;
+    }
+  }
+
+  // 3. Fetch verified name
   const phoneRes = await fetch(
     `https://graph.facebook.com/v26.0/${phoneId}?fields=verified_name&access_token=${rawToken}`,
     { cache: 'no-store' }
@@ -488,16 +539,17 @@ export async function syncProfileFromMeta(): Promise<{ success: boolean; name?: 
   const phoneData = await phoneRes.json();
   verifiedName = phoneData.verified_name || '';
 
+  // 4. Actualizar base de datos con la URL permanente
   await prisma.client.update({
     where: { id: project.clientId },
     data: {
       ...(verifiedName ? { name: verifiedName } : {}),
-      ...(profilePicUrl ? { avatarUrl: profilePicUrl } : {}),
+      ...(permanentAvatarUrl ? { avatarUrl: permanentAvatarUrl } : {}),
     }
   });
 
   revalidatePath('/settings');
-  return { success: true, name: verifiedName, avatarUrl: profilePicUrl };
+  return { success: true, name: verifiedName, avatarUrl: permanentAvatarUrl };
 }
 
 export async function updateUserProfile(userId: string, name: string, email: string, avatarUrl?: string) {
