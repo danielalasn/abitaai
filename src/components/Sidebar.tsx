@@ -194,9 +194,9 @@ export function Sidebar() {
           className="flex items-center gap-4 px-3 py-2 w-full rounded-xl hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left group relative overflow-hidden"
         >
           <div className="w-6 flex items-center justify-center shrink-0">
-            <div className="h-8 w-8 rounded-xl bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-sm font-bold shadow-sm shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+            <div className="h-8 w-8 rounded-full bg-[#111111] dark:bg-[#E9E4D8] flex items-center justify-center text-[#F36A2D] text-sm font-bold shadow-sm shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
               ) : (
                 userInitial
               )}
