@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback, forwardRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Script from 'next/script'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import {
   Save, Bot, BookOpen, Fingerprint, Loader2, HelpCircle, Code, Sparkles,
   CheckCircle2, Flame, Plus, Trash2, MessageSquare, ShieldCheck, ShieldX,
   Wifi, ChevronRight, Power, X, FileText, PanelLeftClose, PanelLeftOpen,
   Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings,
-  Sun, Moon
+  Sun, Moon, LogOut, Menu, ArrowLeft,
+  Inbox, Megaphone, LayoutTemplate, BarChart3, UserCheck, BrainCircuit, MessageSquareCode, Files
 } from 'lucide-react'
 import PhoneInput, { getCountryCallingCode, type Country } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
@@ -63,6 +64,7 @@ type AgentSummary = {
 }
 
 export default function SettingsPage() {
+  const router = useRouter()
   const { data: session, update: updateSession } = useSession()
   const isAdmin = session?.user?.email === 'info@abitaai.com'
 
@@ -105,7 +107,26 @@ export default function SettingsPage() {
   const [showNewAgent, setShowNewAgent] = useState(false)
   const [newAgentName, setNewAgentName] = useState("")
   const [newAgentDesc, setNewAgentDesc] = useState("")
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [mobileDrawerTab, setMobileDrawerTab] = useState<'settings' | 'modules'>('settings')
+
+  const allNavItems = [
+    { icon: Inbox, label: 'Bandeja', href: '/inbox' },
+    { icon: Megaphone, label: 'Campañas', href: '/campaigns' },
+    { icon: LayoutTemplate, label: 'Templates', href: '/templates' },
+    { icon: BarChart3, label: 'Dashboard', href: '/analytics' },
+    { icon: UserCheck, label: 'Leads', href: '/leads' },
+    { icon: BrainCircuit, label: 'Aprendizaje', href: '/learning' },
+    { icon: MessageSquareCode, label: 'Simulador', href: '/test-chat' },
+    { icon: Files, label: 'Archivos', href: '/files' },
+  ]
+
+  useEffect(() => {
+    // En escritorio mantener abierto por defecto, en móvil iniciar cerrado
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
 
   // Track which sections have already loaded their data
   const [sectionLoaded, setSectionLoaded] = useState<Record<string, boolean>>({})
@@ -401,8 +422,8 @@ export default function SettingsPage() {
       await loadProfile()
       setIsLoading(false)
 
-      // Handle OAuth redirects
-      const tab = searchParams.get('tab')
+      // Handle OAuth redirects y navegación directa por URL
+      const tab = searchParams.get('tab') || searchParams.get('section')
       const success = searchParams.get('success')
       const error = searchParams.get('error')
       if (tab === 'connections') {
@@ -412,6 +433,8 @@ export default function SettingsPage() {
         if (error === 'oauth_failed' || error === 'invalid_state') setIgFeedback('error')
       } else if (tab === 'tools') {
         setActiveSection('tools')
+      } else if (tab === 'profile' || tab === 'notifications' || tab === 'botConfig') {
+        setActiveSection(tab as any)
       }
     }
     init()
@@ -889,7 +912,7 @@ export default function SettingsPage() {
 
   return (
     <DesktopOnlyGuard>
-      <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
+      <div className="flex-1 flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714] overflow-hidden">
         <Script
           src="https://connect.facebook.net/en_US/sdk.js"
           strategy="afterInteractive"
@@ -904,39 +927,52 @@ export default function SettingsPage() {
           }}
         />
         {/* Header */}
-        <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
-          <div className="flex items-center gap-4">
+        <header className="shrink-0 h-16 flex items-center justify-between px-4 md:px-8 bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl shadow-[inset_0_-1px_0_rgba(138,129,114,.18)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)] z-20 sticky top-0">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors"
+              className="hidden md:flex p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors"
+              title="Alternar panel lateral"
             >
               {isSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
             </button>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
-                <Settings size={18} />
-              </div>
-              <h1 className="text-xl font-medium text-zinc-900 dark:text-[#EDE9E0]">Configuración</h1>
+            <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg flex items-center justify-center">
+              <Settings size={18} />
             </div>
+            <h1 className="text-lg md:text-xl font-medium text-zinc-900 dark:text-[#EDE9E0]">Configuración</h1>
           </div>
+
+          {/* Mobile: Solo el botón de las 3 líneas en la esquina derecha */}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileDrawerTab('settings')
+              setIsSidebarOpen(true)
+            }}
+            className="md:hidden flex items-center justify-center h-10 w-10 rounded-full text-[#8A8172] hover:text-[#111111] dark:hover:text-[#EDE9E0] hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 transition-all cursor-pointer z-30"
+            title="Abrir menú"
+            aria-label="Abrir menú"
+          >
+            <Menu size={20} />
+          </button>
         </header>
 
         {/* Notifications */}
         <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
           {saveStatus === 'success' && (
             <div className="bg-zinc-900 dark:bg-white text-white dark:text-black shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300">
-              <div className="bg-green-500 p-1.5 rounded-full"><CheckCircle2 size={18} className="text-white" /></div>
+              <div className="bg-[#FF4D00] p-1.5 rounded-full"><CheckCircle2 size={18} className="text-white" /></div>
               <div className="flex flex-col"><p className="text-sm font-semibold">Agente guardado</p><p className="text-xs opacity-70">Los cambios se aplicaron correctamente.</p></div>
             </div>
           )}
           {waStatus === 'success' && (
-            <div className="bg-emerald-600 text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300">
+            <div className="bg-[#E64500] text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300">
               <div className="bg-white/20 p-1.5 rounded-full"><Wifi size={18} /></div>
               <div className="flex flex-col"><p className="text-sm font-semibold">WhatsApp guardado</p></div>
             </div>
           )}
           {verifyResult && (
-            <div className={`${verifyResult.success ? 'bg-emerald-600' : 'bg-red-600'} text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 relative group/notif`}>
+            <div className={`${verifyResult.success ? 'bg-[#E64500]' : 'bg-red-600'} text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 relative group/notif`}>
               <button
                 onClick={() => setVerifyResult(null)}
                 className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/20 transition-colors opacity-0 group-hover/notif:opacity-100"
@@ -958,53 +994,157 @@ export default function SettingsPage() {
 
         {/* Main Layout = Sidebar + Content */}
         <div className="flex-1 flex relative overflow-hidden">
-          {/* ─── Sidebar ─── */}
-          <aside className={`absolute inset-y-0 left-0 z-40 md:relative shrink-0 md:border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#111111] md:bg-white/50 md:dark:bg-[#111111]/30 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none h-full w-[280px] md:w-72 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 md:pointer-events-none'}`}>
-            <div className="flex-1 overflow-y-auto flex flex-col">
+          {/* ─── Sidebar (Drawer deslizable a la derecha en móvil con la misma estética) ─── */}
+          <aside className={`fixed inset-y-0 right-0 z-[70] md:relative md:inset-auto shrink-0 md:border-r border-[#8A8172]/20 dark:border-white/10 bg-[#FAF6EE] dark:bg-[#161412] md:bg-white/50 md:dark:bg-[#111111]/30 flex flex-col transition-transform duration-300 ease-in-out shadow-[-10px_0_30px_rgba(0,0,0,0.4)] md:shadow-none h-full w-64 max-w-[80vw] md:w-72 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0 md:w-0 md:opacity-0 md:pointer-events-none'}`}>
+            <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col">
+
+              {/* Header con Isotipo puro y botón de retroceso a módulos para móvil */}
+              <div className="md:hidden flex items-center justify-between px-4 py-3.5 border-b border-[#8A8172]/15 dark:border-white/10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 flex items-center justify-center shrink-0">
+                    <svg
+                      viewBox="894.02 80 377.93 336.06"
+                      className="h-6 w-6 text-[#FF4D00]"
+                      fill="currentColor"
+                      aria-label="Abita AI"
+                    >
+                      <path d="M1184.09 248.293L1183.07 246.366C1177.73 236.181 1165.53 231.612 1165.04 231.419C1163.3 230.814 1160.5 230.043 1156.95 229.74C1156.17 229.658 1155.35 229.63 1154.41 229.63C1153.48 229.63 1152.57 229.658 1151.66 229.713H1151.25L1099.75 229.575H1038.17L1066.72 175.129L1092.87 125.28L1116.48 80H1037.21L1015.33 121.922L970.43 207.472H970.541L949.07 248.43C943.951 258.752 944.088 270.561 949.456 280.773C954.796 290.958 964.375 297.729 975.716 299.408C977.147 299.601 978.661 299.738 980.367 299.738H982.074L1050.09 299.656L1131.76 299.904L1158.05 350.028L1186.1 403.483C1186.1 403.483 1188.63 408.218 1192.73 415.98H1271.95L1206.05 290.325C1200.79 280.388 1192.73 265.056 1184.03 248.265L1184.09 248.293Z"/>
+                      <path d="M996.69 356.607C996.69 349.34 993.167 342.651 987.442 339.018L959.751 321.456C950.97 315.896 939.739 315.896 930.959 321.456L903.268 339.018C897.543 342.651 894.019 349.34 894.019 356.607V398.253C893.936 400.07 894.019 404.254 896.496 408.41C897.818 410.585 899.276 411.906 899.854 412.401C904.176 416.062 909.324 416.062 911.14 415.98C922.508 415.457 930.931 415.98 942.602 415.842C943.042 415.842 944.859 415.842 948.465 415.842C963.742 415.787 971.367 415.842 973.376 415.842C975.055 415.842 978.165 415.842 979.789 415.842C980.478 415.842 989.451 415.897 994.185 408.41C996.8 404.254 996.773 399.96 996.663 398.253V356.607H996.69Z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-base tracking-tight text-[#111111] dark:text-[#EDE9E0] flex items-center gap-1.5">
+                      Abita <span className="text-[#FF4D00]">AI</span>
+                    </h2>
+                    <p className="text-[11px] text-[#8A8172] dark:text-[#8E8B85] font-medium truncate max-w-[140px]">
+                      {session?.user?.name || session?.user?.email || 'Panel Principal'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="h-8 w-8 flex items-center justify-center rounded-full text-[#8A8172] hover:text-[#111111] dark:hover:text-[#EDE9E0] hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
+                  aria-label="Cerrar configuración"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* VISTA MÓVIL: MÓDULOS (Se muestra al presionar "← Módulos" sin cerrar el menú) */}
+              {mobileDrawerTab === 'modules' && (
+                <div className="md:hidden flex-1 overflow-y-auto no-scrollbar px-3 py-3 space-y-1">
+                  <div className="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-wider text-[#FF4D00]">
+                    Módulos y Herramientas
+                  </div>
+
+                  {allNavItems.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        setIsSidebarOpen(false)
+                        router.push(item.href)
+                      }}
+                      className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06] active:scale-[0.99] transition-all text-left"
+                    >
+                      <item.icon 
+                        size={18} 
+                        strokeWidth={1.9}
+                        className="text-[#8A8172] dark:text-[#8E8B85]" 
+                      />
+                      <span className="flex-1 truncate">{item.label}</span>
+                    </button>
+                  ))}
+
+                  {/* Botón para volver a Configuración dentro del mismo drawer */}
+                  <div className="pt-2 px-1">
+                    <button
+                      type="button"
+                      onClick={() => setMobileDrawerTab('settings')}
+                      className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/25 transition-all text-left"
+                    >
+                      <Settings 
+                        size={18} 
+                        strokeWidth={2.4}
+                        className="text-[#FF4D00]" 
+                      />
+                      <span className="flex-1 text-left truncate">Configuración</span>
+                      <span className="text-[10px] text-[#FF4D00] font-semibold">›</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Navigation for non-admins (or shared) */}
-              <div className="p-4 space-y-1">
-                <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 px-2">Configuración General</h3>
+              <div className={`p-3 space-y-1 ${mobileDrawerTab === 'modules' ? 'hidden md:block' : 'block'}`}>
+                <h3 className="text-[10px] font-bold text-[#FF4D00] uppercase tracking-wider mb-2 px-2">Configuración General</h3>
                 <button
                   onClick={() => { setActiveSection('profile'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'profile' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'profile' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
-                  <User size={18} /> Mi Perfil
+                  <User size={17} className={activeSection === 'profile' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Mi Perfil</span>
                 </button>
                 <button
                   onClick={() => { setActiveSection('notifications'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'notifications' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'notifications' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
-                  <Bell size={18} /> Notificaciones
+                  <Bell size={17} className={activeSection === 'notifications' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Notificaciones</span>
                 </button>
                 <button
                   onClick={() => { setActiveSection('connections'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'connections' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'connections' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
-                  <Globe size={18} /> Conexiones
+                  <Globe size={17} className={activeSection === 'connections' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Conexiones</span>
                 </button>
                 <button
                   onClick={() => { setActiveSection('tools'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'tools' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'tools' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
-                  <Puzzle size={18} /> Herramientas
+                  <Puzzle size={17} className={activeSection === 'tools' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Herramientas</span>
                 </button>
                 <button
                   onClick={() => { setActiveSection('botConfig'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeSection === 'botConfig' ? 'bg-[#F36A2D]/10 text-[#F36A2D] shadow-sm' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/60'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'botConfig' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
-                  <Bot size={18} /> Asistente IA
+                  <Bot size={17} className={activeSection === 'botConfig' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Asistente IA</span>
                 </button>
+
+                {/* Switch de Apariencia (Móvil - Idéntico a MobileNav) */}
+                <div className="md:hidden mt-4 pt-3 border-t border-[#8A8172]/15 dark:border-white/10 px-3 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 bg-[#FF4D00]/10 rounded-lg">
+                      <Sun size={14} className="text-[#FF4D00] dark:hidden" />
+                      <Moon size={14} className="text-[#FF4D00] hidden dark:block" />
+                    </div>
+                    <span className="text-xs font-semibold text-[#111111] dark:text-[#EDE9E0]">Apariencia</span>
+                  </div>
+                  <div className="scale-90 origin-right">
+                    <ThemeSwitch />
+                  </div>
+                </div>
+
+                {/* Botón de regreso a Módulos (Móvil - Cambia la vista interna a módulos sin cerrar el drawer) */}
+                <div className="md:hidden pt-2 px-1">
+                  <button
+                    type="button"
+                    onClick={() => setMobileDrawerTab('modules')}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold text-[#FF4D00] hover:text-[#E55A1D] hover:bg-[#FF4D00]/10 transition-all text-left cursor-pointer"
+                  >
+                    <ArrowLeft size={14} strokeWidth={2.5} />
+                    <span>Módulos</span>
+                  </button>
+                </div>
               </div>
 
               {/* AI Agent List (ONLY FOR ADMINS) */}
               {isAdmin && (
-                <div className="mt-4 flex-1 flex flex-col min-w-[288px]">
-                  <div className="p-4 border-t border-[#DEDAD0] dark:border-zinc-800/60">
+                <div className={`mt-4 flex-1 flex flex-col min-w-[288px] ${mobileDrawerTab === 'modules' ? 'hidden md:flex' : ''}`}>
+                  <div className="p-4 border-t border-[#DDD5C2] dark:border-zinc-800/60">
                     <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3 px-2">Gestión de Agentes (Avanzado)</h3>
                     <button
                       onClick={() => setShowNewAgent(true)}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#F36A2D] hover:bg-[#E55A1D] text-white rounded-xl text-sm font-bold transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#FF4D00] hover:bg-[#E55A1D] text-white rounded-xl text-sm font-bold transition-colors"
                     >
                       <Plus size={16} /> Nuevo Agente
                     </button>
@@ -1012,11 +1152,11 @@ export default function SettingsPage() {
 
                   {/* New Agent Form */}
                   {showNewAgent && (
-                    <div className="p-4 bg-[#F36A2D]/5 space-y-2">
-                      <input type="text" placeholder="Nombre del agente" value={newAgentName} onChange={e => setNewAgentName(e.target.value)} className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm" />
-                      <input type="text" placeholder="Descripción breve" value={newAgentDesc} onChange={e => setNewAgentDesc(e.target.value)} className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm" />
+                    <div className="p-4 bg-[#FF4D00]/5 space-y-2">
+                      <input type="text" placeholder="Nombre del agente" value={newAgentName} onChange={e => setNewAgentName(e.target.value)} className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm" />
+                      <input type="text" placeholder="Descripción breve" value={newAgentDesc} onChange={e => setNewAgentDesc(e.target.value)} className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm" />
                       <div className="flex gap-2">
-                        <button onClick={handleCreateAgent} className="flex-1 py-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg text-xs font-bold">Crear</button>
+                        <button onClick={handleCreateAgent} className="flex-1 py-2 btn-primary-abita rounded-lg text-xs font-bold">Crear</button>
                         <button onClick={() => setShowNewAgent(false)} className="px-3 py-2 text-[#6F6F6F] text-xs font-bold">Cerrar</button>
                       </div>
                     </div>
@@ -1028,16 +1168,16 @@ export default function SettingsPage() {
                         key={agent.id}
                         onClick={() => { selectAgent(agent); setActiveSection('agent'); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
                         className={`w-full text-left p-3 rounded-xl border transition-all group ${activeSection === 'agent' && selectedAgentId === agent.id
-                          ? 'border-[#F36A2D] bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 shadow-sm'
-                          : 'border-transparent hover:border-[#DEDAD0] dark:hover:border-zinc-700 hover:bg-white/60 dark:hover:bg-zinc-900/40'
+                          ? 'border-[#FF4D00] bg-[#FF4D00]/5 dark:bg-[#FF4D00]/10 shadow-sm'
+                          : 'border-transparent hover:border-[#DDD5C2] dark:hover:border-zinc-700 hover:bg-white/60 dark:hover:bg-zinc-900/40'
                           }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${agent.isActive ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${agent.isActive ? 'bg-[#FF4D00]' : 'bg-zinc-300'}`} />
                             <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0] truncate">{agent.name}</span>
                           </div>
-                          <ChevronRight size={14} className={selectedAgentId === agent.id ? 'text-[#F36A2D]' : 'text-zinc-400'} />
+                          <ChevronRight size={14} className={selectedAgentId === agent.id ? 'text-[#FF4D00]' : 'text-zinc-400'} />
                         </div>
                       </button>
                     ))}
@@ -1048,7 +1188,7 @@ export default function SettingsPage() {
 
             {/* WhatsApp Section in Sidebar (Only for Admins) */}
             {isAdmin && (
-              <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 p-4 space-y-3">
+              <div className={`border-t border-[#DDD5C2] dark:border-zinc-800/60 p-4 space-y-3 ${mobileDrawerTab === 'modules' ? 'hidden md:block' : 'block'}`}>
                 <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                   <MessageSquare size={12} /> WhatsApp Cloud API
                 </h3>
@@ -1058,7 +1198,7 @@ export default function SettingsPage() {
                   value={whatsappPhoneId}
                   onChange={e => setWhatsappPhoneId(e.target.value)}
                   autoComplete="new-password"
-                  className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
+                  className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
                 />
                 <input
                   type="text"
@@ -1066,7 +1206,7 @@ export default function SettingsPage() {
                   value={whatsappBusinessId}
                   onChange={e => setWhatsappBusinessId(e.target.value)}
                   autoComplete="new-password"
-                  className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
+                  className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
                 />
                 <div className="relative group/token">
                   <input
@@ -1075,18 +1215,18 @@ export default function SettingsPage() {
                     value={whatsappToken}
                     onChange={e => setWhatsappToken(e.target.value)}
                     autoComplete="new-password"
-                    className="w-full p-2 pr-9 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
+                    className="w-full p-2 pr-9 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs font-mono"
                   />
                   <button
                     type="button"
                     onClick={() => setShowToken(!showToken)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-[#F36A2D]"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-[#FF4D00]"
                   >
                     {showToken ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleSaveWhatsApp} disabled={isSavingWA} className="flex-1 py-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg text-xs font-bold">
+                  <button onClick={handleSaveWhatsApp} disabled={isSavingWA} className="flex-1 py-2 btn-primary-abita rounded-lg text-xs font-bold">
                     {isSavingWA ? '...' : 'Guardar'}
                   </button>
                   <button
@@ -1096,26 +1236,26 @@ export default function SettingsPage() {
                       setVerifyResult(r); setIsVerifying(false)
                     }}
                     disabled={isVerifying}
-                    className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold"
+                    className="px-3 py-2 bg-[#E64500] text-white rounded-lg text-xs font-bold"
                   >
                     {isVerifying ? '...' : <Wifi size={14} />}
                   </button>
                 </div>
                 {verifyResult && (
-                  <p className={`text-[10px] font-medium whitespace-pre-line ${verifyResult.success ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <p className={`text-[10px] font-medium whitespace-pre-line ${verifyResult.success ? 'text-[#E64500]' : 'text-red-500'}`}>
                     {verifyResult.message}
                   </p>
                 )}
               </div>
             )}
             
-            {/* Theme Toggle in Settings Sidebar */}
-            <div className="mt-auto border-t border-[#DEDAD0] dark:border-zinc-800/60 p-4 pb-24 md:pb-4">
+            {/* Theme Toggle in Settings Sidebar (Solo Desktop) */}
+            <div className="hidden md:block mt-auto border-t border-[#DDD5C2] dark:border-zinc-800/60 p-4 pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-[#F36A2D]/10 rounded-lg">
-                    <Sun size={14} className="text-[#F36A2D] dark:hidden" />
-                    <Moon size={14} className="text-[#F36A2D] hidden dark:block" />
+                  <div className="p-1.5 bg-[#FF4D00]/10 rounded-lg">
+                    <Sun size={14} className="text-[#FF4D00] dark:hidden" />
+                    <Moon size={14} className="text-[#FF4D00] hidden dark:block" />
                   </div>
                   <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Apariencia</span>
                 </div>
@@ -1124,12 +1264,23 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Footer con Cerrar Sesión para móvil */}
+            <div className="md:hidden p-3 border-t border-[#8A8172]/15 dark:border-white/10 shrink-0">
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-500 hover:text-rose-400 bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/20 active:scale-[0.98] transition-all"
+              >
+                <LogOut size={15} />
+                <span>Cerrar Sesión</span>
+              </button>
+            </div>
           </aside>
 
           {/* Backdrop para móviles */}
           {isSidebarOpen && (
             <div 
-              className="md:hidden absolute inset-0 bg-black/40 z-30"
+              className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] animate-in fade-in duration-200"
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
@@ -1142,31 +1293,31 @@ export default function SettingsPage() {
               <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
-                    <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Ajustes de Usuario</span>
+                    <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
+                    <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Ajustes de Usuario</span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Mi Perfil</h2>
                 </header>
 
                 {isLoading ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 size={28} className="animate-spin text-[#F36A2D]" />
+                    <Loader2 size={28} className="animate-spin text-[#FF4D00]" />
                   </div>
                 ) : (
                   <>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                       {/* Visual Identity Card */}
                       <div className="group h-full">
-                    <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500 h-full">
+                    <div className="glass-panel p-6 flex flex-col items-center text-center shadow-lg shadow-black/5 dark:shadow-none hover:-translate-y-0.5 transition-all duration-500 h-full">
 
                       {/* Avatar */}
                       <div className="relative mb-5">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[#F36A2D] to-[#FF9E7A] rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-                        <div className={`relative w-24 h-24 rounded-full ring-4 ring-[#F36A2D]/10 overflow-hidden transition-transform duration-500 ${!hasMetaConnected ? 'group-hover:scale-105' : ''}`}>
+                        <div className="absolute inset-0 bg-gradient-to-tr from-[#FF4D00] to-[#FF9E7A] rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                        <div className={`relative w-24 h-24 rounded-full ring-4 ring-[#FF4D00]/10 overflow-hidden transition-transform duration-500 ${!hasMetaConnected ? 'group-hover:scale-105' : ''}`}>
                           {userAvatarUrl ? (
                             <img src={userAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full bg-[#F36A2D]/10 text-[#F36A2D] flex items-center justify-center">
+                            <div className="w-full h-full bg-[#FF4D00]/10 text-[#FF4D00] flex items-center justify-center">
                               <User size={40} strokeWidth={1.5} />
                             </div>
                           )}
@@ -1181,7 +1332,7 @@ export default function SettingsPage() {
                       <div className="space-y-1 mb-4">
                         <h3 className="text-xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">{userName || 'Usuario'}</h3>
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-full">
-                          <ShieldCheck size={10} className="text-[#F36A2D]" />
+                          <ShieldCheck size={10} className="text-[#FF4D00]" />
                           <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest font-black">{isAdmin ? 'Administrador' : 'Cliente'}</span>
                         </div>
                       </div>
@@ -1201,7 +1352,7 @@ export default function SettingsPage() {
                             onClick={handleSyncMeta}
                             disabled={isSyncingMeta}
                             className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 ${
-                              syncMetaStatus === 'success' ? 'bg-emerald-500 text-white' :
+                              syncMetaStatus === 'success' ? 'bg-[#FF4D00] text-white' :
                               syncMetaStatus === 'error' ? 'bg-red-500 text-white' :
                               'bg-[#25D366] hover:bg-[#1da851] text-white'
                             }`}
@@ -1224,7 +1375,7 @@ export default function SettingsPage() {
                           <button
                             type="button"
                             onClick={() => setActiveSection('connections')}
-                            className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-[#F36A2D] transition-all whitespace-nowrap"
+                            className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-[#FF4D00] transition-all whitespace-nowrap"
                           >
                             Conectar
                           </button>
@@ -1250,7 +1401,7 @@ export default function SettingsPage() {
                             className={`w-full text-xs px-4 py-2.5 rounded-xl outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner ${
                               hasMetaConnected 
                                 ? 'bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 text-zinc-500 cursor-not-allowed'
-                                : 'bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D]'
+                                : 'bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00]'
                             }`}
                           />
                         </div>
@@ -1258,13 +1409,13 @@ export default function SettingsPage() {
                         {!hasMetaConnected && (
                           <div className="flex flex-col items-start gap-1">
                             <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Foto de Perfil</label>
-                            <label className="w-full flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer hover:border-[#F36A2D] hover:bg-[#F36A2D]/5 transition-all group/upload">
+                            <label className="w-full flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer hover:border-[#FF4D00] hover:bg-[#FF4D00]/5 transition-all group/upload">
                               {isUploadingAvatar ? (
-                                <Loader2 size={14} className="text-[#F36A2D] animate-spin shrink-0" />
+                                <Loader2 size={14} className="text-[#FF4D00] animate-spin shrink-0" />
                               ) : (
-                                <Camera size={14} className="text-zinc-400 group-hover/upload:text-[#F36A2D] transition-colors shrink-0" />
+                                <Camera size={14} className="text-zinc-400 group-hover/upload:text-[#FF4D00] transition-colors shrink-0" />
                               )}
-                              <span className={`text-xs transition-colors ${avatarUploadStatus === 'success' ? 'text-emerald-500 font-bold' : 'text-zinc-500 dark:text-zinc-400 group-hover/upload:text-[#F36A2D]'}`}>
+                              <span className={`text-xs transition-colors ${avatarUploadStatus === 'success' ? 'text-[#FF4D00] font-bold' : 'text-zinc-500 dark:text-zinc-400 group-hover/upload:text-[#FF4D00]'}`}>
                                 {isUploadingAvatar ? 'Subiendo...' : avatarUploadStatus === 'success' ? '¡Foto actualizada!' : 'Subir foto · JPG, PNG, WEBP · máx 5MB'}
                               </span>
                               <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={isUploadingAvatar} />
@@ -1276,7 +1427,7 @@ export default function SettingsPage() {
                       <button
                         onClick={handleUpdateProfile}
                         disabled={isUpdatingProfile}
-                        className="w-full mt-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full mt-6 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {isUpdatingProfile ? <Loader2 size={16} className="animate-spin" /> : profileStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Hecho!</> : 'Guardar Perfil'}
                       </button>
@@ -1285,10 +1436,10 @@ export default function SettingsPage() {
 
                   {/* Password Form */}
                   <div className="h-full">
-                    <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none h-full flex flex-col hover:border-[#F36A2D]/30 transition-all duration-500">
+                    <div className="glass-panel p-6 h-full flex flex-col hover:-translate-y-0.5 transition-all duration-500">
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
-                          <Lock className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+                        <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
+                          <Lock className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
                         </div>
                         <div>
                           <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Seguridad</h3>
@@ -1296,7 +1447,7 @@ export default function SettingsPage() {
                       </div>
 
                       {passwordFeedback && (
-                        <div className={`mb-4 p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 ${passwordStatus === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                        <div className={`mb-4 p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 ${passwordStatus === 'success' ? 'bg-[#FFF1EA] dark:bg-[#5C1B00]/10 border-[#FFE5DB] dark:border-[#8A2900] text-[#B33500] dark:text-[#FF8A4C]' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
                           {passwordStatus === 'success' ? <CheckCircle2 size={14} className="shrink-0 mt-0.5" /> : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
                           <span>{passwordFeedback}</span>
                         </div>
@@ -1306,13 +1457,13 @@ export default function SettingsPage() {
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Contraseña Actual</label>
                           <div className="relative group/input">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#F36A2D] transition-colors" size={14} />
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
                             <input
                               type="password"
                               placeholder="••••••••••••"
                               value={oldPassword}
                               onChange={e => setOldPassword(e.target.value)}
-                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
                             />
                           </div>
                         </div>
@@ -1320,13 +1471,13 @@ export default function SettingsPage() {
                         <div className="space-y-1 pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
                           <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Nueva Contraseña</label>
                           <div className="relative group/input">
-                            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#F36A2D] transition-colors" size={14} />
+                            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
                             <input
                               type="password"
                               placeholder="Mínimo 8 caracteres"
                               value={userPassword}
                               onChange={e => setUserPassword(e.target.value)}
-                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#F36A2D]/50 focus:border-[#F36A2D] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
                             />
                           </div>
                         </div>
@@ -1334,13 +1485,13 @@ export default function SettingsPage() {
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Confirmar Nueva</label>
                           <div className="relative group/input">
-                            <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-emerald-500 transition-colors" size={14} />
+                            <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
                             <input
                               type="password"
                               placeholder="Repita la contraseña"
                               value={confirmPassword}
                               onChange={e => setConfirmPassword(e.target.value)}
-                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/30 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
                             />
                           </div>
                         </div>
@@ -1349,7 +1500,7 @@ export default function SettingsPage() {
                       <button
                         onClick={handleUpdatePassword}
                         disabled={isUpdatingPassword || !userPassword || !oldPassword || !confirmPassword}
-                        className="w-full mt-6 bg-[#111111] dark:bg-zinc-800 text-white py-3 rounded-xl text-xs font-black tracking-tight shadow-lg hover:bg-[#F36A2D] transition-all active:scale-[0.98] disabled:opacity-30 flex items-center justify-center gap-2"
+                        className="w-full mt-6 bg-[#111111] dark:bg-zinc-800 text-white py-3 rounded-xl text-xs font-black tracking-tight shadow-lg hover:bg-[#FF4D00] transition-all active:scale-[0.98] disabled:opacity-30 flex items-center justify-center gap-2"
                       >
                         {isUpdatingPassword ? <Loader2 size={16} className="animate-spin" /> : passwordStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Listo!</> : 'Actualizar Pass'}
                       </button>
@@ -1360,7 +1511,7 @@ export default function SettingsPage() {
 
 
                 {/* PRIVACY & COMPLIANCE SECTION */}
-                <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-red-500/30 transition-all duration-500">
+                <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-red-500/10 rounded-xl">
                       <ShieldX className="text-red-500" size={20} strokeWidth={2.5} />
@@ -1394,7 +1545,7 @@ export default function SettingsPage() {
                             alert(e.message || 'Error al exportar datos');
                           }
                         }}
-                        className="px-4 py-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-xl text-xs font-bold hover:bg-[#F36A2D] transition-colors whitespace-nowrap"
+                        className="px-4 py-2 btn-primary-abita rounded-xl text-xs font-bold whitespace-nowrap"
                       >
                         Exportar Datos
                       </button>
@@ -1438,21 +1589,21 @@ export default function SettingsPage() {
               <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
-                    <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Centro de Alertas</span>
+                    <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
+                    <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Centro de Alertas</span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Notificaciones</h2>
                 </header>
 
                 {isLoadingSection && !sectionLoaded['notifications'] ? (
                   <div className="flex items-center justify-center py-20">
-                    <Loader2 size={28} className="animate-spin text-[#F36A2D]" />
+                    <Loader2 size={28} className="animate-spin text-[#FF4D00]" />
                   </div>
                 ) : (
                 <div className="flex flex-col gap-6">
 
                   {/* Web Push Notifications Card */}
-                  <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-[#F36A2D]/30 transition-all duration-500 relative overflow-hidden">
+                  <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500 relative overflow-hidden">
                     {/* Modal Confirmación Handoff */}
                     {showHandoffConfirmModal && (
                       <div className="absolute inset-0 bg-white/95 dark:bg-[#111111]/95 z-10 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm animate-in fade-in">
@@ -1469,8 +1620,8 @@ export default function SettingsPage() {
                     )}
 
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
-                        <Bell className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+                      <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
+                        <Bell className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones Web (Push)</h3>
@@ -1482,12 +1633,12 @@ export default function SettingsPage() {
                       <button
                         onClick={handleSubscribePush}
                         disabled={isSubscribingPush}
-                        className={`w-full bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-[#F36A2D] hover:text-white transition-all flex items-center justify-center gap-2 active:scale-[0.98]`}
+                        className={`w-full btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight flex items-center justify-center gap-2 active:scale-[0.98]`}
                       >
                         {isSubscribingPush ? <Loader2 size={16} className="animate-spin" /> : 'Activar Notificaciones Web'}
                       </button>
                     ) : (
-                      <div className="space-y-5 border-t border-[#DEDAD0] dark:border-zinc-800/80 pt-5">
+                      <div className="space-y-5 border-t border-[#DDD5C2] dark:border-zinc-800/80 pt-5">
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col pr-4">
                             <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Handoffs</span>
@@ -1496,7 +1647,7 @@ export default function SettingsPage() {
                           <button
                             onClick={() => notifyHandoffs ? setShowHandoffConfirmModal(true) : handleTogglePushSetting('handoff')}
                             disabled={isUpdatingPushSettings && !showHandoffConfirmModal}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyHandoffs ? 'bg-[#F36A2D]' : 'bg-zinc-300 dark:bg-zinc-700'} ${(isUpdatingPushSettings && !showHandoffConfirmModal) ? 'opacity-50' : ''}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyHandoffs ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'} ${(isUpdatingPushSettings && !showHandoffConfirmModal) ? 'opacity-50' : ''}`}
                           >
                             <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyHandoffs ? 'translate-x-5' : 'translate-x-0'}`} />
                           </button>
@@ -1509,7 +1660,7 @@ export default function SettingsPage() {
                           <button
                             onClick={() => handleTogglePushSetting('all')}
                             disabled={isUpdatingPushSettings}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyAllMessages ? 'bg-[#F36A2D]' : 'bg-zinc-300 dark:bg-zinc-700'} ${isUpdatingPushSettings ? 'opacity-50' : ''}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyAllMessages ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'} ${isUpdatingPushSettings ? 'opacity-50' : ''}`}
                           >
                             <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyAllMessages ? 'translate-x-5' : 'translate-x-0'}`} />
                           </button>
@@ -1521,10 +1672,10 @@ export default function SettingsPage() {
 
                   {/* WhatsApp Notification Card — FIRST */}
                   {whatsappPhoneId && (
-                    <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-emerald-500/30 transition-all duration-500">
+                    <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500">
                       <div className="flex items-center gap-3 mb-5">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-emerald-500"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.117 1.524 5.847L.057 23.571a.5.5 0 0 0 .612.612l5.724-1.467A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.98 0-3.84-.524-5.448-1.44l-.39-.228-4.047 1.038 1.057-3.96-.25-.405A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
+                        <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-[#FF4D00]"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.117 1.524 5.847L.057 23.571a.5.5 0 0 0 .612.612l5.724-1.467A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.98 0-3.84-.524-5.448-1.44l-.39-.228-4.047 1.038 1.057-3.96-.25-.405A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
                         </div>
                         <div>
                           <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por WhatsApp</h3>
@@ -1543,7 +1694,7 @@ export default function SettingsPage() {
                           <button
                             onClick={handleCreateHandoffTemplate}
                             disabled={isCreatingTemplate}
-                            className="w-full py-3 bg-emerald-500 text-white rounded-xl text-xs font-black tracking-tight hover:bg-emerald-600 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-[#FF4D00] text-white rounded-xl text-xs font-black tracking-tight hover:bg-[#E64500] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                           >
                             {isCreatingTemplate ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg> Creando plantilla...</> : 'Crear Plantilla de Alerta en Meta'}
                           </button>
@@ -1586,14 +1737,14 @@ export default function SettingsPage() {
                       {handoffTemplateStatus === 'APPROVED' && (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 mb-1">
-                            <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Plantilla activa y aprobada por Meta</span>
+                            <div className="h-2 w-2 rounded-full bg-[#FF4D00]"></div>
+                            <span className="text-xs font-bold text-[#E64500] dark:text-[#FF8A4C]">Plantilla activa y aprobada por Meta</span>
                           </div>
 
                           {notificationPhones.length > 0 && (
                             <div className="flex flex-wrap gap-2 mb-2">
                               {notificationPhones.map((phone) => (
-                                <div key={phone} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                <div key={phone} className="flex items-center gap-2 px-3 py-1.5 bg-[#FF4D00]/10 border border-[#FF4D00]/20 rounded-full text-xs font-medium text-[#E64500] dark:text-[#FF8A4C]">
                                   <span>{phone.startsWith('+') ? phone : `+${phone}`}</span>
                                   <button
                                     onClick={() => setNotificationPhones(prev => prev.filter(p => p !== phone))}
@@ -1607,7 +1758,7 @@ export default function SettingsPage() {
                           )}
 
                           <div className="flex gap-2 items-stretch h-[42px]">
-                            <div className="flex-1 px-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all flex items-center text-zinc-900 dark:text-zinc-100">
+                            <div className="flex-1 px-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-[#FF4D00]/50 focus-within:border-[#FF4D00] transition-all flex items-center text-zinc-900 dark:text-zinc-100">
                               <PhoneInput
                                 international={false}
                                 country={phoneCountry}
@@ -1637,7 +1788,7 @@ export default function SettingsPage() {
                                   setNotificationPhoneInput('')
                                 }
                               }}
-                              className="px-4 py-2.5 bg-emerald-500/10 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-500 hover:text-white transition-all"
+                              className="px-4 py-2.5 bg-[#FF4D00]/10 text-[#E64500] rounded-xl text-xs font-bold hover:bg-[#FF4D00] hover:text-white transition-all"
                             >
                               <Plus size={16} />
                             </button>
@@ -1646,7 +1797,7 @@ export default function SettingsPage() {
                           <button
                             onClick={handleSaveNotificationPhones}
                             disabled={isSavingNotificationPhones}
-                            className="w-full mt-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-emerald-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full mt-2 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                           >
                             {isSavingNotificationPhones ? <Loader2 size={16} className="animate-spin" /> : notificationPhonesStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar números'}
                           </button>
@@ -1656,10 +1807,10 @@ export default function SettingsPage() {
                   )}
 
                   {/* Notification Emails Card — SECOND */}
-                  <div className="mt-6 bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none hover:border-blue-500/30 transition-all duration-500">
+                  <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="p-2 bg-blue-500/10 rounded-xl">
-                        <MessageSquare className="text-blue-500" size={20} strokeWidth={2.5} />
+                      <div className="p-2 bg-[#8A8172]/10 rounded-xl">
+                        <MessageSquare className="text-[#8A8172]" size={20} strokeWidth={2.5} />
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por Correo</h3>
@@ -1671,7 +1822,7 @@ export default function SettingsPage() {
                       {notificationEmails.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-4">
                           {notificationEmails.map((email) => (
-                            <div key={email} className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-xs font-medium text-blue-500">
+                            <div key={email} className="flex items-center gap-2 px-3 py-1.5 bg-[#8A8172]/10 border border-[#8A8172]/20 rounded-full text-xs font-medium text-[#8A8172]">
                               <span>{email}</span>
                               <button
                                 onClick={() => setNotificationEmails(prev => prev.filter(e => e !== email))}
@@ -1701,7 +1852,7 @@ export default function SettingsPage() {
                               }
                             }
                           }}
-                          className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 outline-none transition-all text-zinc-900 dark:text-zinc-100"
+                          className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#8A8172]/50 focus:border-[#8A8172] outline-none transition-all text-zinc-900 dark:text-zinc-100"
                         />
                         <button
                           onClick={() => {
@@ -1711,7 +1862,7 @@ export default function SettingsPage() {
                               setNotificationEmailInput('');
                             }
                           }}
-                          className="px-4 py-2.5 bg-blue-500/10 text-blue-500 rounded-xl text-xs font-bold hover:bg-blue-500 hover:text-white transition-all"
+                          className="px-4 py-2.5 bg-[#8A8172]/10 text-[#8A8172] rounded-xl text-xs font-bold hover:bg-[#8A8172] hover:text-white transition-all"
                         >
                           <Plus size={16} />
                         </button>
@@ -1720,7 +1871,7 @@ export default function SettingsPage() {
                       <button
                         onClick={handleSaveNotificationEmails}
                         disabled={isSavingNotificationEmails}
-                        className="w-full mt-2 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-lg shadow-black/5 hover:bg-blue-500 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full mt-2 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {isSavingNotificationEmails ? <Loader2 size={16} className="animate-spin" /> : notificationEmailsStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar correos'}
                       </button>
@@ -1736,17 +1887,17 @@ export default function SettingsPage() {
               <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
-                    <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Configuración</span>
+                    <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
+                    <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Configuración</span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Asistente IA</h2>
                 </header>
 
                 <div className="grid grid-cols-1 gap-6">
-                  <div className="bg-white dark:bg-[#111111]/60 border border-[#DEDAD0] dark:border-zinc-800/80 rounded-3xl p-6 shadow-lg shadow-black/5 dark:shadow-none transition-all duration-500">
+                  <div className="glass-panel p-6 transition-all duration-500">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
-                        <Bot className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+                      <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
+                        <Bot className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
                       </div>
                       <div>
                         <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Comportamiento del Bot</h3>
@@ -1764,7 +1915,7 @@ export default function SettingsPage() {
                         </div>
                         <button
                           onClick={() => setIsDefaultBotConfirmModalOpen(true)}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#F36A2D] focus:ring-offset-2 ${defaultBotActive ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#FF4D00] focus:ring-offset-2 ${defaultBotActive ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                           role="switch"
                           aria-checked={defaultBotActive}
                         >
@@ -1783,7 +1934,7 @@ export default function SettingsPage() {
                           </div>
                           <button
                             onClick={() => setIsAutoWakeConfirmModalOpen(true)}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#F36A2D] focus:ring-offset-2 ${botAutoWakeHours !== null ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#FF4D00] focus:ring-offset-2 ${botAutoWakeHours !== null ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                             role="switch"
                             aria-checked={botAutoWakeHours !== null}
                           >
@@ -1798,7 +1949,7 @@ export default function SettingsPage() {
                             <select
                               value={botAutoWakeHours}
                               onChange={(e) => setBotAutoWakeHours(Number(e.target.value))}
-                              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm rounded-xl px-4 py-2 text-zinc-900 dark:text-[#EDE9E0] focus:ring-2 focus:ring-[#F36A2D] focus:outline-none shrink-0 font-medium shadow-sm"
+                              className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm rounded-xl px-4 py-2 text-zinc-900 dark:text-[#EDE9E0] focus:ring-2 focus:ring-[#FF4D00] focus:outline-none shrink-0 font-medium shadow-sm"
                             >
                               <option value="0.0833">5 Minutos</option>
                               <option value="12">12 Horas</option>
@@ -1815,7 +1966,7 @@ export default function SettingsPage() {
                         <button
                           onClick={handleSaveBotConfig}
                           disabled={isSaving}
-                          className="px-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-md hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+                          className="px-6 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight shadow-md active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
                         >
                           {isSaving ? <Loader2 size={16} className="animate-spin" /> : saveStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Hecho!</> : 'Guardar Cambios'}
                         </button>
@@ -1831,20 +1982,20 @@ export default function SettingsPage() {
               <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
-                    <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Canales</span>
+                    <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
+                    <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Canales</span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Conexiones</h2>
                 </header>
 
                 {igFeedback && (
-                  <div className="mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 animate-in slide-in-from-top-2">
+                  <div className="mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold bg-[#FFF1EA] dark:bg-[#5C1B00]/10 border-[#FFE5DB] dark:border-[#8A2900] text-[#B33500] dark:text-[#FF8A4C] animate-in slide-in-from-top-2">
                     <CheckCircle2 size={14} /> {igFeedback === 'success' ? 'Éxito' : 'Error'} al conectar Instagram
                   </div>
                 )}
 
                 {waFeedback && (
-                  <div className={`mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold animate-in slide-in-from-top-2 ${waFeedback === 'success' ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                  <div className={`mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold animate-in slide-in-from-top-2 ${waFeedback === 'success' ? 'bg-[#FFF1EA] dark:bg-[#5C1B00]/10 border-[#FFE5DB] dark:border-[#8A2900] text-[#B33500] dark:text-[#FF8A4C]' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
                     {waFeedback === 'success' ? <CheckCircle2 size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
                     <span>{waFeedback === 'success' ? 'WhatsApp conectado exitosamente.' : waErrorMessage}</span>
                   </div>
@@ -1852,15 +2003,15 @@ export default function SettingsPage() {
 
                 <div className="space-y-6 max-w-md mx-auto w-full">
                   {/* ─── WhatsApp Card ─── */}
-                  <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-emerald-500/40 ${waIntegration?.status === 'active' ? 'border-emerald-500/20 ring-1 ring-emerald-500/20' : 'border-[#DEDAD0] dark:border-zinc-800'
+                  <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-[#FF4D00]/40 ${waIntegration?.status === 'active' ? 'border-[#FF4D00]/20 ring-1 ring-[#FF4D00]/20' : 'border-[#DDD5C2] dark:border-zinc-800'
                     }`}>
                     <div className="mb-6 relative">
-                      <div className="absolute inset-0 bg-emerald-500 rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
-                      <div className="relative h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center shadow-sm group-hover:-rotate-3 transition-transform duration-500">
+                      <div className="absolute inset-0 bg-[#FF4D00] rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
+                      <div className="relative h-16 w-16 bg-[#FF4D00]/10 text-[#FF4D00] rounded-2xl flex items-center justify-center shadow-sm group-hover:-rotate-3 transition-transform duration-500">
                         <MessageSquare size={32} />
                       </div>
                       {waIntegration?.status === 'active' && (
-                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
+                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-[#FF4D00] border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
                       )}
                     </div>
 
@@ -1875,7 +2026,7 @@ export default function SettingsPage() {
                         disabled={waLoading}
                         className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${waIntegration?.status === 'active'
                           ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
-                          : 'bg-[#111111] dark:bg-[#EDE9E0] dark:text-[#111111] hover:bg-emerald-600 hover:text-white'
+                          : 'bg-[#111111] dark:bg-[#EDE9E0] dark:text-[#111111] hover:bg-[#E64500] hover:text-white'
                           }`}
                       >
                         {waLoading ? <Loader2 size={16} className="animate-spin" /> : waIntegration?.status === 'active' ? 'Desconectar' : 'Conectar'}
@@ -1884,7 +2035,7 @@ export default function SettingsPage() {
                         onClick={handleVerifyWhatsApp}
                         disabled={isVerifying}
                         className={`px-5 py-4 border rounded-2xl transition-all duration-300 ${waVerifyStatus === 'success'
-                          ? 'text-emerald-500 border-emerald-500/30 bg-emerald-50/50 hover:bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/20'
+                          ? 'text-[#FF4D00] border-[#FF4D00]/30 bg-[#FFF1EA]/50 hover:bg-[#FFF1EA] dark:border-[#8A2900]/40 dark:bg-[#3D1200]/20 dark:hover:bg-[#5C1B00]/20'
                           : waVerifyStatus === 'error'
                             ? 'text-red-500 border-red-500/30 bg-red-50/50 hover:bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 dark:hover:bg-red-900/20'
                             : 'text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
@@ -1905,8 +2056,8 @@ export default function SettingsPage() {
               <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="h-1 w-6 bg-[#F36A2D] rounded-full" />
-                    <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-[0.2em]">Integraciones</span>
+                    <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
+                    <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Integraciones</span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Herramientas</h2>
                 </header>
@@ -1914,7 +2065,7 @@ export default function SettingsPage() {
                 <div className="w-full">
                   {isLoadingSection && !sectionLoaded['tools'] ? (
                     <div className="flex items-center justify-center py-20">
-                      <Loader2 size={28} className="animate-spin text-[#F36A2D]" />
+                      <Loader2 size={28} className="animate-spin text-[#FF4D00]" />
                     </div>
                   ) : (
                     projectId && (
@@ -1953,22 +2104,22 @@ export default function SettingsPage() {
             {isAdmin && activeSection === 'agent' && selectedAgent ? (
               <div className="flex-1 overflow-auto">
                 {/* Agent Header */}
-                <div className="sticky top-0 z-10 bg-[#E9E4D8]/90 dark:bg-[#1A1714]/90 backdrop-blur-md border-b border-[#DEDAD0] dark:border-zinc-800/60 px-8 py-4 flex items-center justify-between">
+                <div className="sticky top-0 z-10 bg-[#EBE4D6]/90 dark:bg-[#1A1714]/90 backdrop-blur-md border-b border-[#DDD5C2] dark:border-zinc-800/60 px-8 py-4 flex items-center justify-between">
                   <div className="flex-1">
                     <input
                       type="text" value={agentName} onChange={e => setAgentName(e.target.value)}
                       className="text-2xl font-bold bg-transparent border-none outline-none text-[#111111] dark:text-[#EDE9E0] w-full max-w-xl"
                     />
-                    <div className="h-8 w-[1px] bg-[#DEDAD0] dark:bg-zinc-800 mx-2" />
+                    <div className="h-8 w-[1px] bg-[#DDD5C2] dark:bg-zinc-800 mx-2" />
 
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedAgent.isActive ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedAgent.isActive ? 'text-[#E64500]' : 'text-zinc-400'}`}>
                         {selectedAgent.isActive ? 'Encendido' : 'Apagado'}
                       </span>
                       <button
                         onClick={() => toggleAgent(selectedAgentId!, !selectedAgent.isActive).then(loadProject)}
                         className={`p-2 rounded-xl transition-all shadow-sm ${selectedAgent.isActive
-                          ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 ring-1 ring-emerald-500/30'
+                          ? 'bg-[#FF4D00]/10 text-[#E64500] hover:bg-[#FF4D00]/20 ring-1 ring-[#FF4D00]/30'
                           : 'bg-zinc-100 text-zinc-400 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-500 ring-1 ring-zinc-300 dark:ring-zinc-700'
                           }`}
                         title={selectedAgent.isActive ? 'Desactivar Agente' : 'Activar Agente'}
@@ -1977,8 +2128,8 @@ export default function SettingsPage() {
                       </button>
                     </div>
 
-                    <button onClick={handleSaveAgent} disabled={isSaving} className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm disabled:opacity-70 ${saveStatus === 'success' ? "bg-emerald-600 text-white"
-                      : compileStatus === 'success' ? "bg-[#F36A2D] text-white animate-pulse scale-105"
+                    <button onClick={handleSaveAgent} disabled={isSaving} className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm disabled:opacity-70 ${saveStatus === 'success' ? "bg-[#E64500] text-white"
+                      : compileStatus === 'success' ? "bg-[#FF4D00] text-white animate-pulse scale-105"
                         : "bg-[#111111] hover:bg-[#333] dark:bg-[#EDE9E0] dark:hover:bg-white text-white dark:text-[#111111]"
                       }`}>
                       {isSaving ? <Loader2 size={16} className="animate-spin" /> : saveStatus === 'success' ? <CheckCircle2 size={16} /> : <Save size={16} />}
@@ -1992,27 +2143,27 @@ export default function SettingsPage() {
                   {/* Description */}
                   <div>
                     <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Descripción del Agente</label>
-                    <input type="text" value={agentDescription} onChange={e => setAgentDescription(e.target.value)} placeholder="Ej: Agente especializado en la Boda de Carlos y María" className="w-full mt-2 p-3 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100" />
+                    <input type="text" value={agentDescription} onChange={e => setAgentDescription(e.target.value)} placeholder="Ej: Agente especializado en la Boda de Carlos y María" className="w-full mt-2 p-3 glass-panel rounded-xl text-sm text-zinc-900 dark:text-zinc-100" />
                     <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 px-1">Esta descripción la usa el Bot Enrutador para saber a quién transferir al cliente.</p>
                   </div>
 
                   {/* Identity */}
-                  <section className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="border-b border-[#DEDAD0] dark:border-zinc-800 p-6 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex items-center gap-3">
-                      <Fingerprint className="text-[#F36A2D]" size={20} />
+                  <section className="glass-panel rounded-2xl shadow-sm overflow-hidden">
+                    <div className="border-b border-[#DDD5C2] dark:border-zinc-800 p-6 bg-[#EBE4D6]/40 dark:bg-[#111111]/20 flex items-center gap-3">
+                      <Fingerprint className="text-[#FF4D00]" size={20} />
                       <div>
                         <h2 className="text-lg font-medium text-zinc-900 dark:text-[#EDE9E0]">Identidad del Agente</h2>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Define la personalidad y el comportamiento de este agente.</p>
                       </div>
                     </div>
                     <div className="p-6">
-                      <textarea value={identity} onChange={e => setIdentity(e.target.value)} placeholder="Eres un experto asesor de ventas..." className="w-full min-h-[160px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#F36A2D]/50 transition-all resize-y" />
+                      <textarea value={identity} onChange={e => setIdentity(e.target.value)} placeholder="Eres un experto asesor de ventas..." className="w-full min-h-[160px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#FF4D00]/50 transition-all resize-y" />
                     </div>
                   </section>
 
                   {/* Instructions */}
-                  <section className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="border-b border-[#DEDAD0] dark:border-zinc-800 p-6 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex items-center gap-3">
+                  <section className="glass-panel rounded-2xl shadow-sm overflow-hidden">
+                    <div className="border-b border-[#DDD5C2] dark:border-zinc-800 p-6 bg-[#EBE4D6]/40 dark:bg-[#111111]/20 flex items-center gap-3">
                       <Bot className="text-zinc-500 dark:text-zinc-400" size={20} />
                       <div>
                         <h2 className="text-lg font-medium text-zinc-900 dark:text-[#EDE9E0]">Instrucciones Operativas</h2>
@@ -2020,13 +2171,13 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="p-6">
-                      <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder={"1. Nunca des descuentos.\n2. Si preguntan por precios, usa la base de conocimientos."} className="w-full min-h-[200px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#F36A2D]/50 transition-all resize-y font-mono" />
+                      <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder={"1. Nunca des descuentos.\n2. Si preguntan por precios, usa la base de conocimientos."} className="w-full min-h-[200px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#FF4D00]/50 transition-all resize-y font-mono" />
                     </div>
                   </section>
 
                   {/* Knowledge Base */}
-                  <section className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="border-b border-[#DEDAD0] dark:border-zinc-800 p-6 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <section className="glass-panel rounded-2xl shadow-sm overflow-hidden">
+                    <div className="border-b border-[#DDD5C2] dark:border-zinc-800 p-6 bg-[#EBE4D6]/40 dark:bg-[#111111]/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <BookOpen className="text-zinc-500 dark:text-zinc-400" size={20} />
                         <div>
@@ -2042,35 +2193,35 @@ export default function SettingsPage() {
                     <div className="p-6">
                       {!isDevMode ? (
                         <>
-                          <textarea value={knowledgeRaw} onChange={e => setKnowledgeRaw(e.target.value)} placeholder="Ej: Tenemos un restaurante llamado 'Bella Italia'..." className="w-full min-h-[300px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#F36A2D]/50 transition-all resize-y" />
-                          <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-[#F36A2D]/5 dark:bg-[#F36A2D]/10 border border-[#F36A2D]/20 p-4 rounded-xl">
-                            <p className="text-sm text-zinc-900 dark:text-[#EDE9E0] flex items-center gap-2"><Sparkles size={16} className="text-[#F36A2D]" /> Procesador inteligente de texto a JSON.</p>
+                          <textarea value={knowledgeRaw} onChange={e => setKnowledgeRaw(e.target.value)} placeholder="Ej: Tenemos un restaurante llamado 'Bella Italia'..." className="w-full min-h-[300px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#FF4D00]/50 transition-all resize-y" />
+                          <div className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-[#FF4D00]/5 dark:bg-[#FF4D00]/10 border border-[#FF4D00]/20 p-4 rounded-xl">
+                            <p className="text-sm text-zinc-900 dark:text-[#EDE9E0] flex items-center gap-2"><Sparkles size={16} className="text-[#FF4D00]" /> Procesador inteligente de texto a JSON.</p>
                             <button
                               onClick={handleCompileKnowledge}
                               disabled={isCompiling || !knowledgeRaw.trim()}
-                              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${compileStatus === 'success' ? "bg-green-600 text-white" : "bg-[#F36A2D] hover:bg-[#E55A1D] text-white"}`}
+                              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 ${compileStatus === 'success' ? "bg-[#E64500] text-white" : "bg-[#FF4D00] hover:bg-[#E55A1D] text-white"}`}
                             >
                               {isCompiling ? <Loader2 size={16} className="animate-spin" /> : compileStatus === 'success' ? <CheckCircle2 size={16} /> : <Sparkles size={16} />}
                               {isCompiling ? "Analizando..." : compileStatus === 'success' ? "¡Estructurado!" : "Sincronizar con IA"}
                             </button>
                           </div>
                           {compileStatus === 'success' && (
-                            <p className="mt-4 text-sm text-[#F36A2D] font-bold flex items-center gap-2 animate-bounce">
+                            <p className="mt-4 text-sm text-[#FF4D00] font-bold flex items-center gap-2 animate-bounce">
                               <Save size={16} /> ¡Estructurado! Haz clic en "Guardar Agente" arriba para aplicar.
                             </p>
                           )}
                         </>
                       ) : (
                         <>
-                          <textarea value={knowledgeData} onChange={e => setKnowledgeData(e.target.value)} placeholder={'{\n  "empresa": "Chat AI",\n  "proyectos": []\n}'} className="w-full min-h-[400px] p-4 bg-zinc-900 dark:bg-black border border-zinc-700 rounded-xl text-sm text-green-400 focus:outline-none focus:ring-2 focus:ring-[#F36A2D]/50 transition-all resize-y font-mono shadow-inner" />
+                          <textarea value={knowledgeData} onChange={e => setKnowledgeData(e.target.value)} placeholder={'{\n  "empresa": "Chat AI",\n  "proyectos": []\n}'} className="w-full min-h-[400px] p-4 bg-zinc-900 dark:bg-black border border-zinc-700 rounded-xl text-sm text-[#FF8A4C] focus:outline-none focus:ring-2 focus:ring-[#FF4D00]/50 transition-all resize-y font-mono shadow-inner" />
                         </>
                       )}
                     </div>
                   </section>
 
                   {/* FAQ */}
-                  <section className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="border-b border-[#DEDAD0] dark:border-zinc-800 p-6 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex items-center gap-3">
+                  <section className="glass-panel rounded-2xl shadow-sm overflow-hidden">
+                    <div className="border-b border-[#DDD5C2] dark:border-zinc-800 p-6 bg-[#EBE4D6]/40 dark:bg-[#111111]/20 flex items-center gap-3">
                       <HelpCircle className="text-zinc-500 dark:text-zinc-400" size={20} />
                       <div>
                         <h2 className="text-lg font-medium text-zinc-900 dark:text-[#EDE9E0]">Preguntas Frecuentes (FAQ)</h2>
@@ -2078,13 +2229,13 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="p-6">
-                      <textarea value={faq} onChange={e => setFaq(e.target.value)} placeholder={"P: ¿Dónde están ubicados?\nR: Nos encontramos en la Av. Reforma."} className="w-full min-h-[200px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#F36A2D]/50 transition-all resize-y font-mono" />
+                      <textarea value={faq} onChange={e => setFaq(e.target.value)} placeholder={"P: ¿Dónde están ubicados?\nR: Nos encontramos en la Av. Reforma."} className="w-full min-h-[200px] p-4 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#FF4D00]/50 transition-all resize-y font-mono" />
                     </div>
                   </section>
 
                   {/* Lead Scoring */}
-                  <section className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-                    <div className="border-b border-[#DEDAD0] dark:border-zinc-800 p-6 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <section className="glass-panel rounded-2xl shadow-sm overflow-hidden">
+                    <div className="border-b border-[#DDD5C2] dark:border-zinc-800 p-6 bg-[#EBE4D6]/40 dark:bg-[#111111]/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                       <div className="flex items-center gap-3">
                         <Flame className="text-rose-500" size={20} />
                         <div>
@@ -2092,7 +2243,7 @@ export default function SettingsPage() {
                           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">La suma debe dar 100.</p>
                         </div>
                       </div>
-                      <span className={`text-lg font-bold ${leadScoringRules.reduce((a, r) => a + (r.score || 0), 0) === 100 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      <span className={`text-lg font-bold ${leadScoringRules.reduce((a, r) => a + (r.score || 0), 0) === 100 ? 'text-[#FF4D00]' : 'text-rose-500'}`}>
                         {leadScoringRules.reduce((a, r) => a + (r.score || 0), 0)} / 100
                       </span>
                     </div>
@@ -2127,9 +2278,9 @@ export default function SettingsPage() {
       {/* Modal de Doble Verificación para Respuestas Automáticas Globale */}
       {isDefaultBotConfirmModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 p-6 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.16)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_28px_60px_rgba(0,0,0,.6)] p-6 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-2xl flex items-center justify-center ${defaultBotActive ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+              <div className={`p-3 rounded-2xl flex items-center justify-center ${defaultBotActive ? 'bg-amber-500/10 text-amber-600' : 'bg-[#FF4D00]/10 text-[#E64500]'}`}>
                 <Bot size={24} />
               </div>
               <button
@@ -2156,7 +2307,7 @@ export default function SettingsPage() {
               )}
             </p>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DEDAD0]/60 dark:border-zinc-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DDD5C2]/60 dark:border-zinc-800">
               <button
                 onClick={() => setIsDefaultBotConfirmModalOpen(false)}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
@@ -2170,7 +2321,7 @@ export default function SettingsPage() {
                 }}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${defaultBotActive
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                    : 'bg-[#F36A2D] hover:bg-[#d9591d] shadow-[#F36A2D]/20'
+                    : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
                   }`}
               >
                 {defaultBotActive ? 'Sí, desactivar' : 'Sí, activar'}
@@ -2182,9 +2333,9 @@ export default function SettingsPage() {
       {/* Modal de Doble Verificación para Reactivación Automática (Auto-Wake) */}
       {isAutoWakeConfirmModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 p-6 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.16)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_28px_60px_rgba(0,0,0,.6)] p-6 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-2xl flex items-center justify-center ${botAutoWakeHours !== null ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+              <div className={`p-3 rounded-2xl flex items-center justify-center ${botAutoWakeHours !== null ? 'bg-amber-500/10 text-amber-600' : 'bg-[#FF4D00]/10 text-[#E64500]'}`}>
                 <Bot size={24} />
               </div>
               <button
@@ -2211,7 +2362,7 @@ export default function SettingsPage() {
               )}
             </p>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DEDAD0]/60 dark:border-zinc-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DDD5C2]/60 dark:border-zinc-800">
               <button
                 onClick={() => setIsAutoWakeConfirmModalOpen(false)}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
@@ -2229,7 +2380,7 @@ export default function SettingsPage() {
                 }}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${botAutoWakeHours !== null
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                    : 'bg-[#F36A2D] hover:bg-[#d9591d] shadow-[#F36A2D]/20'
+                    : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
                   }`}
               >
                 {botAutoWakeHours !== null ? 'Sí, desactivar' : 'Sí, activar'}

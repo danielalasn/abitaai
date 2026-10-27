@@ -195,12 +195,12 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#E9E4D8] dark:bg-[#1A1714] w-full max-w-lg rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-[#EBE4D6] dark:bg-[#1A1714] w-full max-w-lg rounded-3xl shadow-2xl border border-[#DDD5C2] dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-emerald-500/10 text-emerald-500 rounded-lg flex items-center justify-center">
+            <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg flex items-center justify-center">
               <Phone size={18} />
             </div>
             <h2 className="text-lg font-semibold text-[#111111] dark:text-[#EDE9E0]">WhatsApp Directo</h2>
@@ -221,7 +221,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                   1. Datos del Contacto
                 </label>
                 <div className="relative group">
-                  <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+                  <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-[#FF4D00] transition-colors">
                     <Phone size={20} />
                   </div>
                   <input
@@ -230,12 +230,12 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
                     placeholder="Número (ej: 5037600XXXX)"
-                    className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl pl-14 pr-5 py-5 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all text-base font-medium text-[#111111] dark:text-[#EDE9E0] placeholder:text-zinc-400"
+                    className="w-full glass-panel rounded-2xl pl-14 pr-5 py-5 outline-none focus:border-[#FF4D00] focus:ring-4 focus:ring-[#FF4D00]/10 transition-all text-base font-medium text-[#111111] dark:text-[#EDE9E0] placeholder:text-zinc-400"
                   />
                 </div>
 
                 <div className="relative group">
-                  <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+                  <div className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-[#FF4D00] transition-colors">
                     <User size={20} />
                   </div>
                   <input
@@ -243,13 +243,13 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                     value={leadName}
                     onChange={e => setLeadName(e.target.value)}
                     placeholder="Nombre del contacto (Opcional)"
-                    className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl pl-14 pr-5 py-4 outline-none focus:border-emerald-500 transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0] placeholder:text-zinc-400"
+                    className="w-full glass-panel rounded-2xl pl-14 pr-5 py-4 outline-none focus:border-[#FF4D00] transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0] placeholder:text-zinc-400"
                   />
                 </div>
 
-                <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-5 flex gap-4">
-                  <Sparkles size={20} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-emerald-800/80 dark:text-emerald-300/60 leading-relaxed font-medium">
+                <div className="bg-[#FF4D00]/5 border border-[#FF4D00]/10 rounded-2xl p-5 flex gap-4">
+                  <Sparkles size={20} className="text-[#FF4D00] shrink-0 mt-0.5" />
+                  <p className="text-xs text-[#8A2900]/80 dark:text-[#FFB594]/60 leading-relaxed font-medium">
                     Iniciaremos una conversación oficial mediante una plantilla aprobada. El número debe incluir el código de país.
                   </p>
                 </div>
@@ -260,9 +260,9 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
           {/* Step 2: Template Selection */}
           {step === 2 && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-              <div className="flex items-center justify-between sticky top-0 bg-[#E9E4D8] dark:bg-[#1A1714] pb-2 z-10">
+              <div className="flex items-center justify-between sticky top-0 bg-[#EBE4D6] dark:bg-[#1A1714] pb-2 z-10">
                 {!initialPhone && (
-                  <button onClick={() => setStep(1)} className="text-xs text-emerald-600 font-bold hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg transition-colors">
+                  <button onClick={() => setStep(1)} className="text-xs text-[#E64500] font-bold hover:bg-[#FF4D00]/10 px-3 py-1.5 rounded-lg transition-colors">
                     ← Volver
                   </button>
                 )}
@@ -275,7 +275,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
               <div className="space-y-4">
                 <label className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-[0.2em] ml-1 flex items-center justify-between">
                   2. Selecciona Contenido
-                  {isLoadingTemplates && <Loader2 size={12} className="animate-spin text-emerald-500" />}
+                  {isLoadingTemplates && <Loader2 size={12} className="animate-spin text-[#FF4D00]" />}
                 </label>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -283,25 +283,25 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                     <button
                       key={t.name}
                       onClick={() => handleSelectTemplate(t)}
-                      className="w-full text-left p-5 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 hover:border-emerald-500 hover:bg-white dark:hover:bg-zinc-900 transition-all group relative overflow-hidden"
+                      className="w-full text-left p-5 rounded-2xl border border-[#DDD5C2] dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40 hover:border-[#FF4D00] hover:bg-white dark:hover:bg-zinc-900 transition-all group relative overflow-hidden"
                     >
                       <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <div className="bg-emerald-500 text-white p-1 rounded-full"><Send size={10} /></div>
+                         <div className="bg-[#FF4D00] text-white p-1 rounded-full"><Send size={10} /></div>
                       </div>
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0] group-hover:text-emerald-600 transition-colors uppercase tracking-tight">
+                          <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0] group-hover:text-[#E64500] transition-colors uppercase tracking-tight">
                             {templatePrefix && t.name.startsWith(templatePrefix) 
                               ? t.name.replace(templatePrefix, '') 
                               : t.name}
                           </span>
                           <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${
-                            t.category === 'MARKETING' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'
+                            t.category === 'MARKETING' ? 'bg-amber-500/10 text-amber-600' : 'bg-[#8A8172]/10 text-[#5C5C5C]'
                           }`}>
                             {t.category}
                           </span>
                         </div>
-                        <span className="text-[9px] font-black bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded tracking-widest uppercase">{t.language}</span>
+                        <span className="text-[9px] font-black bg-[#FF4D00]/10 text-[#E64500] px-2 py-0.5 rounded tracking-widest uppercase">{t.language}</span>
                       </div>
                       <p className="text-xs text-[#6F6F6F] line-clamp-3 leading-relaxed opacity-80 group-hover:opacity-100">
                         {t.components.find((c: any) => c.type === 'BODY')?.text}
@@ -317,10 +317,10 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
           {step === 3 && selectedTemplate && (
             <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
               <div className="flex items-center justify-between">
-                <button onClick={() => setStep(2)} className="text-xs text-emerald-600 font-bold hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg transition-colors">
+                <button onClick={() => setStep(2)} className="text-xs text-[#E64500] font-bold hover:bg-[#FF4D00]/10 px-3 py-1.5 rounded-lg transition-colors">
                   ← Elegir otra
                 </button>
-                <div className="px-3 py-1 bg-emerald-500/10 rounded-full text-[10px] font-bold text-emerald-600 tracking-wider">
+                <div className="px-3 py-1 bg-[#FF4D00]/10 rounded-full text-[10px] font-bold text-[#E64500] tracking-wider">
                   PARA: {phone}
                 </div>
               </div>
@@ -334,20 +334,20 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                     {extractVars(selectedTemplate).map(v => (
                       <div key={v} className="flex flex-col gap-2">
                         <div className="flex items-center gap-2 ml-1">
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-md">{`Variable ${v}`}</span>
+                          <span className="text-[10px] font-bold text-[#E64500] bg-[#FF4D00]/10 px-2 py-0.5 rounded-md">{`Variable ${v}`}</span>
                         </div>
                         <input
                           type="text"
                           value={variables[v] || ''}
                           onChange={e => setVariables(prev => ({ ...prev, [v]: e.target.value }))}
                           placeholder={`Escribe el valor para {{${v}}}`}
-                          className="w-full bg-white dark:bg-[#111111] border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-5 py-3.5 outline-none focus:border-emerald-500 transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0]"
+                          className="w-full bg-white dark:bg-[#111111] border border-[#DDD5C2] dark:border-zinc-800 rounded-xl px-5 py-3.5 outline-none focus:border-[#FF4D00] transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0]"
                         />
                       </div>
                     ))}
 
                     {extractVars(selectedTemplate).length === 0 && extractButtonVarsLocal(selectedTemplate).length === 0 && !headerMediaType && (
-                      <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-900/40 rounded-3xl border border-dashed border-[#DEDAD0] dark:border-zinc-800">
+                      <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-900/40 rounded-3xl border border-dashed border-[#DDD5C2] dark:border-zinc-800">
                         <Sparkles size={24} className="mx-auto text-zinc-300 mb-2" />
                         <p className="text-xs text-[#6F6F6F] font-medium">Esta plantilla no tiene variables de texto.</p>
                       </div>
@@ -357,14 +357,14 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                     {extractButtonVarsLocal(selectedTemplate).map(bv => (
                       <div key={`btn_${bv.buttonIndex}`} className="flex flex-col gap-2">
                         <div className="flex items-center gap-2 ml-1">
-                          <span className="text-[10px] font-bold text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-md">Botón: {bv.label}</span>
+                          <span className="text-[10px] font-bold text-[#5C5C5C] bg-[#8A8172]/10 px-2 py-0.5 rounded-md">Botón: {bv.label}</span>
                         </div>
                         <input
                           type="text"
                           value={buttonVars[`button_${bv.buttonIndex}`] || ''}
                           onChange={e => setButtonVars(prev => ({ ...prev, [`button_${bv.buttonIndex}`]: e.target.value }))}
                           placeholder={`URL para botón "${bv.label}"...`}
-                          className="w-full bg-white dark:bg-[#111111] border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-5 py-3.5 outline-none focus:border-blue-500 transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0]"
+                          className="w-full bg-white dark:bg-[#111111] border border-[#DDD5C2] dark:border-zinc-800 rounded-xl px-5 py-3.5 outline-none focus:border-[#8A8172] transition-all text-sm font-medium text-[#111111] dark:text-[#EDE9E0]"
                         />
                       </div>
                     ))}
@@ -372,9 +372,9 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
 
                 {/* Header Media — IMAGE, VIDEO, or DOCUMENT */}
                 {headerMediaType && (
-                   <div className="space-y-4 pt-6 border-t border-[#DEDAD0] dark:border-zinc-800">
+                   <div className="space-y-4 pt-6 border-t border-[#DDD5C2] dark:border-zinc-800">
                     <label className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
-                       {headerMediaType === 'IMAGE' ? 'Imagen Requerida' : headerMediaType === 'VIDEO' ? 'Video Requerido' : 'Documento Requerido'} <Sparkles size={12} className="text-emerald-500" />
+                       {headerMediaType === 'IMAGE' ? 'Imagen Requerida' : headerMediaType === 'VIDEO' ? 'Video Requerido' : 'Documento Requerido'} <Sparkles size={12} className="text-[#FF4D00]" />
                     </label>
                     
                     <div className="flex flex-col gap-3">
@@ -382,7 +382,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                       {headerMediaType && (
                         <>
                           {headerMediaUrl && headerMediaUrl.startsWith('http') ? (
-                            <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-xl group animate-in zoom-in-95 duration-300">
+                            <div className="relative rounded-2xl overflow-hidden border-2 border-[#FF4D00] shadow-xl group animate-in zoom-in-95 duration-300">
                                {headerMediaType === 'VIDEO' ? (
                                   <video src={headerMediaUrl} className="w-full h-40 object-cover" />
                                ) : headerMediaType === 'DOCUMENT' ? (
@@ -392,10 +392,10 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                                ) : (
                                   <img src={headerMediaUrl} alt="Preview" className="w-full h-40 object-cover" />
                                )}
-                               <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
-                                  <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2 scale-110">
-                                     <CheckCircle2 size={16} className="text-emerald-500" />
-                                     <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">¡Subida Exitosa!</span>
+                               <div className="absolute inset-0 bg-[#FF4D00]/10 flex items-center justify-center">
+                                  <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-[#FF4D00] flex items-center gap-2 scale-110">
+                                     <CheckCircle2 size={16} className="text-[#FF4D00]" />
+                                     <span className="text-[10px] font-black text-[#E64500] uppercase tracking-widest">¡Subida Exitosa!</span>
                                   </div>
                                </div>
                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -409,16 +409,16 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                             </div>
                           ) : (
                             <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-                              isUploading ? 'bg-zinc-50 border-zinc-200' : 'bg-white dark:bg-zinc-900/40 border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500 hover:bg-emerald-500/5'
+                              isUploading ? 'bg-zinc-50 border-zinc-200' : 'bg-white dark:bg-zinc-900/40 border-[#DDD5C2] dark:border-zinc-800 hover:border-[#FF4D00] hover:bg-[#FF4D00]/5'
                             }`}>
                               {isUploading ? (
                                   <>
-                                    <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
-                                    <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
+                                    <Loader2 size={24} className="animate-spin text-[#FF4D00] mb-2" />
+                                    <span className="text-xs font-bold text-[#E64500] animate-pulse">Subiendo...</span>
                                   </>
                               ) : (
                                   <>
-                                    <Sparkles size={24} className="text-emerald-500/50 mb-2" />
+                                    <Sparkles size={24} className="text-[#FF4D00]/50 mb-2" />
                                     <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Seleccionar o Arrastrar {headerMediaType === 'VIDEO' ? 'Video' : headerMediaType === 'DOCUMENT' ? 'Documento' : 'Imagen'}</span>
                                     <span className="text-[10px] text-[#6F6F6F] mt-1">Hasta {MAX_MEDIA_SIZE_MB}MB</span>
                                   </>
@@ -434,9 +434,9 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                           )}
                           
                           <div className="relative flex items-center gap-2">
-                            <div className="flex-1 h-[1px] bg-[#DEDAD0] dark:border-zinc-800" />
+                            <div className="flex-1 h-[1px] bg-[#DDD5C2] dark:border-zinc-800" />
                             <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">o usa una URL</span>
-                            <div className="flex-1 h-[1px] bg-[#DEDAD0] dark:border-zinc-800" />
+                            <div className="flex-1 h-[1px] bg-[#DDD5C2] dark:border-zinc-800" />
                           </div>
                         </>
                       )}
@@ -450,29 +450,29 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
                           headerMediaType === 'VIDEO' ? 'URL del video (mp4 público)...' :
                           'URL del documento (PDF público)...'
                         }
-                        className="w-full bg-white dark:bg-[#111111] border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-2 text-xs font-medium text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-emerald-500"
+                        className="w-full bg-white dark:bg-[#111111] border border-[#DDD5C2] dark:border-zinc-800 rounded-xl px-4 py-2 text-xs font-medium text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00]"
                       />
                     </div>
                   </div>
                 )}
 
                 {/* Bot Toggle */}
-                <div className="pt-6 border-t border-[#DEDAD0] dark:border-zinc-800">
-                  <div className="flex items-center justify-between p-5 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-2xl border border-emerald-500/10">
+                <div className="pt-6 border-t border-[#DDD5C2] dark:border-zinc-800">
+                  <div className="flex items-center justify-between p-5 bg-[#FF4D00]/5 dark:bg-[#FF4D00]/10 rounded-2xl border border-[#FF4D00]/10">
                     <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-xl transition-all ${botActive ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}>
+                      <div className={`p-3 rounded-xl transition-all ${botActive ? 'bg-[#FF4D00] text-white shadow-lg shadow-[#FF4D00]/20' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400'}`}>
                         <Bot size={22} />
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0]">Inteligencia Artificial</span>
-                        <span className={`text-[10px] font-medium ${botActive ? 'text-emerald-600' : 'text-[#6F6F6F]'}`}>
+                        <span className={`text-[10px] font-medium ${botActive ? 'text-[#E64500]' : 'text-[#6F6F6F]'}`}>
                           {botActive ? 'Responderá automáticamente' : 'Espera tu atención manual'}
                         </span>
                       </div>
                     </div>
                     <button 
                       onClick={() => setBotActive(!botActive)}
-                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all outline-none ${botActive ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all outline-none ${botActive ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                     >
                       <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${botActive ? 'translate-x-[22px]' : 'translate-x-1'}`} />
                     </button>
@@ -491,7 +491,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-5 border-t border-[#DEDAD0] dark:border-zinc-800 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md flex gap-4 shrink-0">
+        <div className="px-6 py-5 border-t border-[#DDD5C2] dark:border-zinc-800 bg-[#EBE4D6]/80 dark:bg-[#1A1714]/80 backdrop-blur-md flex gap-4 shrink-0">
           {step === 1 && (
             <button
               onClick={() => setStep(2)}
@@ -499,7 +499,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
               className={`w-full h-14 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl ${
                 !phone || phone.length < 8
                 ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' 
-                : 'bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] hover:translate-y-[-2px] hover:shadow-emerald-500/10'
+                : 'bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] hover:translate-y-[-2px] hover:shadow-[#FF4D00]/10'
               }`}
             >
               Continuar a Plantilla <Send size={18} />
@@ -510,7 +510,7 @@ export function NewChatModal({ isOpen, onClose, onSuccess, initialPhone, initial
             <button
               onClick={handleSend}
               disabled={isSending}
-              className="w-full h-14 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl bg-emerald-500 text-white hover:bg-emerald-600 hover:translate-y-[-2px] disabled:opacity-50 disabled:translate-y-0"
+              className="w-full h-14 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl bg-[#FF4D00] text-white hover:bg-[#E64500] hover:translate-y-[-2px] disabled:opacity-50 disabled:translate-y-0"
             >
               {isSending ? (
                 <Loader2 size={20} className="animate-spin" />

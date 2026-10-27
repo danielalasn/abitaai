@@ -102,10 +102,10 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#E9E4D8] dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-[#EBE4D6] dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-2xl border border-[#DDD5C2] dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 bg-zinc-900 dark:bg-[#EDE9E0] text-white dark:text-zinc-900 rounded-lg flex items-center justify-center font-bold overflow-hidden">
               {avatarUrl ? (
@@ -137,7 +137,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   required
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl pl-11 pr-4 py-2.5 outline-none focus:border-[#F36A2D] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
+                  className="w-full glass-panel rounded-2xl pl-11 pr-4 py-2.5 outline-none focus:border-[#FF4D00] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
                 />
               </div>
             </div>
@@ -154,7 +154,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl pl-11 pr-4 py-2.5 outline-none focus:border-[#F36A2D] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
+                  className="w-full glass-panel rounded-2xl pl-11 pr-4 py-2.5 outline-none focus:border-[#FF4D00] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
                 />
               </div>
             </div>
@@ -164,7 +164,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               <button 
                 type="button"
                 onClick={() => setShowPasswordSection(true)}
-                className="text-[11px] font-bold text-[#F36A2D] hover:underline flex items-center gap-2 mt-1"
+                className="text-[11px] font-bold text-[#FF4D00] hover:underline flex items-center gap-2 mt-1"
               >
                 <Lock size={13} />
                 ¿Deseas cambiar tu contraseña?
@@ -172,7 +172,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             ) : (
               <div className="space-y-3 pt-1 animate-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-[#F36A2D] uppercase tracking-widest">Cambio de Seguridad</span>
+                    <span className="text-[10px] font-bold text-[#FF4D00] uppercase tracking-widest">Cambio de Seguridad</span>
                     <button type="button" onClick={() => setShowPasswordSection(false)} className="text-[10px] text-[#6F6F6F] hover:underline">Cancelar</button>
                 </div>
 
@@ -188,20 +188,20 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                       value={currentPassword}
                       onChange={e => setCurrentPassword(e.target.value)}
                       placeholder="••••••••"
-                      className={`w-full bg-white dark:bg-[#111111]/40 border ${isPasswordVerified ? 'border-green-500/50' : 'border-[#DEDAD0] dark:border-zinc-800'} rounded-2xl pl-4 pr-24 py-2.5 outline-none focus:border-[#F36A2D] transition-all text-sm text-[#111111] dark:text-[#EDE9E0] disabled:opacity-70`}
+                      className={`w-full bg-white dark:bg-[#111111]/40 border ${isPasswordVerified ? 'border-[#FF4D00]/50' : 'border-[#DDD5C2] dark:border-zinc-800'} rounded-2xl pl-4 pr-24 py-2.5 outline-none focus:border-[#FF4D00] transition-all text-sm text-[#111111] dark:text-[#EDE9E0] disabled:opacity-70`}
                     />
                     {!isPasswordVerified && (
                       <button
                         type="button"
                         onClick={handleVerifyPassword}
                         disabled={!currentPassword || isVerifying}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-3 rounded-xl bg-[#F36A2D] text-white text-[9px] font-bold shadow-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-3 rounded-xl bg-[#FF4D00] text-white text-[9px] font-bold shadow-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
                       >
                         {isVerifying ? <Loader2 size={11} className="animate-spin" /> : 'Verificar'}
                       </button>
                     )}
                     {isPasswordVerified && (
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 flex items-center gap-1 text-[10px] font-bold">
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#FF4D00] flex items-center gap-1 text-[10px] font-bold">
                         <ShieldCheck size={14} />
                         Ok
                       </div>
@@ -221,7 +221,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
                         placeholder="Mínimo 8 caracteres"
-                        className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-4 py-2.5 outline-none focus:border-[#F36A2D] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
+                        className="w-full glass-panel rounded-2xl px-4 py-2.5 outline-none focus:border-[#FF4D00] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
                       />
                     </div>
 
@@ -236,7 +236,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                           value={confirmPassword}
                           onChange={e => setConfirmPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-4 py-2.5 outline-none focus:border-[#F36A2D] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
+                          className="w-full glass-panel rounded-2xl px-4 py-2.5 outline-none focus:border-[#FF4D00] transition-all text-sm text-[#111111] dark:text-[#EDE9E0]"
                         />
                         <button 
                             type="button"
@@ -256,7 +256,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
             {message && (
               <div className={`p-4 rounded-2xl border text-xs flex items-start gap-2 animate-in slide-in-from-top-1 ${
                 message.type === 'success' 
-                  ? 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-900/50 text-green-700 dark:text-green-400' 
+                  ? 'bg-[#FFF1EA] dark:bg-[#FF4D00]/10 border-[#FFD0BC] dark:border-[#5C1B00]/50 text-[#B33500] dark:text-[#FF8A4C]' 
                   : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-400'
               }`}>
                 {message.type === 'success' ? <CheckCircle2 size={14} className="shrink-0 mt-0.5" /> : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
@@ -266,7 +266,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 bg-[#DEDAD0]/20 dark:bg-zinc-900/20 shrink-0">
+          <div className="px-6 py-4 border-t border-[#DDD5C2] dark:border-zinc-800 bg-[#DDD5C2]/20 dark:bg-zinc-900/20 shrink-0">
             <button
               type="submit"
               disabled={isSaving}

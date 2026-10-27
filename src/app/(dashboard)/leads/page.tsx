@@ -31,17 +31,17 @@ type SortDir = 'asc' | 'desc';
 
 function HeatBadge({ heat, score }: { heat: string; score: number }) {
   if (heat === 'CALIENTE') return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 uppercase tracking-wider">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-500/10 text-red-600 dark:text-red-400 shadow-[inset_0_0_0_1px_rgba(220,38,38,.2),inset_0_1px_0_rgba(255,255,255,.5)] uppercase tracking-wider">
       <Flame size={11} /> {score}pts
     </span>
   );
   if (heat === 'TIBIO') return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-wider">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#FF4D00]/12 text-[#B33500] dark:text-[#FF8A4C] shadow-[inset_0_0_0_1px_rgba(255,77,0,.22),inset_0_1px_0_rgba(255,255,255,.5)] uppercase tracking-wider">
       <Thermometer size={11} /> {score}pts
     </span>
   );
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-wider">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#8A8172]/12 text-[#5C5C5C] dark:text-[#A3A3A3] shadow-[inset_0_0_0_1px_rgba(138,129,114,.25),inset_0_1px_0_rgba(255,255,255,.5)] uppercase tracking-wider">
       <Snowflake size={11} /> {score}pts
     </span>
   );
@@ -67,8 +67,8 @@ function formatRelative(date: Date | string | null) {
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   if (!active) return <ChevronsUpDown size={13} className="text-[#6F6F6F]" />;
   return dir === 'asc'
-    ? <ChevronUp size={13} className="text-[#F36A2D]" />
-    : <ChevronDown size={13} className="text-[#F36A2D]" />;
+    ? <ChevronUp size={13} className="text-[#FF4D00]" />
+    : <ChevronDown size={13} className="text-[#FF4D00]" />;
 }
 
 export default function LeadsPage() {
@@ -162,11 +162,11 @@ export default function LeadsPage() {
 
   return (
     <DesktopOnlyGuard>
-    <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714] overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
+      <header className="shrink-0 h-16 flex items-center justify-between px-8 bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl shadow-[inset_0_-1px_0_rgba(138,129,114,.18)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)] z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg flex items-center justify-center">
             <Users size={18} />
           </div>
           <div>
@@ -187,13 +187,13 @@ export default function LeadsPage() {
                 placeholder="Buscar por nombre, número o resumen..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl text-[#111111] dark:text-[#EDE9E0] placeholder-[#6F6F6F] outline-none focus:border-[#F36A2D] transition-all"
+                className="w-full pl-9 pr-4 py-2.5 text-sm glass-panel !rounded-full text-[#111111] dark:text-[#EDE9E0] placeholder-[#6F6F6F] outline-none focus:ring-2 focus:ring-[#FF4D00]/40 transition-all"
               />
             </div>
             <div className="flex gap-2">
               <button
                 onClick={load}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0] rounded-2xl transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold glass-panel !rounded-full text-[#6F6F6F] hover:text-[#FF4D00] transition-all"
               >
                 <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                 Actualizar
@@ -214,9 +214,9 @@ export default function LeadsPage() {
             {[
               { label: 'TOTAL LEADS', value: leads.length, color: 'text-[#111111] dark:text-[#EDE9E0]' },
               { label: 'CALIENTES 🔥', value: leads.filter(l => l.heat === 'CALIENTE').length, color: 'text-red-600' },
-              { label: 'CON RESUMEN IA', value: leads.filter(l => l.aiSummary).length, color: 'text-[#F36A2D]' },
+              { label: 'CON RESUMEN IA', value: leads.filter(l => l.aiSummary).length, color: 'text-[#FF4D00]' },
             ].map(stat => (
-              <div key={stat.label} className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl px-6 py-4 shadow-sm">
+              <div key={stat.label} className="glass-panel px-6 py-4">
                 <p className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">{stat.label}</p>
                 <p className={`text-3xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
               </div>
@@ -224,10 +224,10 @@ export default function LeadsPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
+          <div className="glass-panel rounded-3xl overflow-hidden shadow-sm">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-80 gap-4">
-                <Loader2 className="animate-spin text-[#F36A2D]" size={32} />
+                <Loader2 className="animate-spin text-[#FF4D00]" size={32} />
                 <p className="text-sm text-[#6F6F6F] font-medium">Cargando base de datos...</p>
               </div>
             ) : filtered.length === 0 ? (
@@ -239,12 +239,12 @@ export default function LeadsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#DEDAD0] dark:border-zinc-800 bg-[#E9E4D8]/30 dark:bg-black/20">
+                    <tr className="border-b border-[#DDD5C2] dark:border-zinc-800 bg-[#EBE4D6]/30 dark:bg-black/20">
                       <th className="text-left px-6 py-4 text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">Contacto</th>
                       {columns.map(col => (
                         <th
                           key={col.key}
-                          className="text-left px-4 py-4 text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest cursor-pointer hover:text-[#F36A2D] transition-colors select-none"
+                          className="text-left px-4 py-4 text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest cursor-pointer hover:text-[#FF4D00] transition-colors select-none"
                           onClick={() => handleSort(col.key)}
                         >
                           <div className="flex items-center gap-1.5">
@@ -255,13 +255,13 @@ export default function LeadsPage() {
                       ))}
                       <th className="text-left px-6 py-4 text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">
                         <div className="flex items-center gap-1.5">
-                          <Sparkles size={12} className="text-[#F36A2D]" />
+                          <Sparkles size={12} className="text-[#FF4D00]" />
                           Resumen IA
                         </div>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#DEDAD0] dark:divide-zinc-800/60">
+                  <tbody className="divide-y divide-[#DDD5C2] dark:divide-zinc-800/60">
                     {paginatedLeads.map((lead) => (
                       <tr
                         key={lead.id}
@@ -270,7 +270,7 @@ export default function LeadsPage() {
                         {/* Contact */}
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-2xl bg-[#F36A2D]/10 flex items-center justify-center text-[#F36A2D] font-bold text-sm shrink-0 border border-[#F36A2D]/20 shadow-sm">
+                            <div className="h-10 w-10 rounded-2xl bg-[#FF4D00]/10 flex items-center justify-center text-[#FF4D00] font-bold text-sm shrink-0 border border-[#FF4D00]/20 shadow-sm">
                               {lead.name ? lead.name.charAt(0).toUpperCase() : '#'}
                             </div>
                             <div>
@@ -279,7 +279,7 @@ export default function LeadsPage() {
                               </p>
                               <div className="flex flex-col gap-1 mt-0.5">
                                 <p className="text-xs text-[#6F6F6F] font-mono">{lead.phone}</p>
-                                {lead.email && <p className="text-[10px] text-[#F36A2D]/80 font-medium truncate max-w-[150px]">{lead.email}</p>}
+                                {lead.email && <p className="text-[10px] text-[#FF4D00]/80 font-medium truncate max-w-[150px]">{lead.email}</p>}
                                 {lead.latestCampaignName && (
                                   <span className="text-[9px] font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-[#6F6F6F] px-1.5 py-0.5 rounded-sm w-max">
                                     {lead.latestCampaignName}
@@ -314,7 +314,7 @@ export default function LeadsPage() {
                         {/* Message Count */}
                         <td className="px-4 py-5">
                           <div className="flex items-center gap-2 text-[#6F6F6F]">
-                            <MessageSquare size={13} className="text-[#F36A2D]/40" />
+                            <MessageSquare size={13} className="text-[#FF4D00]/40" />
                             <span className="font-bold text-[#111111] dark:text-[#EDE9E0]">{lead.userMessageCount}</span>
                           </div>
                         </td>
@@ -322,14 +322,14 @@ export default function LeadsPage() {
                         {/* AI Summary */}
                         <td className="px-6 py-5 max-w-xs">
                           {lead.aiSummary ? (
-                            <div className="bg-black/[0.02] dark:bg-white/[0.02] p-3 rounded-2xl border border-[#DEDAD0]/40 dark:border-zinc-800/40">
+                            <div className="bg-black/[0.02] dark:bg-white/[0.02] p-3 rounded-2xl border border-[#DDD5C2]/40 dark:border-zinc-800/40">
                               <p className={`text-xs text-[#6F6F6F] leading-relaxed italic ${expandedSummary === lead.id ? '' : 'line-clamp-2'}`}>
                                 "{lead.aiSummary}"
                               </p>
                               {lead.aiSummary.length > 100 && (
                                 <button
                                   onClick={() => setExpandedSummary(expandedSummary === lead.id ? null : lead.id)}
-                                  className="text-[10px] font-bold text-[#F36A2D] hover:underline mt-2 uppercase tracking-widest"
+                                  className="text-[10px] font-bold text-[#FF4D00] hover:underline mt-2 uppercase tracking-widest"
                                 >
                                   {expandedSummary === lead.id ? 'Ver menos' : 'Ver más'}
                                 </button>
@@ -350,7 +350,7 @@ export default function LeadsPage() {
 
             {/* Footer */}
             {!isLoading && filtered.length > 0 && (
-              <div className="px-6 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between bg-[#E9E4D8]/20 dark:bg-black/10">
+              <div className="px-6 py-4 border-t border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between bg-[#EBE4D6]/20 dark:bg-black/10">
                 <p className="text-[10px] font-bold text-[#6F6F6F] uppercase tracking-widest">
                   Mostrando <span className="text-[#111111] dark:text-[#EDE9E0]">{(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filtered.length)}</span> de <span className="text-[#111111] dark:text-[#EDE9E0]">{filtered.length}</span> leads
                 </p>
@@ -360,7 +360,7 @@ export default function LeadsPage() {
                   <button
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    className="p-1.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shadow-sm"
+                    className="p-1.5 rounded-lg border border-[#DDD5C2] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shadow-sm"
                   >
                     <ChevronLeft size={14} />
                   </button>
@@ -370,14 +370,14 @@ export default function LeadsPage() {
                   <button
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    className="p-1.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shadow-sm"
+                    className="p-1.5 rounded-lg border border-[#DDD5C2] dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-40 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors shadow-sm"
                   >
                     <ChevronRight size={14} />
                   </button>
                 </div>
 
                 <p className="text-[10px] text-[#6F6F6F] flex items-center gap-2 font-bold uppercase tracking-widest hidden md:flex">
-                  <Sparkles size={11} className="text-[#F36A2D]" />
+                  <Sparkles size={11} className="text-[#FF4D00]" />
                   Resúmenes IA Autogenerados
                 </p>
               </div>

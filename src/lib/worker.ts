@@ -102,6 +102,9 @@ export function initWorker() {
       }
 
       // 5. Simular entrada en base de datos
+      const lastWamid = messages[messages.length - 1]?.wamid || messages[0]?.wamid;
+      const lastContextWamid = messages[messages.length - 1]?.contextWamid || messages[0]?.contextWamid;
+
       const chatId = await simulateIncomingMessage(
         from,
         finalCombinedText,
@@ -112,7 +115,9 @@ export function initWorker() {
         firstMedia?.mediaUrl,
         firstMedia?.mediaFilename,
         firstMedia?.mediaType,
-        messages[0]?.messageType
+        messages[0]?.messageType,
+        lastWamid,
+        lastContextWamid
       );
 
       // 2. Obtener contexto del chat

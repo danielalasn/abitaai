@@ -210,6 +210,8 @@ export async function POST(req: NextRequest) {
       profileName, 
       phoneId,
       messageType,
+      wamid: message.id,
+      contextWamid: message.context?.id,
       ...mediaData 
     }, isBotActive);
 

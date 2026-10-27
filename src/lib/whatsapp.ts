@@ -53,7 +53,8 @@ export async function sendWhatsAppMessage(
   to: string,
   text: string,
   phoneNumberId: string,
-  accessToken: string
+  accessToken: string,
+  contextMessageId?: string
 ): Promise<WaSendResult> {
   if (!accessToken || !phoneNumberId) {
     console.error('[WA] Missing credentials — skipping send')
@@ -65,14 +66,17 @@ export async function sendWhatsAppMessage(
   const cleanTo = to.replace(/[^0-9]/g, '');
 
   try {
-    const payload = {
+    const payload: any = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to: cleanTo,
       type: 'text',
       text: { body: text },
     };
-    console.log('[WA] Sending text to:', cleanTo);
+    if (contextMessageId) {
+      payload.context = { message_id: contextMessageId };
+    }
+    console.log('[WA] Sending text to:', cleanTo, contextMessageId ? `(Context reply to: ${contextMessageId})` : '');
 
     const res = await fetch(url, {
       method: 'POST',
@@ -166,7 +170,8 @@ export async function sendWhatsAppMedia(
   phoneNumberId: string,
   accessToken: string,
   caption?: string,
-  filename?: string
+  filename?: string,
+  contextMessageId?: string
 ): Promise<WaSendResult> {
   if (!accessToken || !phoneNumberId) {
     return { success: false, messageId: null, category: null, raw: null }
@@ -194,14 +199,17 @@ export async function sendWhatsAppMedia(
   }
 
   try {
-    const payload = {
+    const payload: any = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to: cleanTo,
       type: mediaType,
       [mediaType]: mediaPayload,
     };
-    console.log('[WA] Sending media to:', cleanTo, 'Type:', mediaType, 'URL:', mediaUrl);
+    if (contextMessageId) {
+      payload.context = { message_id: contextMessageId };
+    }
+    console.log('[WA] Sending media to:', cleanTo, 'Type:', mediaType, 'URL:', mediaUrl, contextMessageId ? `(Context reply to: ${contextMessageId})` : '');
 
     const res = await fetch(url, {
       method: 'POST',
@@ -354,7 +362,8 @@ export async function sendWhatsAppLocation(
   name?: string,
   address?: string,
   phoneNumberId?: string,
-  accessToken?: string
+  accessToken?: string,
+  contextMessageId?: string
 ): Promise<{ success: boolean; messageId: string | null; category: string | null; friendlyError?: string; raw: any }> {
   if (!phoneNumberId || !accessToken) {
     console.error('[WA] sendWhatsAppLocation missing credentials:', { phoneNumberId, hasToken: !!accessToken });
@@ -373,14 +382,17 @@ export async function sendWhatsAppLocation(
     if (name?.trim()) locPayload.name = name.trim();
     if (address?.trim()) locPayload.address = address.trim();
 
-    const payload = {
+    const payload: any = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to: cleanTo,
       type: 'location',
       location: locPayload
     };
-    console.log('[WA] Sending location to:', cleanTo, 'Coords:', latitude, longitude);
+    if (contextMessageId) {
+      payload.context = { message_id: contextMessageId };
+    }
+    console.log('[WA] Sending location to:', cleanTo, 'Coords:', latitude, longitude, contextMessageId ? `(Context reply to: ${contextMessageId})` : '');
 
     const res = await fetch(url, {
       method: 'POST',

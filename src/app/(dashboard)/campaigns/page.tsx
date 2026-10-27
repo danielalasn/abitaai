@@ -53,11 +53,11 @@ function StepBadge({ n, label, active, done, onClick }: { n: number, label: stri
       className={`flex items-center gap-2 transition-all ${active ? 'opacity-100' : done ? 'opacity-100 cursor-pointer hover:translate-y-[-1px]' : 'opacity-40 cursor-not-allowed'}`}
     >
       <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-        done ? 'bg-emerald-500 text-white' : active ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'
+        done ? 'bg-[#FF4D00] text-white' : active ? 'bg-[#FF4D00] text-white shadow-[var(--abita-gloss),0_6px_16px_rgba(255,77,0,.26)]' : 'glass-panel !rounded-full text-[#6F6F6F]'
       }`}>
         {done ? <CheckCircle2 size={14} /> : n}
       </div>
-      <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-emerald-600' : 'text-[#6F6F6F]'}`}>
+      <span className={`text-[10px] font-black uppercase tracking-widest ${active ? 'text-[#E64500]' : 'text-[#6F6F6F]'}`}>
         {label}
       </span>
     </button>
@@ -602,10 +602,10 @@ export default function CampaignsPage() {
 
   return (
     <DesktopOnlyGuard>
-    <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
-      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
+    <div className="flex-1 flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714] overflow-hidden">
+      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DDD5C2] dark:border-zinc-800/60 bg-[#EBE4D6]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-emerald-500/10 text-emerald-600 rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#E64500] rounded-lg flex items-center justify-center">
             <Megaphone size={18} />
           </div>
           <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Difusión</h1>
@@ -615,8 +615,8 @@ export default function CampaignsPage() {
       {/* Success Notification Toast */}
       {successStatus && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400/20">
-            <div className="bg-white/20 p-1 rounded-full">
+          <div className="glass-dark px-6 py-3 rounded-full flex items-center gap-3 font-semibold">
+            <div className="bg-[#FF4D00]/20 text-[#FF4D00] p-1 rounded-full">
               <CheckCircle2 size={18} />
             </div>
             <span className="font-bold text-sm">{successStatus}</span>
@@ -636,14 +636,14 @@ export default function CampaignsPage() {
               <StepBadge n={3} label="Mapeo" active={step === 3} done={false} />
             </div>
 
-            <div className="bg-white dark:bg-[#111111]/40 rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div className="glass-panel !rounded-3xl flex-1 min-h-0 flex flex-col overflow-hidden">
               {step === 1 && (
                 <div className="p-6 space-y-5 flex-1 overflow-y-auto">
                   <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">1. Subir contactos</h2>
-                  <div className={`border-2 border-dashed rounded-3xl p-10 text-center transition-all ${parsedLeads.length > 0 ? 'border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10' : 'border-[#DEDAD0] dark:border-zinc-800 hover:border-emerald-500/50 hover:bg-emerald-500/5'}`}>
+                  <div className={`border-2 border-dashed rounded-3xl p-10 text-center transition-all ${parsedLeads.length > 0 ? 'border-[#FF4D00]/40 bg-[#FF4D00]/5 dark:bg-[#FF4D00]/10' : 'border-[#DDD5C2] dark:border-zinc-800 hover:border-[#FF4D00]/50 hover:bg-[#FF4D00]/5'}`}>
                     {parsedLeads.length > 0 ? (
                       <div className="flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300">
-                        <div className="h-12 w-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <div className="h-12 w-12 bg-[#FF4D00] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-[#FF4D00]/20">
                            <Users size={24} />
                         </div>
                         <p className="text-lg text-[#111111] dark:text-[#EDE9E0] font-black">{parsedLeads.length} Contactos Listos</p>
@@ -652,7 +652,7 @@ export default function CampaignsPage() {
                     ) : (
                       <div className="space-y-4">
                         <div className="flex flex-col items-center gap-2">
-                          <UploadCloud size={40} className="text-emerald-500/50" />
+                          <UploadCloud size={40} className="text-[#FF4D00]/50" />
                           <p className="font-bold text-[#111111] dark:text-[#EDE9E0]">Selecciona tu archivo</p>
                           <p className="text-xs text-[#6F6F6F]">Sube un archivo CSV o Excel para comenzar</p>
                         </div>
@@ -663,7 +663,7 @@ export default function CampaignsPage() {
                           accept=".csv, .xlsx, .xls, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
                           onChange={handleFileUpload} 
                         />
-                        <label htmlFor="file-up" className="inline-block px-10 py-3 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] cursor-pointer hover:bg-emerald-600 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20">
+                        <label htmlFor="file-up" className="btn-primary-abita px-10 py-3 text-xs uppercase tracking-[0.2em] cursor-pointer">
                           ELEGIR ARCHIVO
                         </label>
                       </div>
@@ -671,21 +671,21 @@ export default function CampaignsPage() {
                   </div>
 
                   {/* Instrucciones del CSV Compactas */}
-                  <div className="bg-white/50 dark:bg-zinc-900/30 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4 space-y-3">
-                    <div className="flex items-center gap-2 text-emerald-600/80">
+                  <div className="bg-white/50 dark:bg-zinc-900/30 border border-[#DDD5C2] dark:border-zinc-800 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-[#E64500]/80">
                       <AlertCircle size={14} />
                       <span className="text-[9px] font-black uppercase tracking-[0.15em]">Guía Rápida</span>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                        <div className="flex gap-2">
-                          <div className="h-4 w-4 bg-emerald-500 text-white text-[9px] font-black rounded flex items-center justify-center shrink-0">#</div>
+                          <div className="h-4 w-4 bg-[#FF4D00] text-white text-[9px] font-black rounded flex items-center justify-center shrink-0">#</div>
                           <div className="space-y-0.5">
                              <p className="text-[9px] font-bold text-[#111111] dark:text-[#EDE9E0] uppercase tracking-tighter">Celular</p>
                              <p className="text-[8px] text-[#6F6F6F] leading-none">Columna # obligatoria</p>
                           </div>
                        </div>
-                       <div className="flex gap-2 border-l border-[#DEDAD0] dark:border-zinc-800 pl-4">
+                       <div className="flex gap-2 border-l border-[#DDD5C2] dark:border-zinc-800 pl-4">
                           <div className="h-4 w-4 bg-zinc-200 dark:bg-zinc-800 text-zinc-500 text-[9px] font-black rounded flex items-center justify-center shrink-0">N</div>
                           <div className="space-y-0.5">
                              <p className="text-[9px] font-bold text-[#111111] dark:text-[#EDE9E0] uppercase tracking-tighter">Nombre</p>
@@ -705,14 +705,14 @@ export default function CampaignsPage() {
                   <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
                     <div className="flex items-center justify-between mb-4 shrink-0">
                       <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0]">2. Plantilla de Meta</h2>
-                      <button onClick={loadTemplates} className="text-xs text-emerald-500 font-bold hover:opacity-70 transition-opacity">Cargar</button>
+                      <button onClick={loadTemplates} className="text-xs text-[#FF4D00] font-bold hover:opacity-70 transition-opacity">Cargar</button>
                     </div>
                     <div className="space-y-2 flex-1 min-y-0 overflow-y-auto pr-1">
                     {templates.map(t => (
                       <button 
                         key={t.name} 
                         onClick={() => handleSelectTemplate(t)}
-                        className={`w-full text-left p-4 rounded-2xl border transition-all hover:border-emerald-500/50 hover:bg-emerald-500/5 ${selectedTemplate?.name === t.name ? 'border-emerald-500 bg-emerald-500/5' : 'border-[#DEDAD0] dark:border-zinc-800'}`}
+                        className={`w-full text-left p-4 rounded-2xl border transition-all hover:border-[#FF4D00]/50 hover:bg-[#FF4D00]/5 ${selectedTemplate?.name === t.name ? 'border-[#FF4D00] bg-[#FF4D00]/5' : 'border-[#DDD5C2] dark:border-zinc-800'}`}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">
@@ -721,7 +721,7 @@ export default function CampaignsPage() {
                               : t.name}
                           </p>
                           <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${
-                            t.category === 'MARKETING' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'
+                            t.category === 'MARKETING' ? 'bg-amber-500/10 text-amber-600' : 'bg-[#8A8172]/10 text-[#5C5C5C]'
                           }`}>
                             {t.category}
                           </span>
@@ -734,7 +734,7 @@ export default function CampaignsPage() {
                     ))}
                   </div>
                   </div>
-                  <div className="flex gap-3 pt-4 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 shrink-0">
+                  <div className="flex gap-3 pt-4 border-t border-[#DDD5C2]/40 dark:border-zinc-800/40 shrink-0">
                     <button onClick={() => setStep(1)} className="px-4 py-2 text-sm font-bold text-[#6F6F6F] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">Volver</button>
                     <button onClick={() => setStep(3)} disabled={!selectedTemplate} className="flex-1 py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl font-bold disabled:opacity-30">
                       Configurar
@@ -752,13 +752,13 @@ export default function CampaignsPage() {
                     placeholder="Nombre de campaña" 
                     value={campaignName} 
                     onChange={e => setCampaignName(e.target.value)}
-                    className="w-full p-3 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/50"
+                    className="w-full p-3 rounded-2xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/50"
                   />
 
                   {needsMediaHeader && (
-                    <div className="space-y-4 p-5 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-3xl border border-emerald-500/20">
+                    <div className="space-y-4 p-5 bg-[#FF4D00]/5 dark:bg-[#FF4D00]/10 rounded-3xl border border-[#FF4D00]/20">
                       <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2 text-emerald-500">
+                        <div className="flex items-center gap-2 text-[#FF4D00]">
                           <Sparkles size={14} />
                           <span className="text-[10px] font-black uppercase tracking-widest">
                             Cabecera {headerMediaType === 'IMAGE' ? 'Imagen' : headerMediaType === 'VIDEO' ? 'Video' : 'Documento'}
@@ -772,7 +772,7 @@ export default function CampaignsPage() {
                             if (e.target.value === 'FIXED') setHeaderUrl('');
                             else setHeaderUrl(`{{${csvColumns.find(c => c !== '#') || ''}}}`);
                           }}
-                          className="bg-transparent text-[9px] font-bold text-emerald-600 focus:outline-none uppercase tracking-tighter cursor-pointer"
+                          className="bg-transparent text-[9px] font-bold text-[#E64500] focus:outline-none uppercase tracking-tighter cursor-pointer"
                         >
                           <option value="FIXED">URL Fija</option>
                           <option value="CSV">Desde CSV</option>
@@ -786,7 +786,7 @@ export default function CampaignsPage() {
                             <select 
                               value={headerUrl} 
                               onChange={e => setHeaderUrl(e.target.value)}
-                              className="w-full p-4 rounded-2xl border border-emerald-500/30 bg-white dark:bg-[#1A1714] text-xs font-bold text-[#111111] dark:text-[#EDE9E0] focus:ring-2 focus:ring-emerald-500/20 outline-none"
+                              className="w-full p-4 rounded-2xl border border-[#FF4D00]/30 bg-white dark:bg-[#1A1714] text-xs font-bold text-[#111111] dark:text-[#EDE9E0] focus:ring-2 focus:ring-[#FF4D00]/20 outline-none"
                             >
                               {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={`{{${c}}}`}>Columna: {c}</option>)}
                             </select>
@@ -797,7 +797,7 @@ export default function CampaignsPage() {
                             {headerMediaType && (
                               <>
                                 {headerUrl && headerUrl.startsWith('http') ? (
-                                   <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-xl group aspect-video">
+                                   <div className="relative rounded-2xl overflow-hidden border-2 border-[#FF4D00] shadow-xl group aspect-video">
                                       {headerMediaType === 'VIDEO' ? (
                                           <video src={headerUrl} className="w-full h-full object-cover" />
                                       ) : headerMediaType === 'DOCUMENT' ? (
@@ -807,10 +807,10 @@ export default function CampaignsPage() {
                                       ) : (
                                           <img src={headerUrl} alt="Preview" className="w-full h-full object-cover" />
                                       )}
-                                      <div className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center">
-                                         <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-emerald-500 flex items-center gap-2">
-                                            <CheckCircle2 size={16} className="text-emerald-500" />
-                                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Listo</span>
+                                      <div className="absolute inset-0 bg-[#FF4D00]/10 flex items-center justify-center">
+                                         <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-[#FF4D00] flex items-center gap-2">
+                                            <CheckCircle2 size={16} className="text-[#FF4D00]" />
+                                            <span className="text-[10px] font-black text-[#E64500] uppercase tracking-widest">Listo</span>
                                          </div>
                                       </div>
                                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -824,16 +824,16 @@ export default function CampaignsPage() {
                                    </div>
                                 ) : (
                                    <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-                                      isUploadingImage ? 'bg-zinc-50 border-zinc-200' : 'border-emerald-500/30 bg-white dark:bg-zinc-900/40 hover:border-emerald-500 hover:bg-emerald-500/5'
+                                      isUploadingImage ? 'bg-zinc-50 border-zinc-200' : 'border-[#FF4D00]/30 bg-white dark:bg-zinc-900/40 hover:border-[#FF4D00] hover:bg-[#FF4D00]/5'
                                    }`}>
                                       {isUploadingImage ? (
                                          <>
-                                            <Loader2 size={24} className="animate-spin text-emerald-500 mb-2" />
-                                            <span className="text-xs font-bold text-emerald-600 animate-pulse">Subiendo...</span>
+                                            <Loader2 size={24} className="animate-spin text-[#FF4D00] mb-2" />
+                                            <span className="text-xs font-bold text-[#E64500] animate-pulse">Subiendo...</span>
                                          </>
                                       ) : (
                                          <>
-                                            <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-2">
+                                            <div className="h-10 w-10 bg-[#FF4D00]/10 text-[#FF4D00] rounded-full flex items-center justify-center mb-2">
                                                <UploadCloud size={20} />
                                             </div>
                                             <span className="text-[10px] font-black text-[#111111] dark:text-[#EDE9E0] tracking-widest uppercase">Subir {headerMediaType === 'VIDEO' ? 'Video' : headerMediaType === 'DOCUMENT' ? 'Documento' : 'Imagen'}</span>
@@ -854,7 +854,7 @@ export default function CampaignsPage() {
 
                             {/* URL input — para todos los tipos */}
                             <div className="relative group">
-                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+                              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-[#FF4D00] transition-colors">
                                 <Link2 size={14} />
                               </div>
                               <input 
@@ -866,7 +866,7 @@ export default function CampaignsPage() {
                                 }
                                 value={headerUrl && headerUrl.startsWith('http') ? headerUrl : ''} 
                                 onChange={e => setHeaderUrl(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-[10px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-emerald-500 transition-all placeholder:text-zinc-400 font-medium"
+                                className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-[10px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00] transition-all placeholder:text-zinc-400 font-medium"
                               />
                             </div>
                           </div>
@@ -877,11 +877,11 @@ export default function CampaignsPage() {
                   <div className="space-y-3">
                     {bodyVars.map(v => (
                       <div key={v} className="flex items-center gap-3">
-                        <span className="text-xs font-mono font-bold w-12 text-emerald-500">{'{{'}{v}{'}}'}</span>
+                        <span className="text-xs font-mono font-bold w-12 text-[#FF4D00]">{'{{'}{v}{'}}'}</span>
                         <select 
                           value={variableMapping[v] || ''}
                           onChange={e => setVariableMapping(p => ({ ...p, [v]: e.target.value }))}
-                          className="flex-1 p-2 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
+                          className="flex-1 p-2 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
                         >
                           <option value="">— Seleccionar columna —</option>
                           {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={c}>{c}</option>)}
@@ -891,17 +891,17 @@ export default function CampaignsPage() {
                   </div>
 
                   {buttonVars.length > 0 && (
-                    <div className="space-y-3 mt-4 pt-4 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-3 mt-4 pt-4 border-t border-[#DDD5C2]/40 dark:border-zinc-800/40 animate-in slide-in-from-top-2 duration-300">
                       <p className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest">Variables de Botones</p>
                       {buttonVars.map(bv => (
                         <div key={`button_${bv.buttonIndex}`} className="flex items-center gap-3">
-                          <span className="text-xs font-bold w-28 text-blue-500 truncate" title={`Botón: ${bv.label}`}>
+                          <span className="text-xs font-bold w-28 text-[#8A8172] truncate" title={`Botón: ${bv.label}`}>
                             {bv.label}
                           </span>
                           <select 
                             value={variableMapping[`button_${bv.buttonIndex}`] || ''}
                             onChange={e => setVariableMapping(p => ({ ...p, [`button_${bv.buttonIndex}`]: e.target.value }))}
-                            className="flex-1 p-2 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
+                            className="flex-1 p-2 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0]"
                           >
                             <option value="">— Seleccionar columna —</option>
                             {csvColumns.filter(c => c !== '#').map(c => <option key={c} value={c}>{c}</option>)}
@@ -912,9 +912,9 @@ export default function CampaignsPage() {
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center justify-between p-4 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                    <div className="flex items-center justify-between p-4 bg-[#FF4D00]/5 dark:bg-[#FF4D00]/10 rounded-2xl border border-[#FF4D00]/20">
                       <div className="space-y-0.5">
-                        <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide flex items-center gap-1.5">
+                        <div className="text-[10px] font-bold text-[#E64500] uppercase tracking-wide flex items-center gap-1.5">
                           <RefreshCw size={12} className={isBotActive ? 'animate-spin-slow' : ''} />
                           Respuesta IA
                         </div>
@@ -923,7 +923,7 @@ export default function CampaignsPage() {
                       <button
                         type="button"
                         onClick={() => setIsBotActive(!isBotActive)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isBotActive ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isBotActive ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'}`}
                       >
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isBotActive ? 'translate-x-4' : 'translate-x-0'}`} />
                       </button>
@@ -948,12 +948,12 @@ export default function CampaignsPage() {
                   </div>
                   </div>
 
-                  <div className="flex gap-3 pt-4 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 shrink-0">
+                  <div className="flex gap-3 pt-4 border-t border-[#DDD5C2]/40 dark:border-zinc-800/40 shrink-0">
                     <button onClick={() => setStep(2)} className="px-4 py-2 text-sm font-bold text-[#6F6F6F] dark:text-zinc-400 hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">Volver</button>
                     <button 
                       onClick={handleLaunch} 
                       disabled={isSending || !campaignName || bodyVars.some(v => !variableMapping[v])} 
-                      className="relative overflow-hidden flex-1 py-3 bg-emerald-500 text-white rounded-2xl font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all group"
+                      className="btn-primary-abita relative overflow-hidden flex-1 py-3 group"
                     >
                       {isSending && progress.total > 0 && (
                         <div 
@@ -986,10 +986,10 @@ export default function CampaignsPage() {
                     placeholder="Buscar..." 
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-[#111111] dark:text-[#EDE9E0] w-32 focus:w-48 transition-all outline-none"
+                    className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-white/50 dark:bg-black/20 text-[#111111] dark:text-[#EDE9E0] w-32 focus:w-48 transition-all outline-none"
                   />
                 </div>
-                <div className="flex items-center gap-1 bg-white/50 dark:bg-black/20 px-2.5 py-1 rounded-xl border border-[#DEDAD0] dark:border-zinc-800">
+                <div className="flex items-center gap-1 bg-white/50 dark:bg-black/20 px-2.5 py-1 rounded-xl border border-[#DDD5C2] dark:border-zinc-800">
                   <span className="text-[10px] text-[#6F6F6F] font-medium">Del</span>
                   <input 
                     type="date" 
@@ -1018,9 +1018,9 @@ export default function CampaignsPage() {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4 border border-[#DEDAD0] dark:border-zinc-800 rounded-[2rem] bg-[#DEDAD0]/20 dark:bg-black/10 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
+            <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4 border border-[#DDD5C2] dark:border-zinc-800 rounded-[2rem] bg-[#DDD5C2]/20 dark:bg-black/10 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
               {filteredCampaigns.length === 0 && (
-                <div className="p-8 text-center border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-3xl opacity-50">
+                <div className="p-8 text-center border-2 border-dashed border-[#DDD5C2] dark:border-zinc-800 rounded-3xl opacity-50">
                   <Clock size={32} className="mx-auto mb-2 text-[#6F6F6F]" />
                   <p className="text-sm font-medium text-[#6F6F6F]">
                     {searchQuery || startDateFilter || endDateFilter ? 'No se encontraron resultados' : 'No hay campañas lanzadas aún'}
@@ -1028,13 +1028,13 @@ export default function CampaignsPage() {
                 </div>
               )}
               {filteredCampaigns.map(c => (
-                <div key={c.id} className="p-4 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl flex items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow">
+                <div key={c.id} className="p-4 glass-panel flex items-center justify-between gap-4 transition-all hover:-translate-y-0.5">
                   <div className="space-y-1">
                     <h4 className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">{c.name}</h4>
                     <div className="flex items-center gap-3">
                       <p className="text-[10px] text-[#6F6F6F]">{new Date(c.createdAt).toLocaleDateString()}</p>
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
-                        c.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                        c.status === 'COMPLETED' ? 'bg-[#FFE5DB] text-[#B33500]' :
                         c.status === 'PAUSED' ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300' :
                         'bg-amber-100 text-amber-700'
                       }`}>
@@ -1052,7 +1052,7 @@ export default function CampaignsPage() {
                             handleResumeCampaign(c);
                           }
                         }}
-                        className="px-3 py-1.5 bg-blue-500/10 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
+                        className="px-3 py-1.5 bg-[#8A8172]/10 text-[#5C5C5C] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#8A8172] hover:text-white transition-all"
                       >
                         Reanudar
                       </button>
@@ -1078,7 +1078,7 @@ export default function CampaignsPage() {
                         setActiveLogs(logs);
                         setIsLoadingLogs(false);
                       }}
-                      className="px-3 py-1.5 bg-emerald-500/10 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all"
+                      className="px-3 py-1.5 bg-[#FF4D00]/10 text-[#E64500] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#FF4D00] hover:text-white transition-all"
                     >
                       Reporte
                     </button>
@@ -1086,7 +1086,7 @@ export default function CampaignsPage() {
                       <button 
                         onClick={() => handleDownloadCsv(c)}
                         title="Descargar Leads CSV"
-                        className="p-1.5 bg-[#F36A2D]/10 text-[#F36A2D] rounded-xl hover:bg-[#F36A2D] hover:text-white transition-all shadow-sm"
+                        className="p-1.5 bg-[#FF4D00]/10 text-[#FF4D00] rounded-xl hover:bg-[#FF4D00] hover:text-white transition-all shadow-sm"
                       >
                         <Download size={14} />
                       </button>
@@ -1103,15 +1103,15 @@ export default function CampaignsPage() {
       {showLogsModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowLogsModal(false)} />
-          <div className="bg-white dark:bg-[#111111] w-full max-w-xl rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 animate-in zoom-in-95 duration-200">
-             <div className="p-8 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between">
+          <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-xl rounded-[2.5rem] shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.16)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_28px_60px_rgba(0,0,0,.6)] relative overflow-hidden animate-in zoom-in-95 duration-200">
+             <div className="p-8 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between">
                 <div>
                    <h3 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Reporte de Entrega</h3>
                    <div className="flex items-center gap-2">
                       <select
                         value={logStatusFilter}
                         onChange={(e) => setLogStatusFilter(e.target.value)}
-                        className="bg-zinc-100 dark:bg-zinc-800 text-xs text-[#111111] dark:text-[#EDE9E0] rounded-md px-2 py-1 outline-none border border-transparent focus:border-emerald-500 transition-colors"
+                        className="bg-zinc-100 dark:bg-zinc-800 text-xs text-[#111111] dark:text-[#EDE9E0] rounded-md px-2 py-1 outline-none border border-transparent focus:border-[#FF4D00] transition-colors"
                       >
                         <option value="ALL">Todos</option>
                         <option value="SENT">Enviado</option>
@@ -1128,7 +1128,7 @@ export default function CampaignsPage() {
                           }
                           setIsLoadingLogs(false);
                         }}
-                        className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-emerald-600"
+                        className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors text-[#E64500]"
                         title="Actualizar estados"
                       >
                         <RefreshCw size={14} className={isLoadingLogs ? 'animate-spin' : ''} />
@@ -1146,8 +1146,8 @@ export default function CampaignsPage() {
              <div className="max-h-[60vh] overflow-y-auto p-6 space-y-3">
                 {isLoadingLogs ? (
                     <div className="flex flex-col items-center py-12 gap-3">
-                       <Loader2 size={32} className="animate-spin text-emerald-500" />
-                       <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Generando Reporte...</p>
+                       <Loader2 size={32} className="animate-spin text-[#FF4D00]" />
+                       <p className="text-xs font-bold text-[#E64500] uppercase tracking-widest">Generando Reporte...</p>
                     </div>
                 ) : activeLogs.length === 0 ? (
                     <div className="text-center py-12 opacity-50">
@@ -1176,11 +1176,11 @@ export default function CampaignsPage() {
                          badgeText = 'Enviado';
                          Icon = CheckCircle2;
                        } else if (log.status === 'DELIVERED') {
-                         badgeColor = 'bg-emerald-500/10 text-emerald-600';
+                         badgeColor = 'bg-[#FF4D00]/10 text-[#E64500]';
                          badgeText = 'Recibido';
                          Icon = CheckCircle2;
                        } else if (log.status === 'READ') {
-                         badgeColor = 'bg-blue-500/10 text-blue-600';
+                         badgeColor = 'bg-[#8A8172]/10 text-[#5C5C5C]';
                          badgeText = 'Leído';
                          Icon = CheckCircle2;
                        }
@@ -1211,7 +1211,7 @@ export default function CampaignsPage() {
                 )}
              </div>
              
-             <div className="p-8 bg-zinc-50 dark:bg-black/10 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
+             <div className="p-8 bg-zinc-50 dark:bg-black/10 border-t border-[#DDD5C2] dark:border-zinc-800 flex justify-between items-center">
                  <button 
                     onClick={async () => {
                         if (!activeCampaign?.csvData) return;
@@ -1277,7 +1277,7 @@ export default function CampaignsPage() {
                            alert("Error al generar el CSV completo");
                         }
                     }}
-                    className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-xl transition-all"
+                    className="text-xs font-bold text-[#E64500] hover:text-[#B33500] flex items-center gap-2 px-4 py-2 bg-[#FF4D00]/10 rounded-xl transition-all"
                  >
                     <Download size={14} />
                     Descargar Log CSV
@@ -1297,8 +1297,8 @@ export default function CampaignsPage() {
       {isSending && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="bg-white dark:bg-[#111111] w-full max-w-md rounded-[2.5rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 p-8 flex flex-col items-center gap-6 animate-in zoom-in-95 duration-200">
-            <div className="h-16 w-16 bg-emerald-500/10 text-emerald-600 rounded-3xl flex items-center justify-center animate-pulse">
+          <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-md rounded-[2.5rem] shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.16)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_28px_60px_rgba(0,0,0,.6)] relative overflow-hidden p-8 flex flex-col items-center gap-6 animate-in zoom-in-95 duration-200">
+            <div className="h-16 w-16 bg-[#FF4D00]/10 text-[#E64500] rounded-3xl flex items-center justify-center animate-pulse">
               <Loader2 size={32} className="animate-spin" />
             </div>
             
@@ -1312,9 +1312,9 @@ export default function CampaignsPage() {
             </div>
 
             {/* Progress bar */}
-            <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 h-3 rounded-full overflow-hidden relative shadow-inner">
+            <div className="w-full bg-[#DDD5C2] dark:bg-zinc-800 h-3 rounded-full overflow-hidden relative shadow-inner">
               <div 
-                className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                className="bg-[#FF4D00] h-full rounded-full transition-all duration-300"
                 style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
               />
             </div>

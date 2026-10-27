@@ -23,17 +23,17 @@ import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard';
 // Constants
 // ──────────────────────────────────────────────
 const STATUS_CONFIG: Record<TemplateStatus | string, { label: string; color: string; bg: string; icon: any }> = {
-  APPROVED:  { label: 'Aprobada',    color: 'text-emerald-600', bg: 'bg-emerald-500/10', icon: CheckCircle2 },
+  APPROVED:  { label: 'Aprobada',    color: 'text-[#E64500]', bg: 'bg-[#FF4D00]/10', icon: CheckCircle2 },
   PENDING:   { label: 'En revisión', color: 'text-amber-600',   bg: 'bg-amber-500/10',   icon: Clock },
   REJECTED:  { label: 'Rechazada',   color: 'text-red-500',     bg: 'bg-red-500/10',     icon: XCircle },
-  IN_APPEAL: { label: 'En apelación',color: 'text-blue-500',    bg: 'bg-blue-500/10',    icon: AlertTriangle },
+  IN_APPEAL: { label: 'En apelación',color: 'text-[#8A8172]',    bg: 'bg-[#8A8172]/10',    icon: AlertTriangle },
   PAUSED:    { label: 'Pausada',     color: 'text-zinc-500',    bg: 'bg-zinc-500/10',    icon: PauseCircle },
   DISABLED:  { label: 'Desactivada', color: 'text-zinc-400',    bg: 'bg-zinc-400/10',    icon: PauseCircle },
 };
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   MARKETING:      { label: 'Marketing',      color: 'text-amber-600',   bg: 'bg-amber-500/10' },
-  UTILITY:        { label: 'Utilidad',       color: 'text-blue-600',    bg: 'bg-blue-500/10' },
+  UTILITY:        { label: 'Utilidad',       color: 'text-[#5C5C5C]',    bg: 'bg-[#8A8172]/10' },
   AUTHENTICATION: { label: 'Autenticación',  color: 'text-violet-600',  bg: 'bg-violet-500/10' },
 };
 
@@ -145,7 +145,7 @@ function TemplateCard({ template, onDelete, onPreview }: { template: MetaTemplat
   const hasButtons = template.components.some(c => c.type === 'BUTTONS');
 
   return (
-    <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md hover:border-[#F36A2D]/30 transition-all group h-full">
+    <div className="glass-panel p-4 flex flex-col gap-3 hover:-translate-y-0.5 transition-all group h-full">
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -183,14 +183,14 @@ function TemplateCard({ template, onDelete, onPreview }: { template: MetaTemplat
       </p>
 
       {hasButtons && (
-        <div className="text-[9px] font-bold text-blue-500 bg-blue-500/5 px-2 py-1 rounded-lg">+ Botones incluidos</div>
+        <div className="text-[9px] font-bold text-[#8A8172] bg-[#8A8172]/5 px-2 py-1 rounded-lg">+ Botones incluidos</div>
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-1 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 mt-auto">
+      <div className="flex items-center gap-2 pt-1 border-t border-[#DDD5C2]/40 dark:border-zinc-800/40 mt-auto">
         <button
           onClick={onPreview}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-[#6F6F6F] hover:bg-[#F36A2D]/10 hover:text-[#F36A2D] transition-all"
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-[#6F6F6F] hover:bg-[#FF4D00]/10 hover:text-[#FF4D00] transition-all"
         >
           <Eye size={12} /> Preview
         </button>
@@ -395,10 +395,10 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white dark:bg-[#111111] w-full max-w-2xl max-h-[90vh] rounded-[2rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 animate-in zoom-in-95 duration-200 flex flex-col">
+      <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-2xl max-h-[90vh] rounded-[2rem] shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.16)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_28px_60px_rgba(0,0,0,.6)] relative overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
 
         {/* Modal header */}
-        <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="p-6 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Nueva Plantilla</h2>
             <p className="text-xs text-[#6F6F6F] mt-0.5">Se enviará a Meta para aprobación</p>
@@ -406,11 +406,11 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
           <div className="flex items-center gap-3">
             {/* Step indicator */}
             <div className="flex items-center gap-2">
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step === 1 ? 'bg-[#F36A2D] text-white' : 'bg-emerald-500 text-white'}`}>
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step === 1 ? 'bg-[#FF4D00] text-white' : 'bg-[#1A1714] dark:bg-[#EBE4D6] text-white dark:text-[#111]'}`}>
                 {step > 1 ? <CheckCircle2 size={12} /> : '1'}
               </div>
               <div className="h-px w-4 bg-zinc-300 dark:bg-zinc-700" />
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step === 2 ? 'bg-[#F36A2D] text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-black transition-colors ${step === 2 ? 'bg-[#FF4D00] text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500'}`}>
                 2
               </div>
             </div>
@@ -433,7 +433,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   value={name}
                   onChange={e => setName(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''))}
                   placeholder="ej. bienvenida_nuevo_cliente"
-                  className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/40 outline-none focus:border-[#F36A2D] transition-colors font-mono"
+                  className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/40 outline-none focus:border-[#FF4D00] transition-colors font-mono"
                 />
                 <p className="text-[9px] text-[#6F6F6F]">Solo minúsculas, números y guiones bajos. Sin espacios.</p>
               </div>
@@ -445,7 +445,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   <select
                     value={category}
                     onChange={e => setCategory(e.target.value as any)}
-                    className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors"
+                    className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00] transition-colors"
                   >
                     <option value="MARKETING">Marketing</option>
                     <option value="UTILITY">Utilidad</option>
@@ -457,7 +457,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   <select
                     value={language}
                     onChange={e => setLanguage(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors"
+                    className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-white dark:bg-[#1A1714] text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00] transition-colors"
                   >
                     {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
                   </select>
@@ -476,7 +476,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                       <button
                         key={fmt}
                         onClick={() => { setHeaderFormat(fmt); setHeaderExampleUrl(''); }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${headerFormat === fmt ? 'border-[#F36A2D] bg-[#F36A2D]/10 text-[#F36A2D]' : 'border-[#DEDAD0] dark:border-zinc-800 text-[#6F6F6F] hover:border-[#F36A2D]/50'}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all ${headerFormat === fmt ? 'border-[#FF4D00] bg-[#FF4D00]/10 text-[#FF4D00]' : 'border-[#DDD5C2] dark:border-zinc-800 text-[#6F6F6F] hover:border-[#FF4D00]/50'}`}
                       >
                         <Icon size={10} /> {labels[fmt]}
                       </button>
@@ -490,7 +490,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                       <button
                         onClick={insertHeaderVariable}
                         disabled={headerText.includes('{{1}}')}
-                        className="flex items-center gap-1 text-[9px] font-black text-[#F36A2D] hover:opacity-70 transition-opacity uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1 text-[9px] font-black text-[#FF4D00] hover:opacity-70 transition-opacity uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <Zap size={10} /> + Variable
                       </button>
@@ -502,7 +502,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                       onChange={e => setHeaderText(e.target.value)}
                       placeholder="Texto del encabezado..."
                       maxLength={60}
-                      className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors"
+                      className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00] transition-colors"
                     />
                   </div>
                 )}
@@ -514,11 +514,11 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black uppercase tracking-widest text-[#6F6F6F]">
-                        Subir Ejemplo {headerFormat === 'IMAGE' ? '(imagen)' : headerFormat === 'VIDEO' ? '(video mp4)' : '(PDF)'} <span className="text-[#F36A2D]">*</span>
+                        Subir Ejemplo {headerFormat === 'IMAGE' ? '(imagen)' : headerFormat === 'VIDEO' ? '(video mp4)' : '(PDF)'} <span className="text-[#FF4D00]">*</span>
                       </label>
                       
                       {headerExampleUrl ? (
-                         <div className="relative rounded-2xl overflow-hidden border-2 border-[#F36A2D] shadow-xl group aspect-video">
+                         <div className="relative rounded-2xl overflow-hidden border-2 border-[#FF4D00] shadow-xl group aspect-video">
                             {headerFormat === 'VIDEO' ? (
                                 <video src={headerExampleUrl} className="w-full h-full object-cover" />
                             ) : headerFormat === 'DOCUMENT' ? (
@@ -528,10 +528,10 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                             ) : (
                                 <img src={headerExampleUrl} alt="Preview" className="w-full h-full object-cover" />
                             )}
-                            <div className="absolute inset-0 bg-[#F36A2D]/10 flex items-center justify-center">
-                               <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-[#F36A2D] flex items-center gap-2">
-                                  <CheckCircle2 size={16} className="text-[#F36A2D]" />
-                                  <span className="text-[10px] font-black text-[#F36A2D] uppercase tracking-widest">Ejemplo Subido</span>
+                            <div className="absolute inset-0 bg-[#FF4D00]/10 flex items-center justify-center">
+                               <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-full shadow-2xl border border-[#FF4D00] flex items-center gap-2">
+                                  <CheckCircle2 size={16} className="text-[#FF4D00]" />
+                                  <span className="text-[10px] font-black text-[#FF4D00] uppercase tracking-widest">Ejemplo Subido</span>
                                </div>
                             </div>
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -545,16 +545,16 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                          </div>
                       ) : (
                          <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
-                            isUploadingHeader ? 'bg-zinc-50 border-zinc-200' : 'border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-[#F36A2D] hover:bg-[#F36A2D]/5'
+                            isUploadingHeader ? 'bg-zinc-50 border-zinc-200' : 'border-[#DDD5C2] dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-[#FF4D00] hover:bg-[#FF4D00]/5'
                          }`}>
                             {isUploadingHeader ? (
                                <>
-                                  <Loader2 size={24} className="animate-spin text-[#F36A2D] mb-2" />
-                                  <span className="text-xs font-bold text-[#F36A2D] animate-pulse">Subiendo...</span>
+                                  <Loader2 size={24} className="animate-spin text-[#FF4D00] mb-2" />
+                                  <span className="text-xs font-bold text-[#FF4D00] animate-pulse">Subiendo...</span>
                                </>
                             ) : (
                                <>
-                                  <div className="h-10 w-10 bg-[#F36A2D]/10 text-[#F36A2D] rounded-full flex items-center justify-center mb-2">
+                                  <div className="h-10 w-10 bg-[#FF4D00]/10 text-[#FF4D00] rounded-full flex items-center justify-center mb-2">
                                      <UploadCloud size={20} />
                                   </div>
                                   <span className="text-[10px] font-black text-[#111111] dark:text-[#EDE9E0] tracking-widest uppercase">Subir {headerFormat === 'IMAGE' ? 'Imagen' : headerFormat === 'VIDEO' ? 'Video' : 'Documento'} de Ejemplo</span>
@@ -574,7 +574,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   </div>
                 )}
                 {headerFormat === 'LOCATION' && (
-                  <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-[10px] text-blue-600 flex items-start gap-2">
+                  <div className="p-3 bg-[#8A8172]/5 border border-[#8A8172]/20 rounded-xl text-[10px] text-[#5C5C5C] flex items-start gap-2">
                     <Info size={12} className="mt-0.5 shrink-0" />
                     El header de ubicación se enviará con coordenadas al usar la plantilla en una campaña.
                   </div>
@@ -587,7 +587,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   <label className="text-[10px] font-black uppercase tracking-widest text-[#6F6F6F]">Cuerpo del mensaje *</label>
                   <button
                     onClick={insertVariable}
-                    className="flex items-center gap-1 text-[9px] font-black text-[#F36A2D] hover:opacity-70 transition-opacity uppercase tracking-widest"
+                    className="flex items-center gap-1 text-[9px] font-black text-[#FF4D00] hover:opacity-70 transition-opacity uppercase tracking-widest"
                   >
                     <Zap size={10} /> + Variable
                   </button>
@@ -599,7 +599,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   placeholder="Ej: Hola {{1}}, tienes una nueva oferta disponible para ti."
                   rows={4}
                   maxLength={1024}
-                  className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/40 outline-none focus:border-[#F36A2D] transition-colors resize-none"
+                  className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/40 outline-none focus:border-[#FF4D00] transition-colors resize-none"
                 />
                 <div className="flex items-center justify-between">
                   <p className="text-[9px] text-[#6F6F6F]">Usa {'{{1}}'}, {'{{2}}'}, etc. para variables dinámicas.</p>
@@ -616,7 +616,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   onChange={e => setFooter(e.target.value)}
                   placeholder="Ej: Responde STOP para cancelar"
                   maxLength={60}
-                  className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/40 outline-none focus:border-[#F36A2D] transition-colors"
+                  className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#6F6F6F]/40 outline-none focus:border-[#FF4D00] transition-colors"
                 />
               </div>
             </>
@@ -631,7 +631,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                   {buttons.length < 10 && (
                     <button
                       onClick={addButton}
-                      className="flex items-center gap-1 text-[9px] font-black text-[#F36A2D] hover:opacity-70 transition-opacity uppercase tracking-widest"
+                      className="flex items-center gap-1 text-[9px] font-black text-[#FF4D00] hover:opacity-70 transition-opacity uppercase tracking-widest"
                     >
                       <Plus size={10} /> Agregar
                     </button>
@@ -639,13 +639,13 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                 </div>
 
                 {buttons.length === 0 && (
-                  <div className="p-6 border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-xl text-center text-[#6F6F6F] text-xs">
+                  <div className="p-6 border-2 border-dashed border-[#DDD5C2] dark:border-zinc-800 rounded-xl text-center text-[#6F6F6F] text-xs">
                     Sin botones (opcional). Puedes agregar hasta 10.
                   </div>
                 )}
 
                 {buttons.length > 0 && (
-                  <div className="p-2.5 bg-blue-500/5 border border-blue-500/20 rounded-xl text-[10px] text-blue-500 flex items-start gap-2">
+                  <div className="p-2.5 bg-[#8A8172]/5 border border-[#8A8172]/20 rounded-xl text-[10px] text-[#8A8172] flex items-start gap-2">
                     <Info size={12} className="mt-0.5 shrink-0" />
                     <span>Meta <strong>no permite mezclar</strong> Respuestas Rápidas con botones de URL o Teléfono. Usa solo un tipo por plantilla. Máx: 10 Quick Reply, o 2 CTA (URL/Teléfono).</span>
                   </div>
@@ -654,7 +654,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
 
                 <div className="space-y-3">
                   {buttons.map((btn, i) => (
-                    <div key={i} className="p-4 bg-zinc-50 dark:bg-black/20 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 space-y-3">
+                    <div key={i} className="p-4 bg-zinc-50 dark:bg-black/20 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black text-[#6F6F6F] uppercase">Botón {i + 1}</span>
                         <button onClick={() => removeButton(i)} className="p-1 hover:bg-red-500/10 rounded-lg text-zinc-400 hover:text-red-500 transition-all">
@@ -672,7 +672,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                               copy[i] = { ...copy[i], type: e.target.value as ButtonType };
                               setButtons(copy);
                             }}
-                            className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-white dark:bg-[#1A1714] text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D]"
+                            className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-white dark:bg-[#1A1714] text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00]"
                           >
                             {BUTTON_TYPES.map(bt => <option key={bt.value} value={bt.value}>{bt.label}</option>)}
                           </select>
@@ -689,7 +689,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                             }}
                             placeholder="Ej: Ver oferta"
                             maxLength={25}
-                            className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D]"
+                            className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00]"
                           />
                         </div>
                       </div>
@@ -707,12 +707,12 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                                 setButtons(copy);
                               }}
                               placeholder="https://..."
-                              className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D]"
+                              className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00]"
                             />
                           </div>
                           {btn.url?.includes('{{') && (
                             <div className="space-y-1 animate-in slide-in-from-top-1 duration-200">
-                              <label className="text-[9px] font-black text-blue-500 uppercase tracking-widest block mb-1">Ejemplo de URL con variable *</label>
+                              <label className="text-[9px] font-black text-[#8A8172] uppercase tracking-widest block mb-1">Ejemplo de URL con variable *</label>
                               <input
                                 type="url"
                                 value={btn.urlExample || ''}
@@ -722,7 +722,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                                   setButtons(copy);
                                 }}
                                 placeholder="e.g. https://example.com/1234"
-                                className="w-full p-2 rounded-lg border border-blue-500/30 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-blue-500"
+                                className="w-full p-2 rounded-lg border border-[#8A8172]/30 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#8A8172]"
                               />
                               <p className="text-[8px] text-[#6F6F6F] mt-0.5">Meta requiere un ejemplo real de la URL con la variable reemplazada.</p>
                             </div>
@@ -742,7 +742,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
                               setButtons(copy);
                             }}
                             placeholder="+50288887777"
-                            className="w-full p-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D]"
+                            className="w-full p-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-700 bg-transparent text-[11px] text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00]"
                           />
                         </div>
                       )}
@@ -780,7 +780,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
         </div>
 
         {/* Modal footer */}
-        <div className="p-6 border-t border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50 dark:bg-black/10">
+        <div className="p-6 border-t border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50 dark:bg-black/10">
           {step === 1 ? (
             <>
               <button onClick={onClose} className="text-sm font-bold text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">
@@ -819,7 +819,7 @@ function CreateTemplateModal({ onClose, onCreated }: { onClose: () => void; onCr
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-2.5 bg-[#F36A2D] text-white rounded-xl font-bold text-sm hover:bg-[#e0601a] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="btn-primary-abita px-6 py-2.5 text-sm"
               >
                 {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
                 {isSubmitting ? 'Enviando a Meta...' : 'Enviar a revisión'}
@@ -844,8 +844,8 @@ function PreviewModal({ template, onClose }: { template: MetaTemplate; onClose: 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white dark:bg-[#111111] w-full max-w-md max-h-[90vh] rounded-[2rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 animate-in zoom-in-95 duration-200 flex flex-col">
-        <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+      <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-md max-h-[90vh] rounded-[2rem] shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.16)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_28px_60px_rgba(0,0,0,.6)] relative overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+        <div className="p-6 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div>
             <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] truncate max-w-[250px]" title={template.name}>{template.name}</h3>
             <div className="flex items-center gap-2 mt-1">
@@ -936,11 +936,11 @@ export default function TemplatesPage() {
 
   return (
     <DesktopOnlyGuard>
-    <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714] overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
+      <header className="shrink-0 h-16 flex items-center justify-between px-8 bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl shadow-[inset_0_-1px_0_rgba(138,129,114,.18)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)] z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg flex items-center justify-center">
             <LayoutTemplate size={18} />
           </div>
           <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Templates</h1>
@@ -959,7 +959,7 @@ export default function TemplatesPage() {
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center justify-center h-9 w-9 bg-[#F36A2D] text-white rounded-xl hover:bg-[#e0601a] transition-colors shadow-lg shadow-[#F36A2D]/20"
+            className="btn-primary-abita h-9 w-9"
             title="Nueva plantilla"
           >
             <Plus size={16} />
@@ -970,7 +970,7 @@ export default function TemplatesPage() {
       {/* Toast */}
       {successMsg && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400/20">
+          <div className="glass-dark px-6 py-3 rounded-full flex items-center gap-3 font-semibold">
             <CheckCircle2 size={16} />
             <span className="font-bold text-sm">{successMsg}</span>
           </div>
@@ -983,7 +983,7 @@ export default function TemplatesPage() {
           {/* Stats row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Aprobadas',    count: counts['APPROVED'] || 0,  color: 'text-emerald-600', bg: 'bg-emerald-500/10' },
+              { label: 'Aprobadas',    count: counts['APPROVED'] || 0,  color: 'text-[#E64500]', bg: 'bg-[#FF4D00]/10' },
               { label: 'Revisión',     count: counts['PENDING'] || 0,   color: 'text-amber-600',   bg: 'bg-amber-500/10' },
               { label: 'Rechazadas',   count: counts['REJECTED'] || 0,  color: 'text-red-500',     bg: 'bg-red-500/10' },
               { label: 'Otras',        count: (counts['PAUSED'] || 0) + (counts['DISABLED'] || 0) + (counts['IN_APPEAL'] || 0), color: 'text-zinc-500', bg: 'bg-zinc-500/10' },
@@ -1005,7 +1005,7 @@ export default function TemplatesPage() {
                 placeholder="Buscar plantilla..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 text-sm rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/60 dark:bg-white/5 text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors w-48 placeholder:text-[#6F6F6F]/60"
+                className="pl-9 pr-4 py-2 text-sm glass-panel !rounded-full text-[#111111] dark:text-[#EDE9E0] outline-none focus:ring-2 focus:ring-[#FF4D00]/40 transition-all w-48 placeholder:text-[#6F6F6F]/60"
               />
             </div>
 
@@ -1014,7 +1014,7 @@ export default function TemplatesPage() {
               <select
                 value={categoryFilter}
                 onChange={e => setCategoryFilter(e.target.value as any)}
-                className="pl-4 pr-9 py-2 text-sm rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/60 dark:bg-white/5 text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors appearance-none cursor-pointer"
+                className="pl-4 pr-9 py-2 text-sm glass-panel !rounded-full text-[#111111] dark:text-[#EDE9E0] outline-none focus:ring-2 focus:ring-[#FF4D00]/40 transition-all appearance-none cursor-pointer"
               >
                 <option value="ALL">Todas las categorías</option>
                 <option value="MARKETING">Marketing</option>
@@ -1027,14 +1027,14 @@ export default function TemplatesPage() {
             </div>
 
             {/* Status filter tabs */}
-            <div className="flex items-center gap-1 bg-white/60 dark:bg-white/5 rounded-xl p-1 border border-[#DEDAD0] dark:border-zinc-800 overflow-x-auto max-w-full w-full sm:w-auto scrollbar-hide">
+            <div className="flex items-center gap-1 glass-panel !rounded-full p-1 overflow-x-auto max-w-full w-full sm:w-auto scrollbar-hide">
               {STATUS_FILTERS.map(f => {
                 const count = f.value === 'ALL' ? templates.length : (counts[f.value] || 0);
                 return (
                   <button
                     key={f.value}
                     onClick={() => setStatusFilter(f.value)}
-                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0 ${statusFilter === f.value ? 'bg-white dark:bg-[#111111]/60 text-[#111111] dark:text-[#EDE9E0] shadow-sm' : 'text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0]'}`}
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all flex-shrink-0 ${statusFilter === f.value ? 'glass-pill !rounded-full text-[#111111] dark:text-[#EDE9E0]' : 'text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0]'}`}
                   >
                     {f.label} {count > 0 && <span className="ml-0.5 opacity-60">({count})</span>}
                   </button>
@@ -1046,7 +1046,7 @@ export default function TemplatesPage() {
           {/* Content */}
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <Loader2 size={36} className="animate-spin text-[#F36A2D]" />
+              <Loader2 size={36} className="animate-spin text-[#FF4D00]" />
               <p className="text-sm font-medium text-[#6F6F6F]">Cargando plantillas de Meta...</p>
             </div>
           ) : error ? (
@@ -1058,9 +1058,9 @@ export default function TemplatesPage() {
               </div>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-3xl">
-              <div className="h-16 w-16 bg-[#F36A2D]/10 rounded-2xl flex items-center justify-center">
-                <LayoutTemplate size={32} className="text-[#F36A2D]/50" />
+            <div className="flex flex-col items-center justify-center py-24 gap-4 border-2 border-dashed border-[#DDD5C2] dark:border-zinc-800 rounded-3xl">
+              <div className="h-16 w-16 bg-[#FF4D00]/10 rounded-2xl flex items-center justify-center">
+                <LayoutTemplate size={32} className="text-[#FF4D00]/50" />
               </div>
               <div className="text-center">
                 <p className="font-bold text-[#111111] dark:text-[#EDE9E0]">
@@ -1073,7 +1073,7 @@ export default function TemplatesPage() {
               {!search && statusFilter === 'ALL' && (
                 <button
                   onClick={() => setShowCreate(true)}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-[#F36A2D] text-white rounded-xl font-bold text-sm hover:bg-[#e0601a] transition-colors"
+                  className="btn-primary-abita px-5 py-2.5 text-sm"
                 >
                   <Plus size={14} /> Nueva plantilla
                 </button>

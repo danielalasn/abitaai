@@ -331,7 +331,9 @@ export async function simulateIncomingMessage(
   mediaUrl?: string,
   mediaFilename?: string,
   mediaType?: string,
-  messageType?: string
+  messageType?: string,
+  wamid?: string,
+  contextWamid?: string
 ) {
   let project: any = null;
 
@@ -414,10 +416,38 @@ export async function simulateIncomingMessage(
     });
   }
 
+  // Verificar idempotencia por WAMID si viene provisto
+  if (wamid) {
+    const existing = await prisma.message.findUnique({ where: { wamid } });
+    if (existing) {
+      console.log(`[simulateIncomingMessage] Mensaje con wamid ${wamid} ya existe. Omitiendo duplicado.`);
+      return chat.id;
+    }
+  }
+
   // Guardar mensaje entrante
   const isImage = mediaType === 'image';
   // Si el tipo de mensaje es 'button', marcar como button_reply para reportes de campaña
   const effectiveMediaType = messageType === 'button' ? 'button_reply' : mediaType;
+
+  // Metadata si vino una respuesta contextual por swipe de WhatsApp
+  let buttonsConfigData: string | null = null;
+  if (contextWamid) {
+    const quoted = await prisma.message.findUnique({ where: { wamid: contextWamid } });
+    if (quoted) {
+      buttonsConfigData = JSON.stringify({
+        replyTo: {
+          id: quoted.id,
+          wamid: quoted.wamid,
+          role: quoted.role,
+          content: quoted.content,
+          mediaType: quoted.mediaType,
+          mediaUrl: quoted.mediaUrl,
+          mediaFilename: quoted.mediaFilename
+        }
+      });
+    }
+  }
 
   await prisma.message.create({
     data: {
@@ -427,7 +457,9 @@ export async function simulateIncomingMessage(
       imageUrl: isImage && mediaUrl ? mediaUrl : null,
       mediaUrl,
       mediaFilename,
-      mediaType: effectiveMediaType
+      mediaType: effectiveMediaType,
+      wamid: wamid || null,
+      buttonsConfig: buttonsConfigData
     }
   });
 
@@ -580,13 +612,68 @@ export async function saveAssistantReply(
   try { revalidatePath('/') } catch (e) { };
 }
 
+// Helper para resolver el WAMID y contexto de un mensaje citado
+async function resolveReplyContext(replyToMessageId?: string) {
+  if (!replyToMessageId) return { repliedMsg: null, contextMessageId: undefined, replyPrefix: '', buttonsConfigData: null };
+  const repliedMsg = await prisma.message.findUnique({ where: { id: replyToMessageId } });
+  if (!repliedMsg) return { repliedMsg: null, contextMessageId: undefined, replyPrefix: '', buttonsConfigData: null };
+
+  let contextMessageId: string | undefined = repliedMsg.wamid || undefined;
+  if (!contextMessageId && repliedMsg.role === 'user') {
+    try {
+      const timeStart = new Date(new Date(repliedMsg.createdAt).getTime() - 25000);
+      const timeEnd = new Date(new Date(repliedMsg.createdAt).getTime() + 25000);
+      const matchEvent = await prisma.webhookEvent.findFirst({
+        where: {
+          provider: 'whatsapp',
+          createdAt: { gte: timeStart, lte: timeEnd },
+          id: { startsWith: 'wamid.' }
+        }
+      });
+      if (matchEvent) {
+        contextMessageId = matchEvent.id;
+        await prisma.message.update({
+          where: { id: repliedMsg.id },
+          data: { wamid: matchEvent.id }
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.warn('[resolveReplyContext] Error en fallback de wamid:', e);
+    }
+  }
+
+  const rawSnippet = repliedMsg.content || repliedMsg.mediaFilename || (repliedMsg.mediaType ? `[${repliedMsg.mediaType}]` : 'Mensaje');
+  const cleanSnippet = rawSnippet.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').replace(/"/g, "'").slice(0, 100);
+  const replyPrefix = `[En respuesta a: "${cleanSnippet}"]\n`;
+
+  const buttonsConfigData = JSON.stringify({
+    replyTo: {
+      id: repliedMsg.id,
+      wamid: repliedMsg.wamid || contextMessageId || null,
+      role: repliedMsg.role,
+      content: cleanSnippet,
+      mediaType: repliedMsg.mediaType,
+      mediaUrl: repliedMsg.mediaUrl,
+      mediaFilename: repliedMsg.mediaFilename
+    }
+  });
+
+  return { repliedMsg, contextMessageId, replyPrefix, buttonsConfigData };
+}
+
 // Guarda respuestas y acciones del Agente Humano en el frontend (bot desactivado)
 // Retorna { success, error } para que el UI muestre errores de envío al usuario
-export async function saveAgentMessage(chatId: string, text: string): Promise<{ success: boolean; error?: string }> {
+export async function saveAgentMessage(
+  chatId: string, 
+  text: string, 
+  replyToMessageId?: string
+): Promise<{ success: boolean; error?: string }> {
   const project = await getCurrentProject();
   if (!project) return { success: false, error: "No autorizado" };
   const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
   if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return { success: false, error: "No autorizado" };
+
+  const { repliedMsg, contextMessageId, replyPrefix, buttonsConfigData } = await resolveReplyContext(replyToMessageId);
 
   const chat = await prisma.chat.update({
     where: { id: chatId },
@@ -626,11 +713,11 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
       const previewText = text.length > 60 ? text.substring(0, 60) + '...' : text;
       
       console.log(`[Manual Agent Text] 💬 Project: "${projectName}" | Lead: ${phone}`);
-      console.log(`[Manual Agent Text] 💬 Text: "${previewText}"`);
+      console.log(`[Manual Agent Text] 💬 Text: "${previewText}" ${contextMessageId ? `(Context reply to: ${contextMessageId})` : ''}`);
       console.log(`[Manual Agent Text] 💬 Sending using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
 
       if (phone && phoneId && resolvedToken) {
-        const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken);
+        const result = await sendWhatsAppMessage(phone, text, phoneId, resolvedToken, contextMessageId);
         console.log(`[Manual Agent Text] Result:`, result);
         waSendSuccess = result.success;
         waCategory = result.category;
@@ -658,16 +745,19 @@ export async function saveAgentMessage(chatId: string, text: string): Promise<{ 
     }
   }
 
+  const finalContent = `${replyPrefix}${text}`;
+
   // Guardar en BD local — el mensaje se guarda siempre para que quede en el historial
   await prisma.message.create({
     data: {
       chatId,
       role: 'agent',
-      content: text,
+      content: finalContent,
       waCategory,
       wamid,
       status: waSendSuccess ? "SENT" : "ERROR",
-      sendError: waSendError || null
+      sendError: waSendError || null,
+      buttonsConfig: buttonsConfigData
     }
   });
 
@@ -681,12 +771,15 @@ export async function sendAgentMedia(
   mediaUrl: string,
   mediaType: WaMediaType,
   filename: string,
-  caption?: string
+  caption?: string,
+  replyToMessageId?: string
 ): Promise<{ success: boolean; error?: string }> {
   const project = await getCurrentProject();
   if (!project) return { success: false, error: "No autorizado" };
   const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
   if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return { success: false, error: "No autorizado" };
+
+  const { repliedMsg, contextMessageId, replyPrefix, buttonsConfigData } = await resolveReplyContext(replyToMessageId);
 
   const chat = await prisma.chat.update({
     where: { id: chatId },
@@ -712,12 +805,12 @@ export async function sendAgentMedia(
     const projectName = chat.lead.project?.name || 'Desconocido';
 
     console.log(`[Manual Agent Media] 📎 Project: "${projectName}" | Lead: ${phone}`);
-    console.log(`[Manual Agent Media] 📎 Media: ${mediaType} - ${filename || 'sin-nombre'}`);
+    console.log(`[Manual Agent Media] 📎 Media: ${mediaType} - ${filename || 'sin-nombre'} ${contextMessageId ? `(Context reply to: ${contextMessageId})` : ''}`);
     console.log(`[Manual Agent Media] 📎 Sending using phoneId ${phoneId} and token starts with ${resolvedToken?.substring(0, 15)}`);
 
     if (phone && phoneId && resolvedToken) {
       const result = await sendWhatsAppMedia(
-        phone, mediaUrl, mediaType, phoneId, resolvedToken, caption, filename
+        phone, mediaUrl, mediaType, phoneId, resolvedToken, caption, filename, contextMessageId
       );
       console.log(`[Manual Agent Media] Result:`, result);
       waSendSuccess = result.success;
@@ -741,11 +834,15 @@ export async function sendAgentMedia(
     }
   }
 
+  const finalContent = caption 
+    ? `${replyPrefix}${caption}`
+    : (replyPrefix ? `${replyPrefix}${filename}` : filename);
+
   await prisma.message.create({
     data: {
       chatId,
       role: 'agent',
-      content: caption || filename,
+      content: finalContent,
       imageUrl: isImage ? mediaUrl : null,
       mediaUrl,
       mediaFilename: filename,
@@ -753,7 +850,8 @@ export async function sendAgentMedia(
       waCategory,
       wamid,
       status: waSendSuccess ? "SENT" : "ERROR",
-      sendError: waSendError || null
+      sendError: waSendError || null,
+      buttonsConfig: buttonsConfigData
     }
   });
 
@@ -767,12 +865,15 @@ export async function sendAgentLocation(
   latitude: number,
   longitude: number,
   name?: string,
-  address?: string
+  address?: string,
+  replyToMessageId?: string
 ): Promise<{ success: boolean; error?: string }> {
   const project = await getCurrentProject();
   if (!project) return { success: false, error: "No autorizado" };
   const chatToVerify = await prisma.chat.findUnique({ where: { id: chatId }, include: { lead: true } });
   if (!chatToVerify || chatToVerify.lead.projectId !== project.id) return { success: false, error: "No autorizado" };
+
+  const { repliedMsg, contextMessageId, replyPrefix, buttonsConfigData } = await resolveReplyContext(replyToMessageId);
 
   const chat = await prisma.chat.update({
     where: { id: chatId },
@@ -797,11 +898,11 @@ export async function sendAgentLocation(
     const projectName = chat.lead.project?.name || 'Desconocido';
 
     console.log(`[Manual Agent Location] 📍 Project: "${projectName}" | Lead: ${phone}`);
-    console.log(`[Manual Agent Location] 📍 Coords: ${latitude}, ${longitude} (${name || 'Ubicación'})`);
+    console.log(`[Manual Agent Location] 📍 Coords: ${latitude}, ${longitude} (${name || 'Ubicación'}) ${contextMessageId ? `(Context reply to: ${contextMessageId})` : ''}`);
 
     if (phone && phoneId && resolvedToken) {
       const result = await sendWhatsAppLocation(
-        phone, latitude, longitude, name, address, phoneId, resolvedToken
+        phone, latitude, longitude, name, address, phoneId, resolvedToken, contextMessageId
       );
       console.log(`[Manual Agent Location] Result:`, result);
       waSendSuccess = result.success;
@@ -832,9 +933,10 @@ export async function sendAgentLocation(
   const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
   const trimmedName = name?.trim() || '';
   const trimmedAddress = address?.trim() || '';
-  const content = trimmedName 
+  const baseContent = trimmedName 
     ? (trimmedAddress ? `${trimmedName}\n${trimmedAddress}\n${mapsUrl}` : `${trimmedName}\n${mapsUrl}`)
     : '';
+  const content = `${replyPrefix}${baseContent}`;
 
   await prisma.message.create({
     data: {
@@ -847,7 +949,8 @@ export async function sendAgentLocation(
       waCategory,
       wamid,
       status: waSendSuccess ? "SENT" : "ERROR",
-      sendError: waSendError || null
+      sendError: waSendError || null,
+      buttonsConfig: buttonsConfigData
     }
   });
 

@@ -64,7 +64,7 @@ export default function LearningPage() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#E9E4D8] dark:bg-[#1A1714]">
+      <div className="flex-1 flex items-center justify-center bg-[#EBE4D6] dark:bg-[#1A1714]">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <BrainCircuit className="text-[#6F6F6F]" size={32} />
           <p className="text-sm text-[#6F6F6F]">Cargando reportes de IA...</p>
@@ -75,11 +75,11 @@ export default function LearningPage() {
 
   return (
     <DesktopOnlyGuard>
-    <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
+    <div className="flex-1 flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714]">
       {/* Header */}
-      <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
+      <header className="shrink-0 h-16 flex items-center justify-between px-8 bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl shadow-[inset_0_-1px_0_rgba(138,129,114,.18)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)] z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg flex items-center justify-center">
             <BrainCircuit size={18} />
           </div>
           <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">
@@ -88,7 +88,7 @@ export default function LearningPage() {
         </div>
         <button
           onClick={handleMoveToConfig}
-          className="flex items-center gap-2 px-4 py-2 bg-[#111111] hover:bg-[#333] dark:bg-[#E9E4D8] dark:hover:bg-white dark:text-[#111111] text-white rounded-full text-sm font-medium transition-all shadow-sm"
+          className="btn-primary-abita px-4 py-2 text-sm"
         >
           <Plus size={16} />
           Ver FAQ actual
@@ -99,8 +99,8 @@ export default function LearningPage() {
       <div className="flex-1 overflow-auto p-8 pb-24 md:pb-8">
         <div className="max-w-6xl mx-auto space-y-8 pb-12">
 
-          <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm">
-            <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 bg-[#E9E4D8]/40 dark:bg-[#111111]/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="glass-panel rounded-3xl overflow-hidden shadow-sm">
+            <div className="p-6 border-b border-[#DDD5C2] dark:border-zinc-800 bg-[#EBE4D6]/40 dark:bg-[#111111]/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex-1">
                 <h2 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
                   <MessageSquare size={18} className="text-[#6F6F6F]" />
@@ -110,15 +110,15 @@ export default function LearningPage() {
                   Estas son dudas reales de tus clientes. Al responderlas, el bot aprenderá la respuesta y la usará automáticamente en el futuro.
                 </p>
               </div>
-              <div className="shrink-0 bg-[#F36A2D]/10 text-[#F36A2D] px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap shadow-sm border border-[#F36A2D]/20">
+              <div className="shrink-0 bg-[#FF4D00]/10 text-[#FF4D00] px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap shadow-sm border border-[#FF4D00]/20">
                 {questions.length} pendientes
               </div>
             </div>
 
-            <div className="divide-y divide-[#DEDAD0] dark:divide-zinc-800/60">
+            <div className="divide-y divide-[#DDD5C2] dark:divide-zinc-800/60">
               {questions.length === 0 ? (
                 <div className="p-12 text-center flex flex-col items-center">
-                  <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-4">
+                  <div className="h-12 w-12 bg-[#FFE5DB] dark:bg-[#5C1B00]/30 text-[#E64500] dark:text-[#FF8A4C] rounded-full flex items-center justify-center mb-4">
                     <CheckCircle2 size={24} />
                   </div>
                   <h3 className="text-[#111111] dark:text-[#EDE9E0] font-medium">¡El Bot lo sabe todo!</h3>
@@ -141,7 +141,7 @@ export default function LearningPage() {
                           {q.botAnswer && (
                             <button 
                               onClick={() => setViewingAnswer(q.botAnswer || null)}
-                              className="text-[10px] font-bold text-[#F36A2D] hover:underline uppercase tracking-widest flex items-center gap-1.5"
+                              className="text-[10px] font-bold text-[#FF4D00] hover:underline uppercase tracking-widest flex items-center gap-1.5"
                             >
                               <Eye size={12} /> Ver respuesta del bot
                             </button>
@@ -164,15 +164,15 @@ export default function LearningPage() {
                     </div>
 
                     {answeringId === q.id ? (
-                      <div className="bg-white dark:bg-black/20 border border-[#F36A2D]/30 rounded-2xl p-4 space-y-4 animate-in slide-in-from-top-2">
+                      <div className="bg-white dark:bg-black/20 border border-[#FF4D00]/30 rounded-2xl p-4 space-y-4 animate-in slide-in-from-top-2">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-[#111111] dark:text-[#F36A2D] uppercase tracking-widest ml-1">Escribe la respuesta correcta:</label>
+                          <label className="text-[10px] font-bold text-[#111111] dark:text-[#FF4D00] uppercase tracking-widest ml-1">Escribe la respuesta correcta:</label>
                           <textarea
                             autoFocus
                             value={answer}
                             onChange={(e) => setAnswer(e.target.value)}
                             placeholder="Ej: El horario de atención es de 8am a 6pm de Lunes a Sábado."
-                            className="w-full bg-white/50 dark:bg-black/20 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#F36A2D] h-24 resize-none text-[#111111] dark:text-[#EDE9E0] placeholder-[#6F6F6F]"
+                            className="w-full bg-white/50 dark:bg-black/20 border border-[#DDD5C2] dark:border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#FF4D00] h-24 resize-none text-[#111111] dark:text-[#EDE9E0] placeholder-[#6F6F6F]"
                           />
                         </div>
                         <div className="flex items-center justify-end gap-3">
@@ -185,7 +185,7 @@ export default function LearningPage() {
                           <button
                             disabled={!answer.trim() || isSubmitting}
                             onClick={() => handleTrain(q.id)}
-                            className="px-6 py-2 bg-[#F36A2D] text-white rounded-xl text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                            className="px-6 py-2 bg-[#FF4D00] text-white rounded-xl text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
                           >
                             {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <BrainCircuit size={14} />}
                             Entrenar Bot
@@ -215,10 +215,10 @@ export default function LearningPage() {
       {/* Bot Answer Modal */}
       {viewingAnswer && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#F4F1EC] dark:bg-[#1A1714] w-full max-w-lg rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95">
-            <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between">
+          <div className="bg-[#F4F1EC] dark:bg-[#1A1714] w-full max-w-lg rounded-3xl border border-[#DDD5C2] dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="p-6 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between">
               <h3 className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0] uppercase tracking-widest flex items-center gap-2">
-                <BrainCircuit size={16} className="text-[#F36A2D]" />
+                <BrainCircuit size={16} className="text-[#FF4D00]" />
                 Respuesta fallida del Bot
               </h3>
               <button 
@@ -229,13 +229,13 @@ export default function LearningPage() {
               </button>
             </div>
             <div className="p-8">
-              <div className="bg-white/50 dark:bg-black/20 p-6 rounded-2xl border border-[#DEDAD0] dark:border-zinc-800 italic text-[#6F6F6F] leading-relaxed relative">
+              <div className="bg-white/50 dark:bg-black/20 p-6 rounded-2xl border border-[#DDD5C2] dark:border-zinc-800 italic text-[#6F6F6F] leading-relaxed relative">
                 <span className="text-4xl absolute -top-2 -left-2 opacity-10 font-serif">"</span>
                 {viewingAnswer}
                 <span className="text-4xl absolute -bottom-6 -right-2 opacity-10 font-serif">"</span>
               </div>
             </div>
-            <div className="p-6 bg-[#E9E4D8]/30 dark:bg-black/10 text-center">
+            <div className="p-6 bg-[#EBE4D6]/30 dark:bg-black/10 text-center">
               <button 
                 onClick={() => setViewingAnswer(null)}
                 className="w-full py-3 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-sm font-bold shadow-lg"

@@ -142,13 +142,13 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1A1714] w-full max-w-4xl h-[95vh] md:h-[85vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-[#1A1714] w-full max-w-4xl h-[95vh] md:h-[85vh] rounded-3xl shadow-2xl border border-[#DDD5C2] dark:border-zinc-800 flex flex-col overflow-hidden">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-xl">
-              <CalendarIcon className="text-blue-500" size={20} strokeWidth={2.5} />
+            <div className="p-2 bg-[#8A8172]/10 rounded-xl">
+              <CalendarIcon className="text-[#8A8172]" size={20} strokeWidth={2.5} />
             </div>
             <div>
               <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Visor de Citas</h3>
@@ -165,7 +165,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
         {/* Content */}
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-[#8A8172] animate-spin" />
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center text-red-500 px-6 text-center">
@@ -175,19 +175,19 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
           <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
             
             {/* LEFT PANEL: Calendar Grid */}
-            <div className="w-full md:w-[60%] shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-black/20">
+            <div className="w-full md:w-[60%] shrink-0 border-r border-[#DDD5C2] dark:border-zinc-800 flex flex-col bg-zinc-50/50 dark:bg-black/20">
               
               {/* Calendar Selector (Filter) */}
               {calendars.length > 1 && (
-                <div className="p-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex gap-2 overflow-x-auto custom-scrollbar">
+                <div className="p-4 border-b border-[#DDD5C2] dark:border-zinc-800 flex gap-2 overflow-x-auto custom-scrollbar">
                   {calendars.map(cal => (
                     <button
                       key={cal.id}
                       onClick={() => setActiveCalendarId(cal.id)}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${
                         activeCalendarId === cal.id
-                          ? 'bg-blue-500 text-white border-blue-500'
-                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-blue-500/50'
+                          ? 'bg-[#8A8172] text-white border-[#8A8172]'
+                          : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-[#8A8172]/50'
                       }`}
                     >
                       <span
@@ -242,15 +242,15 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
                           !isCurrentMonth ? 'opacity-30' : 'opacity-100'
                         } ${
                           isSelected 
-                            ? 'bg-blue-500/10 border-blue-500/50' 
+                            ? 'bg-[#8A8172]/10 border-[#8A8172]/50' 
                             : 'hover:bg-black/5 dark:hover:bg-white/5 border-transparent'
                         } border`}
                       >
                         <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mt-1 ${
                           isTodayDate 
-                            ? 'bg-blue-500 text-white' 
+                            ? 'bg-[#8A8172] text-white' 
                             : isSelected 
-                              ? 'text-blue-600 dark:text-blue-400' 
+                              ? 'text-[#5C5C5C] dark:text-[#A3A3A3]' 
                               : 'text-zinc-700 dark:text-zinc-300'
                         }`}>
                           {format(day, 'd')}
@@ -259,7 +259,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
                         {/* Event Indicators */}
                         <div className="mt-auto flex flex-wrap justify-center gap-1 w-full px-1 pb-1">
                           {dayEvents.slice(0, 3).map((_, i) => (
-                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-blue-500' : 'bg-zinc-400 dark:bg-zinc-600'}`} />
+                            <div key={i} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-[#8A8172]' : 'bg-zinc-400 dark:bg-zinc-600'}`} />
                           ))}
                           {dayEvents.length > 3 && (
                             <span className="text-[8px] text-zinc-500 font-bold">+{dayEvents.length - 3}</span>
@@ -274,7 +274,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
 
             {/* RIGHT PANEL: Events List */}
             <div className="w-full md:w-[40%] shrink-0 min-h-[300px] md:min-h-0 flex flex-col bg-white dark:bg-[#1A1714]">
-              <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800">
+              <div className="p-6 border-b border-[#DDD5C2] dark:border-zinc-800">
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white capitalize">
                   {format(selectedDate, 'EEEE, d MMMM', { locale: es })}
                 </h3>
@@ -286,7 +286,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-3">
                 {loadingEvents ? (
                   <div className="flex justify-center p-8">
-                    <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                    <Loader2 className="w-6 h-6 text-[#8A8172] animate-spin" />
                   </div>
                 ) : selectedDayEvents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center p-6 text-zinc-500 opacity-60">
@@ -301,7 +301,7 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
                     return (
                       <div 
                         key={ev.id}
-                        className="group flex flex-col p-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-blue-500/30 transition-colors"
+                        className="group flex flex-col p-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-[#8A8172]/30 transition-colors"
                       >
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-bold text-sm text-zinc-900 dark:text-white leading-tight pr-4">
@@ -312,14 +312,14 @@ export default function CalendarEventsModal({ isOpen, onClose, projectId }: Cale
                               href={ev.htmlLink} 
                               target="_blank" 
                               rel="noreferrer"
-                              className="text-[10px] bg-blue-50 text-blue-600 px-2 py-1 rounded-lg shrink-0 hover:bg-blue-100 transition-colors opacity-0 group-hover:opacity-100"
+                              className="text-[10px] bg-[#F5F0E5] text-[#5C5C5C] px-2 py-1 rounded-lg shrink-0 hover:bg-[#DDD5C2] transition-colors opacity-0 group-hover:opacity-100"
                             >
                               Ver
                             </a>
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#5C5C5C] dark:text-[#A3A3A3] mb-2">
                           <Clock size={12} />
                           <span>{startStr} - {endStr}</span>
                         </div>

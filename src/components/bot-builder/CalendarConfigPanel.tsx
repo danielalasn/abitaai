@@ -52,7 +52,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
           key={v}
           type="button"
           onClick={() => onInsert(`{{${v}}}`)}
-          className="px-2 py-1 text-[10px] font-bold bg-[#F36A2D]/10 text-[#F36A2D] border border-[#F36A2D]/20 rounded-md hover:bg-[#F36A2D]/20 transition-colors"
+          className="px-2 py-1 text-[10px] font-bold bg-[#FF4D00]/10 text-[#FF4D00] border border-[#FF4D00]/20 rounded-md hover:bg-[#FF4D00]/20 transition-colors"
         >
           +{v}
         </button>
@@ -177,20 +177,20 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-        <Loader2 className="animate-spin text-[#F36A2D] w-8 h-8" />
+        <Loader2 className="animate-spin text-[#FF4D00] w-8 h-8" />
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1A1714] w-full max-w-2xl max-h-[80vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-[#1A1714] w-full max-w-2xl max-h-[80vh] rounded-3xl shadow-2xl border border-[#DDD5C2] dark:border-zinc-800 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#F36A2D]/10 rounded-xl">
-              <Calendar className="text-[#F36A2D]" size={20} strokeWidth={2.5} />
+            <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
+              <Calendar className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
             </div>
             <div>
               <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Configuración de Google Calendar</h3>
@@ -216,7 +216,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               <button
                 onClick={fetchCalendars}
                 disabled={loadingCalendars}
-                className="flex items-center gap-1 text-xs text-zinc-400 hover:text-[#F36A2D] transition-colors"
+                className="flex items-center gap-1 text-xs text-zinc-400 hover:text-[#FF4D00] transition-colors"
               >
                 <RefreshCw size={12} className={loadingCalendars ? 'animate-spin' : ''} />
                 Recargar
@@ -240,7 +240,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 <button
                   type="button"
                   onClick={() => setDropdownOpen(o => !o)}
-                  className="w-full flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#F36A2D] transition-colors"
+                  className="w-full flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#FF4D00] transition-colors"
                 >
                   <span className="text-zinc-600 dark:text-zinc-400 truncate">
                     {selectedCalendars.length === 0
@@ -263,7 +263,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                             key={cal.id}
                             type="button"
                             onClick={() => toggleCalendar(cal.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 ${selected ? 'bg-[#F36A2D]/5' : ''}`}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40 ${selected ? 'bg-[#FF4D00]/5' : ''}`}
                           >
                             {/* Color dot */}
                             <span
@@ -275,7 +275,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                               {cal.primary && <span className="ml-1 text-[10px] text-zinc-400">(principal)</span>}
                             </span>
                             {/* Checkbox */}
-                            <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${selected ? 'bg-[#F36A2D] border-[#F36A2D]' : 'border-zinc-300 dark:border-zinc-600'}`}>
+                            <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-all ${selected ? 'bg-[#FF4D00] border-[#FF4D00]' : 'border-zinc-300 dark:border-zinc-600'}`}>
                               {selected && <CheckCircle2 size={10} className="text-white" />}
                             </span>
                           </button>
@@ -291,7 +291,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
             {selectedCalendars.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-1">
                 {selectedCalendars.map(cal => (
-                  <span key={cal.id} className="flex items-center gap-1 bg-[#F36A2D]/10 text-[#F36A2D] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#F36A2D]/20">
+                  <span key={cal.id} className="flex items-center gap-1 bg-[#FF4D00]/10 text-[#FF4D00] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FF4D00]/20">
                     <span
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: cal.backgroundColor || '#4285F4' }}
@@ -320,7 +320,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 onChange={e => setNewField(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddField()}
                 placeholder="ej: nombre_cliente"
-                className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
+                className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00]"
               />
               <button
                 onClick={handleAddField}
@@ -331,7 +331,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {fieldsToCollect.map(field => (
-                <span key={field} className="flex items-center gap-1 bg-[#F36A2D]/10 text-[#F36A2D] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#F36A2D]/20">
+                <span key={field} className="flex items-center gap-1 bg-[#FF4D00]/10 text-[#FF4D00] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#FF4D00]/20">
                   {field}
                   <button onClick={() => handleRemoveField(field)} className="hover:text-red-500 ml-1">
                     <X size={12} />
@@ -355,14 +355,14 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 onClick={() => setMaxCapacityPerSlot(1)}
                 className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border-2 text-left transition-all ${
                   maxCapacityPerSlot === 1
-                    ? 'border-[#F36A2D] bg-[#F36A2D]/5'
+                    ? 'border-[#FF4D00] bg-[#FF4D00]/5'
                     : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg ${ maxCapacityPerSlot === 1 ? 'bg-[#F36A2D]/15' : 'bg-zinc-100 dark:bg-zinc-800' }`}>
-                  <Lock size={14} className={maxCapacityPerSlot === 1 ? 'text-[#F36A2D]' : 'text-zinc-400'} />
+                <div className={`p-1.5 rounded-lg ${ maxCapacityPerSlot === 1 ? 'bg-[#FF4D00]/15' : 'bg-zinc-100 dark:bg-zinc-800' }`}>
+                  <Lock size={14} className={maxCapacityPerSlot === 1 ? 'text-[#FF4D00]' : 'text-zinc-400'} />
                 </div>
-                <span className={`text-xs font-bold ${ maxCapacityPerSlot === 1 ? 'text-[#F36A2D]' : 'text-zinc-700 dark:text-zinc-300' }`}>Exclusivo</span>
+                <span className={`text-xs font-bold ${ maxCapacityPerSlot === 1 ? 'text-[#FF4D00]' : 'text-zinc-700 dark:text-zinc-300' }`}>Exclusivo</span>
                 <span className="text-[10px] text-zinc-400 leading-tight">1 reserva por slot. Cuando alguien aparta, ese horario se cierra para todos.</span>
               </button>
 
@@ -376,14 +376,14 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 }}
                 className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border-2 text-left transition-all ${
                   maxCapacityPerSlot > 1
-                    ? 'border-[#F36A2D] bg-[#F36A2D]/5'
+                    ? 'border-[#FF4D00] bg-[#FF4D00]/5'
                     : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg ${ maxCapacityPerSlot > 1 ? 'bg-[#F36A2D]/15' : 'bg-zinc-100 dark:bg-zinc-800' }`}>
-                  <Users size={14} className={maxCapacityPerSlot > 1 ? 'text-[#F36A2D]' : 'text-zinc-400'} />
+                <div className={`p-1.5 rounded-lg ${ maxCapacityPerSlot > 1 ? 'bg-[#FF4D00]/15' : 'bg-zinc-100 dark:bg-zinc-800' }`}>
+                  <Users size={14} className={maxCapacityPerSlot > 1 ? 'text-[#FF4D00]' : 'text-zinc-400'} />
                 </div>
-                <span className={`text-xs font-bold ${ maxCapacityPerSlot > 1 ? 'text-[#F36A2D]' : 'text-zinc-700 dark:text-zinc-300' }`}>Con cupo</span>
+                <span className={`text-xs font-bold ${ maxCapacityPerSlot > 1 ? 'text-[#FF4D00]' : 'text-zinc-700 dark:text-zinc-300' }`}>Con cupo</span>
                 <span className="text-[10px] text-zinc-400 leading-tight">Múltiples personas hasta un máximo. Ideal para clases, talleres o sesiones grupales.</span>
               </button>
 
@@ -393,14 +393,14 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 onClick={() => setMaxCapacityPerSlot(0)}
                 className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border-2 text-left transition-all ${
                   maxCapacityPerSlot === 0
-                    ? 'border-[#F36A2D] bg-[#F36A2D]/5'
+                    ? 'border-[#FF4D00] bg-[#FF4D00]/5'
                     : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg ${ maxCapacityPerSlot === 0 ? 'bg-[#F36A2D]/15' : 'bg-zinc-100 dark:bg-zinc-800' }`}>
-                  <Infinity size={14} className={maxCapacityPerSlot === 0 ? 'text-[#F36A2D]' : 'text-zinc-400'} />
+                <div className={`p-1.5 rounded-lg ${ maxCapacityPerSlot === 0 ? 'bg-[#FF4D00]/15' : 'bg-zinc-100 dark:bg-zinc-800' }`}>
+                  <Infinity size={14} className={maxCapacityPerSlot === 0 ? 'text-[#FF4D00]' : 'text-zinc-400'} />
                 </div>
-                <span className={`text-xs font-bold ${ maxCapacityPerSlot === 0 ? 'text-[#F36A2D]' : 'text-zinc-700 dark:text-zinc-300' }`}>Ilimitado</span>
+                <span className={`text-xs font-bold ${ maxCapacityPerSlot === 0 ? 'text-[#FF4D00]' : 'text-zinc-700 dark:text-zinc-300' }`}>Ilimitado</span>
                 <span className="text-[10px] text-zinc-400 leading-tight">Sin límite. El bot siempre confirmará disponibilidad y creará un registro por persona.</span>
               </button>
             </div>
@@ -420,9 +420,9 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                     const n = parseInt(val);
                     if (!isNaN(n) && n > 1) setMaxCapacityPerSlot(n);
                   }}
-                  className="w-24 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
+                  className="w-24 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00]"
                 />
-                <span className="text-[10px] text-[#F36A2D] font-semibold">personas por horario</span>
+                <span className="text-[10px] text-[#FF4D00] font-semibold">personas por horario</span>
               </div>
             )}
 
@@ -451,7 +451,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               type="number"
               value={durationMinutes}
               onChange={e => setDurationMinutes(e.target.value === '' ? '' : parseInt(e.target.value) || 60)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00]"
             />
           </div>
 
@@ -475,7 +475,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               type="text"
               value={eventTitle}
               onChange={e => setEventTitle(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00]"
             />
           </div>
 
@@ -487,9 +487,9 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Agrega aquí el contexto general del evento (ej: &quot;Sesión de baile - Nivel intermedio&quot;).
                 </p>
-                <div className="flex items-start gap-2 p-2.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-xl">
-                  <span className="text-blue-500 text-[10px] font-bold mt-0.5 shrink-0">ℹ</span>
-                  <p className="text-[10px] text-blue-600 dark:text-blue-400">
+                <div className="flex items-start gap-2 p-2.5 bg-[#F5F0E5] dark:bg-/30 border border-[#DDD5C2] dark:border-[#8A8172]/50 rounded-xl">
+                  <span className="text-[#8A8172] text-[10px] font-bold mt-0.5 shrink-0">ℹ</span>
+                  <p className="text-[10px] text-[#5C5C5C] dark:text-[#A3A3A3]">
                     La lista de asistentes se agregará <strong>automáticamente</strong> debajo de esta descripción cada vez que alguien reserve. No necesitas agregarla manualmente.
                   </p>
                 </div>
@@ -506,7 +506,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               value={eventDescription}
               onChange={e => setEventDescription(e.target.value)}
               rows={3}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00]"
             />
           </div>
 
@@ -521,7 +521,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
               value={confirmationMessage}
               onChange={e => setConfirmationMessage(e.target.value)}
               rows={2}
-              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#F36A2D]"
+              className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00]"
             />
           </div>
 
@@ -530,7 +530,7 @@ export default function CalendarConfigPanel({ isOpen, onClose, projectId }: Cale
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="px-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-md hover:bg-[#F36A2D] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+              className="px-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-md hover:bg-[#FF4D00] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
             >
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : saveStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar Calendario'}
             </button>

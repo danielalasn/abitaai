@@ -194,9 +194,9 @@ export default function TestChatPage() {
         setHeat(chatData.heat);
 
         if (result.debugPrompt) {
-          console.log("%c🚀 [AI DEBUG PROMPT]", "color: #F36A2D; font-size: 14px; font-weight: bold;");
+          console.log("%c🚀 [AI DEBUG PROMPT]", "color: #FF4D00; font-size: 14px; font-weight: bold;");
           console.log(result.debugPrompt);
-          console.log("%c-----------------------", "color: #F36A2D;");
+          console.log("%c-----------------------", "color: #FF4D00;");
         }
       } catch (error) {
         console.error(error);
@@ -225,34 +225,34 @@ export default function TestChatPage() {
   const selectedAgentName = agents.find(a => a.id === selectedAgentId)?.name || 'Enrutamiento Automático';
 
   if (isInitialLoading) return (
-    <div className="flex-1 flex items-center justify-center bg-[#E9E4D8] dark:bg-[#1A1714]">
-      <Loader2 className="animate-spin text-[#F36A2D]" size={32} />
+    <div className="flex-1 flex items-center justify-center bg-[#EBE4D6] dark:bg-[#1A1714]">
+      <Loader2 className="animate-spin text-[#FF4D00]" size={32} />
     </div>
   );
 
   return (
     <DesktopOnlyGuard>
-      <div className="flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
+      <div className="flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714]">
         {/* Header con Selector de Agente y Score */}
-        <header className="px-8 py-5 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md sticky top-0 z-10 transition-all">
+        <header className="px-8 py-5 border-b border-[#DDD5C2] dark:border-zinc-800/60 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#EBE4D6]/80 dark:bg-[#1A1714]/80 backdrop-blur-md sticky top-0 z-10 transition-all">
           <div className="flex items-center gap-6">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-[#EDE9E0] flex items-center gap-2">
                 Simulador
-                <Sparkles size={20} className="text-[#F36A2D]" />
+                <Sparkles size={20} className="text-[#FF4D00]" />
               </h1>
               <p className="text-sm text-zinc-500 mt-1 dark:text-zinc-400">
                 Prueba cómo interactúa tu agente en un entorno real.
               </p>
             </div>
 
-            <div className="h-10 w-[1px] bg-[#DEDAD0] dark:bg-zinc-800 hidden md:block" />
+            <div className="h-10 w-[1px] bg-[#DDD5C2] dark:bg-zinc-800 hidden md:block" />
 
             {/* Lead Score Badge */}
             <div className="flex items-center gap-3">
               <div className={`px-4 py-2 rounded-2xl flex items-center gap-2 transition-all shadow-sm border ${heat === 'CALIENTE' ? 'bg-orange-500/10 border-orange-500/30 text-orange-600' :
                 heat === 'TIBIO' ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' :
-                  'bg-blue-500/10 border-blue-500/30 text-blue-600'
+                  'bg-[#8A8172]/10 border-[#8A8172]/30 text-[#5C5C5C]'
                 }`}>
                 <Flame size={18} className={heat === 'CALIENTE' ? 'animate-pulse' : ''} />
                 <div className="flex flex-col leading-none">
@@ -272,7 +272,7 @@ export default function TestChatPage() {
                     const val = e.target.value;
                     setSelectedAgentId(val === "" ? null : val);
                   }}
-                  className="appearance-none bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl px-4 py-2 pr-10 text-sm font-medium text-zinc-900 dark:text-[#EDE9E0] focus:outline-none focus:ring-2 focus:ring-[#F36A2D]/50 transition-all cursor-pointer shadow-sm"
+                  className="appearance-none bg-white dark:bg-zinc-900 border border-[#DDD5C2] dark:border-zinc-800 rounded-xl px-4 py-2 pr-10 text-sm font-medium text-zinc-900 dark:text-[#EDE9E0] focus:outline-none focus:ring-2 focus:ring-[#FF4D00]/50 transition-all cursor-pointer shadow-sm"
                 >
                   <option value="">🤖 Enrutamiento Dinámico</option>
                   {agents.map(agent => (
@@ -286,7 +286,7 @@ export default function TestChatPage() {
             <button
               onClick={handleReset}
               disabled={isResetting}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 rounded-xl text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-red-500 hover:border-red-200 transition-all shadow-sm disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-[#DDD5C2] dark:border-zinc-800 rounded-xl text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-red-500 hover:border-red-200 transition-all shadow-sm disabled:opacity-50"
             >
               {isResetting ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -303,7 +303,7 @@ export default function TestChatPage() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-zinc-400 text-center animate-in fade-in zoom-in-95 duration-500">
               <div className="w-20 h-20 bg-white/50 dark:bg-white/5 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
-                <Bot size={40} className="text-[#F36A2D]/50" />
+                <Bot size={40} className="text-[#FF4D00]/50" />
               </div>
               <h3 className="text-lg font-bold text-zinc-900 dark:text-[#EDE9E0]">Simulador listo</h3>
               <p className="max-w-xs mt-2 text-sm text-zinc-500 dark:text-zinc-400">
@@ -318,7 +318,7 @@ export default function TestChatPage() {
             <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
               {msg.role === 'assistant' && (
                 <div className="shrink-0 flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-[#DEDAD0] dark:border-zinc-800 text-[#F36A2D]">
+                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-[#DDD5C2] dark:border-zinc-800 text-[#FF4D00]">
                     <Bot size={22} />
                   </div>
                 </div>
@@ -326,17 +326,17 @@ export default function TestChatPage() {
 
               <div className={`flex flex-col gap-1.5 ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-[80%]`}>
                 {msg.agentName && (
-                  <span className="text-[10px] font-bold text-[#F36A2D] uppercase tracking-widest pl-1 mb-0.5 flex items-center gap-1">
-                    <span className="w-1 h-1 bg-[#F36A2D] rounded-full" /> {msg.agentName}
+                  <span className="text-[10px] font-bold text-[#FF4D00] uppercase tracking-widest pl-1 mb-0.5 flex items-center gap-1">
+                    <span className="w-1 h-1 bg-[#FF4D00] rounded-full" /> {msg.agentName}
                   </span>
                 )}
 
                 {msg.scoreBump && (
-                  <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-800/20 border border-emerald-200 dark:border-emerald-800/50 px-3 py-1.5 rounded-xl mb-1 self-start animate-in fade-in slide-in-from-left-2 duration-300 shadow-sm">
-                    <div className="px-2 py-0.5 bg-emerald-500 rounded-full text-[11px] text-white font-black whitespace-nowrap">
+                  <div className="flex items-center gap-2 bg-[#FFF1EA] dark:bg-[#8A2900]/20 border border-[#FFD0BC] dark:border-[#8A2900]/50 px-3 py-1.5 rounded-xl mb-1 self-start animate-in fade-in slide-in-from-left-2 duration-300 shadow-sm">
+                    <div className="px-2 py-0.5 bg-[#FF4D00] rounded-full text-[11px] text-white font-black whitespace-nowrap">
                       +{msg.scoreBump}
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-[#B33500] dark:text-[#FF8A4C] uppercase tracking-wider">
                       {msg.scoreReason || 'Calificación de interés'}
                     </span>
                   </div>
@@ -344,14 +344,14 @@ export default function TestChatPage() {
 
                 <div className={`px-5 py-3.5 rounded-2xl shadow-sm border space-y-2 ${msg.role === 'user'
                   ? 'bg-zinc-900 dark:bg-[#EDE9E0] text-white dark:text-zinc-900 border-zinc-800 dark:border-[#EDE9E0] rounded-tr-sm'
-                  : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border-[#DEDAD0] dark:border-zinc-800 rounded-tl-sm'
+                  : 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 border-[#DDD5C2] dark:border-zinc-800 rounded-tl-sm'
                   }`}>
                   {(msg.mediaUrl || msg.imageUrl) && (
                     <div className="mb-2">
                       {msg.mediaType === 'image' || msg.imageUrl || msg.mediaUrl?.match(/\.(jpeg|jpg|png|gif|webp)($|\?)/i) ? (
                         <img src={msg.mediaUrl || msg.imageUrl || ''} alt="Adjunto" className="rounded-xl max-h-64 object-cover border border-zinc-200 dark:border-zinc-700" />
                       ) : (
-                        <a href={msg.mediaUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-[#F36A2D]">
+                        <a href={msg.mediaUrl || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-[#FF4D00]">
                           <FileText size={18} />
                           <span className="truncate max-w-[180px]">{msg.mediaFilename || 'Documento adjunto'}</span>
                           <ExternalLink size={14} className="ml-auto" />
@@ -366,7 +366,7 @@ export default function TestChatPage() {
               </div>
 
               {msg.role === 'user' && (
-                <div className="w-10 h-10 rounded-xl bg-[#F36A2D] text-white flex items-center justify-center shadow-md grow-0 shrink-0 self-end">
+                <div className="w-10 h-10 rounded-xl bg-[#FF4D00] text-white flex items-center justify-center shadow-md grow-0 shrink-0 self-end">
                   <User size={22} />
                 </div>
               )}
@@ -375,13 +375,13 @@ export default function TestChatPage() {
 
           {isLoading && (
             <div className="flex gap-4 justify-start">
-              <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-[#DEDAD0] dark:border-zinc-800">
-                <Loader2 className="animate-spin text-[#F36A2D]" size={20} />
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-[#DDD5C2] dark:border-zinc-800">
+                <Loader2 className="animate-spin text-[#FF4D00]" size={20} />
               </div>
-              <div className="px-5 py-4 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-500 border border-[#DEDAD0] dark:border-zinc-800 rounded-tl-sm flex items-center gap-1.5 shadow-sm">
-                <span className="w-1.5 h-1.5 bg-[#F36A2D] rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                <span className="w-1.5 h-1.5 bg-[#F36A2D] rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                <span className="w-1.5 h-1.5 bg-[#F36A2D] rounded-full animate-bounce"></span>
+              <div className="px-5 py-4 rounded-2xl bg-white dark:bg-zinc-900 text-zinc-500 border border-[#DDD5C2] dark:border-zinc-800 rounded-tl-sm flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 bg-[#FF4D00] rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                <span className="w-1.5 h-1.5 bg-[#FF4D00] rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                <span className="w-1.5 h-1.5 bg-[#FF4D00] rounded-full animate-bounce"></span>
               </div>
             </div>
           )}
@@ -390,14 +390,14 @@ export default function TestChatPage() {
         </div>
 
         {/* Input de Chat */}
-        <div className="p-6 bg-transparent border-t border-[#DEDAD0] dark:border-zinc-800/60 transition-all flex flex-col gap-2">
+        <div className="p-6 bg-transparent border-t border-[#DDD5C2] dark:border-zinc-800/60 transition-all flex flex-col gap-2">
           {pendingFile && (
-            <div className="max-w-4xl mx-auto w-full mb-2 flex items-center gap-2 p-2 bg-white/50 dark:bg-zinc-900/50 border border-[#DEDAD0] dark:border-zinc-700 rounded-xl">
+            <div className="max-w-4xl mx-auto w-full mb-2 flex items-center gap-2 p-2 bg-white/50 dark:bg-zinc-900/50 border border-[#DDD5C2] dark:border-zinc-700 rounded-xl">
               {pendingFilePreview ? (
                 <img src={pendingFilePreview} alt="preview" className="h-10 w-10 object-cover rounded-lg shrink-0" />
               ) : (
-                <div className="h-10 w-10 bg-[#F36A2D]/10 rounded-lg flex items-center justify-center shrink-0">
-                  <FileText size={18} className="text-[#F36A2D]" />
+                <div className="h-10 w-10 bg-[#FF4D00]/10 rounded-lg flex items-center justify-center shrink-0">
+                  <FileText size={18} className="text-[#FF4D00]" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -413,7 +413,7 @@ export default function TestChatPage() {
             </div>
           )}
 
-          <div className="max-w-4xl mx-auto w-full flex items-end gap-3 bg-white/50 dark:bg-zinc-900/50 p-2 rounded-3xl border border-[#DEDAD0] dark:border-zinc-800 shadow-sm focus-within:border-[#F36A2D]/50 focus-within:ring-4 focus-within:ring-[#F36A2D]/5 transition-all">
+          <div className="max-w-4xl mx-auto w-full flex items-end gap-3 bg-white/50 dark:bg-zinc-900/50 p-2 rounded-3xl border border-[#DDD5C2] dark:border-zinc-800 shadow-sm focus-within:border-[#FF4D00]/50 focus-within:ring-4 focus-within:ring-[#FF4D00]/5 transition-all">
             <input
               type="file"
               ref={fileInputRef}
@@ -423,7 +423,7 @@ export default function TestChatPage() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 p-3 bg-white dark:bg-zinc-800 border border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D] rounded-full transition-all mb-1"
+              className="shrink-0 p-3 bg-white dark:bg-zinc-800 border border-[#DDD5C2] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#FF4D00] hover:border-[#FF4D00] rounded-full transition-all mb-1"
               title="Adjuntar archivo"
             >
               <Paperclip size={18} />
@@ -432,7 +432,7 @@ export default function TestChatPage() {
             <div className="relative mb-1" ref={emojiPickerRef}>
               <button
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`shrink-0 p-3 border rounded-full transition-all ${showEmojiPicker ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
+                className={`shrink-0 p-3 border rounded-full transition-all ${showEmojiPicker ? 'bg-[#FF4D00]/10 border-[#FF4D00] text-[#FF4D00]' : 'bg-white dark:bg-zinc-800 border-[#DDD5C2] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#FF4D00] hover:border-[#FF4D00]'}`}
                 title="Insertar emoji"
               >
                 <Smile size={18} />

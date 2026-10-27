@@ -125,19 +125,19 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <Loader2 className="animate-spin text-green-500 w-8 h-8" />
+        <Loader2 className="animate-spin text-[#FF4D00] w-8 h-8" />
       </div>
     );
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1A1714] w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-[#1A1714] w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl border border-[#DDD5C2] dark:border-zinc-800 flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-500/10 rounded-xl">
+            <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
                 <rect x="3" y="4" width="18" height="16" rx="2" fill="#fff" stroke="#dadce0" strokeWidth="1.5" />
                 <path d="M3 10h18M9 4v16M15 4v16" stroke="#dadce0" strokeWidth="1.5" />
@@ -177,7 +177,7 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                   className="w-full flex items-center justify-between px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-left"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400 text-[10px] font-black flex items-center justify-center">
+                    <span className="w-5 h-5 rounded-full bg-[#FF4D00]/15 text-[#E64500] dark:text-[#FF8A4C] text-[10px] font-black flex items-center justify-center">
                       {idx + 1}
                     </span>
                     <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-[280px]">
@@ -210,7 +210,7 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                         value={table.name || ''}
                         onChange={e => updateTable(table.id, { name: e.target.value })}
                         placeholder="Ej: Inventario"
-                        className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-green-500 transition-colors"
+                        className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00] transition-colors"
                       />
                     </div>
 
@@ -223,7 +223,7 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                           onClick={() => updateTable(table.id, { type: 'strict', queryColumn: '' })}
                           className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition-all ${
                             (table.type ?? 'strict') === 'strict'
-                              ? 'border-green-500 bg-green-500/10'
+                              ? 'border-[#FF4D00] bg-[#FF4D00]/10'
                               : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
                           }`}
                         >
@@ -235,7 +235,7 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                           onClick={() => updateTable(table.id, { type: 'flexible', queryColumn: '' })}
                           className={`flex flex-col gap-1 p-3 rounded-xl border text-left transition-all ${
                             table.type === 'flexible'
-                              ? 'border-blue-500 bg-blue-500/10'
+                              ? 'border-[#8A8172] bg-[#8A8172]/10'
                               : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
                           }`}
                         >
@@ -254,7 +254,7 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                         onChange={e => updateTable(table.id, { instructions: e.target.value })}
                         rows={2}
                         placeholder="Usa esta tabla cuando el cliente pregunte sobre..."
-                        className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-green-500 resize-none transition-colors"
+                        className="w-full bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00] resize-none transition-colors"
                       />
                     </div>
 
@@ -267,7 +267,7 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                             href={`https://docs.google.com/spreadsheets/d/${table.spreadsheetId}/edit`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[10px] text-green-600 hover:underline"
+                            className="flex items-center gap-1 text-[10px] text-[#E64500] hover:underline"
                           >
                             <ExternalLink size={10} /> Abrir en Drive
                           </a>
@@ -286,13 +286,13 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                             setAvailableColumns(p => { const n = { ...p }; delete n[table.id]; return n; });
                           }}
                           placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms"
-                          className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:border-green-500 font-mono transition-colors"
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00] font-mono transition-colors"
                         />
                         <button
                           type="button"
                           onClick={() => verifyColumns(table)}
                           disabled={!table.spreadsheetId || isVerifying}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/30 rounded-xl text-xs font-bold hover:bg-green-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                          className="flex items-center gap-1.5 px-4 py-2 bg-[#FF4D00]/10 text-[#E64500] dark:text-[#FF8A4C] border border-[#FF4D00]/30 rounded-xl text-xs font-bold hover:bg-[#FF4D00]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all whitespace-nowrap"
                         >
                           {isVerifying
                             ? <><Loader2 size={12} className="animate-spin" /> Verificando...</>
@@ -319,7 +319,7 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                             setAvailableColumns(p => { const n = { ...p }; delete n[table.id]; return n; });
                           }}
                           placeholder="Sheet1"
-                          className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-green-500 transition-colors"
+                          className="flex-1 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-[#FF4D00] transition-colors"
                         />
                         {!hasVerified && (
                           <span className="text-[10px] text-zinc-400">Haz clic en "Verificar" para cargar las columnas</span>
@@ -350,8 +350,8 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                                 onClick={() => updateTable(table.id, { queryColumn: table.queryColumn === col ? '' : col })}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                                   table.queryColumn === col
-                                    ? (table.type === 'flexible' ? 'bg-blue-500 text-white border-blue-500' : 'bg-green-500 text-white border-green-500')
-                                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-green-400'
+                                    ? (table.type === 'flexible' ? 'bg-[#8A8172] text-white border-[#8A8172]' : 'bg-[#FF4D00] text-white border-[#FF4D00]')
+                                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-[#FF8A4C]'
                                 }`}
                               >
                                 {col}
@@ -373,8 +373,8 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                                   type="button"
                                   onClick={() => toggleReadColumn(table.id, col)}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 ${selected
-                                    ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/40'
-                                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-green-400'
+                                    ? 'bg-[#FF4D00]/10 text-[#B33500] dark:text-[#FF8A4C] border-[#FF4D00]/40'
+                                    : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-[#FF8A4C]'
                                     }`}
                                 >
                                   {selected && <CheckCircle2 size={10} />}
@@ -394,11 +394,11 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
                     {hasVerified && table.readColumns.length > 0 && (
                       <div className={`p-3 rounded-xl border ${
                         table.type === 'flexible'
-                          ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/40'
-                          : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/40'
+                          ? 'bg-[#F5F0E5] dark:bg-/20 border-[#DDD5C2] dark:border-[#8A8172]/40'
+                          : 'bg-[#FFF1EA] dark:bg-[#3D1200]/20 border-[#FFD0BC] dark:border-[#8A2900]/40'
                       }`}>
                         <p className={`text-[10px] leading-relaxed ${
-                          table.type === 'flexible' ? 'text-blue-700 dark:text-blue-400' : 'text-green-700 dark:text-green-400'
+                          table.type === 'flexible' ? 'text-[#5C5C5C] dark:text-[#A3A3A3]' : 'text-[#B33500] dark:text-[#FF8A4C]'
                         }`}>
                           {(table.type ?? 'strict') === 'strict'
                             ? <>Búsqueda exacta por <strong>{table.queryColumn || '(sin columna)'}</strong>. Leerá: <strong>{table.readColumns.join(', ')}</strong>.</>                            
@@ -416,18 +416,18 @@ export default function SheetsConfigPanel({ isOpen, onClose, projectId }: Sheets
           <button
             type="button"
             onClick={addTable}
-            className="w-full py-3 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl text-xs font-bold text-zinc-500 hover:border-green-400 hover:text-green-600 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl text-xs font-bold text-zinc-500 hover:border-[#FF8A4C] hover:text-[#E64500] transition-all flex items-center justify-center gap-2"
           >
             <Plus size={14} /> Agregar otra tabla
           </button>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-end shrink-0">
+        <div className="px-6 py-4 border-t border-[#DDD5C2] dark:border-zinc-800 flex justify-end shrink-0">
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-md hover:bg-green-600 hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
+            className="px-6 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] py-3 rounded-xl text-xs font-black tracking-tight shadow-md hover:bg-[#E64500] hover:text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center gap-2"
           >
             {isSaving
               ? <><Loader2 size={16} className="animate-spin" /> Guardando...</>

@@ -8,7 +8,8 @@ import {
   PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search, Filter, Mail, Trash2, Archive,
   CheckCircle2, XCircle, AlertTriangle, ShieldCheck, MessageSquare, Check, CheckCheck,
   Paperclip, FileText, X as XIcon, Image as ImageIcon, Smile, Sparkles, RefreshCw, Download,
-  Mic, Square, ChevronDown, LogOut, Camera, MapPin, ExternalLink, Navigation, ArrowUpRight
+  Mic, Square, ChevronDown, LogOut, Camera, MapPin, ExternalLink, Navigation, ArrowUpRight,
+  Reply
 } from "lucide-react";
 import { getProfileWithMeta } from '@/app/actions/settings';
 import { formatWhatsAppText } from '@/lib/utils';
@@ -156,6 +157,8 @@ export default function InboxPage() {
   // States para los dos inputs mockeados
   const [clientInput, setClientInput] = useState('');
   const [agentInput, setAgentInput] = useState('');
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const agentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Media attachment state
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -210,12 +213,16 @@ export default function InboxPage() {
   const lastRequestedId = useRef<string | null>(null);
   const pollIntervalRef = useRef(3000);
 
+  // Estado para dropdown personalizado de filtros
+  const [openFilterDropdown, setOpenFilterDropdown] = useState<string | null>(null);
+  const filterDropdownContainerRef = useRef<HTMLDivElement>(null);
+
   // Sincronizar el Ref con el ID activo
   useEffect(() => {
     activeChatIdRef.current = activeChat?.id || null;
   }, [activeChat?.id]);
 
-  // Cerrar emoji picker al hacer clic fuera
+  // Cerrar emoji picker, attach menu y filter dropdown al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
@@ -223,6 +230,9 @@ export default function InboxPage() {
       }
       if (attachMenuRef.current && !attachMenuRef.current.contains(event.target as Node)) {
         setShowAttachMenu(false);
+      }
+      if (filterDropdownContainerRef.current && !filterDropdownContainerRef.current.contains(event.target as Node)) {
+        setOpenFilterDropdown(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -470,6 +480,8 @@ export default function InboxPage() {
 
   // Cargar detalle de un chat con CACHE para respuesta instantánea (paginado)
   const loadChatDetails = async (chatId: string) => {
+    // Limpiar estado de respuesta previa al cambiar de conversación
+    setReplyingTo(null);
     // En móvil, al seleccionar un chat cambiar a vista de conversación
     setMobileView('chat');
     // 0. Registrar el ID solicitado inmediatamente para evitar condiciones de carrera
@@ -604,17 +616,27 @@ export default function InboxPage() {
     }
   };
 
-  // Delete Chat
+  // Desplaza suavemente hacia un mensaje y lo resalta visualmente
   const scrollToMessage = (msgId: string) => {
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Pulso de tamaño y brillo sin bordes
-      element.classList.add('scale-[1.02]', 'brightness-125', 'z-50');
+      element.classList.add('ring-2', 'ring-[#FF4D00]', 'ring-offset-2', 'dark:ring-offset-black', 'scale-[1.02]', 'brightness-110', 'z-50', 'transition-all', 'duration-300');
       setTimeout(() => {
-        element.classList.remove('scale-[1.02]', 'brightness-125', 'z-50');
-      }, 800);
+        element.classList.remove('ring-2', 'ring-[#FF4D00]', 'ring-offset-2', 'dark:ring-offset-black', 'scale-[1.02]', 'brightness-110', 'z-50');
+      }, 1400);
     }
+  };
+
+  // Inicia la respuesta contextual a un mensaje específico
+  const handleStartReply = (msg: any) => {
+    if (activeChat?.botActive) {
+      handleToggleBot();
+    }
+    setReplyingTo(msg);
+    setTimeout(() => {
+      agentTextareaRef.current?.focus();
+    }, 60);
   };
 
   const renderMessageContent = (content: string, allMessages: any[]) => {
@@ -638,8 +660,8 @@ export default function InboxPage() {
               }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <div className="font-black text-[9px] uppercase tracking-tighter text-[#F36A2D]">En respuesta a:</div>
-              {originalMsg && <div className="text-[8px] font-bold text-[#F36A2D] opacity-0 group-hover:opacity-100 transition-opacity">IR AL MENSAJE ↑</div>}
+              <div className="font-black text-[9px] uppercase tracking-tighter text-[#FF4D00]">En respuesta a:</div>
+              {originalMsg && <div className="text-[8px] font-bold text-[#FF4D00] opacity-0 group-hover:opacity-100 transition-opacity">IR AL MENSAJE ↑</div>}
             </div>
             <div className="line-clamp-2 italic opacity-80 leading-snug">
               {repliedText}
@@ -753,6 +775,14 @@ export default function InboxPage() {
     const formattedTime = `${Math.floor(elapsedSeconds / 60)}:${(elapsedSeconds % 60).toString().padStart(2, '0')}`;
     const voiceNoteCaption = `Mensaje de voz (${formattedTime})`;
 
+    const replyTarget = replyingTo;
+    setReplyingTo(null);
+
+    const rawSnippet = replyTarget?.content || replyTarget?.mediaFilename || (replyTarget?.mediaType ? `[${replyTarget?.mediaType}]` : 'Mensaje');
+    const cleanSnippet = rawSnippet ? rawSnippet.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').replace(/"/g, "'").slice(0, 100) : '';
+    const replyPrefix = replyTarget ? `[En respuesta a: "${cleanSnippet}"]\n` : '';
+    const optimisticContent = `${replyPrefix}${voiceNoteCaption}`;
+
     // UI optimista: mostrar la burbuja con relojito INMEDIATAMENTE
     const tempId = 'temp-voice-' + Date.now();
     const localUrl = URL.createObjectURL(blob);
@@ -764,13 +794,24 @@ export default function InboxPage() {
         messages: [...prev.messages, {
           id: tempId,
           role: 'agent',
-          content: voiceNoteCaption,
+          content: optimisticContent,
           mediaUrl: localUrl,
           mediaType: 'audio',
           mediaFilename: fileName,
           createdAt: new Date().toISOString(),
           status: 'pending',
           sendError: null,
+          buttonsConfig: replyTarget ? JSON.stringify({
+            replyTo: {
+              id: replyTarget.id,
+              wamid: replyTarget.wamid,
+              role: replyTarget.role,
+              content: cleanSnippet,
+              mediaType: replyTarget.mediaType,
+              mediaUrl: replyTarget.mediaUrl || replyTarget.imageUrl,
+              mediaFilename: replyTarget.mediaFilename
+            }
+          }) : null
         }]
       };
     });
@@ -786,7 +827,7 @@ export default function InboxPage() {
         throw new Error((uploadResult as any).error || 'Error al subir el audio');
       }
 
-      const result = await sendAgentMedia(chatId, uploadResult.url, 'audio', fileName, voiceNoteCaption);
+      const result = await sendAgentMedia(chatId, uploadResult.url, 'audio', fileName, voiceNoteCaption, replyTarget?.id);
 
       // Actualizar el mensaje optimista con el resultado real
       setActiveChat((prev: any) => {
@@ -832,6 +873,14 @@ export default function InboxPage() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
+        const replyTarget = replyingTo;
+        setReplyingTo(null);
+
+        const rawSnippet = replyTarget?.content || replyTarget?.mediaFilename || (replyTarget?.mediaType ? `[${replyTarget?.mediaType}]` : 'Mensaje');
+        const cleanSnippet = rawSnippet ? rawSnippet.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').replace(/"/g, "'").slice(0, 100) : '';
+        const replyPrefix = replyTarget ? `[En respuesta a: "${cleanSnippet}"]\n` : '';
+        const optimisticContent = `${replyPrefix}`;
+
         const tempId = `temp-loc-${Date.now()}`;
         const chatId = activeChat.id;
         const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
@@ -844,20 +893,31 @@ export default function InboxPage() {
             messages: [...prev.messages, {
               id: tempId,
               role: 'agent',
-              content: '',
+              content: optimisticContent,
               mediaUrl: mapsUrl,
               mediaType: 'location',
               mediaFilename: JSON.stringify({ latitude, longitude, name: '', address: '' }),
               createdAt: new Date().toISOString(),
               status: 'pending',
               sendError: null,
+              buttonsConfig: replyTarget ? JSON.stringify({
+                replyTo: {
+                  id: replyTarget.id,
+                  wamid: replyTarget.wamid,
+                  role: replyTarget.role,
+                  content: cleanSnippet,
+                  mediaType: replyTarget.mediaType,
+                  mediaUrl: replyTarget.mediaUrl || replyTarget.imageUrl,
+                  mediaFilename: replyTarget.mediaFilename
+                }
+              }) : null
             }]
           };
         });
         setTimeout(() => scrollToBottom(true), 50);
 
         try {
-          const result = await sendAgentLocation(chatId, latitude, longitude);
+          const result = await sendAgentLocation(chatId, latitude, longitude, undefined, undefined, replyTarget?.id);
           setActiveChat((prev: any) => {
             if (!prev) return prev;
             return {
@@ -1074,16 +1134,36 @@ export default function InboxPage() {
 
     const msgContent = agentInput.trim();
     const chatId = activeChat.id;
+    const replyTarget = replyingTo;
+
+    // Limpiar input y estado de respuesta
     setAgentInput('');
+    setReplyingTo(null);
+
+    const rawSnippet = replyTarget?.content || replyTarget?.mediaFilename || (replyTarget?.mediaType ? `[${replyTarget?.mediaType}]` : 'Mensaje');
+    const cleanSnippet = rawSnippet ? rawSnippet.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').replace(/"/g, "'").slice(0, 100) : '';
+    const replyPrefix = replyTarget ? `[En respuesta a: "${cleanSnippet}"]\n` : '';
+    const optimisticContent = `${replyPrefix}${msgContent}`;
 
     const temporaryId = 'temp-' + Date.now();
     const optimisticMessage = {
       id: temporaryId,
       role: 'agent',
-      content: msgContent,
+      content: optimisticContent,
       createdAt: new Date().toISOString(),
       status: 'pending',
       sendError: null as string | null,
+      buttonsConfig: replyTarget ? JSON.stringify({
+        replyTo: {
+          id: replyTarget.id,
+          wamid: replyTarget.wamid,
+          role: replyTarget.role,
+          content: cleanSnippet,
+          mediaType: replyTarget.mediaType,
+          mediaUrl: replyTarget.mediaUrl || replyTarget.imageUrl,
+          mediaFilename: replyTarget.mediaFilename
+        }
+      }) : null
     };
 
     // Registrar como en vuelo → bloquea el polling
@@ -1098,7 +1178,7 @@ export default function InboxPage() {
     // Todo lo demás en background
     (async () => {
       try {
-        const result = await saveAgentMessage(chatId, msgContent);
+        const result = await saveAgentMessage(chatId, msgContent, replyTarget?.id);
 
         if (result.success) {
           // Marcar como enviado → aparece el cheque ✓
@@ -1183,6 +1263,18 @@ export default function InboxPage() {
       const { url, mediaType, filename } = uploadResult as any;
       const caption = agentInput.trim() || undefined;
       const chatId = activeChat.id;
+      const replyTarget = replyingTo;
+
+      // Limpiar UI inmediatamente
+      setPendingFile(null);
+      setPendingFilePreview(null);
+      setAgentInput('');
+      setReplyingTo(null);
+
+      const rawSnippet = replyTarget?.content || replyTarget?.mediaFilename || (replyTarget?.mediaType ? `[${replyTarget?.mediaType}]` : 'Mensaje');
+      const cleanSnippet = rawSnippet ? rawSnippet.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').replace(/"/g, "'").slice(0, 100) : '';
+      const replyPrefix = replyTarget ? `[En respuesta a: "${cleanSnippet}"]\n` : '';
+      const optimisticContent = caption ? `${replyPrefix}${caption}` : (replyPrefix ? `${replyPrefix}${filename}` : filename);
 
       // Optimistic UI
       const tempId = 'temp-media-' + Date.now();
@@ -1195,24 +1287,30 @@ export default function InboxPage() {
           messages: [...prev.messages, {
             id: tempId,
             role: 'agent',
-            content: caption || filename,
+            content: optimisticContent,
             imageUrl: isImage ? url : null,
             createdAt: new Date().toISOString(),
             status: 'pending',
             _mediaType: mediaType,
             _mediaUrl: url,
             _filename: filename,
+            buttonsConfig: replyTarget ? JSON.stringify({
+              replyTo: {
+                id: replyTarget.id,
+                wamid: replyTarget.wamid,
+                role: replyTarget.role,
+                content: cleanSnippet,
+                mediaType: replyTarget.mediaType,
+                mediaUrl: replyTarget.mediaUrl || replyTarget.imageUrl,
+                mediaFilename: replyTarget.mediaFilename
+              }
+            }) : null
           }]
         };
       });
 
-      // Limpiar UI inmediatamente
-      setPendingFile(null);
-      setPendingFilePreview(null);
-      setAgentInput('');
-
       // Enviar en background
-      const result = await sendAgentMedia(chatId, url, mediaType, filename, caption);
+      const result = await sendAgentMedia(chatId, url, mediaType, filename, caption, replyTarget?.id);
 
       setActiveChat((prev: any) => {
         if (!prev) return prev;
@@ -1302,9 +1400,9 @@ export default function InboxPage() {
 
   if (status === 'loading') {
     return (
-      <div className="flex h-dvh w-full items-center justify-center bg-[#E9E4D8] dark:bg-[#1A1714]">
+      <div className="flex h-dvh w-full items-center justify-center bg-[#EBE4D6] dark:bg-[#1A1714]">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-[#F36A2D]" size={40} />
+          <Loader2 className="animate-spin text-[#FF4D00]" size={40} />
           <span className="text-sm font-medium text-[#6F6F6F] animate-pulse">Iniciando plataforma...</span>
         </div>
       </div>
@@ -1314,148 +1412,219 @@ export default function InboxPage() {
   if (!session) return null;
 
   return (
-    <div className="flex flex-1 h-full w-full bg-[#E9E4D8] dark:bg-[#1A1714] min-w-0 min-h-0 overflow-hidden">
+    <div className="flex flex-1 h-full w-full bg-[#EBE4D6] dark:bg-[#1A1714] min-w-0 min-h-0 overflow-hidden">
       {/* 1. SIDEBAR DE CHATS */}
       {/* Desktop: controlado por isInboxSidebarOpen | Móvil: pantalla completa solo si mobileView === 'list' */}
-      <div className={`shrink-0 border-r border-[#DEDAD0] dark:border-zinc-800/60 bg-[#DEDAD0]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out min-h-0 overflow-hidden
+      <div className={`shrink-0 border-r border-[#DDD5C2] dark:border-zinc-800/60 bg-[#DDD5C2]/50 dark:bg-[#141210] flex flex-col transition-all duration-300 ease-in-out min-h-0 overflow-hidden
         ${isInboxSidebarOpen ? 'md:w-[300px]' : 'md:w-0 md:opacity-0 md:pointer-events-none'}
         ${mobileView === 'list' ? 'flex flex-1 md:flex-none w-full' : 'hidden md:flex'}
       `}>
-        <div className="relative h-16 shrink-0 px-4 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between bg-[#DEDAD0]/50 dark:bg-[#141210] min-w-[300px]">
-          {/* Logo centrado en móvil */}
+        <div className="relative h-16 shrink-0 px-4 flex items-center justify-between bg-[#DDD5C2]/40 dark:bg-[#141210] min-w-[300px] shadow-[inset_0_-1px_0_rgba(138,129,114,.15)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)]">
+          {/* Logo centrado en móvil (Isotipo puro) */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none md:hidden">
-            <span className="font-black text-lg tracking-widest text-[#111111] dark:text-[#EDE9E0]">Abita <span className="text-[#F36A2D]">AI</span></span>
+            <svg
+              viewBox="894.02 80 377.93 336.06"
+              className="h-7 w-7 text-[#FF4D00]"
+              fill="currentColor"
+              aria-label="Abita AI"
+            >
+              <path d="M1184.09 248.293L1183.07 246.366C1177.73 236.181 1165.53 231.612 1165.04 231.419C1163.3 230.814 1160.5 230.043 1156.95 229.74C1156.17 229.658 1155.35 229.63 1154.41 229.63C1153.48 229.63 1152.57 229.658 1151.66 229.713H1151.25L1099.75 229.575H1038.17L1066.72 175.129L1092.87 125.28L1116.48 80H1037.21L1015.33 121.922L970.43 207.472H970.541L949.07 248.43C943.951 258.752 944.088 270.561 949.456 280.773C954.796 290.958 964.375 297.729 975.716 299.408C977.147 299.601 978.661 299.738 980.367 299.738H982.074L1050.09 299.656L1131.76 299.904L1158.05 350.028L1186.1 403.483C1186.1 403.483 1188.63 408.218 1192.73 415.98H1271.95L1206.05 290.325C1200.79 280.388 1192.73 265.056 1184.03 248.265L1184.09 248.293Z"/>
+              <path d="M996.69 356.607C996.69 349.34 993.167 342.651 987.442 339.018L959.751 321.456C950.97 315.896 939.739 315.896 930.959 321.456L903.268 339.018C897.543 342.651 894.019 349.34 894.019 356.607V398.253C893.936 400.07 894.019 404.254 896.496 408.41C897.818 410.585 899.276 411.906 899.854 412.401C904.176 416.062 909.324 416.062 911.14 415.98C922.508 415.457 930.931 415.98 942.602 415.842C943.042 415.842 944.859 415.842 948.465 415.842C963.742 415.787 971.367 415.842 973.376 415.842C975.055 415.842 978.165 415.842 979.789 415.842C980.478 415.842 989.451 415.897 994.185 408.41C996.8 404.254 996.773 399.96 996.663 398.253V356.607H996.69Z"/>
+            </svg>
           </div>
           {selectedIds.size > 0 ? (
             <div className="flex items-center justify-between w-full animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <button
                   onClick={() => setSelectedIds(new Set())}
-                  className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#6F6F6F]"
+                  className="h-8 w-8 flex items-center justify-center glass-panel !rounded-full text-[#5C5C5C] dark:text-[#A3A3A3] hover:text-[#FF4D00] transition-colors"
+                  title="Cancelar selección"
                 >
-                  <Plus size={18} className="rotate-45" />
+                  <Plus size={16} className="rotate-45" />
                 </button>
-                <span className="text-sm font-bold text-[#F36A2D]">{selectedIds.size} seleccionados</span>
+                <div className="flex flex-col leading-none">
+                  <span className="text-[17px] font-semibold tracking-tight text-[#FF4D00] tabular-nums">{selectedIds.size}</span>
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-[#8A8172] mt-1">seleccionados</span>
+                </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={handleBulkEnableBot}
-                  disabled={isBulkLoading}
-                  className="p-2 text-[#6F6F6F] hover:text-[#F36A2D] hover:bg-[#F36A2D]/10 rounded-xl transition-all disabled:opacity-30"
-                  title="Activar IA"
+                  onClick={toggleSelectAll}
+                  title={selectedIds.size === filteredChats.length ? 'Quitar selección' : 'Seleccionar todos'}
+                  className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
                 >
-                  <Bot size={18} />
+                  <span className={`h-[18px] w-[18px] rounded-full flex items-center justify-center transition-all ${selectedIds.size === filteredChats.length ? 'bg-[#FF4D00] shadow-[var(--abita-gloss)]' : 'shadow-[inset_0_0_0_1.5px_rgba(138,129,114,.6)]'}`}>
+                    {selectedIds.size === filteredChats.length && <Check size={11} strokeWidth={3.5} className="text-white" />}
+                  </span>
                 </button>
-                <button
-                  onClick={handleBulkDisableBot}
-                  disabled={isBulkLoading}
-                  className="p-2 text-[#6F6F6F] hover:text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all disabled:opacity-30"
-                  title="Pausar IA"
-                >
-                  <User size={18} />
-                </button>
-                <button
-                  onClick={handleBulkArchive}
-                  disabled={isBulkLoading}
-                  className="p-2 text-[#6F6F6F] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all disabled:opacity-30"
-                  title="Eliminar"
-                >
-                  <Trash2 size={18} />
-                </button>
-                {isBulkLoading && <Loader2 size={14} className="animate-spin text-[#F36A2D] ml-1" />}
+                <div className="glass-panel !rounded-full flex items-center gap-0.5 p-1">
+                  <button
+                    onClick={handleBulkEnableBot}
+                    disabled={isBulkLoading}
+                    className="p-1.5 text-[#5C5C5C] dark:text-[#A3A3A3] hover:text-[#FF4D00] hover:bg-[#FF4D00]/10 rounded-full transition-all disabled:opacity-30"
+                    title="Activar IA"
+                  >
+                    <Bot size={16} />
+                  </button>
+                  <button
+                    onClick={handleBulkDisableBot}
+                    disabled={isBulkLoading}
+                    className="p-1.5 text-[#5C5C5C] dark:text-[#A3A3A3] hover:text-[#FF4D00] hover:bg-[#FF4D00]/10 rounded-full transition-all disabled:opacity-30"
+                    title="Pausar IA"
+                  >
+                    <User size={16} />
+                  </button>
+                  <button
+                    onClick={handleBulkArchive}
+                    disabled={isBulkLoading}
+                    className="p-1.5 text-[#5C5C5C] dark:text-[#A3A3A3] hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all disabled:opacity-30"
+                    title="Eliminar"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  {isBulkLoading && <Loader2 size={14} className="animate-spin text-[#FF4D00] mx-1" />}
+                </div>
               </div>
             </div>
           ) : (
             <>
-              <h2 className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
+              <h2 className="font-semibold tracking-tight text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2">
                 Inbox
-                <span className="bg-[#F36A2D]/10 text-[#F36A2D] text-[10px] px-2 py-0.5 rounded-full font-bold">
+                <span className="bg-[#FF4D00]/10 text-[#FF4D00] text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums">
                   {filteredChats.length}
                 </span>
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {filteredChats.length > 0 && (
                   <button
                     onClick={toggleSelectAll}
-                    className="p-1.5 rounded-lg text-xs font-bold text-[#6F6F6F] hover:bg-white/60 dark:hover:bg-white/5 transition-all"
+                    title="Seleccionar todos"
+                    aria-label="Seleccionar todos"
+                    className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-white/50 dark:hover:bg-white/5 transition-colors"
                   >
-                    ⬜
+                    <span className="h-[18px] w-[18px] rounded-full shadow-[inset_0_0_0_1.5px_rgba(138,129,114,.6)]" />
                   </button>
                 )}
                 <button
                   onClick={() => setIsNewChatModalOpen(true)}
-                  className="p-1.5 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-lg hover:scale-105 transition-all shadow-sm"
+                  className="h-8 w-8 rounded-full bg-[#FF4D00] hover:bg-[#E64500] text-white flex items-center justify-center transition-all shadow-[0_1px_3px_rgba(0,0,0,.15),0_2px_6px_rgba(255,77,0,.3)] active:scale-95 shrink-0"
                   title="Nuevo Chat Individual"
                 >
-                  <Plus size={18} />
+                  <Plus size={16} strokeWidth={2.5} />
                 </button>
-
               </div>
             </>
           )}
         </div>
 
-        <div className="px-4 py-3 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex flex-col gap-2 bg-[#E9E4D8]/60 dark:bg-[#1A1714]">
-          <button 
-            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-            className="flex items-center justify-between w-full text-xs font-bold text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors"
-          >
-            <span className="flex items-center gap-2"><Search size={14} /> Filtros y Búsqueda</span>
-            <ChevronDown size={14} className={`transition-transform ${isFiltersOpen ? 'rotate-180' : ''}`} />
-          </button>
-          
+        <div className="px-3 pt-3 pb-3 flex flex-col gap-2 shadow-[inset_0_-1px_0_rgba(138,129,114,.15)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)]">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A8172]" />
+              <input
+                type="text"
+                placeholder="Buscar nombre o teléfono"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-[12px] rounded-full pl-9 pr-3 py-2 bg-white/50 dark:bg-white/[.06] text-[#111111] dark:text-[#EDE9E0] placeholder:text-[#8A8172] outline-none border border-[#8A8172]/20 dark:border-white/10 focus:border-[#FF4D00]/50 transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+              title="Filtros"
+              className={`relative h-8 w-8 shrink-0 flex items-center justify-center rounded-full transition-all ${
+                isFiltersOpen 
+                  ? 'bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/30' 
+                  : 'bg-white/50 dark:bg-white/[.06] text-[#5C5C5C] dark:text-[#A3A3A3] hover:text-[#FF4D00] border border-[#8A8172]/20 dark:border-white/10 hover:border-[#FF4D00]/30'
+              }`}
+            >
+              <Filter size={14} />
+              {(filterHeat !== 'ALL' || filterStatus !== 'ALL' || filterCampaign !== 'ALL') && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#FF4D00] shadow-[0_0_6px_rgba(255,77,0,.6)]" />
+              )}
+            </button>
+          </div>
+
           {isFiltersOpen && (
-            <div className="flex flex-col gap-2 mt-2 animate-in slide-in-from-top-2 duration-200">
-              <select
-                value={filterHeat}
-                onChange={(e) => setFilterHeat(e.target.value as any)}
-                className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
-              >
-                <option value="ALL">Todas las temperaturas</option>
-                <option value="CALIENTE">Caliente</option>
-                <option value="TIBIO">Tibio</option>
-                <option value="FRIO">Frío</option>
-              </select>
+            <div ref={filterDropdownContainerRef} className="flex flex-col gap-1.5 animate-in slide-in-from-top-2 duration-200">
+              {[
+                { 
+                  id: 'heat',
+                  value: filterHeat, 
+                  set: (v: string) => setFilterHeat(v as any), 
+                  options: [['ALL', 'Todas las temperaturas'], ['CALIENTE', 'Caliente'], ['TIBIO', 'Tibio'], ['FRIO', 'Frío']] 
+                },
+                { 
+                  id: 'status',
+                  value: filterStatus, 
+                  set: (v: string) => setFilterStatus(v as any), 
+                  options: [['ALL', 'Todos los estados'], ['BOT', 'IA Gestionando'], ['NEEDS_AGENT', 'Necesita Humano'], ['AGENT', 'En Atención Humana'], ['UNANSWERED', 'No Contestados']] 
+                },
+                { 
+                  id: 'campaign',
+                  value: filterCampaign, 
+                  set: (v: string) => setFilterCampaign(v), 
+                  options: [['ALL', 'Todas las campañas'], ...availableCampaigns.map((camp: any) => [camp.id, camp.name])] 
+                },
+              ].map((f) => {
+                const isSelectedActive = f.value !== 'ALL';
+                const currentLabel = f.options.find(([val]: any) => val === f.value)?.[1] || f.options[0][1];
+                const isOpen = openFilterDropdown === f.id;
 
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as any)}
-                className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
-              >
-                <option value="ALL">Todos los estados</option>
-                <option value="BOT">IA Gestionando</option>
-                <option value="NEEDS_AGENT">Necesita Humano</option>
-                <option value="AGENT">En Atención Humana</option>
-                <option value="UNANSWERED">No Contestados</option>
-              </select>
+                return (
+                  <div key={f.id} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenFilterDropdown(isOpen ? null : f.id)}
+                      className={`w-full flex items-center justify-between text-[12px] rounded-full pl-3.5 pr-3 py-2 outline-none transition-all text-left ${
+                        isSelectedActive
+                          ? 'bg-[#FF4D00]/10 text-[#FF4D00] font-semibold border border-[#FF4D00]/30 shadow-[0_1px_4px_rgba(255,77,0,.15)]'
+                          : 'bg-white/50 dark:bg-white/[.06] text-[#111111] dark:text-[#EDE9E0] border border-[#8A8172]/20 dark:border-white/10 hover:border-[#FF4D00]/30'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{currentLabel}</span>
+                      <ChevronDown
+                        size={13}
+                        className={`text-[#8A8172] shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#FF4D00]' : ''}`}
+                      />
+                    </button>
 
-              <select
-                value={filterCampaign}
-                onChange={(e) => setFilterCampaign(e.target.value)}
-                className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg p-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-[#F36A2D]/50 shadow-sm"
-              >
-                <option value="ALL">Todas las campañas</option>
-                {availableCampaigns.map((camp) => (
-                  <option key={camp.id} value={camp.id}>{camp.name}</option>
-                ))}
-              </select>
-
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6F6F6F]" />
-                <input
-                  type="text"
-                  placeholder="Buscar nombre o tel..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 text-xs rounded-lg pl-9 pr-3 py-2 text-[#111111] dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 shadow-sm"
-                />
-              </div>
+                    {isOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl p-1 bg-[#FAF6EE] dark:bg-[#1C1815] border border-[#8A8172]/25 dark:border-white/15 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.3),0_4px_10px_rgba(0,0,0,0.15)] backdrop-blur-md animate-in fade-in zoom-in-95 duration-150 max-h-56 overflow-y-auto no-scrollbar">
+                        {f.options.map(([val, label]: any) => {
+                          const isOptionSelected = f.value === val;
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => {
+                                f.set(val);
+                                setOpenFilterDropdown(null);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg text-left transition-colors ${
+                                isOptionSelected
+                                  ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold'
+                                  : 'text-[#1F1E1D] dark:text-[#EDE9E0] hover:bg-black/5 dark:hover:bg-white/[.08]'
+                              }`}
+                            >
+                              <span className="truncate">{label}</span>
+                              {isOptionSelected && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#FF4D00] shrink-0 ml-2 shadow-[0_0_6px_rgba(255,77,0,.8)]" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar w-full p-2 space-y-1 relative min-h-0">
+        <div className="flex-1 overflow-y-auto no-scrollbar w-full p-2 pb-24 md:pb-2 space-y-1 relative min-h-0">
           {isLoading && chats.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-zinc-400">
               <Loader2 className="animate-spin mb-2" size={20} />
@@ -1488,40 +1657,40 @@ export default function InboxPage() {
                 <div key={chat.id} className="relative group">
                   <button
                     onClick={() => { if (selectedIds.size > 0) toggleSelect(chat.id, { stopPropagation: () => { } } as any); else loadChatDetails(chat.id); }}
-                    className={`w-full text-left p-2.5 pl-4 rounded-2xl transition-all duration-200 flex items-center gap-4 border shadow-sm ${isMultiSelected
-                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-400 dark:border-orange-600'
+                    className={`w-full text-left py-2 pl-3.5 pr-3 rounded-2xl transition-all duration-200 flex items-center gap-3 relative ${isMultiSelected
+                      ? 'bg-white/65 dark:bg-white/[.08] shadow-[inset_0_1px_0_rgba(255,255,255,.9),inset_0_0_0_1px_rgba(255,77,0,.3),0_4px_14px_rgba(66,54,36,.07)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),inset_0_0_0_1px_rgba(255,77,0,.4)]'
                       : isActive
-                        ? 'bg-blue-50 dark:bg-blue-900/40 border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/20 z-10'
+                        ? 'glass-pill z-10 before:content-[""] before:absolute before:left-1 before:top-3 before:bottom-3 before:w-[3px] before:rounded-full before:bg-[#FF4D00] before:shadow-[0_0_10px_rgba(255,77,0,.5)]'
                         : isHandoff
-                          ? 'bg-red-50 dark:bg-red-900/40 border-red-500 dark:border-red-400 shadow-red-100'
+                          ? 'bg-red-500/[.035] dark:bg-red-500/[.025] hover:bg-red-500/[.07] dark:hover:bg-red-500/[.06] shadow-[inset_0_0_0_1px_rgba(220,38,38,.45)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.08),inset_0_0_0_1px_rgba(239,68,68,.32)]'
                           : isNewMessage
-                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500 dark:border-emerald-400 ring-1 ring-emerald-500/20'
-                            : isUnanswered
-                              ? 'bg-white dark:bg-zinc-900 border-emerald-500 dark:border-emerald-400/50'
-                              : 'bg-white/50 dark:bg-black/10 border-[#DEDAD0] dark:border-zinc-800'
+                            ? 'bg-[#FF4D00]/[.035] dark:bg-[#FF4D00]/[.025] hover:bg-[#FF4D00]/[.07] dark:hover:bg-[#FF4D00]/[.06] shadow-[inset_0_0_0_1px_rgba(230,69,0,.45)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.08),inset_0_0_0_1px_rgba(255,77,0,.32)]'
+                            : 'bg-transparent hover:bg-white/40 dark:hover:bg-white/[.05] after:content-[""] after:absolute after:bottom-0 after:left-14 after:right-4 after:h-px after:bg-gradient-to-r after:from-[#8A8172]/20 after:to-transparent dark:after:from-white/10'
                       }`}
                   >
                     {/* Avatar / Canal / Selector */}
                     <div
                       onClick={(e) => { e.stopPropagation(); toggleSelect(chat.id, e); }}
-                      className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 shadow-sm border-2 transition-all cursor-pointer relative overflow-hidden group/avatar ${isMultiSelected
-                          ? 'bg-orange-600 border-orange-600 text-white scale-105'
+                      className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 border transition-all cursor-pointer relative overflow-hidden group/avatar ${isMultiSelected
+                          ? 'bg-[#FF4D00] border-[#FF4D00] text-white shadow-[var(--abita-gloss),0_2px_8px_rgba(255,77,0,.35)]'
+                          : selectedIds.size > 0
+                            ? 'bg-transparent border-[#8A8172]/45 hover:border-[#FF4D00]'
                           : chat.lead.channel === 'instagram'
-                            ? 'bg-pink-50 border-white text-pink-500 dark:bg-pink-900/40 dark:border-zinc-800 hover:border-orange-500'
+                            ? 'bg-pink-500/10 border-transparent text-pink-500 hover:border-[#FF4D00]'
                             : chat.lead.channel === 'simulator'
-                              ? 'bg-orange-50 border-white text-orange-500 dark:bg-orange-950/40 dark:border-zinc-800 hover:border-orange-500'
-                              : 'bg-[#25D366]/10 border-white text-[#25D366] dark:bg-[#25D366]/20 dark:border-zinc-800 hover:border-orange-500'
+                              ? 'bg-[#FF4D00]/10 border-transparent text-[#FF4D00] hover:border-[#FF4D00]'
+                              : 'bg-[#25D366]/10 border-transparent text-[#25D366] hover:border-[#FF4D00]'
                         }`}
                     >
                       {isMultiSelected ? (
-                        <Check size={24} strokeWidth={3} className="animate-in zoom-in-50 duration-200" />
+                        <Check size={16} strokeWidth={3.5} className="animate-in zoom-in-50 duration-200" />
                       ) : (
                         <>
-                          <div className="transition-all duration-200 group-hover/avatar:opacity-0 group-hover/avatar:scale-50 opacity-100">
-                             {chat.lead.channel === 'instagram' ? <IgIcon size={22} /> : chat.lead.channel === 'simulator' ? <SimIcon size={22} /> : <WaIcon size={22} />}
+                          <div className={`transition-all duration-200 group-hover/avatar:opacity-0 group-hover/avatar:scale-50 ${selectedIds.size > 0 ? 'opacity-0 scale-50' : 'opacity-100'}`}>
+                             {chat.lead.channel === 'instagram' ? <IgIcon size={18} /> : chat.lead.channel === 'simulator' ? <SimIcon size={18} /> : <WaIcon size={18} />}
                           </div>
-                          <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 opacity-0 scale-50 group-hover/avatar:opacity-100 group-hover/avatar:scale-100 text-orange-600">
-                            <Check size={20} strokeWidth={3} />
+                          <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 opacity-0 scale-50 group-hover/avatar:opacity-100 group-hover/avatar:scale-100 text-[#FF4D00]">
+                            <Check size={16} strokeWidth={3} />
                           </div>
                         </>
                       )}
@@ -1530,18 +1699,18 @@ export default function InboxPage() {
                     <div className="flex-1 min-w-0 flex flex-col gap-0.5 text-left">
                       <div className="flex justify-between items-center w-full gap-2">
                         <span 
-                          className={`truncate text-sm ${isNewMessage || isUnanswered || isHandoff ? 'font-black text-[#111111] dark:text-[#EDE9E0]' : 'font-semibold text-[#111111]/70 dark:text-[#EDE9E0]/70'}`}
+                          className={`truncate text-[13px] tracking-tight ${isNewMessage || isHandoff ? 'font-bold text-[#111111] dark:text-white' : isUnanswered ? 'font-semibold text-[#111111] dark:text-[#EDE9E0]' : 'font-medium text-[#111111]/75 dark:text-[#EDE9E0]/70'}`}
                           title={chat.lead.name || chat.lead.phone}
                         >
                           {chat.lead.name || chat.lead.phone}
                         </span>
-                        <span className="text-[10px] text-[#6F6F6F] font-medium shrink-0">
+                        <span className={`text-[10px] shrink-0 ${isNewMessage ? 'text-[#FF4D00] font-semibold' : isHandoff ? 'text-red-500 dark:text-red-400 font-semibold' : 'text-[#8A8172] font-normal'}`}>
                           {formatSidebarDate(new Date(chat.lastActiveAt))}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
-                        <div className={`flex items-center gap-1 text-xs line-clamp-1 ${isNewMessage || isUnanswered || isHandoff ? 'text-[#111111] dark:text-white font-bold' : 'text-[#6F6F6F]'}`}>
+                        <div className={`flex items-center gap-1 text-[12px] line-clamp-1 ${isNewMessage || isHandoff ? 'text-[#111111] dark:text-white/95 font-medium' : isUnanswered ? 'text-[#111111]/80 dark:text-white/80 font-normal' : 'text-[#6F6F6F] font-normal'}`}>
                           {lastMsg && (lastMsg.role === 'agent' || lastMsg.role === 'assistant') && (
                             <div className="shrink-0">
                               {(lastMsg.status === 'failed' || lastMsg.status === 'FAILED') ? (
@@ -1553,7 +1722,7 @@ export default function InboxPage() {
                               ) : lastMsg.status === 'DELIVERED' ? (
                                 <CheckCheck size={12} className="opacity-60 text-zinc-500" />
                               ) : lastMsg.status === 'READ' ? (
-                                <CheckCheck size={12} className="text-blue-500" />
+                                <CheckCheck size={12} className="text-[#FF4D00]" />
                               ) : (
                                 <Check size={12} className="opacity-60" />
                               )}
@@ -1572,13 +1741,13 @@ export default function InboxPage() {
 
                         <div className="flex items-center gap-1 shrink-0">
                           {isBot ? (
-                            <Bot size={12} className="text-[#F36A2D]" />
+                            <Bot size={12} className="text-[#FF4D00]" />
                           ) : isHandoff ? (
                             <AlertCircle size={12} className="text-red-500 animate-pulse" />
                           ) : isNewMessage ? (
-                            <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40 animate-pulse" />
+                            <div className="dot-live shadow-[0_0_8px_rgba(255,77,0,.8)]" />
                           ) : (
-                            <User size={11} className="text-emerald-500/50" />
+                            <User size={11} className="text-[#8A8172]/70" />
                           )}
                         </div>
                       </div>
@@ -1586,9 +1755,9 @@ export default function InboxPage() {
                       <div className="flex items-center gap-1 mt-1">
                         {chat.lead.project?.leadScoringEnabled !== false && (
                           <>
-                            {chat.lead.heat === 'CALIENTE' && <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
-                            {chat.lead.heat === 'TIBIO' && <span className="text-[9px] bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-1 shrink-0"><TrendingUp size={9} /> {chat.lead.score}</span>}
-                            {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5 shrink-0">❄️ {chat.lead.score || 0}</span>}
+                            {chat.lead.heat === 'CALIENTE' && <span className="text-[9px] bg-red-500/10 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5 shrink-0">🔥 {chat.lead.score}</span>}
+                            {chat.lead.heat === 'TIBIO' && <span className="text-[9px] bg-[#FF4D00]/12 text-[#B33500] dark:text-[#FF8A4C] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0"><TrendingUp size={9} /> {chat.lead.score}</span>}
+                            {(!chat.lead.heat || chat.lead.heat === 'FRIO') && <span className="text-[9px] bg-[#8A8172]/12 text-[#5C5C5C] dark:bg-white/10 dark:text-[#A3A3A3] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5 shrink-0">Frío · {chat.lead.score || 0}</span>}
                           </>
                         )}
 
@@ -1608,34 +1777,37 @@ export default function InboxPage() {
 
       {/* 2. VENTANA DE CHAT CENTRAL */}
       {/* Desktop: siempre visible | Móvil: solo si mobileView === 'chat' */}
-      <div className={`flex-1 min-w-0 flex-col bg-white dark:bg-[#1A1714]
+      <div className={`flex-1 min-w-0 flex-col bg-[#F5F0E5] dark:bg-[#1A1714]
         ${mobileView === 'chat' ? 'flex fixed inset-0 z-[60] md:relative md:inset-auto md:z-auto' : 'hidden md:flex relative'}
       `}>
         {/* Loader de transición rápida */}
         {isChatLoading && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#E9E4D8]/30 dark:bg-[#1A1714]/30 backdrop-blur-[2px] animate-in fade-in">
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl flex items-center gap-3 border border-[#DEDAD0] dark:border-zinc-800">
-              <Loader2 className="animate-spin text-[#F36A2D]" size={20} />
-              <span className="text-xs font-semibold text-[#111111] dark:text-[#EDE9E0]">Cargando conversación...</span>
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#EBE4D6]/30 dark:bg-[#1A1714]/30 backdrop-blur-[2px] animate-in fade-in">
+            <div className="glass-dark px-5 py-3 rounded-full flex items-center gap-3 text-sm font-semibold">
+              <Loader2 className="animate-spin text-[#FF4D00]" size={20} />
+              <span className="text-xs font-semibold text-[#EDE9E0]">Cargando conversación...</span>
             </div>
           </div>
         )}
 
         {!activeChat ? (
-          <div className="h-full flex flex-col items-center justify-center bg-[#E9E4D8]/30 dark:bg-black/20 text-[#6F6F6F]">
-            <div className="bg-[#111111] dark:bg-[#E9E4D8] p-4 rounded-3xl shadow-xl mb-6 flex items-center justify-center">
-              <MessageSquare size={36} className="text-[#F36A2D]" strokeWidth={2.5} />
+          <div className="h-full flex flex-col items-center justify-center bg-[#EBE4D6]/30 dark:bg-black/20 text-[#6F6F6F]">
+            <div className="bg-[#111111] dark:bg-[#EBE4D6] p-4 rounded-3xl shadow-xl mb-6 flex items-center justify-center">
+              <MessageSquare size={36} className="text-[#FF4D00]" strokeWidth={2.5} />
             </div>
             <h3 className="text-lg font-bold text-[#111111] dark:text-[#EDE9E0] mb-2">Bandeja de Entrada</h3>
             <p className="text-sm">Selecciona una conversación para comenzar</p>
           </div>
         ) : (
           <>
-            <header className="h-16 px-4 md:px-6 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-[#E9E4D8]/80 dark:bg-[#111111]/10 backdrop-blur-md">
+            <header className="h-16 px-4 md:px-6 flex items-center justify-between shrink-0 bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl shadow-[inset_0_-1px_0_rgba(138,129,114,.18),0_8px_24px_rgba(66,54,36,.04)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)] relative z-10">
               <div className="flex items-center gap-3 md:gap-4 min-w-0">
                 {/* Botón volver: solo en móvil */}
                 <button
-                  onClick={() => setMobileView('list')}
+                  onClick={() => {
+                    setMobileView('list');
+                    setActiveChat(null);
+                  }}
                   className="md:hidden p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors shrink-0"
                   title="Volver"
                 >
@@ -1657,7 +1829,7 @@ export default function InboxPage() {
                   </h2>
                   <p className="text-xs text-[#6F6F6F] truncate flex items-center gap-2 mt-0.5">
                      <span>{activeChat.lead.phone}</span>
-                     <span className="text-[9px] bg-[#EDE9E0] dark:bg-zinc-800 text-[#6F6F6F] px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0 font-mono border border-[#DEDAD0] dark:border-zinc-700">
+                     <span className="text-[9px] glass-panel !rounded-full text-[#5C5C5C] dark:text-[#A3A3A3] px-2 py-0.5 flex items-center gap-1 shrink-0 font-semibold">
                       {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : activeChat.lead.channel === 'simulator' ? <SimIcon size={10} /> : <WaIcon size={10} />}
                       <span className="hidden md:inline">{activeChat.lead.channel === 'instagram' ? 'Instagram' : activeChat.lead.channel === 'simulator' ? 'Simulador' : 'WhatsApp'}</span>
                     </span>
@@ -1669,27 +1841,27 @@ export default function InboxPage() {
                 <button
                   onClick={handleDeleteChat}
                   title="Eliminar chat"
-                  className="p-2 text-[#6F6F6F] hover:text-[#F36A2D] hover:bg-[#F36A2D]/5 rounded-xl transition-all"
+                  className="p-2 text-[#6F6F6F] hover:text-[#FF4D00] hover:bg-[#FF4D00]/10 rounded-full transition-all"
                 >
                   <Trash2 size={18} />
                 </button>
-                <div className="w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
+                <div className="w-px h-6 bg-[#DDD5C2] dark:bg-zinc-800 mx-1"></div>
                 <span className="text-sm font-medium text-[#6F6F6F]">IA</span>
                 <button
                   onClick={() => setIsBotConfirmModalOpen(true)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${activeChat.botActive ? 'bg-[#F36A2D]' : 'bg-[#DEDAD0] dark:bg-zinc-700'
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${activeChat.botActive ? 'bg-[#FF4D00] shadow-[var(--abita-gloss),0_4px_12px_rgba(255,77,0,.3)]' : 'bg-[#8A8172]/30 dark:bg-zinc-700 shadow-[inset_0_1px_2px_rgba(66,54,36,.15)]'
                     }`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeChat.botActive ? 'translate-x-[22px]' : 'translate-x-1'
                     }`} />
                 </button>
                 {/* Botón perfil: solo en desktop */}
-                <div className="hidden md:block w-px h-6 bg-[#DEDAD0] dark:bg-zinc-800 mx-1"></div>
+                <div className="hidden md:block w-px h-6 bg-[#DDD5C2] dark:bg-zinc-800 mx-1"></div>
                 <button
                   onClick={() => setIsProfileSidebarOpen(!isProfileSidebarOpen)}
-                  className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all border ${isProfileSidebarOpen
-                    ? 'bg-[#F36A2D] text-white border-[#F36A2D] shadow-sm shadow-[#F36A2D]/20'
-                    : 'bg-white dark:bg-zinc-900 text-[#6F6F6F] border-[#DEDAD0] dark:border-zinc-800 hover:border-[#F36A2D] hover:text-[#F36A2D]'
+                  className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full transition-all ${isProfileSidebarOpen
+                    ? 'btn-primary-abita'
+                    : 'glass-panel !rounded-full text-[#5C5C5C] dark:text-[#A3A3A3] hover:text-[#FF4D00]'
                     }`}
                   title={isProfileSidebarOpen ? "Cerrar Perfil" : "Ver Perfil"}
                 >
@@ -1715,7 +1887,7 @@ export default function InboxPage() {
                   ) : (
                     <button
                       onClick={handleLoadMoreMessages}
-                      className="text-xs text-[#F36A2D] hover:underline font-medium"
+                      className="text-xs text-[#FF4D00] hover:underline font-medium"
                     >
                       Cargar mensajes anteriores
                     </button>
@@ -1739,14 +1911,14 @@ export default function InboxPage() {
                     <div key={msg.id} id={`msg-${msg.id}`} className="transition-all duration-500 rounded-2xl">
                       {showDateHeader && (
                         <div className="flex justify-center my-6">
-                          <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700/50">
+                          <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest glass-panel !rounded-full text-[#5C5C5C] dark:text-[#A3A3A3]">
                             {formatDateLabel(currentMsgDate)}
                           </span>
                         </div>
                       )}
                       <div className="flex justify-center my-4">
-                        <span className="px-3 py-1.5 text-[11px] font-medium text-[#6F6F6F] bg-zinc-100 dark:bg-zinc-800/50 rounded-lg flex items-center gap-1.5 border border-zinc-200/50 dark:border-zinc-700/30">
-                          <Bot size={12} className="text-[#F36A2D]" />
+                        <span className="px-3 py-1.5 text-[11px] font-medium text-[#5C5C5C] dark:text-[#A3A3A3] glass-panel !rounded-full flex items-center gap-1.5">
+                          <Bot size={12} className="text-[#FF4D00]" />
                           {msg.content}
                         </span>
                       </div>
@@ -1758,17 +1930,17 @@ export default function InboxPage() {
                   <div key={msg.id} id={`msg-${msg.id}`} className="transition-all duration-500 rounded-2xl">
                     {showDateHeader && (
                       <div className="flex justify-center my-6">
-                        <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-700/50">
+                        <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest glass-panel !rounded-full text-[#5C5C5C] dark:text-[#A3A3A3]">
                           {formatDateLabel(currentMsgDate)}
                         </span>
                       </div>
                     )}
 
-                    <div className={`flex items-end gap-2 mb-4 ${isAudio ? 'w-[80%] md:w-[40%]' : 'max-w-[85%]'} ${isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
+                    <div className={`flex items-end gap-2 mb-4 group/msg ${isAudio ? 'w-[80%] md:w-[40%]' : 'max-w-[85%]'} ${isUser ? 'mr-auto' : 'ml-auto flex-row-reverse'
                       }`}>
                       {/* Avatar icon */}
                       {isBot && (
-                        <div className="shrink-0 w-6 h-6 rounded-full bg-[#F36A2D]/10 text-[#F36A2D] flex items-center justify-center mb-1">
+                        <div className="shrink-0 w-6 h-6 rounded-full bg-[#FF4D00]/10 text-[#FF4D00] flex items-center justify-center mb-1">
                           <Bot size={13} />
                         </div>
                       )}
@@ -1779,10 +1951,10 @@ export default function InboxPage() {
                       )}
 
                       <div className={`relative p-3 pb-6 rounded-2xl text-sm min-w-[90px] ${isAudio ? 'w-full' : 'w-fit'} font-sans transition-opacity duration-300 ${isUser
-                        ? 'bg-white text-[#111111] dark:bg-[#111111]/40 dark:text-zinc-200 rounded-tl-sm border border-[#DEDAD0] dark:border-zinc-800'
+                        ? 'bg-white/85 text-[#111111] dark:bg-white/[.07] dark:text-[#EDE9E0] rounded-tl-sm shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_1px_2px_rgba(66,54,36,.05),0_6px_18px_rgba(66,54,36,.07)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12)]'
                         : isBot
-                          ? 'bg-[#F36A2D] text-white rounded-tr-sm shadow-md'
-                          : 'bg-[#1A1714] text-white dark:bg-[#EDE9E0] dark:text-[#111111] rounded-tr-sm shadow-md'
+                          ? 'bg-gradient-to-b from-[#FF6A26] to-[#FF4D00] dark:from-[#E8581A] dark:to-[#CC3D00] text-white rounded-tr-sm shadow-[var(--abita-gloss),0_1px_3px_rgba(255,77,0,.24),0_6px_16px_rgba(255,77,0,.22)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_4px_12px_rgba(0,0,0,.35)]'
+                          : 'bg-[#1A1714] text-white dark:bg-[#EBE4D6] dark:text-[#111111] rounded-tr-sm shadow-[inset_0_1px_0_rgba(255,255,255,.14),0_6px_18px_rgba(26,23,20,.22)]'
                         } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${(msg.status === 'failed' || msg.status === 'FAILED') ? 'ring-2 ring-red-500/50 bg-red-950/20 text-red-100' : ''}`}>
 
                         {(isBot || isAgent) && msg.agentName && (
@@ -1792,40 +1964,82 @@ export default function InboxPage() {
                         )}
 
                         {msg.scoreBump && (
-                          <div className="absolute -top-10 right-0 flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900 border border-emerald-200 dark:border-emerald-700 px-3 py-1 rounded-full shadow-lg animate-in fade-in zoom-in duration-300 z-10">
-                            <div className="px-2 py-0.5 bg-emerald-500 rounded-full text-[10px] text-white font-black">
+                          <div className="absolute -top-10 right-0 flex items-center gap-2 glass-panel !rounded-full px-3 py-1 animate-in fade-in zoom-in duration-300 z-10">
+                            <div className="px-2 py-0.5 bg-[#FF4D00] rounded-full text-[10px] text-white font-black">
                               +{msg.scoreBump}
                             </div>
-                            <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider whitespace-nowrap">
+                            <span className="text-[9px] font-bold text-[#B33500] dark:text-[#FF8A4C] uppercase tracking-wider whitespace-nowrap">
                               {msg.scoreReason || 'Mejora de Score'}
                             </span>
                           </div>
                         )}
 
-                        {/* 1. Bloque de respuesta (si existe) */}
-                        {msg.content && msg.content.includes('[En respuesta a:') && (
-                          (() => {
-                            const replyRegex = /\[En respuesta a:\s*"([^"]+)"\]\n?/;
-                            const match = msg.content.match(replyRegex);
+                        {/* 1. Bloque de respuesta contextual (Meta WhatsApp compliant) */}
+                        {(() => {
+                          let replyInfo: { id?: string; wamid?: string; role?: string; content?: string; mediaType?: string; mediaUrl?: string; mediaFilename?: string } | null = null;
+                          
+                          if (msg.buttonsConfig) {
+                            try {
+                              const parsed = JSON.parse(msg.buttonsConfig);
+                              if (parsed.replyTo) replyInfo = parsed.replyTo;
+                            } catch (e) {}
+                          }
+
+                          if (!replyInfo && msg.content && msg.content.includes('[En respuesta a:')) {
+                            const match = msg.content.match(/\[En respuesta a:\s*"([^"]+)"\]\n?/);
                             if (match) {
-                              const repliedText = match[1];
-                              const originalMsg = activeChat.messages.find((m: any) => m.content === repliedText);
-                              return (
-                                <div
-                                  onClick={() => originalMsg && scrollToMessage(originalMsg.id)}
-                                  className={`group p-2.5 mb-2 rounded-xl bg-black/5 dark:bg-black/30 text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/10 dark:hover:bg-black/50' : 'opacity-70'}`}
-                                >
-                                  <div className="flex items-center justify-between mb-1">
-                                    <div className="font-black text-[9px] uppercase tracking-tighter text-[#F36A2D]">En respuesta a:</div>
-                                    {originalMsg && <div className="text-[8px] font-bold text-[#F36A2D] opacity-0 group-hover:opacity-100 transition-opacity">IR AL MENSAJE ↑</div>}
-                                  </div>
-                                  <div className="line-clamp-2 italic opacity-80 leading-snug">{repliedText}</div>
-                                </div>
-                              );
+                              replyInfo = { content: match[1] };
                             }
-                            return null;
-                          })()
-                        )}
+                          }
+
+                          if (!replyInfo) return null;
+
+                          const originalMsg = replyInfo.id
+                            ? activeChat.messages.find((m: any) => m.id === replyInfo.id)
+                            : (replyInfo.wamid
+                              ? activeChat.messages.find((m: any) => m.wamid === replyInfo.wamid)
+                              : activeChat.messages.find((m: any) => m.content && replyInfo?.content && m.content.includes(replyInfo.content)));
+
+                          const quotedSenderName = originalMsg 
+                            ? (originalMsg.role === 'user' ? (activeChat.lead.name || 'Cliente') : originalMsg.role === 'assistant' ? 'IA (Bot)' : 'Tú')
+                            : (replyInfo.role === 'user' ? (activeChat.lead.name || 'Cliente') : replyInfo.role === 'assistant' ? 'IA' : 'Tú');
+
+                          const quotedText = replyInfo.content || (originalMsg?.content ? originalMsg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '') : (replyInfo.mediaFilename || 'Archivo adjunto'));
+                          const quotedMediaUrl = replyInfo.mediaUrl || originalMsg?.imageUrl || originalMsg?.mediaUrl;
+                          const isQuotedImage = (replyInfo.mediaType === 'image' || originalMsg?.mediaType === 'image' || !replyInfo.mediaType) && quotedMediaUrl && (quotedMediaUrl.includes('image') || quotedMediaUrl.includes('.jpg') || quotedMediaUrl.includes('.png') || quotedMediaUrl.includes('.webp') || quotedMediaUrl.includes('.jpeg'));
+
+                          return (
+                            <div
+                              onClick={() => originalMsg && scrollToMessage(originalMsg.id)}
+                              className={`group/quote p-2.5 mb-2.5 rounded-xl border-l-4 border-[#FF4D00] bg-black/10 dark:bg-black/35 backdrop-blur-sm text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/15 dark:hover:bg-black/50' : 'opacity-75'}`}
+                              title={originalMsg ? "Clic para ir al mensaje original" : undefined}
+                            >
+                              <div className="flex items-center justify-between gap-1 mb-1">
+                                <div className="flex items-center gap-1.5 font-bold text-[10px] text-[#FF4D00] uppercase tracking-wider">
+                                  <Reply size={11} className="rotate-180" />
+                                  <span>{quotedSenderName}</span>
+                                </div>
+                                {originalMsg && (
+                                  <div className="text-[8px] font-bold text-[#FF4D00] opacity-0 group-hover/quote:opacity-100 transition-opacity flex items-center gap-0.5">
+                                    <span>IR AL MENSAJE</span> ↑
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <p className="line-clamp-2 italic opacity-85 leading-snug flex-1 select-none">
+                                  {quotedText}
+                                </p>
+                                {isQuotedImage && (
+                                  <img 
+                                    src={quotedMediaUrl} 
+                                    alt="Thumbnail" 
+                                    className="w-8 h-8 rounded-md object-cover shrink-0 border border-black/10 dark:border-white/10" 
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* 2. Imagen / Thumbnail */}
                         {(msg.mediaUrl || msg.imageUrl) && (msg.mediaType === 'image' || !msg.mediaType) && (
@@ -1912,23 +2126,23 @@ export default function InboxPage() {
                                   <line x1="258" y1="0" x2="258" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
 
                                   {/* Arteria principal con resplandor naranja */}
-                                  <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="#F36A2D" strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
+                                  <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="#FF4D00" strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
                                   <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="white" strokeWidth="0.8" opacity="0.8" strokeDasharray="3 3" />
 
                                   {/* Ondas concéntricas centradas en (170, 72) */}
-                                  <circle cx="170" cy="72" r="32" stroke="#F36A2D" strokeWidth="1" opacity="0.45" strokeDasharray="2 2" />
+                                  <circle cx="170" cy="72" r="32" stroke="#FF4D00" strokeWidth="1" opacity="0.45" strokeDasharray="2 2" />
                                   <circle cx="170" cy="72" r="58" stroke="white" strokeWidth="0.5" opacity="0.18" />
                                 </svg>
 
                                 {/* Pin de Ubicación (Naranja de Abita) */}
                                 <div className="relative z-10 flex flex-col items-center">
-                                  <div className="relative h-10 w-10 rounded-full bg-gradient-to-tr from-[#F36A2D] to-orange-400 text-white flex items-center justify-center shadow-lg shadow-[#F36A2D]/50 group-hover:scale-105 transition-transform">
+                                  <div className="relative h-10 w-10 rounded-full bg-gradient-to-tr from-[#FF4D00] to-orange-400 text-white flex items-center justify-center shadow-lg shadow-[#FF4D00]/50 group-hover:scale-105 transition-transform">
                                     <MapPin size={20} className="fill-white/30" />
                                   </div>
                                 </div>
 
                                 {/* Brújula Top-Right */}
-                                <div className="absolute top-2.5 right-2.5 z-20 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-zinc-300 group-hover:text-white group-hover:bg-[#F36A2D] transition-colors shadow-sm">
+                                <div className="absolute top-2.5 right-2.5 z-20 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-zinc-300 group-hover:text-white group-hover:bg-[#FF4D00] transition-colors shadow-sm">
                                   <Navigation size={11} className="group-hover:rotate-45 transition-transform duration-300" />
                                 </div>
                               </div>
@@ -1936,14 +2150,14 @@ export default function InboxPage() {
                               {/* Barra de Información Inferior */}
                               <div className="p-3 bg-zinc-950/90 backdrop-blur-md flex items-center justify-between gap-2.5 border-t border-white/10">
                                 <div className="min-w-0 flex-1 text-left">
-                                  <p className="text-xs font-bold text-white truncate group-hover:text-[#F36A2D] transition-colors">
+                                  <p className="text-xs font-bold text-white truncate group-hover:text-[#FF4D00] transition-colors">
                                     {locationTitle || 'Ubicación'}
                                   </p>
                                   <p className="text-[10px] text-zinc-400 truncate mt-0.5">
                                     {locationAddress || 'Google Maps'}
                                   </p>
                                 </div>
-                                <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 group-hover:bg-[#F36A2D] text-zinc-200 group-hover:text-white text-[11px] font-semibold transition-all shadow-sm">
+                                <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 group-hover:bg-[#FF4D00] text-zinc-200 group-hover:text-white text-[11px] font-semibold transition-all shadow-sm">
                                   <span>Abrir</span>
                                   <ArrowUpRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                                 </div>
@@ -2022,13 +2236,26 @@ export default function InboxPage() {
                             <CheckCheck size={10} className="opacity-60 text-zinc-500" />
                           )}
                           {(isAgent || isBot) && msg.status === 'READ' && (
-                            <CheckCheck size={10} className="text-blue-400 opacity-100 dark:text-blue-400" />
+                            <CheckCheck size={10} className="text-[#FF4D00] opacity-100" />
                           )}
                           {(isAgent || isBot) && !['failed', 'FAILED', 'ERROR', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
                             <Check size={10} className="opacity-60" />
                           )}
                         </div>
                       </div>
+
+                      {/* Botón flotante para responder a este mensaje */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartReply(msg);
+                        }}
+                        className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 max-md:opacity-60 transition-all p-1.5 rounded-full bg-white/90 dark:bg-zinc-800/90 hover:bg-white dark:hover:bg-zinc-700 text-[#6F6F6F] hover:text-[#FF4D00] shadow-sm hover:scale-110 active:scale-95 shrink-0 mb-1"
+                        title="Responder a este mensaje"
+                      >
+                        <Reply size={13} className={isUser ? "" : "-scale-x-100"} />
+                      </button>
+
                       {/* Error banner debajo de la burbuja */}
                       {(msg.status === 'failed' || msg.status === 'FAILED' || msg.status === 'ERROR') && msg.sendError && (
                         <div className="mt-1 px-3 py-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl max-w-full">
@@ -2082,10 +2309,10 @@ export default function InboxPage() {
 
               {isSimulating && (
                 <div className="flex items-end gap-2 max-w-[80%] ml-auto flex-row-reverse">
-                  <div className="shrink-0 w-6 h-6 rounded-full bg-[#F36A2D]/10 text-[#F36A2D] flex items-center justify-center mb-1">
+                  <div className="shrink-0 w-6 h-6 rounded-full bg-[#FF4D00]/10 text-[#FF4D00] flex items-center justify-center mb-1">
                     <Bot size={13} />
                   </div>
-                  <div className="p-3 rounded-2xl bg-[#F36A2D]/20 text-[#F36A2D] rounded-tr-sm flex items-center gap-1.5 shadow-sm">
+                  <div className="p-3 rounded-2xl bg-[#FF4D00]/20 text-[#FF4D00] rounded-tr-sm flex items-center gap-1.5 shadow-sm">
                     <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
                     <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:0.2s]"></span>
                     <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:0.4s]"></span>
@@ -2096,7 +2323,7 @@ export default function InboxPage() {
             </div>
 
             {/* CONTROLES DE SIMULACIÓN MVP */}
-            <div className="border-t border-[#DEDAD0] dark:border-zinc-800/60 bg-white/80 dark:bg-[#111111]/40 backdrop-blur-xl z-10 shrink-0 pb-4 md:pb-2">
+            <div className="shadow-[inset_0_1px_0_rgba(255,255,255,.8),0_-8px_24px_rgba(66,54,36,.04)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.08)] bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl z-10 shrink-0 pb-4 md:pb-2">
 
               {/* AGENT INPUT */}
               {(() => {
@@ -2110,20 +2337,66 @@ export default function InboxPage() {
                 const isPast24h = isWhatsApp && (!lastUserMsgDate || msPassed > 24 * 60 * 60 * 1000);
 
                 return (
-                  <div className="px-4 py-4 border-t border-[#DEDAD0] dark:border-zinc-800 bg-[#F8F5EE] dark:bg-[#1A1714]">
-                    <div className="text-[10px] font-bold text-[#F36A2D] mb-2 flex items-center justify-between tracking-widest px-1">
+                  <div className="px-4 py-4">
+                    <div className="text-[10px] font-bold text-[#FF4D00] mb-2 flex items-center justify-between tracking-widest px-1">
                       <span>{isPast24h ? "SESIÓN EXPIRADA (> 24H)" : "AGENTE REAL (TU RESPUESTA)"}</span>
                       <User size={10} />
                     </div>
 
+                    {/* Preview de Respuesta Contextual */}
+                    {replyingTo && (
+                      <div className="mb-2 flex items-center justify-between gap-3 p-2.5 bg-white/95 dark:bg-zinc-900/95 border border-[#DDD5C2] dark:border-zinc-700 border-l-4 border-l-[#FF4D00] rounded-xl shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-200">
+                        <div 
+                          className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                          onClick={() => scrollToMessage(replyingTo.id)}
+                          title="Ir al mensaje original"
+                        >
+                          <div className="p-1 rounded-md bg-[#FF4D00]/10 text-[#FF4D00] shrink-0">
+                            <Reply size={14} className="rotate-180" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-[#FF4D00]">
+                                Respondiendo a {replyingTo.role === 'user' ? (activeChat.lead?.name || 'Cliente') : replyingTo.role === 'assistant' ? 'IA' : 'Tú'}
+                              </span>
+                              {replyingTo.mediaType && (
+                                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider bg-black/5 dark:bg-white/10 px-1.5 py-0.5 rounded">
+                                  {replyingTo.mediaType}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-zinc-600 dark:text-zinc-300 truncate mt-0.5">
+                              {replyingTo.content 
+                                ? replyingTo.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '')
+                                : (replyingTo.mediaFilename || (replyingTo.mediaType ? `[${replyingTo.mediaType}]` : 'Mensaje adjunto'))}
+                            </p>
+                          </div>
+                          {(replyingTo.imageUrl || (replyingTo.mediaType === 'image' ? replyingTo.mediaUrl : null)) && (
+                            <img 
+                              src={replyingTo.imageUrl || replyingTo.mediaUrl} 
+                              alt="Thumbnail" 
+                              className="w-9 h-9 rounded-md object-cover shrink-0 border border-black/10 dark:border-white/10" 
+                            />
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setReplyingTo(null)}
+                          className="p-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors shrink-0"
+                          title="Cancelar respuesta (Esc)"
+                        >
+                          <XIcon size={14} />
+                        </button>
+                      </div>
+                    )}
+
                     {/* Preview de archivo adjunto */}
                     {pendingFile && (
-                      <div className="mb-2 flex items-center gap-2 p-2 bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-700 rounded-xl">
+                      <div className="mb-2 flex items-center gap-2 p-2 bg-white dark:bg-zinc-900 border border-[#DDD5C2] dark:border-zinc-700 rounded-xl">
                         {pendingFilePreview ? (
                           <img src={pendingFilePreview} alt="preview" className="h-10 w-10 object-cover rounded-lg shrink-0" />
                         ) : (
-                          <div className="h-10 w-10 bg-[#F36A2D]/10 rounded-lg flex items-center justify-center shrink-0">
-                            <FileText size={18} className="text-[#F36A2D]" />
+                          <div className="h-10 w-10 bg-[#FF4D00]/10 rounded-lg flex items-center justify-center shrink-0">
+                            <FileText size={18} className="text-[#FF4D00]" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
@@ -2143,7 +2416,7 @@ export default function InboxPage() {
                       {isPast24h && (
                         <button
                           onClick={() => setIsTemplateModalOpen(true)}
-                          className="shrink-0 px-4 py-2.5 bg-[#F36A2D] text-white rounded-xl font-bold text-xs shadow-md flex items-center gap-2 hover:opacity-90 transition-opacity"
+                          className="shrink-0 px-4 py-2.5 bg-[#FF4D00] text-white rounded-xl font-bold text-xs shadow-md flex items-center gap-2 hover:opacity-90 transition-opacity"
                         >
                           <MessageSquare size={16} /> Ver Templates
                         </button>
@@ -2205,32 +2478,32 @@ export default function InboxPage() {
                               <div className="relative" ref={attachMenuRef}>
                                 <button
                                   onClick={() => setShowAttachMenu(!showAttachMenu)}
-                                  className={`shrink-0 p-2.5 border rounded-xl transition-all ${showAttachMenu ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
+                                  className={`shrink-0 p-2.5 border rounded-xl transition-all ${showAttachMenu ? 'bg-[#FF4D00]/10 border-[#FF4D00] text-[#FF4D00]' : 'bg-white dark:bg-zinc-800 border-[#DDD5C2] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#FF4D00] hover:border-[#FF4D00]'}`}
                                   title="Adjuntar"
                                 >
                                   <Paperclip size={16} />
                                 </button>
                                 {showAttachMenu && (
-                                  <div className="absolute bottom-full left-0 mb-4 z-[70] bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-700 rounded-2xl shadow-2xl p-2 w-48 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                                  <div className="absolute bottom-full left-0 mb-4 z-[70] glass-dark rounded-2xl p-2 w-48 animate-in fade-in slide-in-from-bottom-4 duration-200">
                                     <div className="flex flex-col gap-1">
-                                      <button onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
-                                        <div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg"><FileText size={16} /></div>
+                                      <button onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-xl transition-colors text-left text-sm font-medium text-[#EDE9E0]">
+                                        <div className="p-1.5 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg"><FileText size={16} /></div>
                                         Documento
                                       </button>
-                                      <button onClick={() => { setShowAttachMenu(false); cameraInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
-                                        <div className="p-1.5 bg-pink-500/10 text-pink-500 rounded-lg"><Camera size={16} /></div>
+                                      <button onClick={() => { setShowAttachMenu(false); cameraInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-xl transition-colors text-left text-sm font-medium text-[#EDE9E0]">
+                                        <div className="p-1.5 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg"><Camera size={16} /></div>
                                         Cámara
                                       </button>
-                                      <button onClick={() => { setShowAttachMenu(false); galleryInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white">
-                                        <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg"><ImageIcon size={16} /></div>
+                                      <button onClick={() => { setShowAttachMenu(false); galleryInputRef.current?.click(); }} className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-xl transition-colors text-left text-sm font-medium text-[#EDE9E0]">
+                                        <div className="p-1.5 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg"><ImageIcon size={16} /></div>
                                         Galería
                                       </button>
                                       <button 
                                         onClick={handleSendLocation} 
                                         disabled={isSendingLocation || isUploadingMedia}
-                                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-left text-sm font-medium text-[#111111] dark:text-white disabled:opacity-50"
+                                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-xl transition-colors text-left text-sm font-medium text-[#EDE9E0] disabled:opacity-50"
                                       >
-                                        <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                                        <div className="p-1.5 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg">
                                           {isSendingLocation ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
                                         </div>
                                         <span>{isSendingLocation ? 'Enviando ubicación...' : 'Ubicación'}</span>
@@ -2243,7 +2516,7 @@ export default function InboxPage() {
                               <div className="relative" ref={emojiPickerRef}>
                                 <button
                                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                  className={`shrink-0 p-2.5 border rounded-xl transition-all ${showEmojiPicker ? 'bg-[#F36A2D]/10 border-[#F36A2D] text-[#F36A2D]' : 'bg-white dark:bg-zinc-800 border-[#DEDAD0] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#F36A2D] hover:border-[#F36A2D]'}`}
+                                  className={`shrink-0 p-2.5 border rounded-xl transition-all ${showEmojiPicker ? 'bg-[#FF4D00]/10 border-[#FF4D00] text-[#FF4D00]' : 'bg-white dark:bg-zinc-800 border-[#DDD5C2] dark:border-zinc-700 text-[#6F6F6F] hover:text-[#FF4D00] hover:border-[#FF4D00]'}`}
                                   title="Insertar emoji"
                                 >
                                   <Smile size={16} />
@@ -2265,9 +2538,15 @@ export default function InboxPage() {
 
                               <div className="flex-1 relative flex items-center">
                                 <textarea
+                                  ref={agentTextareaRef}
                                   value={agentInput}
                                   onChange={(e) => setAgentInput(e.target.value)}
                                   onKeyDown={(e) => {
+                                    if (e.key === 'Escape' && replyingTo) {
+                                      e.preventDefault();
+                                      setReplyingTo(null);
+                                      return;
+                                    }
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                       e.preventDefault();
                                       if (pendingFile) handleMediaSend();
@@ -2282,9 +2561,11 @@ export default function InboxPage() {
                                         ? "Desactiva la IA para responder"
                                         : pendingFile
                                           ? "Agrega un caption (opcional)..."
-                                          : "Escribe una respuesta..."
+                                          : replyingTo
+                                            ? "Escribe tu respuesta contextual... (Esc para cancelar)"
+                                            : "Escribe una respuesta..."
                                   }
-                                  className="w-full bg-[#E9E4D8]/50 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-12 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#F36A2D] focus:ring-1 focus:ring-[#F36A2D]/40 text-sm text-[#111111] dark:text-white"
+                                  className="w-full bg-[#EBE4D6]/50 dark:bg-[#111111]/40 border border-[#DDD5C2] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-12 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00]/40 text-sm text-[#111111] dark:text-white"
                                   rows={1}
                                 />
 
@@ -2293,7 +2574,7 @@ export default function InboxPage() {
                                     {!agentInput.trim() && !pendingFile ? (
                                       <button
                                         onClick={startRecording}
-                                        className="p-2 text-[#F36A2D] hover:bg-[#F36A2D]/10 rounded-xl transition-all"
+                                        className="p-2 text-[#FF4D00] hover:bg-[#FF4D00]/10 rounded-xl transition-all"
                                         title="Grabar nota de voz"
                                       >
                                         <Mic size={20} />
@@ -2317,8 +2598,8 @@ export default function InboxPage() {
                     </div>
 
                     {activeChat.botActive && (
-                      <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#6F6F6F] bg-[#DEDAD0]/30 dark:bg-zinc-800/20 py-2 rounded-lg border border-[#DEDAD0] dark:border-zinc-800/40 opacity-80">
-                        <Bot size={12} className="text-[#F36A2D]" />
+                      <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#6F6F6F] bg-[#DDD5C2]/30 dark:bg-zinc-800/20 py-2 rounded-lg border border-[#DDD5C2] dark:border-zinc-800/40 opacity-80">
+                        <Bot size={12} className="text-[#FF4D00]" />
                         Inteligencia Artificial Gestionando
                       </div>
                     )}
@@ -2332,22 +2613,22 @@ export default function InboxPage() {
 
       {/* 3. SIDEBAR DE PERFIL DE CONTACTO — solo en desktop */}
       <div
-        className={`${mobileView === 'profile' ? 'flex w-full fixed inset-0 z-[60]' : 'hidden'} md:flex shrink-0 border-l border-[#DEDAD0] dark:border-zinc-800/60 bg-white dark:bg-[#1A1714] flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'md:w-[300px]' : 'md:w-0 opacity-0 pointer-events-none border-l-0'
+        className={`${mobileView === 'profile' ? 'flex w-full fixed inset-0 z-[60]' : 'hidden'} md:flex shrink-0 shadow-[inset_1px_0_0_rgba(138,129,114,.18)] dark:shadow-[inset_1px_0_0_rgba(255,255,255,.06)] bg-[#EBE4D6] dark:bg-[#1A1714] flex-col transition-all duration-300 ease-in-out relative overflow-hidden ${activeChat && isProfileSidebarOpen ? 'md:w-[300px]' : 'md:w-0 opacity-0 pointer-events-none border-l-0'
           }`}
       >
         {activeChat && (isProfileSidebarOpen || mobileView === 'profile') && (
           <div className="flex-1 w-full md:w-[300px] overflow-y-auto no-scrollbar pb-6 absolute inset-0">
             {/* Cabecera del perfil */}
             {mobileView === 'profile' && (
-               <div className="md:hidden sticky top-0 bg-[#E9E4D8]/80 dark:bg-black/80 backdrop-blur-md px-4 py-3 z-10 border-b border-[#DEDAD0] dark:border-zinc-800/60 flex items-center gap-2">
+               <div className="md:hidden sticky top-0 bg-[#EBE4D6]/80 dark:bg-black/80 backdrop-blur-md px-4 py-3 z-10 border-b border-[#DDD5C2] dark:border-zinc-800/60 flex items-center gap-2">
                  <button onClick={() => setMobileView('chat')} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#111111] dark:text-[#EDE9E0] transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                  </button>
                  <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">Perfil del Contacto</span>
                </div>
             )}
-            <div className="px-6 py-8 flex flex-col items-center justify-center border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/30 dark:bg-black/20">
-              <div className="h-20 w-20 bg-[#111111] dark:bg-[#E9E4D8] rounded-full flex items-center justify-center text-[#F36A2D] font-black text-3xl shadow-xl mb-4 relative">
+            <div className="px-6 py-8 flex flex-col items-center justify-center border-b border-[#DDD5C2] dark:border-zinc-800/60 bg-[#EBE4D6]/30 dark:bg-black/20">
+              <div className="h-20 w-20 bg-[#111111] dark:bg-[#EBE4D6] rounded-full flex items-center justify-center text-[#FF4D00] font-black text-3xl shadow-xl mb-4 relative">
                 {activeChat.lead.name?.[0]?.toUpperCase() || 'A'}
                 <div className="absolute -bottom-1 -right-1 bg-white dark:bg-[#1A1714] p-1 rounded-full shadow-sm">
                   {activeChat.lead.channel === 'instagram' ? <IgIcon size={16} className="text-pink-500" /> : activeChat.lead.channel === 'simulator' ? <SimIcon size={16} className="text-orange-500" /> : <WaIcon size={16} className="text-[#25D366]" />}
@@ -2374,23 +2655,23 @@ export default function InboxPage() {
                   <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2 mb-3">
                     <User size={12} /> Detalles
                   </h3>
-                  <div className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 space-y-4">
+                  <div className="bg-[#EBE4D6]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 space-y-4">
                     <div>
                       <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-1">Temperatura</span>
                       <div className="flex items-center gap-2">
                         {activeChat.lead.heat === 'CALIENTE' && <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Caliente 🔥</span>}
                         {activeChat.lead.heat === 'TIBIO' && <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Tibio 📈</span>}
-                        {(!activeChat.lead.heat || activeChat.lead.heat === 'FRIO') && <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase">Frío ❄️</span>}
+                        {(!activeChat.lead.heat || activeChat.lead.heat === 'FRIO') && <span className="bg-[#8A8172] text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Frío ❄️</span>}
                         <span className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0]">Pts: {activeChat.lead.score}</span>
                       </div>
                     </div>
                     {/* Switch de Auto-Wake Bot */}
-                    <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
+                    <div className="pt-3 border-t border-[#DDD5C2] dark:border-zinc-800 flex justify-between items-center">
                       <span className="text-[10px] text-[#6F6F6F] font-bold uppercase">Auto-Reactivar IA</span>
                       <button
                         onClick={handleToggleAutoWake}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                          activeChat.autoWakeBot ? 'bg-[#F36A2D]' : 'bg-[#DEDAD0] dark:bg-zinc-700'
+                          activeChat.autoWakeBot ? 'bg-[#FF4D00]' : 'bg-[#DDD5C2] dark:bg-zinc-700'
                         }`}
                         title={activeChat.autoWakeBot ? "Desactivar reactivación automática" : "Activar reactivación automática"}
                       >
@@ -2402,14 +2683,14 @@ export default function InboxPage() {
 
                     {/* Triggers de Score */}
                     {activeChat.messages?.some((m: any) => m.scoreBump) && (
-                      <div className="pt-3 border-t border-[#DEDAD0] dark:border-zinc-800">
+                      <div className="pt-3 border-t border-[#DDD5C2] dark:border-zinc-800">
                         <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-2">Eventos de Interés</span>
                         <div className="space-y-2">
                           {activeChat.messages
                             .filter((m: any) => m.scoreBump)
                             .map((m: any, i: number) => (
-                              <div key={i} className="flex items-start gap-2 text-[11px] bg-white/40 dark:bg-black/20 p-2 rounded-lg border border-[#DEDAD0]/50 dark:border-zinc-800/50">
-                                <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">+{m.scoreBump}</span>
+                              <div key={i} className="flex items-start gap-2 text-[11px] bg-white/40 dark:bg-black/20 p-2 rounded-lg border border-[#DDD5C2]/50 dark:border-zinc-800/50">
+                                <span className="text-[#FF4D00] font-bold shrink-0">+{m.scoreBump}</span>
                                 <span className="text-[#111111] dark:text-[#EDE9E0] leading-tight">{m.scoreReason || 'Sin razón especificada'}</span>
                               </div>
                             ))}
@@ -2417,7 +2698,7 @@ export default function InboxPage() {
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center pt-3 border-t border-[#DEDAD0] dark:border-zinc-800">
+                    <div className="flex justify-between items-center pt-3 border-t border-[#DDD5C2] dark:border-zinc-800">
                       <div>
                         <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Contactado</span>
                         <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0]">
@@ -2441,7 +2722,7 @@ export default function InboxPage() {
                   <h3 className="text-[10px] font-black text-[#6F6F6F] uppercase tracking-widest flex items-center gap-2 mb-3">
                     <User size={12} /> Detalles Básicos
                   </h3>
-                  <div className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 flex justify-between items-center">
+                  <div className="bg-[#EBE4D6]/30 dark:bg-zinc-900/50 p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 flex justify-between items-center">
                     <div>
                       <span className="text-[10px] text-[#6F6F6F] font-bold uppercase block mb-0.5">Contactado</span>
                       <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0]">
@@ -2467,14 +2748,14 @@ export default function InboxPage() {
                   <button
                     onClick={handleRefreshSummary}
                     disabled={isRefreshingSummary}
-                    className={`p-1.5 rounded-lg transition-all ${isRefreshingSummary ? 'animate-spin text-[#F36A2D]' : 'text-[#6F6F6F] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[#F36A2D]'}`}
+                    className={`p-1.5 rounded-lg transition-all ${isRefreshingSummary ? 'animate-spin text-[#FF4D00]' : 'text-[#6F6F6F] hover:bg-black/5 dark:hover:bg-white/5 hover:text-[#FF4D00]'}`}
                     title="Refrescar resumen"
                   >
                     <RefreshCw size={12} />
                   </button>
                 </div>
-                <div className="bg-[#F36A2D]/5 border border-[#F36A2D]/20 p-4 rounded-xl text-xs text-[#111111] dark:text-[#EDE9E0] leading-relaxed relative">
-                  <Sparkles size={14} className="absolute top-2 right-2 text-[#F36A2D]/40" />
+                <div className="bg-[#FF4D00]/5 border border-[#FF4D00]/20 p-4 rounded-xl text-xs text-[#111111] dark:text-[#EDE9E0] leading-relaxed relative">
+                  <Sparkles size={14} className="absolute top-2 right-2 text-[#FF4D00]/40" />
                   {activeChat.lead.aiSummary ? (
                     <span className="font-medium">{activeChat.lead.aiSummary}</span>
                   ) : (
@@ -2492,21 +2773,21 @@ export default function InboxPage() {
                   <div className="space-y-2">
                     {/* Mostrar primero las campañas si existen */}
                     {activeChat.lead.allCampaigns && activeChat.lead.allCampaigns.length > 0 ? (
-                      <div className="bg-[#F36A2D]/10 px-3 py-2.5 rounded-lg border border-[#F36A2D]/20 flex flex-col gap-1.5">
-                        <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-wider">Campañas de Origen</span>
+                      <div className="bg-[#FF4D00]/10 px-3 py-2.5 rounded-lg border border-[#FF4D00]/20 flex flex-col gap-1.5">
+                        <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-wider">Campañas de Origen</span>
                         <div className="flex flex-col gap-1">
                           {activeChat.lead.allCampaigns.map((camp: any) => (
-                            <span key={camp.id} className="text-[11px] font-bold text-[#F36A2D] flex items-center gap-1.5">
-                              <span className="w-1 h-1 rounded-full bg-[#F36A2D]"></span>
+                            <span key={camp.id} className="text-[11px] font-bold text-[#FF4D00] flex items-center gap-1.5">
+                              <span className="w-1 h-1 rounded-full bg-[#FF4D00]"></span>
                               {camp.name}
                             </span>
                           ))}
                         </div>
                       </div>
                     ) : activeChat.lead.latestCampaign ? (
-                      <div className="bg-[#F36A2D]/10 px-3 py-2.5 rounded-lg border border-[#F36A2D]/20 flex flex-col gap-0.5">
-                        <span className="text-[9px] font-black text-[#F36A2D] uppercase tracking-wider">Campaña de Origen</span>
-                        <span className="text-xs font-bold text-[#F36A2D] truncate">{activeChat.lead.latestCampaign.name}</span>
+                      <div className="bg-[#FF4D00]/10 px-3 py-2.5 rounded-lg border border-[#FF4D00]/20 flex flex-col gap-0.5">
+                        <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-wider">Campaña de Origen</span>
+                        <span className="text-xs font-bold text-[#FF4D00] truncate">{activeChat.lead.latestCampaign.name}</span>
                       </div>
                     ) : null}
 
@@ -2514,7 +2795,7 @@ export default function InboxPage() {
                     {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && Object.entries(activeChat.lead.metadata)
                       .filter(([key]) => !key.toLowerCase().startsWith('__empty'))
                       .map(([key, val]) => (
-                      <div key={key} className="bg-[#E9E4D8]/30 dark:bg-zinc-900/50 px-3 py-2.5 rounded-lg border border-[#DEDAD0] dark:border-zinc-800 flex flex-col gap-0.5">
+                      <div key={key} className="bg-[#EBE4D6]/30 dark:bg-zinc-900/50 px-3 py-2.5 rounded-lg border border-[#DDD5C2] dark:border-zinc-800 flex flex-col gap-0.5">
                         <span className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-wider">{key}</span>
                         <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0] truncate">{String(val)}</span>
                       </div>
@@ -2551,17 +2832,17 @@ export default function InboxPage() {
         {notifications.map(n => (
           <div
             key={n.id}
-            className="pointer-events-auto bg-white dark:bg-zinc-900 border border-[#DEDAD0] dark:border-zinc-800 shadow-2xl rounded-2xl p-4 w-72 animate-in slide-in-from-right-8 fade-in duration-500 cursor-pointer hover:scale-[1.02] transition-transform"
+            className="pointer-events-auto glass-dark rounded-2xl p-4 w-72 animate-in slide-in-from-right-8 fade-in duration-500 cursor-pointer hover:scale-[1.02] transition-transform"
             onClick={() => {
               loadChatDetails(n.chatId);
               setNotifications(prev => prev.filter(item => item.id !== n.id));
             }}
           >
             <div className="flex items-center gap-3 mb-1">
-              <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-xs font-bold text-emerald-600">NUEVO MENSAJE MANUAL</span>
+              <div className="dot-live" />
+              <span className="text-xs font-bold text-[#FF4D00]">NUEVO MENSAJE MANUAL</span>
             </div>
-            <p className="text-sm font-bold text-[#111111] dark:text-[#EDE9E0] line-clamp-1">{n.name}</p>
+            <p className="text-sm font-bold text-white line-clamp-1">{n.name}</p>
             <p className="text-xs text-[#6F6F6F] line-clamp-2 mt-1 italic">"{n.text}"</p>
           </div>
         ))}
@@ -2570,9 +2851,9 @@ export default function InboxPage() {
       {/* Modal de Doble Verificación para Bot Active */}
       {isBotConfirmModalOpen && activeChat && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-2xl border border-[#DEDAD0] dark:border-zinc-800 p-6 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-md rounded-3xl shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.14)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12),0_28px_60px_rgba(0,0,0,.6)] p-6 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-2xl flex items-center justify-center ${activeChat.botActive ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'}`}>
+              <div className={`p-3 rounded-2xl flex items-center justify-center ${activeChat.botActive ? 'bg-amber-500/10 text-amber-600' : 'bg-[#FF4D00]/10 text-[#FF4D00]'}`}>
                 <Bot size={24} />
               </div>
               <button
@@ -2599,7 +2880,7 @@ export default function InboxPage() {
               )}
             </p>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DEDAD0]/60 dark:border-zinc-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DDD5C2]/60 dark:border-zinc-800">
               <button
                 onClick={() => setIsBotConfirmModalOpen(false)}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#6F6F6F] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
@@ -2614,7 +2895,7 @@ export default function InboxPage() {
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${
                   activeChat.botActive
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                    : 'bg-[#F36A2D] hover:bg-[#d9591d] shadow-[#F36A2D]/20'
+                    : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
                 }`}
               >
                 {activeChat.botActive ? 'Sí, desactivar bot' : 'Sí, activar bot'}
@@ -2632,7 +2913,7 @@ export default function InboxPage() {
         >
           <div className="relative max-w-4xl max-h-screen flex flex-col items-center justify-center">
             <button 
-              className="absolute -top-12 right-0 text-white hover:text-[#F36A2D] transition-colors p-2"
+              className="absolute -top-12 right-0 text-white hover:text-[#FF4D00] transition-colors p-2"
               onClick={() => setSelectedImage(null)}
             >
               <XIcon size={24} />
@@ -2649,7 +2930,7 @@ export default function InboxPage() {
                 download 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="flex items-center gap-2 bg-[#F36A2D] hover:bg-[#F36A2D]/90 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg"
+                className="flex items-center gap-2 bg-[#FF4D00] hover:bg-[#FF4D00]/90 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg"
               >
                 <Download size={18} /> Descargar Imagen
               </a>

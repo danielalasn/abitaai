@@ -96,10 +96,10 @@ const getTierInfo = (tierName: string, tierLimit: number) => {
   }
   if (tierLimit <= 2000) {
     return {
-      color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-50 dark:bg-blue-900/20',
-      border: 'border-blue-200 dark:border-blue-800',
-      badge: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
+      color: 'text-[#5C5C5C] dark:text-[#A3A3A3]',
+      bg: 'bg-[#F5F0E5] dark:bg-[#8A8172]/20',
+      border: 'border-[#DDD5C2] dark:border-[#8A8172]',
+      badge: 'bg-[#DDD5C2] dark:bg-[#8A8172]/40 text-[#5C5C5C] dark:text-[#A3A3A3]',
       description: 'Primer nivel de aumento manual. Desbloqueado al verificar el negocio o enviar 2,000 mensajes en 30 días.'
     }
   }
@@ -114,18 +114,18 @@ const getTierInfo = (tierName: string, tierLimit: number) => {
   }
   if (tierLimit <= 100000) {
     return {
-      color: 'text-purple-600 dark:text-purple-400',
-      bg: 'bg-purple-50 dark:bg-purple-900/20',
-      border: 'border-purple-200 dark:border-purple-800',
-      badge: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400',
+      color: 'text-[#5C5C5C] dark:text-[#A3A3A3]',
+      bg: 'bg-[#F5F0E5] dark:bg-[#8A8172]/20',
+      border: 'border-[#DDD5C2] dark:border-[#8A8172]',
+      badge: 'bg-[#DDD5C2] dark:bg-[#8A8172]/40 text-[#5C5C5C] dark:text-[#A3A3A3]',
       description: 'Tier empresarial de gran escala. Segundo aumento automático.'
     }
   }
   return {
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    badge: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400',
+    color: 'text-[#E64500] dark:text-[#FF8A4C]',
+    bg: 'bg-[#FFE5DB] dark:bg-[#FF4D00]/20',
+    border: 'border-[#FFD0BC] dark:border-[#7A2A00]',
+    badge: 'bg-[#FFE5DB] dark:bg-[#FF4D00]/40 text-[#B33500] dark:text-[#FF8A4C]',
     description: 'Nivel máximo de mensajería. Sin límites prácticos de escala.'
   }
 }
@@ -133,10 +133,10 @@ const getTierInfo = (tierName: string, tierLimit: number) => {
 function TierInfoModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
-      <div className="bg-white dark:bg-[#111111] border border-[#DEDAD0] dark:border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between">
+      <div className="bg-[#F5F0E5] dark:bg-[#1A1714] w-full max-w-lg rounded-3xl shadow-[inset_0_1px_0_rgba(255,255,255,.85),0_10px_26px_rgba(66,54,36,.12),0_28px_60px_rgba(66,54,36,.14)] overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield size={16} className="text-[#F36A2D]" />
+            <Shield size={16} className="text-[#FF4D00]" />
             <h3 className="font-bold text-[#111111] dark:text-white text-sm">Cómo funcionan los Tiers de WhatsApp</h3>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-[#6F6F6F]">
@@ -154,10 +154,10 @@ function TierInfoModal({ onClose }: { onClose: () => void }) {
             <p className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Escala de Tiers</p>
             {[
               { tier: 'Tier 0', desc: 'Inicio de todo portfolio nuevo (250 limit)', color: 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300' },
-              { tier: 'Tier 1', desc: 'Primer aumento manual/verif (2,000 limit)', color: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' },
+              { tier: 'Tier 1', desc: 'Primer aumento manual/verif (2,000 limit)', color: 'bg-[#DDD5C2] dark:bg-[#8A8172]/40 text-[#5C5C5C] dark:text-[#B8B0A3]' },
               { tier: 'Tier 2', desc: 'Aumento automático (10,000 limit)', color: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300' },
-              { tier: 'Tier 3', desc: 'Aumento automático (100,000 limit)', color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
-              { tier: 'Tier 4', desc: 'Aumento automático final (Ilimitado)', color: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' },
+              { tier: 'Tier 3', desc: 'Aumento automático (100,000 limit)', color: 'bg-[#DDD5C2] dark:bg-[#8A8172]/40 text-[#5C5C5C] dark:text-[#B8B0A3]' },
+              { tier: 'Tier 4', desc: 'Aumento automático final (Ilimitado)', color: 'bg-[#FFE5DB] dark:bg-[#FF4D00]/40 text-[#B33500] dark:text-' },
             ].map((t, i) => (
               <div key={i} className="flex items-center gap-3">
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${t.color}`}>{t.tier}</span>
@@ -166,7 +166,7 @@ function TierInfoModal({ onClose }: { onClose: () => void }) {
             ))}
           </div>
 
-          <div className="bg-[#E9E4D8]/60 dark:bg-zinc-800/50 rounded-xl p-4 space-y-2">
+          <div className="bg-[#EBE4D6]/60 dark:bg-zinc-800/50 rounded-xl p-4 space-y-2">
             <p className="text-xs font-bold text-[#111111] dark:text-white">Para subir de Tier 0 → Tier 1 (manual):</p>
             <ul className="space-y-1.5 text-xs text-[#6F6F6F]">
               <li className="flex gap-2"><span className="shrink-0 mt-0.5">A.</span>Verificar tu empresa con Meta (Business Verification en Meta Business Suite)</li>
@@ -174,7 +174,7 @@ function TierInfoModal({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
 
-          <div className="bg-[#E9E4D8]/60 dark:bg-zinc-800/50 rounded-xl p-4 space-y-2">
+          <div className="bg-[#EBE4D6]/60 dark:bg-zinc-800/50 rounded-xl p-4 space-y-2">
             <p className="text-xs font-bold text-[#111111] dark:text-white">Para aumentos automáticos (Tier 1 → Tier 2 → Tier 3 → Tier 4):</p>
             <ul className="space-y-1.5 text-xs text-[#6F6F6F]">
               <li className="flex gap-2"><span className="shrink-0 mt-0.5">•</span>Usar al menos el 50% del límite actual en los últimos 7 días</li>
@@ -199,7 +199,7 @@ function Tooltip({ text }: { text: string }) {
       <button
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
-        className="text-[#6F6F6F] hover:text-[#F36A2D] transition-colors ml-1"
+        className="text-[#6F6F6F] hover:text-[#FF4D00] transition-colors ml-1"
       >
         <Info size={13} />
       </button>
@@ -272,7 +272,7 @@ export default function AnalyticsDashboard() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#E9E4D8] dark:bg-[#1A1714]">
+      <div className="flex-1 flex items-center justify-center bg-[#EBE4D6] dark:bg-[#1A1714]">
         <div className="animate-pulse flex flex-col items-center gap-4">
           <BarChart3 className="text-[#6F6F6F]" size={32} />
           <p className="text-sm text-[#6F6F6F]">Cargando métricas...</p>
@@ -299,11 +299,11 @@ export default function AnalyticsDashboard() {
 
   return (
     <DesktopOnlyGuard>
-      <div className="flex-1 flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714]">
+      <div className="flex-1 flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714]">
         {/* Header */}
-        <header className="shrink-0 min-h-[64px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 md:px-8 py-3 md:py-0 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-50 sticky top-0">
+        <header className="shrink-0 min-h-[64px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 md:px-8 py-3 md:py-0 bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl shadow-[inset_0_-1px_0_rgba(138,129,114,.18)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)] z-50 sticky top-0">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
+            <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg flex items-center justify-center">
               <BarChart3 size={18} />
             </div>
             <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">
@@ -312,7 +312,7 @@ export default function AnalyticsDashboard() {
           </div>
           <div className="flex items-center gap-3">
             {isLoading && data && (
-              <Loader2 size={16} className="text-[#F36A2D] animate-spin" />
+              <Loader2 size={16} className="text-[#FF4D00] animate-spin" />
             )}
             <DateRangePicker value={dateRange} onChange={setDateRange} onClear={() => setDateRange(getDefaultDateRange())} />
           </div>
@@ -334,7 +334,7 @@ export default function AnalyticsDashboard() {
                       <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Tier de Mensajería WhatsApp</span>
                       <button
                         onClick={() => setShowTierInfo(true)}
-                        className="text-[#6F6F6F] hover:text-[#F36A2D] transition-colors"
+                        className="text-[#6F6F6F] hover:text-[#FF4D00] transition-colors"
                         title="¿Cómo funcionan los tiers?"
                       >
                         <Info size={13} />
@@ -355,7 +355,7 @@ export default function AnalyticsDashboard() {
                     </div>
                     <div className="w-full bg-white/50 dark:bg-black/20 rounded-full h-2.5">
                       <div
-                        className={`h-2.5 rounded-full transition-all duration-700 ${tierUsagePct > 80 ? 'bg-red-500' : tierUsagePct > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                        className={`h-2.5 rounded-full transition-all duration-700 ${tierUsagePct > 80 ? 'bg-red-500' : tierUsagePct > 50 ? 'bg-amber-500' : 'bg-[#FF4D00]'}`}
                         style={{ width: `${tierUsagePct}%` }}
                       />
                     </div>
@@ -403,14 +403,14 @@ export default function AnalyticsDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className={`border rounded-2xl p-6 shadow-sm border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/10 flex flex-col justify-center`}>
+                <div className={`border rounded-2xl p-6 shadow-sm border-[#FFD0BC] dark:border-[#FF4D00]/40 bg-[#FFE5DB] dark:bg-[#FF4D00]/10 flex flex-col justify-center`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <Zap size={16} className="text-emerald-500" />
+                    <Zap size={16} className="text-[#FF4D00]" />
                     <span className="text-xs font-bold text-[#6F6F6F] uppercase tracking-widest">Suscripción Abita</span>
                   </div>
                   <div className="flex items-baseline gap-3 mt-1">
-                    <span className={`text-2xl font-bold text-emerald-600 dark:text-emerald-400`}>Mensajes Ilimitados</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300`}>
+                    <span className={`text-2xl font-bold text-[#E64500] dark:text-[#FF8A4C]`}>Mensajes Ilimitados</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-[#FFE5DB] dark:bg-[#FF4D00]/40 text-[#B33500] dark:text-`}>
                       Plan Infinito
                     </span>
                   </div>
@@ -427,15 +427,15 @@ export default function AnalyticsDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
               {/* IA Automation */}
-              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-emerald-500">
+              <div className="glass-panel p-6 rounded-2xl transition-all relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-[#FF4D00]">
                   <Zap size={100} />
                 </div>
                 <div className="flex justify-between items-start mb-4 relative z-10">
-                  <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                  <div className="p-2 bg-[#FFE5DB] dark:bg-[#FF4D00]/10 text-[#E64500] dark:text-[#FF8A4C] rounded-lg">
                     <Bot size={20} />
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-500/10 rounded-full">
+                  <span className="text-[10px] font-bold text-[#E64500] dark:text-[#FF8A4C] px-2 py-0.5 bg-[#FFE5DB] dark:bg-[#FF4D00]/10 rounded-full">
                     AUTOPILOT
                   </span>
                 </div>
@@ -447,7 +447,7 @@ export default function AnalyticsDashboard() {
               </div>
 
               {/* Human Messages */}
-              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+              <div className="glass-panel p-6 rounded-2xl transition-all relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-amber-500">
                   <Users size={100} />
                 </div>
@@ -464,12 +464,12 @@ export default function AnalyticsDashboard() {
               </div>
 
               {/* Campaign Messages */}
-              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-indigo-500">
+              <div className="glass-panel p-6 rounded-2xl transition-all relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none text-[#8A8172]">
                   <Megaphone size={100} />
                 </div>
                 <div className="flex justify-between items-start mb-4 relative z-10">
-                  <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                  <div className="p-2 bg-[#F5F0E5] dark:bg-[#8A8172]/10 text-[#5C5C5C] dark:text-[#A3A3A3] rounded-lg">
                     <Megaphone size={20} />
                   </div>
                 </div>
@@ -482,11 +482,11 @@ export default function AnalyticsDashboard() {
 
               {/* Time Saved */}
               <div className="bg-[#111111] dark:bg-zinc-800 border border-zinc-800 dark:border-zinc-700 p-6 rounded-2xl shadow-md hover:shadow-lg transition-all relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none text-[#F36A2D]">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none text-[#FF4D00]">
                   <Clock size={100} />
                 </div>
                 <div className="flex justify-between items-start mb-4 relative z-10">
-                  <div className="p-2 bg-[#F36A2D]/20 text-[#F36A2D] rounded-lg shadow-sm">
+                  <div className="p-2 bg-[#FF4D00]/20 text-[#FF4D00] rounded-lg shadow-sm">
                     <Clock size={20} />
                   </div>
                 </div>
@@ -494,7 +494,7 @@ export default function AnalyticsDashboard() {
                   <p className="text-sm font-medium text-zinc-400">Tiempo de Gestión</p>
                   <div className="flex items-baseline gap-2 mt-1">
                     <h3 className="text-3xl font-bold text-white">{timeSaved.value}</h3>
-                    <span className="text-lg font-bold text-[#F36A2D]">{timeSaved.unit}</span>
+                    <span className="text-lg font-bold text-[#FF4D00]">{timeSaved.unit}</span>
                   </div>
                   <p className="text-xs text-zinc-500 mt-2">{timeSaved.sub}</p>
                 </div>
@@ -506,18 +506,18 @@ export default function AnalyticsDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Estado de Atención */}
-              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+              <div className="glass-panel rounded-2xl p-6 shadow-sm">
                 <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] mb-4">Estado de Atención</h3>
                 <div className="space-y-4">
                   <Link href="/inbox?status=BOT" className="block group">
                     <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-xs font-bold text-[#F36A2D] bg-[#F36A2D]/10 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
+                      <span className="text-xs font-bold text-[#FF4D00] bg-[#FF4D00]/10 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
                         <Bot size={10} /> BOT
                       </span>
                       <span className="text-xs font-bold text-[#6F6F6F]">{data?.botActiveLeads}</span>
                     </div>
-                    <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
-                      <div className="bg-[#F36A2D] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.botActiveLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
+                    <div className="w-full bg-[#DDD5C2] dark:bg-zinc-800 rounded-full h-2">
+                      <div className="bg-[#FF4D00] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.botActiveLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                     </div>
                   </Link>
                   <Link href="/inbox?status=NEEDS_AGENT" className="block group">
@@ -527,26 +527,26 @@ export default function AnalyticsDashboard() {
                       </span>
                       <span className="text-xs font-bold text-[#6F6F6F]">{data?.needsAgentLeads}</span>
                     </div>
-                    <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
+                    <div className="w-full bg-[#DDD5C2] dark:bg-zinc-800 rounded-full h-2">
                       <div className="bg-red-500 h-2 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]" style={{ width: `${data?.totalLeads ? Math.round(((data?.needsAgentLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                     </div>
                   </Link>
                   <Link href="/inbox?status=AGENT" className="block group">
                     <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
+                      <span className="text-xs font-bold text-[#1A1714] dark:text-[#EDE9E0] bg-[#1A1714]/10 dark:bg-white/10 px-2 py-0.5 rounded-full flex items-center gap-1.5 transition-transform group-hover:scale-105 uppercase tracking-wider">
                         <Users size={10} /> HUMANO
                       </span>
                       <span className="text-xs font-bold text-[#6F6F6F]">{data?.agentLeads}</span>
                     </div>
-                    <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
-                      <div className="bg-emerald-500 h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.agentLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
+                    <div className="w-full bg-[#DDD5C2] dark:bg-zinc-800 rounded-full h-2">
+                      <div className="bg-[#1A1714] dark:bg-[#EDE9E0] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.agentLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                     </div>
                   </Link>
                 </div>
               </div>
 
               {/* Temperatura e Interacciones */}
-              <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+              <div className="glass-panel rounded-2xl p-6 shadow-sm">
                 <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] mb-4">Temperatura de Leads</h3>
                 <div className="space-y-4">
                   <Link href="/inbox?heat=CALIENTE" className="block group">
@@ -556,30 +556,30 @@ export default function AnalyticsDashboard() {
                       </span>
                       <span className="text-xs font-bold text-[#6F6F6F]">{data?.hotLeads}</span>
                     </div>
-                    <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
+                    <div className="w-full bg-[#DDD5C2] dark:bg-zinc-800 rounded-full h-2">
                       <div className="bg-rose-500 h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.hotLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                     </div>
                   </Link>
                   <Link href="/inbox?heat=TIBIO" className="block group">
                     <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-xs font-bold text-[#F36A2D] bg-[#F36A2D]/10 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
+                      <span className="text-xs font-bold text-[#FF4D00] bg-[#FF4D00]/10 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
                         <TrendingUp size={10} /> TIBIO
                       </span>
                       <span className="text-xs font-bold text-[#6F6F6F]">{data?.warmLeads}</span>
                     </div>
-                    <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
-                      <div className="bg-[#F36A2D] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.warmLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
+                    <div className="w-full bg-[#DDD5C2] dark:bg-zinc-800 rounded-full h-2">
+                      <div className="bg-[#FF4D00] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.warmLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                     </div>
                   </Link>
                   <Link href="/inbox?heat=FRIO" className="block group">
                     <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
+                      <span className="text-xs font-bold text-[#5C5C5C] dark:text-[#A3A3A3] bg-[#DDD5C2] dark:bg-[#8A8172]/20 px-2 py-0.5 rounded flex items-center gap-1.5 transition-transform group-hover:scale-105">
                         ❄️ FRÍO
                       </span>
                       <span className="text-xs font-bold text-[#6F6F6F]">{data?.coldLeads}</span>
                     </div>
-                    <div className="w-full bg-[#DEDAD0] dark:bg-zinc-800 rounded-full h-2">
-                      <div className="bg-blue-400 h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.coldLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
+                    <div className="w-full bg-[#DDD5C2] dark:bg-zinc-800 rounded-full h-2">
+                      <div className="bg-[#A3A3A3] h-2 rounded-full transition-all duration-500" style={{ width: `${data?.totalLeads ? Math.round(((data?.coldLeads || 0) / data?.totalLeads) * 100) : 0}%` }} />
                     </div>
                   </Link>
                 </div>
@@ -590,7 +590,7 @@ export default function AnalyticsDashboard() {
             </div>
 
             {/* VOLUMEN DE MENSAJES (CHART) */}
-            <div className="mt-6 bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+            <div className="mt-6 glass-panel rounded-2xl p-6 shadow-sm">
               <h3 className="text-lg font-medium text-[#111111] dark:text-[#EDE9E0] mb-6">Volumen de Mensajes</h3>
               <MessageChart data={data?.dailyTrends || []} />
             </div>

@@ -10,13 +10,30 @@
 ───────────────────────────────────────── */
 :root {
   /* Brand */
-  --abita-accent:    #F36A2D;
-  --abita-accent-10: rgba(243, 106, 45, 0.10);
-  --abita-accent-20: rgba(243, 106, 45, 0.20);
+  --abita-accent:    #FF4D00;
+  --abita-accent-hover: #E64500;
+  --abita-accent-deep:  #B33500;
+  --abita-accent-10: rgba(255, 77, 0, 0.10);
+  --abita-accent-20: rgba(255, 77, 0, 0.20);
+  --abita-orange-shadow: rgba(255, 77, 0, .2);
+  --abita-sh-orange: 0 1px 2px rgba(0, 0, 0, .1), 0 2px 8px rgba(255, 77, 0, .22);
+  --abita-sh-orange-hi: 0 2px 4px rgba(0, 0, 0, .15), 0 4px 14px rgba(255, 77, 0, .3);
+  --abita-gloss: none;
+
+  /* Liquid glass (espejo de landing.css) */
+  --abita-glass-blur: 20px;
+  --abita-glass-sat:  180%;
+  --abita-glass-l-bg:   rgba(255, 255, 255, .40);
+  --abita-glass-l-edge: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 0 0 1px rgba(255, 255, 255, .30);
+  --abita-glass-l-sh:   0 1px 2px rgba(66, 54, 36, .05), 0 10px 26px rgba(66, 54, 36, .07), 0 28px 60px rgba(66, 54, 36, .06);
+  --abita-glass-d-bg:   rgba(255, 255, 255, .055);
+  --abita-glass-d-edge: inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 0 0 1px rgba(255, 255, 255, .07);
+  --abita-glass-d-sh:   0 2px 8px rgba(0, 0, 0, .36), 0 18px 46px rgba(0, 0, 0, .46);
 
   /* Surfaces */
-  --abita-beige:     #E9E4D8;
-  --abita-beige-alt: #DEDAD0;
+  --abita-beige:       #EBE4D6;
+  --abita-beige-alt:   #DDD5C2;
+  --abita-beige-light: #F5F0E5;
 
   /* Typography */
   --abita-black:     #111111;
@@ -115,6 +132,93 @@ body {
 .abita-accent-bg       { background-color: var(--abita-accent); }
 .abita-accent-bg-soft  { background-color: var(--abita-accent-10); }
 .abita-accent-border   { border-color: var(--abita-accent); }
+
+/* ─── Liquid Glass (material de la landing) ───
+   Relleno translúcido + blur + filo especular superior + sombra en capas. */
+.glass-panel {
+  background: var(--abita-glass-l-bg);
+  -webkit-backdrop-filter: blur(var(--abita-glass-blur)) saturate(var(--abita-glass-sat));
+  backdrop-filter: blur(var(--abita-glass-blur)) saturate(var(--abita-glass-sat));
+  box-shadow: var(--abita-glass-l-edge), var(--abita-glass-l-sh);
+  border-radius: 20px;
+}
+.dark .glass-panel {
+  background: var(--abita-glass-d-bg);
+  box-shadow: var(--abita-glass-d-edge), var(--abita-glass-d-sh);
+}
+
+/* Variante compacta para píldoras / ítems activos */
+.glass-pill {
+  background: linear-gradient(90deg, rgba(255, 77, 0, .08) 0%, rgba(255, 255, 255, .62) 100%);
+  -webkit-backdrop-filter: blur(var(--abita-glass-blur)) saturate(var(--abita-glass-sat));
+  backdrop-filter: blur(var(--abita-glass-blur)) saturate(var(--abita-glass-sat));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .9),
+    inset 0 0 0 1px rgba(255, 77, 0, .14),
+    0 1px 2px rgba(66, 54, 36, .05),
+    0 6px 18px rgba(66, 54, 36, .08);
+}
+.dark .glass-pill {
+  background: linear-gradient(90deg, rgba(255, 77, 0, .16) 0%, rgba(255, 255, 255, .04) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .16),
+    inset 0 0 0 1px rgba(255, 77, 0, .22),
+    0 6px 18px rgba(0, 0, 0, .4);
+}
+
+/* Superficie oscura pulida (tooltips, dropdowns) */
+.glass-dark {
+  background: rgba(20, 17, 14, .82);
+  -webkit-backdrop-filter: blur(var(--abita-glass-blur)) saturate(var(--abita-glass-sat));
+  backdrop-filter: blur(var(--abita-glass-blur)) saturate(var(--abita-glass-sat));
+  color: #EDE9E0;
+  box-shadow: var(--abita-glass-d-edge), var(--abita-glass-d-sh);
+}
+
+/* ─── Botón primario de marca ─── */
+.btn-primary-abita {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--abita-accent);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: var(--abita-gloss), var(--abita-sh-orange);
+  transition: background .2s cubic-bezier(.22, 1, .36, 1), box-shadow .2s cubic-bezier(.22, 1, .36, 1), transform .15s cubic-bezier(.22, 1, .36, 1);
+}
+.btn-primary-abita:hover:not(:disabled) {
+  background: var(--abita-accent-hover);
+  box-shadow: var(--abita-gloss), var(--abita-sh-orange-hi);
+  transform: translateY(-1px);
+}
+.btn-primary-abita:active:not(:disabled) {
+  transform: scale(.98);
+}
+.btn-primary-abita:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* ─── Indicador de actividad en vivo ─── */
+.dot-live {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--abita-accent);
+  flex: none;
+  animation: abita-pulse 2.4s cubic-bezier(.22, 1, .36, 1) infinite;
+}
+@keyframes abita-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dot-live { animation: none; }
+}
 
 /* ─── Integration Cards (Nango) ─── */
 .integration-card {
@@ -341,4 +445,9 @@ body {
   background: transparent;
   outline: none;
   border: none;
+}
+
+/* Next.js dev overlay safeguard: prevent blocking interactive mobile elements */
+nextjs-portal, [data-nextjs-toast] {
+  pointer-events: none !important;
 }

@@ -50,16 +50,16 @@ function FileCard({ file, onDelete, onEdit }: { file: BotFileItem; onDelete: () 
   const isVideo = file.mimeType?.startsWith('video/') || file.url.match(/\.(mp4|mov|webm)($|\?)/i);
 
   return (
-    <div className="bg-white dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md hover:border-[#F36A2D]/30 transition-all group h-full">
+    <div className="glass-panel rounded-2xl p-4 flex flex-col gap-3 hover:shadow-md hover:border-[#FF4D00]/30 transition-all group h-full">
       {/* Preview media or Icon header */}
-      <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800/60 flex items-center justify-center border border-[#DEDAD0]/40 dark:border-zinc-700/40">
+      <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800/60 flex items-center justify-center border border-[#DDD5C2]/40 dark:border-zinc-700/40">
         {isImage ? (
           <img src={file.url} alt={file.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : isVideo ? (
           <video src={file.url} className="w-full h-full object-cover" muted />
         ) : (
           <div className="flex flex-col items-center gap-2 text-zinc-400">
-            <Icon size={36} className="text-[#F36A2D]" />
+            <Icon size={36} className="text-[#FF4D00]" />
             <span className="text-[10px] font-bold uppercase text-zinc-500 max-w-[80%] truncate">{file.filename || 'Archivo'}</span>
           </div>
         )}
@@ -78,18 +78,18 @@ function FileCard({ file, onDelete, onEdit }: { file: BotFileItem; onDelete: () 
             {file.name}
           </h3>
           <p className="text-[11px] text-[#6F6F6F] mt-1.5 line-clamp-3 leading-relaxed">
-            <span className="font-semibold text-[#F36A2D]/90">Instrucción IA:</span> {file.description}
+            <span className="font-semibold text-[#FF4D00]/90">Instrucción IA:</span> {file.description}
           </p>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 pt-2 border-t border-[#DEDAD0]/40 dark:border-zinc-800/40 mt-auto">
+      <div className="flex items-center gap-2 pt-2 border-t border-[#DDD5C2]/40 dark:border-zinc-800/40 mt-auto">
         <a
           href={file.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-[#6F6F6F] hover:bg-blue-500/10 hover:text-blue-500 transition-all"
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-[#6F6F6F] hover:bg-[#8A8172]/10 hover:text-[#8A8172] transition-all"
         >
           <ExternalLink size={12} /> Abrir
         </a>
@@ -196,9 +196,9 @@ function FileModal({ fileToEdit, onClose, onSaved }: { fileToEdit?: BotFileItem 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="bg-white dark:bg-[#111111] w-full max-w-lg rounded-[2rem] shadow-2xl relative overflow-hidden border border-[#DEDAD0] dark:border-zinc-800 animate-in zoom-in-95 duration-200 flex flex-col">
+      <div className="bg-white dark:bg-[#111111] w-full max-w-lg rounded-[2rem] shadow-2xl relative overflow-hidden border border-[#DDD5C2] dark:border-zinc-800 animate-in zoom-in-95 duration-200 flex flex-col">
         {/* Modal header */}
-        <div className="p-6 border-b border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0">
+        <div className="p-6 border-b border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">
               {fileToEdit ? 'Editar Archivo' : 'Nuevo Archivo para el Bot'}
@@ -215,21 +215,21 @@ function FileModal({ fileToEdit, onClose, onSaved }: { fileToEdit?: BotFileItem 
           {/* Upload Box */}
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[#6F6F6F] block mb-1.5">
-              Archivo (Render, PDF, Excel, Foto, Video) <span className="text-[#F36A2D]">*</span>
+              Archivo (Render, PDF, Excel, Foto, Video) <span className="text-[#FF4D00]">*</span>
             </label>
             {fileUrl ? (
-              <div className="relative rounded-2xl overflow-hidden border-2 border-[#F36A2D]/50 bg-zinc-50 dark:bg-zinc-900 p-4 flex items-center justify-between group">
+              <div className="relative rounded-2xl overflow-hidden border-2 border-[#FF4D00]/50 bg-zinc-50 dark:bg-zinc-900 p-4 flex items-center justify-between group">
                 <div className="flex items-center gap-3 min-w-0">
                   {isImage ? (
                     <img src={fileUrl} alt="Preview" className="w-12 h-12 rounded-xl object-cover border border-zinc-300 dark:border-zinc-700 shrink-0" />
                   ) : (
-                    <div className="w-12 h-12 bg-[#F36A2D]/10 rounded-xl flex items-center justify-center text-[#F36A2D] shrink-0">
+                    <div className="w-12 h-12 bg-[#FF4D00]/10 rounded-xl flex items-center justify-center text-[#FF4D00] shrink-0">
                       <File size={24} />
                     </div>
                   )}
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-[#111111] dark:text-[#EDE9E0] truncate">{filename || 'Archivo cargado'}</p>
-                    <p className="text-[10px] text-[#F36A2D] font-mono mt-0.5">Listo para usar</p>
+                    <p className="text-[10px] text-[#FF4D00] font-mono mt-0.5">Listo para usar</p>
                   </div>
                 </div>
                 <label className="text-[11px] font-bold text-[#6F6F6F] hover:text-[#111111] dark:hover:text-white cursor-pointer underline shrink-0 px-2">
@@ -238,16 +238,16 @@ function FileModal({ fileToEdit, onClose, onSaved }: { fileToEdit?: BotFileItem 
                 </label>
               </div>
             ) : (
-              <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${isUploading ? 'bg-zinc-50 border-zinc-200' : 'border-[#DEDAD0] dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-[#F36A2D] hover:bg-[#F36A2D]/5'
+              <label className={`w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-all cursor-pointer ${isUploading ? 'bg-zinc-50 border-zinc-200' : 'border-[#DDD5C2] dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-[#FF4D00] hover:bg-[#FF4D00]/5'
                 }`}>
                 {isUploading ? (
                   <>
-                    <Loader2 size={24} className="animate-spin text-[#F36A2D] mb-2" />
-                    <span className="text-xs font-bold text-[#F36A2D] animate-pulse">Subiendo archivo a Supabase...</span>
+                    <Loader2 size={24} className="animate-spin text-[#FF4D00] mb-2" />
+                    <span className="text-xs font-bold text-[#FF4D00] animate-pulse">Subiendo archivo a Supabase...</span>
                   </>
                 ) : (
                   <>
-                    <div className="h-10 w-10 bg-[#F36A2D]/10 text-[#F36A2D] rounded-full flex items-center justify-center mb-2">
+                    <div className="h-10 w-10 bg-[#FF4D00]/10 text-[#FF4D00] rounded-full flex items-center justify-center mb-2">
                       <UploadCloud size={20} />
                     </div>
                     <span className="text-[11px] font-black text-[#111111] dark:text-[#EDE9E0] tracking-widest uppercase">Haz clic para subir archivo</span>
@@ -262,28 +262,28 @@ function FileModal({ fileToEdit, onClose, onSaved }: { fileToEdit?: BotFileItem 
           {/* Name */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-[#6F6F6F]">
-              Nombre descriptivo <span className="text-[#F36A2D]">*</span>
+              Nombre descriptivo <span className="text-[#FF4D00]">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value.replace(/\s+/g, '_'))}
               placeholder="Ej. Render_Fachada_Torre_A"
-              className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors"
+              className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00] transition-colors"
             />
           </div>
 
           {/* AI Instructions */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-[#6F6F6F]">
-              Instrucción para el bot (¿Cuándo debe enviarlo?) <span className="text-[#F36A2D]">*</span>
+              Instrucción para el bot (¿Cuándo debe enviarlo?) <span className="text-[#FF4D00]">*</span>
             </label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Ej. Si el cliente pide ver los renders de la Torre A o pregunta por la fachada del edificio."
               rows={4}
-              className="w-full p-3 rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors resize-none leading-relaxed"
+              className="w-full p-3 rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-transparent text-sm text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00] transition-colors resize-none leading-relaxed"
             />
             <p className="text-[10px] text-[#6F6F6F]">
               Sé específico para que Claude sepa exactamente en qué momento o ante qué pregunta adjuntar este documento en WhatsApp.
@@ -299,14 +299,14 @@ function FileModal({ fileToEdit, onClose, onSaved }: { fileToEdit?: BotFileItem 
         </div>
 
         {/* Modal footer */}
-        <div className="p-6 border-t border-[#DEDAD0] dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50 dark:bg-black/10">
+        <div className="p-6 border-t border-[#DDD5C2] dark:border-zinc-800 flex items-center justify-between shrink-0 bg-zinc-50 dark:bg-black/10">
           <button onClick={onClose} disabled={isSubmitting} className="text-sm font-bold text-[#6F6F6F] hover:text-[#111111] dark:hover:text-[#EDE9E0] transition-colors">
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || isUploading}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#F36A2D] text-white rounded-xl font-bold text-sm hover:bg-[#e0601a] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2.5 bg-[#FF4D00] text-white rounded-xl font-bold text-sm hover:bg-[#E64500] transition-colors disabled:opacity-50"
           >
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
             {fileToEdit ? 'Guardar Cambios' : 'Crear Archivo'}
@@ -360,11 +360,11 @@ export function FilesClientPage() {
 
   return (
     <DesktopOnlyGuard>
-      <div className="flex flex-col h-full bg-[#E9E4D8] dark:bg-[#1A1714] overflow-hidden">
+      <div className="flex flex-col h-full bg-[#EBE4D6] dark:bg-[#1A1714] overflow-hidden">
         {/* Header */}
-        <header className="shrink-0 h-16 flex items-center justify-between px-8 border-b border-[#DEDAD0] dark:border-zinc-800/60 bg-[#E9E4D8]/80 dark:bg-[#1A1714]/80 backdrop-blur-md z-10 sticky top-0">
+        <header className="shrink-0 h-16 flex items-center justify-between px-8 bg-[#F5F0E5]/70 dark:bg-white/[.03] backdrop-blur-xl shadow-[inset_0_-1px_0_rgba(138,129,114,.18)] dark:shadow-[inset_0_-1px_0_rgba(255,255,255,.06)] z-10 sticky top-0">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-[#F36A2D]/10 text-[#F36A2D] rounded-lg flex items-center justify-center">
+            <div className="h-8 w-8 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg flex items-center justify-center">
               <Files size={18} />
             </div>
             <h1 className="text-xl font-medium text-[#111111] dark:text-[#EDE9E0]">Archivos del Bot</h1>
@@ -383,7 +383,7 @@ export function FilesClientPage() {
             </button>
             <button
               onClick={() => { setEditingFile(null); setShowModal(true); }}
-              className="flex items-center gap-2 px-4 py-2 bg-[#F36A2D] text-white rounded-xl font-bold text-sm hover:bg-[#e0601a] transition-colors shadow-lg shadow-[#F36A2D]/20"
+              className="flex items-center gap-2 px-4 py-2 bg-[#FF4D00] text-white rounded-xl font-bold text-sm hover:bg-[#E64500] transition-colors shadow-lg shadow-[#FF4D00]/20"
             >
               <Plus size={16} />
               Nuevo archivo
@@ -394,7 +394,7 @@ export function FilesClientPage() {
         {/* Toast */}
         {successMsg && (
           <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400/20">
+            <div className="bg-[#FF4D00] text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-[#FF8A4C]/20">
               <CheckCircle2 size={16} />
               <span className="font-bold text-sm">{successMsg}</span>
             </div>
@@ -405,8 +405,8 @@ export function FilesClientPage() {
         <div className="flex-1 overflow-auto p-8 pb-24 md:pb-8">
           <div className="max-w-7xl mx-auto space-y-8">
             {/* Description card */}
-            <div className="bg-white/60 dark:bg-[#111111]/40 border border-[#DEDAD0] dark:border-zinc-800 rounded-2xl p-5 flex items-start gap-4">
-              <div className="h-10 w-10 bg-[#F36A2D]/10 rounded-xl flex items-center justify-center text-[#F36A2D] shrink-0">
+            <div className="bg-white/60 dark:bg-[#111111]/40 border border-[#DDD5C2] dark:border-zinc-800 rounded-2xl p-5 flex items-start gap-4">
+              <div className="h-10 w-10 bg-[#FF4D00]/10 rounded-xl flex items-center justify-center text-[#FF4D00] shrink-0">
                 <Files size={22} />
               </div>
               <div>
@@ -426,7 +426,7 @@ export function FilesClientPage() {
                   placeholder="Buscar por nombre o instrucción..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-[#DEDAD0] dark:border-zinc-800 bg-white/60 dark:bg-white/5 text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#F36A2D] transition-colors placeholder:text-[#6F6F6F]/60"
+                  className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-[#DDD5C2] dark:border-zinc-800 bg-white/60 dark:bg-white/5 text-[#111111] dark:text-[#EDE9E0] outline-none focus:border-[#FF4D00] transition-colors placeholder:text-[#6F6F6F]/60"
                 />
               </div>
             </div>
@@ -434,13 +434,13 @@ export function FilesClientPage() {
             {/* Grid */}
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
-                <Loader2 size={36} className="animate-spin text-[#F36A2D]" />
+                <Loader2 size={36} className="animate-spin text-[#FF4D00]" />
                 <p className="text-sm font-medium text-[#6F6F6F]">Cargando archivos del bot...</p>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 gap-4 border-2 border-dashed border-[#DEDAD0] dark:border-zinc-800 rounded-3xl">
-                <div className="h-16 w-16 bg-[#F36A2D]/10 rounded-2xl flex items-center justify-center">
-                  <Files size={32} className="text-[#F36A2D]/50" />
+              <div className="flex flex-col items-center justify-center py-24 gap-4 border-2 border-dashed border-[#DDD5C2] dark:border-zinc-800 rounded-3xl">
+                <div className="h-16 w-16 bg-[#FF4D00]/10 rounded-2xl flex items-center justify-center">
+                  <Files size={32} className="text-[#FF4D00]/50" />
                 </div>
                 <div className="text-center">
                   <p className="font-bold text-[#111111] dark:text-[#EDE9E0]">
@@ -453,7 +453,7 @@ export function FilesClientPage() {
                 {!search && (
                   <button
                     onClick={() => { setEditingFile(null); setShowModal(true); }}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-[#F36A2D] text-white rounded-xl font-bold text-sm hover:bg-[#e0601a] transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-[#FF4D00] text-white rounded-xl font-bold text-sm hover:bg-[#E64500] transition-colors"
                   >
                     <Plus size={14} /> Nuevo archivo
                   </button>

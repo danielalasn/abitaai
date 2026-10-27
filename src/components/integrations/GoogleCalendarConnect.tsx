@@ -143,21 +143,21 @@ export default function GoogleCalendarConnect({
   return (
     <>
       <div
-        className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-blue-500/40 ${
+        className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-[#8A8172]/40 ${
         connected
-          ? 'border-blue-500/20 ring-1 ring-blue-500/20'
-          : 'border-[#DEDAD0] dark:border-zinc-800'
+          ? 'border-[#8A8172]/20 ring-1 ring-[#8A8172]/20'
+          : 'border-[#DDD5C2] dark:border-zinc-800'
       }`}
     >
       <div className="mb-6 relative">
-        <div className="absolute inset-0 bg-blue-500 rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
+        <div className="absolute inset-0 bg-[#8A8172] rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
         <button 
           type="button"
           onClick={() => connected && setIsEventsModalOpen(true)}
           disabled={!connected}
           title={connected ? "Ver eventos del calendario" : ""}
-          className={`relative h-16 w-16 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-500 ${
-            connected ? 'cursor-pointer hover:bg-blue-500/20 hover:scale-105 active:scale-95 group-hover:-rotate-3' : 'cursor-default'
+          className={`relative h-16 w-16 bg-[#8A8172]/10 text-[#8A8172] rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-500 ${
+            connected ? 'cursor-pointer hover:bg-[#8A8172]/20 hover:scale-105 active:scale-95 group-hover:-rotate-3' : 'cursor-default'
           }`}
         >
           <svg viewBox="0 0 24 24" width="32" height="32" fill="none">
@@ -171,7 +171,7 @@ export default function GoogleCalendarConnect({
           </svg>
         </button>
         {connected && (
-          <div className="absolute -top-2 -right-2 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
+          <div className="absolute -top-2 -right-2 w-4 h-4 bg-[#FF4D00] border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
         )}
 
       </div>
@@ -203,7 +203,7 @@ export default function GoogleCalendarConnect({
             {onOpenConfig && (
               <button
                 onClick={onOpenConfig}
-                className="flex-1 py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2"
+                className="flex-1 py-4 bg-[#F5F0E5] dark:bg-[#8A8172]/20 text-[#5C5C5C] dark:text-[#A3A3A3] border border-[#8A8172]/30 hover:bg-[#DDD5C2] dark:hover:bg-[#8A8172]/40 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2"
               >
                 Configurar
               </button>
@@ -213,7 +213,7 @@ export default function GoogleCalendarConnect({
           <button
             onClick={handleConnect}
             disabled={loading}
-            className="w-full py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-blue-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
+            className="w-full py-4 bg-[#111111] dark:bg-[#EDE9E0] text-white dark:text-[#111111] rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-[#5C5C5C] hover:text-white transition-all duration-300 flex items-center justify-center gap-2"
             id={`connect-google-calendar-${projectId}`}
           >
             {loading ? 'Conectando...' : 'Conectar Google Calendar'}
