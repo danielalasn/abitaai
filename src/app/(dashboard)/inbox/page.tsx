@@ -202,7 +202,14 @@ export default function InboxPage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimeRef = useRef<number>(0); // ref para leer en closures
-  
+
+  // Estado para swipe-to-reply en móvil
+  const [swipingMessageId, setSwipingMessageId] = useState<string | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<number>(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchDirectionLockedRef = useRef<'horizontal' | 'vertical' | null>(null);
+  const hasTriggeredReplyHaptic = useRef<boolean>(false);
+
   // Refs para Debounce del Simulador de Cliente (Inbox)
   const clientPendingMessages = useRef<string[]>([]);
   const clientDebounceTimer = useRef<NodeJS.Timeout | null>(null);
@@ -359,7 +366,7 @@ export default function InboxPage() {
         if (currentId && !hasOptimistic) {
           const refreshed = await getChatMessagesPaginated(currentId, 30);
           if (cancelled) return;
-          
+
           // EVITAR CARRERAS (RACE CONDITIONS):
           // Si el usuario hizo clic en el toggle MIENTRAS esta petición estaba en vuelo,
           // ignoramos la respuesta del servidor para no sobreescribir el estado optimista.
@@ -381,12 +388,12 @@ export default function InboxPage() {
             const distinctNewMsgs = newMsgsFromRefreshed.filter((m: any) => !existingIds.has(m.id));
 
             const merged = [...currentMsgs, ...distinctNewMsgs].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-            
+
             // Actualizamos todo el objeto (lead, score, heat, etc) y no solo los mensajes
-            return { 
-              ...prev, 
+            return {
+              ...prev,
               ...refreshed,
-              messages: merged 
+              messages: merged
             };
           });
           setChatsCache(prev => ({ ...prev, [currentId]: refreshed }));
@@ -1059,7 +1066,7 @@ export default function InboxPage() {
   // 2. Simular que el CLIENTE envía un mensaje por WhatsApp al chat actual (CON DEBOUNCE)
   const handleClientSubmit = async () => {
     if (!clientInput.trim() || !activeChat) return;
-    
+
     const msg = clientInput.trim();
     const phone = activeChat.lead.phone;
     const chatId = activeChat.id;
@@ -1071,7 +1078,7 @@ export default function InboxPage() {
     // 2. Mostrar mensaje optimista en el chat (opcional, pero ayuda al feedback)
     // simulateIncomingMessage ya lo guarda en BD, pero queremos que sea instantáneo en UI
     // En el simulador de inbox, mejor esperamos al timer para no duplicar si el polling ocurre
-    
+
     // 3. Reiniciar timer de 6 segundos (mismo que WhatsApp)
     if (clientDebounceTimer.current) {
       clearTimeout(clientDebounceTimer.current);
@@ -1080,12 +1087,12 @@ export default function InboxPage() {
     clientDebounceTimer.current = setTimeout(async () => {
       // Limpiar referencia al timer una vez disparado
       clientDebounceTimer.current = null;
-      
+
       if (clientPendingMessages.current.length === 0) return;
 
       const combinedText = clientPendingMessages.current.join('\n');
       clientPendingMessages.current = [];
-      
+
       setIsSimulating(true);
       try {
         await simulateIncomingMessage(phone, combinedText);
@@ -1428,8 +1435,8 @@ export default function InboxPage() {
               fill="currentColor"
               aria-label="Abita AI"
             >
-              <path d="M1184.09 248.293L1183.07 246.366C1177.73 236.181 1165.53 231.612 1165.04 231.419C1163.3 230.814 1160.5 230.043 1156.95 229.74C1156.17 229.658 1155.35 229.63 1154.41 229.63C1153.48 229.63 1152.57 229.658 1151.66 229.713H1151.25L1099.75 229.575H1038.17L1066.72 175.129L1092.87 125.28L1116.48 80H1037.21L1015.33 121.922L970.43 207.472H970.541L949.07 248.43C943.951 258.752 944.088 270.561 949.456 280.773C954.796 290.958 964.375 297.729 975.716 299.408C977.147 299.601 978.661 299.738 980.367 299.738H982.074L1050.09 299.656L1131.76 299.904L1158.05 350.028L1186.1 403.483C1186.1 403.483 1188.63 408.218 1192.73 415.98H1271.95L1206.05 290.325C1200.79 280.388 1192.73 265.056 1184.03 248.265L1184.09 248.293Z"/>
-              <path d="M996.69 356.607C996.69 349.34 993.167 342.651 987.442 339.018L959.751 321.456C950.97 315.896 939.739 315.896 930.959 321.456L903.268 339.018C897.543 342.651 894.019 349.34 894.019 356.607V398.253C893.936 400.07 894.019 404.254 896.496 408.41C897.818 410.585 899.276 411.906 899.854 412.401C904.176 416.062 909.324 416.062 911.14 415.98C922.508 415.457 930.931 415.98 942.602 415.842C943.042 415.842 944.859 415.842 948.465 415.842C963.742 415.787 971.367 415.842 973.376 415.842C975.055 415.842 978.165 415.842 979.789 415.842C980.478 415.842 989.451 415.897 994.185 408.41C996.8 404.254 996.773 399.96 996.663 398.253V356.607H996.69Z"/>
+              <path d="M1184.09 248.293L1183.07 246.366C1177.73 236.181 1165.53 231.612 1165.04 231.419C1163.3 230.814 1160.5 230.043 1156.95 229.74C1156.17 229.658 1155.35 229.63 1154.41 229.63C1153.48 229.63 1152.57 229.658 1151.66 229.713H1151.25L1099.75 229.575H1038.17L1066.72 175.129L1092.87 125.28L1116.48 80H1037.21L1015.33 121.922L970.43 207.472H970.541L949.07 248.43C943.951 258.752 944.088 270.561 949.456 280.773C954.796 290.958 964.375 297.729 975.716 299.408C977.147 299.601 978.661 299.738 980.367 299.738H982.074L1050.09 299.656L1131.76 299.904L1158.05 350.028L1186.1 403.483C1186.1 403.483 1188.63 408.218 1192.73 415.98H1271.95L1206.05 290.325C1200.79 280.388 1192.73 265.056 1184.03 248.265L1184.09 248.293Z" />
+              <path d="M996.69 356.607C996.69 349.34 993.167 342.651 987.442 339.018L959.751 321.456C950.97 315.896 939.739 315.896 930.959 321.456L903.268 339.018C897.543 342.651 894.019 349.34 894.019 356.607V398.253C893.936 400.07 894.019 404.254 896.496 408.41C897.818 410.585 899.276 411.906 899.854 412.401C904.176 416.062 909.324 416.062 911.14 415.98C922.508 415.457 930.931 415.98 942.602 415.842C943.042 415.842 944.859 415.842 948.465 415.842C963.742 415.787 971.367 415.842 973.376 415.842C975.055 415.842 978.165 415.842 979.789 415.842C980.478 415.842 989.451 415.897 994.185 408.41C996.8 404.254 996.773 399.96 996.663 398.253V356.607H996.69Z" />
             </svg>
           </div>
           {selectedIds.size > 0 ? (
@@ -1533,11 +1540,10 @@ export default function InboxPage() {
             <button
               onClick={() => setIsFiltersOpen(!isFiltersOpen)}
               title="Filtros"
-              className={`relative h-8 w-8 shrink-0 flex items-center justify-center rounded-full transition-all ${
-                isFiltersOpen 
-                  ? 'bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/30' 
+              className={`relative h-8 w-8 shrink-0 flex items-center justify-center rounded-full transition-all ${isFiltersOpen
+                  ? 'bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/30'
                   : 'bg-white/50 dark:bg-white/[.06] text-[#5C5C5C] dark:text-[#A3A3A3] hover:text-[#FF4D00] border border-[#8A8172]/20 dark:border-white/10 hover:border-[#FF4D00]/30'
-              }`}
+                }`}
             >
               <Filter size={14} />
               {(filterHeat !== 'ALL' || filterStatus !== 'ALL' || filterCampaign !== 'ALL') && (
@@ -1549,23 +1555,23 @@ export default function InboxPage() {
           {isFiltersOpen && (
             <div ref={filterDropdownContainerRef} className="flex flex-col gap-1.5 animate-in slide-in-from-top-2 duration-200">
               {[
-                { 
+                {
                   id: 'heat',
-                  value: filterHeat, 
-                  set: (v: string) => setFilterHeat(v as any), 
-                  options: [['ALL', 'Todas las temperaturas'], ['CALIENTE', 'Caliente'], ['TIBIO', 'Tibio'], ['FRIO', 'Frío']] 
+                  value: filterHeat,
+                  set: (v: string) => setFilterHeat(v as any),
+                  options: [['ALL', 'Todas las temperaturas'], ['CALIENTE', 'Caliente'], ['TIBIO', 'Tibio'], ['FRIO', 'Frío']]
                 },
-                { 
+                {
                   id: 'status',
-                  value: filterStatus, 
-                  set: (v: string) => setFilterStatus(v as any), 
-                  options: [['ALL', 'Todos los estados'], ['BOT', 'IA Gestionando'], ['NEEDS_AGENT', 'Necesita Humano'], ['AGENT', 'En Atención Humana'], ['UNANSWERED', 'No Contestados']] 
+                  value: filterStatus,
+                  set: (v: string) => setFilterStatus(v as any),
+                  options: [['ALL', 'Todos los estados'], ['BOT', 'IA Gestionando'], ['NEEDS_AGENT', 'Necesita Humano'], ['AGENT', 'En Atención Humana'], ['UNANSWERED', 'No Contestados']]
                 },
-                { 
+                {
                   id: 'campaign',
-                  value: filterCampaign, 
-                  set: (v: string) => setFilterCampaign(v), 
-                  options: [['ALL', 'Todas las campañas'], ...availableCampaigns.map((camp: any) => [camp.id, camp.name])] 
+                  value: filterCampaign,
+                  set: (v: string) => setFilterCampaign(v),
+                  options: [['ALL', 'Todas las campañas'], ...availableCampaigns.map((camp: any) => [camp.id, camp.name])]
                 },
               ].map((f) => {
                 const isSelectedActive = f.value !== 'ALL';
@@ -1577,11 +1583,10 @@ export default function InboxPage() {
                     <button
                       type="button"
                       onClick={() => setOpenFilterDropdown(isOpen ? null : f.id)}
-                      className={`w-full flex items-center justify-between text-[12px] rounded-full pl-3.5 pr-3 py-2 outline-none transition-all text-left ${
-                        isSelectedActive
+                      className={`w-full flex items-center justify-between text-[12px] rounded-full pl-3.5 pr-3 py-2 outline-none transition-all text-left ${isSelectedActive
                           ? 'bg-[#FF4D00]/10 text-[#FF4D00] font-semibold border border-[#FF4D00]/30 shadow-[0_1px_4px_rgba(255,77,0,.15)]'
                           : 'bg-white/50 dark:bg-white/[.06] text-[#111111] dark:text-[#EDE9E0] border border-[#8A8172]/20 dark:border-white/10 hover:border-[#FF4D00]/30'
-                      }`}
+                        }`}
                     >
                       <span className="truncate pr-2">{currentLabel}</span>
                       <ChevronDown
@@ -1602,11 +1607,10 @@ export default function InboxPage() {
                                 f.set(val);
                                 setOpenFilterDropdown(null);
                               }}
-                              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg text-left transition-colors ${
-                                isOptionSelected
+                              className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg text-left transition-colors ${isOptionSelected
                                   ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold'
                                   : 'text-[#1F1E1D] dark:text-[#EDE9E0] hover:bg-black/5 dark:hover:bg-white/[.08]'
-                              }`}
+                                }`}
                             >
                               <span className="truncate">{label}</span>
                               {isOptionSelected && (
@@ -1672,9 +1676,9 @@ export default function InboxPage() {
                     <div
                       onClick={(e) => { e.stopPropagation(); toggleSelect(chat.id, e); }}
                       className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 border transition-all cursor-pointer relative overflow-hidden group/avatar ${isMultiSelected
-                          ? 'bg-[#FF4D00] border-[#FF4D00] text-white shadow-[var(--abita-gloss),0_2px_8px_rgba(255,77,0,.35)]'
-                          : selectedIds.size > 0
-                            ? 'bg-transparent border-[#8A8172]/45 hover:border-[#FF4D00]'
+                        ? 'bg-[#FF4D00] border-[#FF4D00] text-white shadow-[var(--abita-gloss),0_2px_8px_rgba(255,77,0,.35)]'
+                        : selectedIds.size > 0
+                          ? 'bg-transparent border-[#8A8172]/45 hover:border-[#FF4D00]'
                           : chat.lead.channel === 'instagram'
                             ? 'bg-pink-500/10 border-transparent text-pink-500 hover:border-[#FF4D00]'
                             : chat.lead.channel === 'simulator'
@@ -1687,7 +1691,7 @@ export default function InboxPage() {
                       ) : (
                         <>
                           <div className={`transition-all duration-200 group-hover/avatar:opacity-0 group-hover/avatar:scale-50 ${selectedIds.size > 0 ? 'opacity-0 scale-50' : 'opacity-100'}`}>
-                             {chat.lead.channel === 'instagram' ? <IgIcon size={18} /> : chat.lead.channel === 'simulator' ? <SimIcon size={18} /> : <WaIcon size={18} />}
+                            {chat.lead.channel === 'instagram' ? <IgIcon size={18} /> : chat.lead.channel === 'simulator' ? <SimIcon size={18} /> : <WaIcon size={18} />}
                           </div>
                           <div className="absolute inset-0 flex items-center justify-center transition-all duration-200 opacity-0 scale-50 group-hover/avatar:opacity-100 group-hover/avatar:scale-100 text-[#FF4D00]">
                             <Check size={16} strokeWidth={3} />
@@ -1698,7 +1702,7 @@ export default function InboxPage() {
 
                     <div className="flex-1 min-w-0 flex flex-col gap-0.5 text-left">
                       <div className="flex justify-between items-center w-full gap-2">
-                        <span 
+                        <span
                           className={`truncate text-[13px] tracking-tight ${isNewMessage || isHandoff ? 'font-bold text-[#111111] dark:text-white' : isUnanswered ? 'font-semibold text-[#111111] dark:text-[#EDE9E0]' : 'font-medium text-[#111111]/75 dark:text-[#EDE9E0]/70'}`}
                           title={chat.lead.name || chat.lead.phone}
                         >
@@ -1730,8 +1734,8 @@ export default function InboxPage() {
                           )}
                           <span className="truncate">
                             {lastMsg ? (
-                              lastMsg.mediaType === 'audio' 
-                                ? (lastMsg.content && lastMsg.content.startsWith('Mensaje de voz') ? lastMsg.content : 'Mensaje de voz') 
+                              lastMsg.mediaType === 'audio'
+                                ? (lastMsg.content && lastMsg.content.startsWith('Mensaje de voz') ? lastMsg.content : 'Mensaje de voz')
                                 : (lastMsg.mediaType === 'location' || lastMsg.mediaUrl?.includes('google.com/maps') || lastMsg.content?.includes('google.com/maps'))
                                   ? '📍 Ubicación'
                                   : lastMsg.content || (lastMsg.mediaType ? `[${lastMsg.mediaType}]` : '')
@@ -1811,7 +1815,7 @@ export default function InboxPage() {
                   className="md:hidden p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-zinc-500 transition-colors shrink-0"
                   title="Volver"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
                 {/* Toggle panel izquierdo: solo en desktop */}
                 <button
@@ -1821,15 +1825,15 @@ export default function InboxPage() {
                   {isInboxSidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <h2 
+                  <h2
                     className="font-semibold text-[#111111] dark:text-[#EDE9E0] flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => { if (window.innerWidth < 768) setMobileView('profile'); }}
                   >
                     <span className="truncate">{activeChat.lead.name}</span>
                   </h2>
                   <p className="text-xs text-[#6F6F6F] truncate flex items-center gap-2 mt-0.5">
-                     <span>{activeChat.lead.phone}</span>
-                     <span className="text-[9px] glass-panel !rounded-full text-[#5C5C5C] dark:text-[#A3A3A3] px-2 py-0.5 flex items-center gap-1 shrink-0 font-semibold">
+                    <span>{activeChat.lead.phone}</span>
+                    <span className="text-[9px] glass-panel !rounded-full text-[#5C5C5C] dark:text-[#A3A3A3] px-2 py-0.5 flex items-center gap-1 shrink-0 font-semibold">
                       {activeChat.lead.channel === 'instagram' ? <IgIcon size={10} /> : activeChat.lead.channel === 'simulator' ? <SimIcon size={10} /> : <WaIcon size={10} />}
                       <span className="hidden md:inline">{activeChat.lead.channel === 'instagram' ? 'Instagram' : activeChat.lead.channel === 'simulator' ? 'Simulador' : 'WhatsApp'}</span>
                     </span>
@@ -1950,307 +1954,385 @@ export default function InboxPage() {
                         </div>
                       )}
 
-                      <div className={`relative p-3 pb-6 rounded-2xl text-sm min-w-[90px] ${isAudio ? 'w-full' : 'w-fit'} font-sans transition-opacity duration-300 ${isUser
-                        ? 'bg-white/85 text-[#111111] dark:bg-white/[.07] dark:text-[#EDE9E0] rounded-tl-sm shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_1px_2px_rgba(66,54,36,.05),0_6px_18px_rgba(66,54,36,.07)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12)]'
-                        : isBot
-                          ? 'bg-gradient-to-b from-[#FF6A26] to-[#FF4D00] dark:from-[#E8581A] dark:to-[#CC3D00] text-white rounded-tr-sm shadow-[var(--abita-gloss),0_1px_3px_rgba(255,77,0,.24),0_6px_16px_rgba(255,77,0,.22)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_4px_12px_rgba(0,0,0,.35)]'
-                          : 'bg-[#1A1714] text-white dark:bg-[#EBE4D6] dark:text-[#111111] rounded-tr-sm shadow-[inset_0_1px_0_rgba(255,255,255,.14),0_6px_18px_rgba(26,23,20,.22)]'
-                        } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${(msg.status === 'failed' || msg.status === 'FAILED') ? 'ring-2 ring-red-500/50 bg-red-950/20 text-red-100' : ''}`}>
+                      {/* Contenedor relativo para permitir Swipe to Reply en móvil */}
+                      <div
+                        className="relative flex items-center w-fit max-w-full"
+                        onTouchStart={(e) => {
+                          const touch = e.touches[0];
+                          touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+                          touchDirectionLockedRef.current = null;
+                          hasTriggeredReplyHaptic.current = false;
+                        }}
+                        onTouchMove={(e) => {
+                          if (!touchStartRef.current) return;
+                          const touch = e.touches[0];
+                          const deltaX = touch.clientX - touchStartRef.current.x;
+                          const deltaY = touch.clientY - touchStartRef.current.y;
 
-                        {(isBot || isAgent) && msg.agentName && (
-                          <div className={`absolute -top-5 ${isBot ? 'right-1' : 'left-1'} flex items-center gap-1`}>
-                            <span className={`text-[9px] font-bold uppercase tracking-widest ${isBot ? 'text-white/70' : 'text-zinc-500'}`}>{msg.agentName}</span>
-                          </div>
-                        )}
-
-                        {msg.scoreBump && (
-                          <div className="absolute -top-10 right-0 flex items-center gap-2 glass-panel !rounded-full px-3 py-1 animate-in fade-in zoom-in duration-300 z-10">
-                            <div className="px-2 py-0.5 bg-[#FF4D00] rounded-full text-[10px] text-white font-black">
-                              +{msg.scoreBump}
-                            </div>
-                            <span className="text-[9px] font-bold text-[#B33500] dark:text-[#FF8A4C] uppercase tracking-wider whitespace-nowrap">
-                              {msg.scoreReason || 'Mejora de Score'}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* 1. Bloque de respuesta contextual (Meta WhatsApp compliant) */}
-                        {(() => {
-                          let replyInfo: { id?: string; wamid?: string; role?: string; content?: string; mediaType?: string; mediaUrl?: string; mediaFilename?: string } | null = null;
-                          
-                          if (msg.buttonsConfig) {
-                            try {
-                              const parsed = JSON.parse(msg.buttonsConfig);
-                              if (parsed.replyTo) replyInfo = parsed.replyTo;
-                            } catch (e) {}
-                          }
-
-                          if (!replyInfo && msg.content && msg.content.includes('[En respuesta a:')) {
-                            const match = msg.content.match(/\[En respuesta a:\s*"([^"]+)"\]\n?/);
-                            if (match) {
-                              replyInfo = { content: match[1] };
+                          // Bloquear eje para no interferir con scroll vertical
+                          if (!touchDirectionLockedRef.current) {
+                            if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 8) {
+                              touchDirectionLockedRef.current = 'vertical';
+                              return;
+                            } else if (Math.abs(deltaX) > 8 && deltaX > 0) {
+                              touchDirectionLockedRef.current = 'horizontal';
+                            } else {
+                              return;
                             }
                           }
 
-                          if (!replyInfo) return null;
+                          if (touchDirectionLockedRef.current === 'horizontal' && deltaX > 0) {
+                            // Aplicar resistencia elástica después de 65px
+                            const clampedOffset = deltaX > 65 ? 65 + (deltaX - 65) * 0.25 : deltaX;
+                            setSwipingMessageId(msg.id);
+                            setSwipeOffset(clampedOffset);
 
-                          const originalMsg = replyInfo.id
-                            ? activeChat.messages.find((m: any) => m.id === replyInfo.id)
-                            : (replyInfo.wamid
-                              ? activeChat.messages.find((m: any) => m.wamid === replyInfo.wamid)
-                              : activeChat.messages.find((m: any) => m.content && replyInfo?.content && m.content.includes(replyInfo.content)));
-
-                          const quotedSenderName = originalMsg 
-                            ? (originalMsg.role === 'user' ? (activeChat.lead.name || 'Cliente') : originalMsg.role === 'assistant' ? 'IA (Bot)' : 'Tú')
-                            : (replyInfo.role === 'user' ? (activeChat.lead.name || 'Cliente') : replyInfo.role === 'assistant' ? 'IA' : 'Tú');
-
-                          const quotedText = replyInfo.content || (originalMsg?.content ? originalMsg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '') : (replyInfo.mediaFilename || 'Archivo adjunto'));
-                          const quotedMediaUrl = replyInfo.mediaUrl || originalMsg?.imageUrl || originalMsg?.mediaUrl;
-                          const isQuotedImage = (replyInfo.mediaType === 'image' || originalMsg?.mediaType === 'image' || !replyInfo.mediaType) && quotedMediaUrl && (quotedMediaUrl.includes('image') || quotedMediaUrl.includes('.jpg') || quotedMediaUrl.includes('.png') || quotedMediaUrl.includes('.webp') || quotedMediaUrl.includes('.jpeg'));
-
-                          return (
-                            <div
-                              onClick={() => originalMsg && scrollToMessage(originalMsg.id)}
-                              className={`group/quote p-2.5 mb-2.5 rounded-xl border-l-4 border-[#FF4D00] bg-black/10 dark:bg-black/35 backdrop-blur-sm text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/15 dark:hover:bg-black/50' : 'opacity-75'}`}
-                              title={originalMsg ? "Clic para ir al mensaje original" : undefined}
-                            >
-                              <div className="flex items-center justify-between gap-1 mb-1">
-                                <div className="flex items-center gap-1.5 font-bold text-[10px] text-[#FF4D00] uppercase tracking-wider">
-                                  <Reply size={11} className="rotate-180" />
-                                  <span>{quotedSenderName}</span>
-                                </div>
-                                {originalMsg && (
-                                  <div className="text-[8px] font-bold text-[#FF4D00] opacity-0 group-hover/quote:opacity-100 transition-opacity flex items-center gap-0.5">
-                                    <span>IR AL MENSAJE</span> ↑
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <p className="line-clamp-2 italic opacity-85 leading-snug flex-1 select-none">
-                                  {quotedText}
-                                </p>
-                                {isQuotedImage && (
-                                  <img 
-                                    src={quotedMediaUrl} 
-                                    alt="Thumbnail" 
-                                    className="w-8 h-8 rounded-md object-cover shrink-0 border border-black/10 dark:border-white/10" 
-                                  />
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })()}
-
-                        {/* 2. Imagen / Thumbnail */}
-                        {(msg.mediaUrl || msg.imageUrl) && (msg.mediaType === 'image' || !msg.mediaType) && (
-                          <div
-                            className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0] cursor-pointer relative z-10"
-                            onClick={(e) => { e.stopPropagation(); setSelectedImage(msg.mediaUrl || msg.imageUrl); }}
-                          >
-                            <img
-                              src={msg.mediaUrl || msg.imageUrl}
-                              alt="Adjunto"
-                              onLoad={() => scrollToBottom(true)}
-                              className="w-full h-auto max-h-[300px] object-cover hover:scale-105 transition-transform duration-500"
-                            />
-                          </div>
-                        )}
-
-                        {/* 3. Audio adjunto */}
-                        {msg.mediaUrl && msg.mediaType === 'audio' && (
-                          <div className="mb-2 w-full pt-1">
-                            <VoiceNotePlayer url={msg.mediaUrl} variant={isUser ? 'user' : isBot ? 'bot' : 'agent'} avatarUrl={userAvatarUrl} transcript={msg.content} />
-                          </div>
-                        )}
-
-                        {/* 3.5. Ubicación / Modern Location Card */}
-                        {(msg.mediaType === 'location' || (msg.mediaUrl && (msg.mediaUrl.includes('google.com/maps') || msg.mediaUrl.includes('maps.google.com')))) && (() => {
-                          let locData: { name?: string; address?: string; latitude?: number; longitude?: number } = {};
-                          if (msg.mediaFilename) {
-                            try { locData = JSON.parse(msg.mediaFilename); } catch (e) {}
-                          }
-                          const mapsUrl = msg.mediaUrl || (msg.content?.match(/https:\/\/(www\.)?(google\.com\/maps|maps\.google\.com)[^\s]+/)?.[0]) || '';
-                          
-                          // Extraer coordenadas para el badge numérico
-                          let lat = locData.latitude;
-                          let lng = locData.longitude;
-                          if ((lat === undefined || lng === undefined) && mapsUrl) {
-                            const coordsMatch = mapsUrl.match(/q=([-\d.]+),([-\d.]+)/);
-                            if (coordsMatch) {
-                              lat = parseFloat(coordsMatch[1]);
-                              lng = parseFloat(coordsMatch[2]);
+                            if (clampedOffset >= 50 && !hasTriggeredReplyHaptic.current) {
+                              hasTriggeredReplyHaptic.current = true;
+                              if (typeof window !== 'undefined' && window.navigator && 'vibrate' in window.navigator) {
+                                try { window.navigator.vibrate(25); } catch { }
+                              }
                             }
                           }
-                          const hasCoords = lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng);
-                          const coordLabel = hasCoords ? `${lat!.toFixed(4)}°, ${lng!.toFixed(4)}°` : '';
+                        }}
+                        onTouchEnd={() => {
+                          if (swipingMessageId === msg.id) {
+                            if (swipeOffset >= 50) {
+                              handleStartReply(msg);
+                            }
+                            setSwipingMessageId(null);
+                            setSwipeOffset(0);
+                          }
+                          touchStartRef.current = null;
+                          touchDirectionLockedRef.current = null;
+                          hasTriggeredReplyHaptic.current = false;
+                        }}
+                        onTouchCancel={() => {
+                          if (swipingMessageId === msg.id) {
+                            setSwipingMessageId(null);
+                            setSwipeOffset(0);
+                          }
+                          touchStartRef.current = null;
+                          touchDirectionLockedRef.current = null;
+                          hasTriggeredReplyHaptic.current = false;
+                        }}
+                      >
+                        {/* Indicador de Reply al hacer swipe en móvil */}
+                        <div
+                          className={`absolute left-[-36px] flex items-center justify-center w-8 h-8 rounded-full bg-[#FF4D00] text-white shadow-md pointer-events-none transition-opacity duration-200 md:hidden ${swipingMessageId === msg.id && swipeOffset > 15 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+                            }`}
+                          style={{
+                            transform: `translateX(${swipingMessageId === msg.id ? Math.min(swipeOffset * 0.6, 32) : 0}px) scale(${swipingMessageId === msg.id ? Math.min(0.6 + (swipeOffset / 60) * 0.4, 1.1) : 0.7
+                              })`
+                          }}
+                        >
+                          <Reply size={15} className="-scale-x-100" />
+                        </div>
 
-                          // Filtrar nombres genéricos/sintéticos para que no aparezca "Mi ubicación actual" o "Ubicación recibida"
-                          const rawTitle = (locData.name || '').trim();
-                          const isGeneric = !rawTitle || ['ubicación', 'ubicacion', 'ubicación recibida', 'ubicacion recibida', 'mi ubicación actual', 'mi ubicacion actual', 'ubicación compartida', 'ubicacion compartida'].includes(rawTitle.toLowerCase());
-                          const locationTitle = isGeneric ? '' : rawTitle;
-                          const locationAddress = (locData.address || '').trim();
+                        <div
+                          style={{
+                            transform: swipingMessageId === msg.id ? `translateX(${swipeOffset}px)` : 'none',
+                            transition: swipingMessageId === msg.id ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1)'
+                          }}
+                          className={`relative p-3 pb-6 rounded-2xl text-sm min-w-[90px] ${isAudio ? 'w-full' : 'w-fit'} font-sans transition-opacity duration-300 ${isUser
+                            ? 'bg-white/85 text-[#111111] dark:bg-white/[.07] dark:text-[#EDE9E0] rounded-tl-sm shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_1px_2px_rgba(66,54,36,.05),0_6px_18px_rgba(66,54,36,.07)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.12)]'
+                            : isBot
+                              ? 'bg-gradient-to-b from-[#FF6A26] to-[#FF4D00] dark:from-[#E8581A] dark:to-[#CC3D00] text-white rounded-tr-sm shadow-[var(--abita-gloss),0_1px_3px_rgba(255,77,0,.24),0_6px_16px_rgba(255,77,0,.22)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,.22),0_4px_12px_rgba(0,0,0,.35)]'
+                              : 'bg-[#1A1714] text-white dark:bg-[#EBE4D6] dark:text-[#111111] rounded-tr-sm shadow-[inset_0_1px_0_rgba(255,255,255,.14),0_6px_18px_rgba(26,23,20,.22)]'
+                            } ${msg.status === 'pending' ? 'opacity-70' : 'opacity-100'} ${(msg.status === 'failed' || msg.status === 'FAILED') ? 'ring-2 ring-red-500/50 bg-red-950/20 text-red-100' : ''}`}
+                        >
 
-                          return (
-                            <a
-                              href={mapsUrl || '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group block mb-2 w-[310px] sm:w-[340px] max-w-[85vw] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] bg-[#111111] text-white select-none relative"
-                              onClick={(e) => { if (!mapsUrl) e.preventDefault(); }}
-                            >
-                              {/* Visualizador de Mapa con Retícula Urbana y Pin de Abita */}
-                              <div className="relative h-36 w-full bg-gradient-to-br from-[#1E1B18] via-[#141210] to-[#0A0908] overflow-hidden flex items-center justify-center">
-                                {/* Vector de Rutas Estilizadas y Bloques Urbanos */}
-                                <svg className="absolute inset-0 w-full h-full opacity-35 group-hover:opacity-50 transition-opacity duration-500" viewBox="0 0 340 144" preserveAspectRatio="xMidYMid slice" fill="none">
-                                  {/* Bloques de la ciudad */}
-                                  <rect x="15" y="14" width="60" height="40" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="85" y="14" width="75" height="40" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="190" y="14" width="65" height="40" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="265" y="14" width="60" height="40" rx="4" fill="white" fillOpacity="0.05" />
 
-                                  <rect x="15" y="78" width="60" height="50" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="85" y="78" width="75" height="50" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="190" y="78" width="65" height="50" rx="4" fill="white" fillOpacity="0.05" />
-                                  <rect x="265" y="78" width="60" height="50" rx="4" fill="white" fillOpacity="0.05" />
 
-                                  {/* Parque / Área verde */}
-                                  <path d="M 190 16 L 245 16 L 245 50 L 190 50 Z" fill="#10B981" fillOpacity="0.15" />
-
-                                  {/* Río / Agua */}
-                                  <path d="M-15 115 C 80 82, 140 128, 220 98 C 270 80, 310 110, 360 92" stroke="#0284C7" strokeWidth="5.5" strokeLinecap="round" opacity="0.35" />
-
-                                  {/* Calles secundarias */}
-                                  <line x1="0" y1="65" x2="340" y2="65" stroke="white" strokeWidth="1" opacity="0.12" />
-                                  <line x1="78" y1="0" x2="78" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
-                                  <line x1="170" y1="0" x2="170" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
-                                  <line x1="258" y1="0" x2="258" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
-
-                                  {/* Arteria principal con resplandor naranja */}
-                                  <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="#FF4D00" strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
-                                  <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="white" strokeWidth="0.8" opacity="0.8" strokeDasharray="3 3" />
-
-                                  {/* Ondas concéntricas centradas en (170, 72) */}
-                                  <circle cx="170" cy="72" r="32" stroke="#FF4D00" strokeWidth="1" opacity="0.45" strokeDasharray="2 2" />
-                                  <circle cx="170" cy="72" r="58" stroke="white" strokeWidth="0.5" opacity="0.18" />
-                                </svg>
-
-                                {/* Pin de Ubicación (Naranja de Abita) */}
-                                <div className="relative z-10 flex flex-col items-center">
-                                  <div className="relative h-10 w-10 rounded-full bg-gradient-to-tr from-[#FF4D00] to-orange-400 text-white flex items-center justify-center shadow-lg shadow-[#FF4D00]/50 group-hover:scale-105 transition-transform">
-                                    <MapPin size={20} className="fill-white/30" />
-                                  </div>
-                                </div>
-
-                                {/* Brújula Top-Right */}
-                                <div className="absolute top-2.5 right-2.5 z-20 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-zinc-300 group-hover:text-white group-hover:bg-[#FF4D00] transition-colors shadow-sm">
-                                  <Navigation size={11} className="group-hover:rotate-45 transition-transform duration-300" />
-                                </div>
+                          {msg.scoreBump && (
+                            <div className="absolute -top-10 right-0 flex items-center gap-2 glass-panel !rounded-full px-3 py-1 animate-in fade-in zoom-in duration-300 z-10">
+                              <div className="px-2 py-0.5 bg-[#FF4D00] rounded-full text-[10px] text-white font-black">
+                                +{msg.scoreBump}
                               </div>
-
-                              {/* Barra de Información Inferior */}
-                              <div className="p-3 bg-zinc-950/90 backdrop-blur-md flex items-center justify-between gap-2.5 border-t border-white/10">
-                                <div className="min-w-0 flex-1 text-left">
-                                  <p className="text-xs font-bold text-white truncate group-hover:text-[#FF4D00] transition-colors">
-                                    {locationTitle || 'Ubicación'}
-                                  </p>
-                                  <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                                    {locationAddress || 'Google Maps'}
-                                  </p>
-                                </div>
-                                <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 group-hover:bg-[#FF4D00] text-zinc-200 group-hover:text-white text-[11px] font-semibold transition-all shadow-sm">
-                                  <span>Abrir</span>
-                                  <ArrowUpRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                                </div>
-                              </div>
-                            </a>
-                          );
-                        })()}
-
-                        {/* 4. Otros documentos */}
-                        {msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'audio' && msg.mediaType !== 'location' && !msg.mediaUrl.includes('google.com/maps') && !msg.mediaUrl.includes('maps.google.com') && (
-                          <a
-                            href={msg.mediaUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mb-2 flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10"
-                          >
-                            <FileText size={16} className="shrink-0 opacity-80" />
-                            <span className="text-xs font-semibold truncate">{msg.mediaFilename || 'Ver archivo'}</span>
-                          </a>
-                        )}
-
-                        {/* 5. Contenido del mensaje (sin el tag de respuesta) */}
-                        {msg.content && msg.mediaType !== 'location' && !msg.content.includes('maps.google.com') && !msg.content.includes('google.com/maps') && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && msg.mediaType !== 'audio' && !(msg.role === 'assistant' && msg.mediaUrl) && (
-                          <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()) }}>
-                          </div>
-                        )}
-
-                        {/* 6. Badge de respuesta de botón (mensajes entrantes del usuario) */}
-                        {isUser && msg.mediaType === 'button_reply' && (
-                          <div className="mt-1.5 flex items-center gap-1.5">
-                            <div className="inline-flex items-center gap-1 px-2 py-1 bg-white/20 dark:bg-black/20 rounded-full text-[10px] font-bold border border-white/30 dark:border-white/10">
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                              Botón presionado
+                              <span className="text-[9px] font-bold text-[#B33500] dark:text-[#FF8A4C] uppercase tracking-wider whitespace-nowrap">
+                                {msg.scoreReason || 'Mejora de Score'}
+                              </span>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {/* 7. Botones quick-reply de la template (mensajes salientes) */}
-                        {(isAgent || isBot) && msg.buttonsConfig && (() => {
-                          try {
-                            const buttons: { text: string; type: string }[] = JSON.parse(msg.buttonsConfig);
-                            if (buttons.length === 0) return null;
+                          {/* 1. Bloque de respuesta contextual (Meta WhatsApp compliant) */}
+                          {(() => {
+                            let replyInfo: { id?: string; wamid?: string; role?: string; content?: string; mediaType?: string; mediaUrl?: string; mediaFilename?: string } | null = null;
+
+                            if (msg.buttonsConfig) {
+                              try {
+                                const parsed = JSON.parse(msg.buttonsConfig);
+                                if (parsed.replyTo) replyInfo = parsed.replyTo;
+                              } catch (e) { }
+                            }
+
+                            if (!replyInfo && msg.content && msg.content.includes('[En respuesta a:')) {
+                              const match = msg.content.match(/\[En respuesta a:\s*"([^"]+)"\]\n?/);
+                              if (match) {
+                                replyInfo = { content: match[1] };
+                              }
+                            }
+
+                            if (!replyInfo) return null;
+
+                            const originalMsg = replyInfo.id
+                              ? activeChat.messages.find((m: any) => m.id === replyInfo.id)
+                              : (replyInfo.wamid
+                                ? activeChat.messages.find((m: any) => m.wamid === replyInfo.wamid)
+                                : activeChat.messages.find((m: any) => m.content && replyInfo?.content && m.content.includes(replyInfo.content)));
+
+                            const quotedSenderName = originalMsg
+                              ? (originalMsg.role === 'user' ? (activeChat.lead.name || 'Cliente') : originalMsg.role === 'assistant' ? 'IA (Bot)' : 'Tú')
+                              : (replyInfo.role === 'user' ? (activeChat.lead.name || 'Cliente') : replyInfo.role === 'assistant' ? 'IA' : 'Tú');
+
+                            const quotedText = replyInfo.content || (originalMsg?.content ? originalMsg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '') : (replyInfo.mediaFilename || 'Archivo adjunto'));
+                            const quotedMediaUrl = replyInfo.mediaUrl || originalMsg?.imageUrl || originalMsg?.mediaUrl;
+                            const isQuotedImage = (replyInfo.mediaType === 'image' || originalMsg?.mediaType === 'image' || !replyInfo.mediaType) && quotedMediaUrl && (quotedMediaUrl.includes('image') || quotedMediaUrl.includes('.jpg') || quotedMediaUrl.includes('.png') || quotedMediaUrl.includes('.webp') || quotedMediaUrl.includes('.jpeg'));
+
                             return (
-                              <div className="mt-3 pt-2 border-t border-white/20 flex flex-col gap-1.5">
-                                {buttons.map((btn, i) => (
-                                  <div
-                                    key={i}
-                                    className="px-3 py-1.5 text-center text-[11px] font-bold rounded-xl border border-white/30 bg-white/10 text-inherit opacity-80"
-                                  >
-                                    {btn.text}
+                              <div
+                                onClick={() => originalMsg && scrollToMessage(originalMsg.id)}
+                                className={`group/quote p-2.5 mb-2.5 rounded-xl border-l-4 border-[#FF4D00] bg-black/10 dark:bg-black/35 backdrop-blur-sm text-[11px] transition-all relative overflow-hidden ${originalMsg ? 'cursor-pointer hover:bg-black/15 dark:hover:bg-black/50' : 'opacity-75'}`}
+                                title={originalMsg ? "Clic para ir al mensaje original" : undefined}
+                              >
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <div className="flex items-center gap-1.5 font-bold text-[10px] text-[#FF4D00] uppercase tracking-wider">
+                                    <Reply size={11} className="rotate-180" />
+                                    <span>{quotedSenderName}</span>
                                   </div>
-                                ))}
+                                  {originalMsg && (
+                                    <div className="text-[8px] font-bold text-[#FF4D00] opacity-0 group-hover/quote:opacity-100 transition-opacity flex items-center gap-0.5">
+                                      <span>IR AL MENSAJE</span> ↑
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <p className="line-clamp-2 italic opacity-85 leading-snug flex-1 select-none">
+                                    {quotedText}
+                                  </p>
+                                  {isQuotedImage && (
+                                    <img
+                                      src={quotedMediaUrl}
+                                      alt="Thumbnail"
+                                      className="w-8 h-8 rounded-md object-cover shrink-0 border border-black/10 dark:border-white/10"
+                                    />
+                                  )}
+                                </div>
                               </div>
                             );
-                          } catch { return null; }
-                        })()}
-                        <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
-                          }`}>
-                          <span className="opacity-60">
-                            {new Date(msg.createdAt).toLocaleTimeString('es-ES', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: true
-                            })}
-                          </span>
-                          {(isAgent || isBot) && (msg.status === 'failed' || msg.status === 'FAILED' || msg.status === 'ERROR') && (
-                            <AlertCircle size={10} className="text-red-400" />
+                          })()}
+
+                          {/* 2. Imagen / Thumbnail */}
+                          {(msg.mediaUrl || msg.imageUrl) && (msg.mediaType === 'image' || !msg.mediaType) && (
+                            <div
+                              className="mb-2 rounded-lg overflow-hidden border border-white/10 shadow-sm leading-[0] cursor-pointer relative z-10"
+                              onClick={(e) => { e.stopPropagation(); setSelectedImage(msg.mediaUrl || msg.imageUrl); }}
+                            >
+                              <img
+                                src={msg.mediaUrl || msg.imageUrl}
+                                alt="Adjunto"
+                                onLoad={() => scrollToBottom(true)}
+                                className="w-full h-auto max-h-[300px] object-cover hover:scale-105 transition-transform duration-500"
+                              />
+                            </div>
                           )}
-                          {(isAgent || isBot) && msg.status === 'pending' && (
-                            <Clock size={10} className="opacity-60" />
+
+                          {/* 3. Audio adjunto */}
+                          {msg.mediaUrl && msg.mediaType === 'audio' && (
+                            <div className="mb-2 w-full pt-1">
+                              <VoiceNotePlayer url={msg.mediaUrl} variant={isUser ? 'user' : isBot ? 'bot' : 'agent'} avatarUrl={userAvatarUrl} transcript={msg.content} />
+                            </div>
                           )}
-                          {(isAgent || isBot) && (msg.status === 'SENT' || msg.status === 'sent') && (
-                            <Check size={10} className="opacity-60 text-zinc-500" />
+
+                          {/* 3.5. Ubicación / Modern Location Card */}
+                          {(msg.mediaType === 'location' || (msg.mediaUrl && (msg.mediaUrl.includes('google.com/maps') || msg.mediaUrl.includes('maps.google.com')))) && (() => {
+                            let locData: { name?: string; address?: string; latitude?: number; longitude?: number } = {};
+                            if (msg.mediaFilename) {
+                              try { locData = JSON.parse(msg.mediaFilename); } catch (e) { }
+                            }
+                            const mapsUrl = msg.mediaUrl || (msg.content?.match(/https:\/\/(www\.)?(google\.com\/maps|maps\.google\.com)[^\s]+/)?.[0]) || '';
+
+                            // Extraer coordenadas para el badge numérico
+                            let lat = locData.latitude;
+                            let lng = locData.longitude;
+                            if ((lat === undefined || lng === undefined) && mapsUrl) {
+                              const coordsMatch = mapsUrl.match(/q=([-\d.]+),([-\d.]+)/);
+                              if (coordsMatch) {
+                                lat = parseFloat(coordsMatch[1]);
+                                lng = parseFloat(coordsMatch[2]);
+                              }
+                            }
+                            const hasCoords = lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng);
+                            const coordLabel = hasCoords ? `${lat!.toFixed(4)}°, ${lng!.toFixed(4)}°` : '';
+
+                            // Filtrar nombres genéricos/sintéticos para que no aparezca "Mi ubicación actual" o "Ubicación recibida"
+                            const rawTitle = (locData.name || '').trim();
+                            const isGeneric = !rawTitle || ['ubicación', 'ubicacion', 'ubicación recibida', 'ubicacion recibida', 'mi ubicación actual', 'mi ubicacion actual', 'ubicación compartida', 'ubicacion compartida'].includes(rawTitle.toLowerCase());
+                            const locationTitle = isGeneric ? '' : rawTitle;
+                            const locationAddress = (locData.address || '').trim();
+
+                            return (
+                              <a
+                                href={mapsUrl || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group block mb-2 w-[310px] sm:w-[340px] max-w-[85vw] rounded-2xl overflow-hidden border border-black/10 dark:border-white/10 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] bg-[#111111] text-white select-none relative"
+                                onClick={(e) => { if (!mapsUrl) e.preventDefault(); }}
+                              >
+                                {/* Visualizador de Mapa con Retícula Urbana y Pin de Abita */}
+                                <div className="relative h-36 w-full bg-gradient-to-br from-[#1E1B18] via-[#141210] to-[#0A0908] overflow-hidden flex items-center justify-center">
+                                  {/* Vector de Rutas Estilizadas y Bloques Urbanos */}
+                                  <svg className="absolute inset-0 w-full h-full opacity-35 group-hover:opacity-50 transition-opacity duration-500" viewBox="0 0 340 144" preserveAspectRatio="xMidYMid slice" fill="none">
+                                    {/* Bloques de la ciudad */}
+                                    <rect x="15" y="14" width="60" height="40" rx="4" fill="white" fillOpacity="0.05" />
+                                    <rect x="85" y="14" width="75" height="40" rx="4" fill="white" fillOpacity="0.05" />
+                                    <rect x="190" y="14" width="65" height="40" rx="4" fill="white" fillOpacity="0.05" />
+                                    <rect x="265" y="14" width="60" height="40" rx="4" fill="white" fillOpacity="0.05" />
+
+                                    <rect x="15" y="78" width="60" height="50" rx="4" fill="white" fillOpacity="0.05" />
+                                    <rect x="85" y="78" width="75" height="50" rx="4" fill="white" fillOpacity="0.05" />
+                                    <rect x="190" y="78" width="65" height="50" rx="4" fill="white" fillOpacity="0.05" />
+                                    <rect x="265" y="78" width="60" height="50" rx="4" fill="white" fillOpacity="0.05" />
+
+                                    {/* Parque / Área verde */}
+                                    <path d="M 190 16 L 245 16 L 245 50 L 190 50 Z" fill="#10B981" fillOpacity="0.15" />
+
+                                    {/* Río / Agua */}
+                                    <path d="M-15 115 C 80 82, 140 128, 220 98 C 270 80, 310 110, 360 92" stroke="#0284C7" strokeWidth="5.5" strokeLinecap="round" opacity="0.35" />
+
+                                    {/* Calles secundarias */}
+                                    <line x1="0" y1="65" x2="340" y2="65" stroke="white" strokeWidth="1" opacity="0.12" />
+                                    <line x1="78" y1="0" x2="78" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
+                                    <line x1="170" y1="0" x2="170" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
+                                    <line x1="258" y1="0" x2="258" y2="144" stroke="white" strokeWidth="1" opacity="0.12" />
+
+                                    {/* Arteria principal con resplandor naranja */}
+                                    <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="#FF4D00" strokeWidth="2.5" opacity="0.75" strokeLinecap="round" />
+                                    <path d="M -10 32 Q 100 42 170 72 T 350 102" stroke="white" strokeWidth="0.8" opacity="0.8" strokeDasharray="3 3" />
+
+                                    {/* Ondas concéntricas centradas en (170, 72) */}
+                                    <circle cx="170" cy="72" r="32" stroke="#FF4D00" strokeWidth="1" opacity="0.45" strokeDasharray="2 2" />
+                                    <circle cx="170" cy="72" r="58" stroke="white" strokeWidth="0.5" opacity="0.18" />
+                                  </svg>
+
+                                  {/* Pin de Ubicación (Naranja de Abita) */}
+                                  <div className="relative z-10 flex flex-col items-center">
+                                    <div className="relative h-10 w-10 rounded-full bg-gradient-to-tr from-[#FF4D00] to-orange-400 text-white flex items-center justify-center shadow-lg shadow-[#FF4D00]/50 group-hover:scale-105 transition-transform">
+                                      <MapPin size={20} className="fill-white/30" />
+                                    </div>
+                                  </div>
+
+                                  {/* Brújula Top-Right */}
+                                  <div className="absolute top-2.5 right-2.5 z-20 p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-zinc-300 group-hover:text-white group-hover:bg-[#FF4D00] transition-colors shadow-sm">
+                                    <Navigation size={11} className="group-hover:rotate-45 transition-transform duration-300" />
+                                  </div>
+                                </div>
+
+                                {/* Barra de Información Inferior */}
+                                <div className="p-3 bg-zinc-950/90 backdrop-blur-md flex items-center justify-between gap-2.5 border-t border-white/10">
+                                  <div className="min-w-0 flex-1 text-left">
+                                    <p className="text-xs font-bold text-white truncate group-hover:text-[#FF4D00] transition-colors">
+                                      {locationTitle || 'Ubicación'}
+                                    </p>
+                                    <p className="text-[10px] text-zinc-400 truncate mt-0.5">
+                                      {locationAddress || 'Google Maps'}
+                                    </p>
+                                  </div>
+                                  <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 group-hover:bg-[#FF4D00] text-zinc-200 group-hover:text-white text-[11px] font-semibold transition-all shadow-sm">
+                                    <span>Abrir</span>
+                                    <ArrowUpRight size={13} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                  </div>
+                                </div>
+                              </a>
+                            );
+                          })()}
+
+                          {/* 4. Otros documentos */}
+                          {msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'audio' && msg.mediaType !== 'location' && !msg.mediaUrl.includes('google.com/maps') && !msg.mediaUrl.includes('maps.google.com') && (
+                            <a
+                              href={msg.mediaUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mb-2 flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10"
+                            >
+                              <FileText size={16} className="shrink-0 opacity-80" />
+                              <span className="text-xs font-semibold truncate">{msg.mediaFilename || 'Ver archivo'}</span>
+                            </a>
                           )}
-                          {(isAgent || isBot) && msg.status === 'DELIVERED' && (
-                            <CheckCheck size={10} className="opacity-60 text-zinc-500" />
+
+                          {/* 5. Contenido del mensaje (sin el tag de respuesta) */}
+                          {msg.content && msg.mediaType !== 'location' && !msg.content.includes('maps.google.com') && !msg.content.includes('google.com/maps') && msg.content !== '[Archivo]' && msg.content !== '[Archivo enviado por IA]' && msg.content !== msg.mediaFilename && msg.mediaType !== 'audio' && !(msg.role === 'assistant' && msg.mediaUrl) && (
+                            <div className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: formatWhatsAppText(msg.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '').trim()) }}>
+                            </div>
                           )}
-                          {(isAgent || isBot) && msg.status === 'READ' && (
-                            <CheckCheck size={10} className="text-[#FF4D00] opacity-100" />
+
+                          {/* 6. Badge de respuesta de botón (mensajes entrantes del usuario) */}
+                          {isUser && msg.mediaType === 'button_reply' && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <div className="inline-flex items-center gap-1 px-2 py-1 bg-white/20 dark:bg-black/20 rounded-full text-[10px] font-bold border border-white/30 dark:border-white/10">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
+                                Botón presionado
+                              </div>
+                            </div>
                           )}
-                          {(isAgent || isBot) && !['failed', 'FAILED', 'ERROR', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
-                            <Check size={10} className="opacity-60" />
-                          )}
+
+                          {/* 7. Botones quick-reply de la template (mensajes salientes) */}
+                          {(isAgent || isBot) && msg.buttonsConfig && (() => {
+                            try {
+                              const buttons: { text: string; type: string }[] = JSON.parse(msg.buttonsConfig);
+                              if (buttons.length === 0) return null;
+                              return (
+                                <div className="mt-3 pt-2 border-t border-white/20 flex flex-col gap-1.5">
+                                  {buttons.map((btn, i) => (
+                                    <div
+                                      key={i}
+                                      className="px-3 py-1.5 text-center text-[11px] font-bold rounded-xl border border-white/30 bg-white/10 text-inherit opacity-80"
+                                    >
+                                      {btn.text}
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            } catch { return null; }
+                          })()}
+                          <div className={`absolute bottom-1 right-2 text-[9px] font-medium flex items-center gap-1 ${isUser ? 'text-[#6F6F6F]' : 'text-inherit'
+                            }`}>
+                            <span className="opacity-60">
+                              {new Date(msg.createdAt).toLocaleTimeString('es-ES', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              })}
+                            </span>
+                            {(isAgent || isBot) && (msg.status === 'failed' || msg.status === 'FAILED' || msg.status === 'ERROR') && (
+                              <AlertCircle size={10} className="text-red-400" />
+                            )}
+                            {(isAgent || isBot) && msg.status === 'pending' && (
+                              <Clock size={10} className="opacity-60" />
+                            )}
+                            {(isAgent || isBot) && (msg.status === 'SENT' || msg.status === 'sent') && (
+                              <Check size={10} className="opacity-60 text-zinc-500" />
+                            )}
+                            {(isAgent || isBot) && msg.status === 'DELIVERED' && (
+                              <CheckCheck size={10} className="opacity-60 text-zinc-500" />
+                            )}
+                            {(isAgent || isBot) && msg.status === 'READ' && (
+                              <CheckCheck size={10} className="text-[#FF4D00] opacity-100" />
+                            )}
+                            {(isAgent || isBot) && !['failed', 'FAILED', 'ERROR', 'pending', 'SENT', 'sent', 'DELIVERED', 'READ'].includes(msg.status) && (
+                              <Check size={10} className="opacity-60" />
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Botón flotante para responder a este mensaje */}
+                      {/* Botón flotante para responder a este mensaje (visible solo en desktop al hacer hover) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleStartReply(msg);
                         }}
-                        className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 max-md:opacity-60 transition-all p-1.5 rounded-full bg-white/90 dark:bg-zinc-800/90 hover:bg-white dark:hover:bg-zinc-700 text-[#6F6F6F] hover:text-[#FF4D00] shadow-sm hover:scale-110 active:scale-95 shrink-0 mb-1"
+                        className="hidden md:flex opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-all p-1.5 rounded-full bg-white/90 dark:bg-zinc-800/90 hover:bg-white dark:hover:bg-zinc-700 text-[#6F6F6F] hover:text-[#FF4D00] shadow-sm hover:scale-110 active:scale-95 shrink-0 mb-1 items-center justify-center"
                         title="Responder a este mensaje"
                       >
                         <Reply size={13} className={isUser ? "" : "-scale-x-100"} />
@@ -2290,12 +2372,12 @@ export default function InboxPage() {
                                 }}
                                 className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors underline underline-offset-2"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
                                 Reintentar envío
                               </button>
                             ) : (
                               <p className="mt-1.5 text-[10px] text-red-400/60 dark:text-red-500/50 flex items-center gap-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                                 No se puede reenviar — ventana de 24h expirada
                               </p>
                             );
@@ -2346,7 +2428,7 @@ export default function InboxPage() {
                     {/* Preview de Respuesta Contextual */}
                     {replyingTo && (
                       <div className="mb-2 flex items-center justify-between gap-3 p-2.5 bg-white/95 dark:bg-zinc-900/95 border border-[#DDD5C2] dark:border-zinc-700 border-l-4 border-l-[#FF4D00] rounded-xl shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-200">
-                        <div 
+                        <div
                           className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
                           onClick={() => scrollToMessage(replyingTo.id)}
                           title="Ir al mensaje original"
@@ -2366,16 +2448,16 @@ export default function InboxPage() {
                               )}
                             </div>
                             <p className="text-xs text-zinc-600 dark:text-zinc-300 truncate mt-0.5">
-                              {replyingTo.content 
+                              {replyingTo.content
                                 ? replyingTo.content.replace(/\[En respuesta a:\s*"[^"]+"\]\n?/, '')
                                 : (replyingTo.mediaFilename || (replyingTo.mediaType ? `[${replyingTo.mediaType}]` : 'Mensaje adjunto'))}
                             </p>
                           </div>
                           {(replyingTo.imageUrl || (replyingTo.mediaType === 'image' ? replyingTo.mediaUrl : null)) && (
-                            <img 
-                              src={replyingTo.imageUrl || replyingTo.mediaUrl} 
-                              alt="Thumbnail" 
-                              className="w-9 h-9 rounded-md object-cover shrink-0 border border-black/10 dark:border-white/10" 
+                            <img
+                              src={replyingTo.imageUrl || replyingTo.mediaUrl}
+                              alt="Thumbnail"
+                              className="w-9 h-9 rounded-md object-cover shrink-0 border border-black/10 dark:border-white/10"
                             />
                           )}
                         </div>
@@ -2498,8 +2580,8 @@ export default function InboxPage() {
                                         <div className="p-1.5 bg-[#FF4D00]/10 text-[#FF4D00] rounded-lg"><ImageIcon size={16} /></div>
                                         Galería
                                       </button>
-                                      <button 
-                                        onClick={handleSendLocation} 
+                                      <button
+                                        onClick={handleSendLocation}
                                         disabled={isSendingLocation || isUploadingMedia}
                                         className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/10 rounded-xl transition-colors text-left text-sm font-medium text-[#EDE9E0] disabled:opacity-50"
                                       >
@@ -2562,7 +2644,7 @@ export default function InboxPage() {
                                         : pendingFile
                                           ? "Agrega un caption (opcional)..."
                                           : replyingTo
-                                            ? "Escribe tu respuesta contextual... (Esc para cancelar)"
+                                            ? "Escribe una respuesta..."
                                             : "Escribe una respuesta..."
                                   }
                                   className="w-full bg-[#EBE4D6]/50 dark:bg-[#111111]/40 border border-[#DDD5C2] dark:border-zinc-800 rounded-2xl px-5 py-3 pr-12 min-h-[52px] max-h-32 resize-none outline-none disabled:opacity-50 transition-all focus:border-[#FF4D00] focus:ring-1 focus:ring-[#FF4D00]/40 text-sm text-[#111111] dark:text-white"
@@ -2620,12 +2702,12 @@ export default function InboxPage() {
           <div className="flex-1 w-full md:w-[300px] overflow-y-auto no-scrollbar pb-6 absolute inset-0">
             {/* Cabecera del perfil */}
             {mobileView === 'profile' && (
-               <div className="md:hidden sticky top-0 bg-[#EBE4D6]/80 dark:bg-black/80 backdrop-blur-md px-4 py-3 z-10 border-b border-[#DDD5C2] dark:border-zinc-800/60 flex items-center gap-2">
-                 <button onClick={() => setMobileView('chat')} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#111111] dark:text-[#EDE9E0] transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                 </button>
-                 <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">Perfil del Contacto</span>
-               </div>
+              <div className="md:hidden sticky top-0 bg-[#EBE4D6]/80 dark:bg-black/80 backdrop-blur-md px-4 py-3 z-10 border-b border-[#DDD5C2] dark:border-zinc-800/60 flex items-center gap-2">
+                <button onClick={() => setMobileView('chat')} className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg text-[#111111] dark:text-[#EDE9E0] transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                </button>
+                <span className="font-bold text-sm text-[#111111] dark:text-[#EDE9E0]">Perfil del Contacto</span>
+              </div>
             )}
             <div className="px-6 py-8 flex flex-col items-center justify-center border-b border-[#DDD5C2] dark:border-zinc-800/60 bg-[#EBE4D6]/30 dark:bg-black/20">
               <div className="h-20 w-20 bg-[#111111] dark:bg-[#EBE4D6] rounded-full flex items-center justify-center text-[#FF4D00] font-black text-3xl shadow-xl mb-4 relative">
@@ -2670,14 +2752,12 @@ export default function InboxPage() {
                       <span className="text-[10px] text-[#6F6F6F] font-bold uppercase">Auto-Reactivar IA</span>
                       <button
                         onClick={handleToggleAutoWake}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                          activeChat.autoWakeBot ? 'bg-[#FF4D00]' : 'bg-[#DDD5C2] dark:bg-zinc-700'
-                        }`}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${activeChat.autoWakeBot ? 'bg-[#FF4D00]' : 'bg-[#DDD5C2] dark:bg-zinc-700'
+                          }`}
                         title={activeChat.autoWakeBot ? "Desactivar reactivación automática" : "Activar reactivación automática"}
                       >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                          activeChat.autoWakeBot ? 'translate-x-[18px]' : 'translate-x-1'
-                        }`} />
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${activeChat.autoWakeBot ? 'translate-x-[18px]' : 'translate-x-1'
+                          }`} />
                       </button>
                     </div>
 
@@ -2795,11 +2875,11 @@ export default function InboxPage() {
                     {activeChat.lead.metadata && Object.keys(activeChat.lead.metadata).length > 0 && typeof activeChat.lead.metadata === 'object' && Object.entries(activeChat.lead.metadata)
                       .filter(([key]) => !key.toLowerCase().startsWith('__empty'))
                       .map(([key, val]) => (
-                      <div key={key} className="bg-[#EBE4D6]/30 dark:bg-zinc-900/50 px-3 py-2.5 rounded-lg border border-[#DDD5C2] dark:border-zinc-800 flex flex-col gap-0.5">
-                        <span className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-wider">{key}</span>
-                        <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0] truncate">{String(val)}</span>
-                      </div>
-                    ))}
+                        <div key={key} className="bg-[#EBE4D6]/30 dark:bg-zinc-900/50 px-3 py-2.5 rounded-lg border border-[#DDD5C2] dark:border-zinc-800 flex flex-col gap-0.5">
+                          <span className="text-[9px] font-black text-[#6F6F6F] uppercase tracking-wider">{key}</span>
+                          <span className="text-xs font-medium text-[#111111] dark:text-[#EDE9E0] truncate">{String(val)}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
@@ -2892,11 +2972,10 @@ export default function InboxPage() {
                   setIsBotConfirmModalOpen(false);
                   handleToggleBot();
                 }}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${
-                  activeChat.botActive
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${activeChat.botActive
                     ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
                     : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
-                }`}
+                  }`}
               >
                 {activeChat.botActive ? 'Sí, desactivar bot' : 'Sí, activar bot'}
               </button>
@@ -2907,29 +2986,29 @@ export default function InboxPage() {
 
       {/* Modal de Imagen */}
       {selectedImage && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" 
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
           onClick={() => setSelectedImage(null)}
         >
           <div className="relative max-w-4xl max-h-screen flex flex-col items-center justify-center">
-            <button 
+            <button
               className="absolute -top-12 right-0 text-white hover:text-[#FF4D00] transition-colors p-2"
               onClick={() => setSelectedImage(null)}
             >
               <XIcon size={24} />
             </button>
-            <img 
-              src={selectedImage} 
-              alt="Ampliada" 
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" 
-              onClick={(e) => e.stopPropagation()} 
+            <img
+              src={selectedImage}
+              alt="Ampliada"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
             />
             <div className="mt-4 flex gap-4" onClick={(e) => e.stopPropagation()}>
-              <a 
-                href={selectedImage} 
-                download 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href={selectedImage}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-2 bg-[#FF4D00] hover:bg-[#FF4D00]/90 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg"
               >
                 <Download size={18} /> Descargar Imagen
