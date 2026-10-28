@@ -995,7 +995,7 @@ export default function SettingsPage() {
         {/* Main Layout = Sidebar + Content */}
         <div className="flex-1 flex relative overflow-hidden">
           {/* ─── Sidebar (Drawer deslizable a la derecha en móvil con la misma estética) ─── */}
-          <aside className={`fixed inset-y-0 right-0 z-[70] md:relative md:inset-auto shrink-0 md:border-r border-[#8A8172]/20 dark:border-white/10 bg-[#FAF6EE] dark:bg-[#161412] md:bg-white/50 md:dark:bg-[#111111]/30 flex flex-col transition-transform duration-300 ease-in-out shadow-[-10px_0_30px_rgba(0,0,0,0.4)] md:shadow-none h-full w-64 max-w-[80vw] md:w-72 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0 md:w-0 md:opacity-0 md:pointer-events-none'}`}>
+          <aside className={`fixed inset-y-0 right-0 z-[70] md:z-10 md:relative md:inset-auto shrink-0 md:border-r border-[#8A8172]/20 dark:border-white/10 bg-[#FAF6EE] dark:bg-[#161412] md:bg-white/50 md:dark:bg-[#111111]/30 flex flex-col transition-transform duration-300 ease-in-out shadow-[-10px_0_30px_rgba(0,0,0,0.4)] md:shadow-none h-full w-64 max-w-[80vw] md:w-72 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0 md:w-0 md:opacity-0 md:pointer-events-none'}`}>
             <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col">
 
               {/* Header con Isotipo puro y botón de retroceso a módulos para móvil */}

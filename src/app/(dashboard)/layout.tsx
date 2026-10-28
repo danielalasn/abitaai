@@ -22,7 +22,7 @@ export default async function DashboardLayout({
       style={{ height: 'var(--app-height, 100dvh)' }}
     >
       {/* Sidebar solo visible en desktop */}
-      <div className="hidden md:flex">
+      <div className="hidden md:flex relative z-30">
         <Sidebar />
       </div>
       <main className="flex-1 flex flex-col overflow-hidden relative min-w-0 min-h-0 bg-[#EBE4D6] dark:bg-[#1A1714]">
