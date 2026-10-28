@@ -9,7 +9,7 @@ import {
   Sun, Moon, LayoutTemplate, Files, AlertTriangle, Activity
 } from 'lucide-react'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useTheme } from 'next-themes'
 import { getSubscriptionUsageAction, getProfileWithMeta } from '@/app/actions/settings'
 import { AbitaBotBubble } from '@/components/AbitaBotBubble'
@@ -19,9 +19,24 @@ export function Sidebar() {
   const { data: session } = useSession()
   const { theme, resolvedTheme, setTheme } = useTheme()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [usageData, setUsageData] = useState<{ limit: number | null, usage: number } | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false)
+      }
+    }
+    if (isProfileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isProfileMenuOpen])
 
   useEffect(() => {
     const fetchUsage = () => {
@@ -170,9 +185,9 @@ export function Sidebar() {
       </div>
 
       {/* User */}
-      <div className="shrink-0 relative">
+      <div ref={profileMenuRef} className="shrink-0 relative">
         {isProfileMenuOpen && (
-          <div className="absolute bottom-14 left-0 w-52 glass-dark rounded-2xl z-[100] p-1.5 overflow-hidden animate-in fade-in zoom-in-95">
+          <div className="absolute bottom-14 left-0 w-52 bg-[#1A1714]/95 dark:bg-[#1A1714]/95 backdrop-blur-2xl border border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.35),0_1px_0_rgba(255,255,255,0.1)_inset] rounded-2xl z-[100] p-1.5 overflow-hidden animate-in fade-in zoom-in-95">
             <Link
               href="/settings"
               onClick={() => setIsProfileMenuOpen(false)}
