@@ -966,13 +966,13 @@ export default function SettingsPage() {
             </div>
           )}
           {waStatus === 'success' && (
-            <div className="bg-[#E64500] text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300">
+            <div className="bg-[#25D366] text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300">
               <div className="bg-white/20 p-1.5 rounded-full"><Wifi size={18} /></div>
               <div className="flex flex-col"><p className="text-sm font-semibold">WhatsApp guardado</p></div>
             </div>
           )}
           {verifyResult && (
-            <div className={`${verifyResult.success ? 'bg-[#E64500]' : 'bg-red-600'} text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 relative group/notif`}>
+            <div className={`${verifyResult.success ? 'bg-[#25D366]' : 'bg-red-600'} text-white shadow-2xl px-6 py-4 rounded-2xl flex items-center gap-3 pointer-events-auto animate-in slide-in-from-right-full fade-in duration-300 relative group/notif`}>
               <button
                 onClick={() => setVerifyResult(null)}
                 className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/20 transition-colors opacity-0 group-hover/notif:opacity-100"
@@ -1236,13 +1236,13 @@ export default function SettingsPage() {
                       setVerifyResult(r); setIsVerifying(false)
                     }}
                     disabled={isVerifying}
-                    className="px-3 py-2 bg-[#E64500] text-white rounded-lg text-xs font-bold"
+                    className="px-3 py-2 bg-[#25D366] hover:bg-[#1da851] text-white rounded-lg text-xs font-bold transition-colors"
                   >
                     {isVerifying ? '...' : <Wifi size={14} />}
                   </button>
                 </div>
                 {verifyResult && (
-                  <p className={`text-[10px] font-medium whitespace-pre-line ${verifyResult.success ? 'text-[#E64500]' : 'text-red-500'}`}>
+                  <p className={`text-[10px] font-medium whitespace-pre-line ${verifyResult.success ? 'text-[#25D366]' : 'text-red-500'}`}>
                     {verifyResult.message}
                   </p>
                 )}
@@ -1982,8 +1982,8 @@ export default function SettingsPage() {
               <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
-                    <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Canales</span>
+                    <div className="h-1 w-6 bg-[#25D366] rounded-full" />
+                    <span className="text-[9px] font-black text-[#25D366] uppercase tracking-[0.2em]">Canales</span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Conexiones</h2>
                 </header>
@@ -1995,7 +1995,7 @@ export default function SettingsPage() {
                 )}
 
                 {waFeedback && (
-                  <div className={`mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold animate-in slide-in-from-top-2 ${waFeedback === 'success' ? 'bg-[#FFF1EA] dark:bg-[#5C1B00]/10 border-[#FFE5DB] dark:border-[#8A2900] text-[#B33500] dark:text-[#FF8A4C]' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                  <div className={`mb-6 flex items-center gap-2 p-3 rounded-xl border text-[10px] font-semibold animate-in slide-in-from-top-2 ${waFeedback === 'success' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
                     {waFeedback === 'success' ? <CheckCircle2 size={14} className="shrink-0" /> : <AlertCircle size={14} className="shrink-0" />}
                     <span>{waFeedback === 'success' ? 'WhatsApp conectado exitosamente.' : waErrorMessage}</span>
                   </div>
@@ -2003,15 +2003,15 @@ export default function SettingsPage() {
 
                 <div className="space-y-6 max-w-md mx-auto w-full">
                   {/* ─── WhatsApp Card ─── */}
-                  <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-[#FF4D00]/40 ${waIntegration?.status === 'active' ? 'border-[#FF4D00]/20 ring-1 ring-[#FF4D00]/20' : 'border-[#DDD5C2] dark:border-zinc-800'
+                  <div className={`group p-8 bg-white dark:bg-[#111111]/60 border rounded-[3rem] shadow-2xl shadow-black/5 flex flex-col items-center text-center transition-all duration-500 hover:scale-[1.02] hover:border-[#25D366]/40 ${waIntegration?.status === 'active' ? 'border-[#25D366]/30 ring-1 ring-[#25D366]/30' : 'border-[#DDD5C2] dark:border-zinc-800'
                     }`}>
                     <div className="mb-6 relative">
-                      <div className="absolute inset-0 bg-[#FF4D00] rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
-                      <div className="relative h-16 w-16 bg-[#FF4D00]/10 text-[#FF4D00] rounded-2xl flex items-center justify-center shadow-sm group-hover:-rotate-3 transition-transform duration-500">
+                      <div className="absolute inset-0 bg-[#25D366] rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-opacity" />
+                      <div className="relative h-16 w-16 bg-[#25D366]/10 text-[#25D366] rounded-2xl flex items-center justify-center shadow-sm group-hover:-rotate-3 transition-transform duration-500">
                         <MessageSquare size={32} />
                       </div>
                       {waIntegration?.status === 'active' && (
-                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-[#FF4D00] border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
+                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-[#25D366] border-2 border-white dark:border-[#111111] rounded-full shadow-lg animate-pulse" />
                       )}
                     </div>
 
@@ -2026,7 +2026,7 @@ export default function SettingsPage() {
                         disabled={waLoading}
                         className={`flex-1 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${waIntegration?.status === 'active'
                           ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20'
-                          : 'bg-[#111111] dark:bg-[#EDE9E0] dark:text-[#111111] hover:bg-[#E64500] hover:text-white'
+                          : 'bg-[#111111] dark:bg-[#EDE9E0] dark:text-[#111111] hover:bg-[#25D366] hover:text-white'
                           }`}
                       >
                         {waLoading ? <Loader2 size={16} className="animate-spin" /> : waIntegration?.status === 'active' ? 'Desconectar' : 'Conectar'}
@@ -2035,7 +2035,7 @@ export default function SettingsPage() {
                         onClick={handleVerifyWhatsApp}
                         disabled={isVerifying}
                         className={`px-5 py-4 border rounded-2xl transition-all duration-300 ${waVerifyStatus === 'success'
-                          ? 'text-[#FF4D00] border-[#FF4D00]/30 bg-[#FFF1EA]/50 hover:bg-[#FFF1EA] dark:border-[#8A2900]/40 dark:bg-[#3D1200]/20 dark:hover:bg-[#5C1B00]/20'
+                          ? 'text-[#25D366] border-[#25D366]/30 bg-emerald-50/50 hover:bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/20'
                           : waVerifyStatus === 'error'
                             ? 'text-red-500 border-red-500/30 bg-red-50/50 hover:bg-red-50 dark:border-red-800/40 dark:bg-red-950/20 dark:hover:bg-red-900/20'
                             : 'text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/40'
