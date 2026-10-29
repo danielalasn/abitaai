@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, forwardRef } from 'react'
+import { useState, useEffect, useCallback, forwardRef, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { useSession, signOut } from 'next-auth/react'
@@ -11,9 +11,10 @@ import {
   Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings,
   Sun, Moon, LogOut, Menu, ArrowLeft,
   Inbox, Megaphone, LayoutTemplate, BarChart3, UserCheck, BrainCircuit, MessageSquareCode, Files,
-  Database, Download, AlertTriangle, Mail
+  Database, Download, AlertTriangle, Mail, Search, ChevronDown, Check
 } from 'lucide-react'
 import PhoneInput, { getCountryCallingCode, type Country } from 'react-phone-number-input'
+import esLabels from 'react-phone-number-input/locale/es.json'
 import 'react-phone-number-input/style.css'
 import {
   getProjectConfig, saveProjectWhatsApp, getAgentConfig,
@@ -34,19 +35,168 @@ import SheetsConfigPanel from '@/components/integrations/SheetsConfigPanel'
 import ThemeSwitch from '@/components/ui/theme-switch'
 import { DesktopOnlyGuard } from '@/components/DesktopOnlyGuard'
 
-const CustomPhoneInput = forwardRef<HTMLInputElement, any>(({ callingCode, ...props }, ref) => {
+// Custom Phone Input Component
+const CustomPhoneInput = forwardRef<HTMLInputElement, any>((props, ref) => {
   return (
-    <div className="flex items-center w-full h-full">
-      {callingCode && (
-        <div className="px-2 py-1 mr-2 bg-zinc-100 dark:bg-zinc-800/80 rounded-md text-zinc-500 dark:text-zinc-400 font-bold border border-zinc-200 dark:border-zinc-700 select-none">
-          +{callingCode}
-        </div>
-      )}
-      <input ref={ref} {...props} />
-    </div>
+    <input
+      ref={ref}
+      {...props}
+      placeholder="7012 3456"
+      className="flex-1 bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs placeholder-zinc-400 h-full py-2 min-w-0"
+    />
   )
 })
 CustomPhoneInput.displayName = 'CustomPhoneInput'
+
+// Custom Country Select with Search & Abita Aesthetic
+const CustomCountrySelect = ({
+  value,
+  onChange,
+  options,
+  iconComponent: Icon,
+  disabled
+}: {
+  value?: string
+  onChange: (country: string | undefined) => void
+  options: { value?: string; label: string; divider?: boolean }[]
+  iconComponent?: React.ComponentType<{ country?: string; label?: string; aspectRatio?: number }>
+  disabled?: boolean
+}) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+        setSearch('')
+      }
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+        setSearch('')
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
+      setTimeout(() => searchInputRef.current?.focus(), 50)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen])
+
+  const getCallingCode = useCallback((c?: string) => {
+    if (!c || c === 'ZZ') return ''
+    try {
+      return getCountryCallingCode(c as Country)
+    } catch {
+      return ''
+    }
+  }, [])
+
+  const selectedCallingCode = getCallingCode(value)
+  const selectedOption = options.find(o => o.value === value)
+
+  const filteredOptions = options.filter(opt => {
+    if (!opt.value || opt.value === 'ZZ') return false
+    if (!search.trim()) return true
+    const q = search.toLowerCase().trim()
+    const labelMatch = opt.label.toLowerCase().includes(q)
+    const code = getCallingCode(opt.value)
+    const codeMatch = code.includes(q.replace('+', ''))
+    const countryCodeMatch = opt.value.toLowerCase().includes(q)
+    return labelMatch || codeMatch || countryCodeMatch
+  })
+
+  return (
+    <div ref={containerRef} className="relative flex items-center shrink-0">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(prev => !prev)}
+        className="flex items-center gap-1.5 py-1 px-1.5 mr-2 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/80 rounded-lg transition-colors border border-transparent focus:border-[#FF4D00]/50 select-none cursor-pointer"
+        title={selectedOption?.label || 'Seleccionar país'}
+      >
+        <div className="w-5 h-3.5 rounded-[2px] overflow-hidden flex items-center justify-center shrink-0 border border-zinc-200/50 dark:border-zinc-700/50 shadow-sm">
+          {value && Icon ? (
+            <Icon country={value} label={selectedOption?.label} />
+          ) : (
+            <Globe size={14} className="text-zinc-400" />
+          )}
+        </div>
+        {selectedCallingCode && (
+          <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
+            +{selectedCallingCode}
+          </span>
+        )}
+        <ChevronDown size={11} className={`text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-[#FF4D00]' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 z-50 w-72 max-w-[calc(100vw-3rem)] rounded-2xl p-2 bg-[#FDFBF7] dark:bg-[#18181b] border border-[#DDD5C2] dark:border-zinc-800 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative mb-2">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar país o código..."
+              className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 outline-none focus:ring-1 focus:ring-[#FF4D00] text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
+            />
+          </div>
+
+          <div className="max-h-56 overflow-y-auto space-y-0.5 custom-scrollbar pr-1">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map(opt => {
+                const code = getCallingCode(opt.value)
+                const isSelected = opt.value === value
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.value)
+                      setIsOpen(false)
+                      setSearch('')
+                    }}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left ${isSelected
+                      ? 'bg-[#FF4D00]/10 text-[#FF4D00] font-bold'
+                      : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/70 hover:text-zinc-900 dark:hover:text-zinc-100'
+                      }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <div className="w-4 h-3 rounded-[2px] overflow-hidden flex items-center justify-center shrink-0 border border-zinc-200/50 dark:border-zinc-700/50">
+                        {Icon && opt.value && <Icon country={opt.value} label={opt.label} />}
+                      </div>
+                      <span className="truncate">{opt.label}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {code && (
+                        <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-zinc-200/60 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                          +{code}
+                        </span>
+                      )}
+                      {isSelected && <Check size={12} className="text-[#FF4D00] shrink-0" />}
+                    </div>
+                  </button>
+                )
+              })
+            ) : (
+              <p className="text-center py-4 text-xs text-zinc-400 italic">No se encontraron países</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Instagram logo SVG (lucide doesn't include it)
 const IgIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -190,7 +340,7 @@ export default function SettingsPage() {
   // Notification phones (WhatsApp)
   const [notificationPhones, setNotificationPhones] = useState<string[]>([])
   const [notificationPhoneInput, setNotificationPhoneInput] = useState<string | undefined>('')
-  const [phoneCountry, setPhoneCountry] = useState<Country | undefined>()
+  const [phoneCountry, setPhoneCountry] = useState<Country | undefined>('SV')
   const [isSavingNotificationPhones, setIsSavingNotificationPhones] = useState(false)
   const [notificationPhonesStatus, setNotificationPhonesStatus] = useState<'success' | 'error' | null>(null)
   const [handoffTemplateStatus, setHandoffTemplateStatus] = useState<string | null>(null)
@@ -1175,8 +1325,8 @@ export default function SettingsPage() {
                 <button
                   onClick={() => { setActiveSection('deleteAccount'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'deleteAccount'
-                      ? 'bg-red-500/15 text-red-600 dark:text-red-400 font-semibold border border-red-500/30'
-                      : 'text-red-600/90 dark:text-red-400/90 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400'
+                    ? 'bg-red-500/15 text-red-600 dark:text-red-400 font-semibold border border-red-500/30'
+                    : 'text-red-600/90 dark:text-red-400/90 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400'
                     }`}
                 >
                   <Trash2 size={17} className="text-red-500 shrink-0" /> <span className="flex-1 text-left font-medium text-red-600 dark:text-red-400">Eliminar Cuenta</span>
@@ -1424,8 +1574,8 @@ export default function SettingsPage() {
                                 onClick={handleSyncMeta}
                                 disabled={isSyncingMeta}
                                 className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 ${syncMetaStatus === 'success' ? 'bg-[#FF4D00] text-white' :
-                                    syncMetaStatus === 'error' ? 'bg-red-500 text-white' :
-                                      'bg-[#25D366] hover:bg-[#1da851] text-white'
+                                  syncMetaStatus === 'error' ? 'bg-red-500 text-white' :
+                                    'bg-[#25D366] hover:bg-[#1da851] text-white'
                                   }`}
                               >
                                 {isSyncingMeta ? <Loader2 size={11} className="animate-spin" /> :
@@ -1470,8 +1620,8 @@ export default function SettingsPage() {
                                 placeholder="Tu nombre"
                                 disabled={hasMetaConnected}
                                 className={`w-full text-xs px-4 py-2.5 rounded-xl outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner ${hasMetaConnected
-                                    ? 'bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 text-zinc-500 cursor-not-allowed'
-                                    : 'bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00]'
+                                  ? 'bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 text-zinc-500 cursor-not-allowed'
+                                  : 'bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00]'
                                   }`}
                               />
                             </div>
@@ -1777,24 +1927,37 @@ export default function SettingsPage() {
                               <p className="text-[11px] text-zinc-400 italic">No hay números registrados aún.</p>
                             )}
 
-                            <div className="flex gap-2 items-stretch h-[38px]">
-                              <div className="flex-1 px-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-[#FF4D00]/50 focus-within:border-[#FF4D00] transition-all flex items-center text-zinc-900 dark:text-zinc-100">
+                            <div className="flex gap-2 items-stretch h-[38px] w-full">
+                              <div className="relative flex-1 min-w-0 px-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-[#FF4D00]/50 focus-within:border-[#FF4D00] transition-all flex items-center text-zinc-900 dark:text-zinc-100">
                                 <PhoneInput
                                   international={false}
+                                  defaultCountry="SV"
                                   country={phoneCountry}
                                   onCountryChange={setPhoneCountry}
                                   value={notificationPhoneInput}
                                   onChange={setNotificationPhoneInput}
                                   inputComponent={CustomPhoneInput}
-                                  callingCode={phoneCountry ? getCountryCallingCode(phoneCountry) : ''}
-                                  className="flex-1 bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs placeholder-zinc-400 h-full py-2 custom-phone-input"
+                                  countrySelectComponent={CustomCountrySelect}
+                                  labels={esLabels}
+                                  className="flex-1 min-w-0 flex items-center bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs h-full w-full"
                                   onKeyDown={(e: any) => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
                                       const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
-                                      if (trimmed && !notificationPhones.includes(trimmed)) {
-                                        setNotificationPhones(prev => [...prev, trimmed])
-                                        setNotificationPhoneInput('')
+                                      if (trimmed) {
+                                        const callingCode = phoneCountry ? getCountryCallingCode(phoneCountry) : ''
+                                        let finalPhone = trimmed
+                                        if (!finalPhone.startsWith('+')) {
+                                          if (callingCode && !finalPhone.startsWith(callingCode)) {
+                                            finalPhone = `+${callingCode}${finalPhone}`
+                                          } else {
+                                            finalPhone = `+${finalPhone}`
+                                          }
+                                        }
+                                        if (!notificationPhones.includes(finalPhone)) {
+                                          setNotificationPhones(prev => [...prev, finalPhone])
+                                          setNotificationPhoneInput('')
+                                        }
                                       }
                                     }
                                   }}
@@ -1803,9 +1966,20 @@ export default function SettingsPage() {
                               <button
                                 onClick={() => {
                                   const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
-                                  if (trimmed && !notificationPhones.includes(trimmed)) {
-                                    setNotificationPhones(prev => [...prev, trimmed])
-                                    setNotificationPhoneInput('')
+                                  if (trimmed) {
+                                    const callingCode = phoneCountry ? getCountryCallingCode(phoneCountry) : ''
+                                    let finalPhone = trimmed
+                                    if (!finalPhone.startsWith('+')) {
+                                      if (callingCode && !finalPhone.startsWith(callingCode)) {
+                                        finalPhone = `+${callingCode}${finalPhone}`
+                                      } else {
+                                        finalPhone = `+${finalPhone}`
+                                      }
+                                    }
+                                    if (!notificationPhones.includes(finalPhone)) {
+                                      setNotificationPhones(prev => [...prev, finalPhone])
+                                      setNotificationPhoneInput('')
+                                    }
                                   }
                                 }}
                                 className="px-3 bg-[#FF4D00]/10 text-[#FF4D00] rounded-xl text-xs font-bold hover:bg-[#FF4D00] hover:text-white transition-all shrink-0"
@@ -1896,7 +2070,7 @@ export default function SettingsPage() {
                             <p className="text-[11px] text-zinc-400 italic">No hay correos registrados aún.</p>
                           )}
 
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-stretch h-[38px] w-full">
                             <input
                               id="notification-email-input"
                               type="email"
@@ -1913,7 +2087,7 @@ export default function SettingsPage() {
                                   }
                                 }
                               }}
-                              className="flex-1 text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#8A8172]/50 focus:border-[#8A8172] outline-none transition-all text-zinc-900 dark:text-zinc-100"
+                              className="flex-1 min-w-0 text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100"
                             />
                             <button
                               onClick={() => {
@@ -1923,7 +2097,7 @@ export default function SettingsPage() {
                                   setNotificationEmailInput('');
                                 }
                               }}
-                              className="px-3 bg-[#8A8172]/10 text-[#8A8172] dark:text-zinc-300 rounded-xl text-xs font-bold hover:bg-[#8A8172] hover:text-white transition-all shrink-0"
+                              className="px-3 bg-[#FF4D00]/10 text-[#FF4D00] rounded-xl text-xs font-bold hover:bg-[#FF4D00] hover:text-white transition-all shrink-0"
                             >
                               <Plus size={15} />
                             </button>

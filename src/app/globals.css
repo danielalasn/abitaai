@@ -451,3 +451,11 @@ body {
 nextjs-portal, [data-nextjs-toast] {
   pointer-events: none !important;
 }
+
+/* Dark mode native select fallback */
+.dark select,
+.dark option {
+  background-color: #18181b;
+  color: #EDE9E0;
+}
+
