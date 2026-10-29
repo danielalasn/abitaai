@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { 
   Inbox, Megaphone, LayoutTemplate, BarChart3, 
   Menu, X, Files, UserCheck, BrainCircuit, MessageSquareCode, Settings, LogOut,
-  User, Bell, Globe, Puzzle, Bot, ArrowLeft, Sun, Moon
+  User, Bell, Globe, Puzzle, Bot, ArrowLeft, Sun, Moon, Database, Trash2
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
 import ThemeSwitch from '@/components/ui/theme-switch'
@@ -41,6 +41,8 @@ export function MobileNav() {
     { icon: Globe, label: 'Conexiones', href: '/settings?section=connections' },
     { icon: Puzzle, label: 'Herramientas', href: '/settings?section=tools' },
     { icon: Bot, label: 'Asistente IA', href: '/settings?section=botConfig' },
+    { icon: Database, label: 'Datos', href: '/settings?section=data' },
+    { icon: Trash2, label: 'Eliminar Cuenta', href: '/settings?section=deleteAccount', danger: true },
   ]
 
   const handleLogout = async () => {
@@ -225,10 +227,14 @@ export function MobileNav() {
                         key={item.label}
                         href={item.href}
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06] transition-all"
+                        className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                          (item as any).danger
+                            ? 'text-red-600/90 dark:text-red-400/90 hover:bg-red-500/10 hover:text-red-600'
+                            : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'
+                        }`}
                       >
-                        <item.icon size={18} strokeWidth={1.9} className="text-[#8A8172] dark:text-[#8E8B85]" />
-                        <span className="flex-1 truncate">{item.label}</span>
+                        <item.icon size={18} strokeWidth={1.9} className={(item as any).danger ? 'text-red-500' : 'text-[#8A8172] dark:text-[#8E8B85]'} />
+                        <span className={`flex-1 truncate ${(item as any).danger ? 'font-medium text-red-600 dark:text-red-400' : ''}`}>{item.label}</span>
                       </Link>
                     ))}
 

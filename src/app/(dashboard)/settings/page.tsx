@@ -10,7 +10,8 @@ import {
   Wifi, ChevronRight, Power, X, FileText, PanelLeftClose, PanelLeftOpen,
   Eye, EyeOff, User, Lock, Globe, Link, Camera, Unlink, AlertCircle, Puzzle, Bell, Settings,
   Sun, Moon, LogOut, Menu, ArrowLeft,
-  Inbox, Megaphone, LayoutTemplate, BarChart3, UserCheck, BrainCircuit, MessageSquareCode, Files
+  Inbox, Megaphone, LayoutTemplate, BarChart3, UserCheck, BrainCircuit, MessageSquareCode, Files,
+  Database, Download, AlertTriangle, Mail
 } from 'lucide-react'
 import PhoneInput, { getCountryCallingCode, type Country } from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
@@ -133,7 +134,7 @@ export default function SettingsPage() {
   const [isLoadingSection, setIsLoadingSection] = useState(false)
 
   // Profile management
-  const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'notifications' | 'connections' | 'botConfig' | 'tools'>(isAdmin ? 'agent' : 'profile')
+  const [activeSection, setActiveSection] = useState<'agent' | 'profile' | 'notifications' | 'connections' | 'botConfig' | 'tools' | 'data' | 'deleteAccount'>(isAdmin ? 'agent' : 'profile')
   const [userName, setUserName] = useState("")
   const [userEmail, setUserEmail] = useState("")
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
@@ -152,6 +153,16 @@ export default function SettingsPage() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
   const [passwordStatus, setPasswordStatus] = useState<'success' | 'error' | null>(null)
   const [passwordFeedback, setPasswordFeedback] = useState<string | null>(null)
+
+  // Data Export & Compliance
+  const [isExportingData, setIsExportingData] = useState(false)
+  const [exportDataStatus, setExportDataStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [exportDataError, setExportDataError] = useState<string | null>(null)
+
+  // Account Deletion
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
 
   // Integration states
   const searchParams = useSearchParams()
@@ -187,7 +198,7 @@ export default function SettingsPage() {
   const [templateError, setTemplateError] = useState<string | null>(null)
   const [isCheckingTemplate, setIsCheckingTemplate] = useState(false)
   const [checkTemplateFeedback, setCheckTemplateFeedback] = useState<string | null>(null)
-  
+
   // Web Push Notifications
   const [isSubscribingPush, setIsSubscribingPush] = useState(false)
   const [pushStatus, setPushStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -249,14 +260,14 @@ export default function SettingsPage() {
       if (permission !== 'granted') {
         throw new Error('Permiso denegado por el usuario.');
       }
-      
+
       const registration = await navigator.serviceWorker.ready;
       let subscription = await registration.pushManager.getSubscription();
-      
+
       if (!subscription) {
         const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
         if (!publicVapidKey) throw new Error('VAPID public key no configurada.');
-        
+
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
@@ -268,9 +279,9 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(subscription)
       });
-      
+
       if (!res.ok) throw new Error('Error guardando la suscripción.');
-      
+
       setPushEndpoint(subscription.endpoint)
       setPushStatus('success')
       setTimeout(() => setPushStatus('idle'), 4000)
@@ -288,7 +299,7 @@ export default function SettingsPage() {
     try {
       let newHandoff = notifyHandoffs;
       let newAll = notifyAllMessages;
-      
+
       if (key === 'handoff') newHandoff = !newHandoff;
       if (key === 'all') newAll = !newAll;
 
@@ -335,7 +346,7 @@ export default function SettingsPage() {
       if (!sectionLoaded['botConfig']) {
         await loadProject()
       }
-      
+
       const [emails, phones, tStatus] = await Promise.all([
         getNotificationEmails(),
         getNotificationPhones(),
@@ -433,7 +444,7 @@ export default function SettingsPage() {
         if (error === 'oauth_failed' || error === 'invalid_state') setIgFeedback('error')
       } else if (tab === 'tools') {
         setActiveSection('tools')
-      } else if (tab === 'profile' || tab === 'notifications' || tab === 'botConfig') {
+      } else if (tab === 'profile' || tab === 'notifications' || tab === 'botConfig' || tab === 'data' || tab === 'deleteAccount') {
         setActiveSection(tab as any)
       }
     }
@@ -602,6 +613,52 @@ export default function SettingsPage() {
       setPasswordFeedback(e.message || "Error al actualizar la contraseña")
     }
     setIsUpdatingPassword(false)
+  }
+
+  const handleExportData = async () => {
+    try {
+      setIsExportingData(true)
+      setExportDataStatus('idle')
+      setExportDataError(null)
+      const { exportUserData } = await import('@/app/actions/compliance')
+      const data = await exportUserData()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `abitaai-data-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setExportDataStatus('success')
+    } catch (e: any) {
+      console.error('Error al exportar datos:', e)
+      setExportDataStatus('error')
+      setExportDataError(e?.message || 'Error al exportar los datos')
+    } finally {
+      setIsExportingData(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR') {
+      return
+    }
+    if (!confirm('¿Estás COMPLETAMENTE SEGURO de que deseas eliminar tu cuenta? Esta acción borrará permanentemente todos tus clientes, configuraciones, mensajes y bases de datos. No se podrá recuperar jamás.')) {
+      return
+    }
+    try {
+      setIsDeletingAccount(true)
+      setDeleteAccountError(null)
+      const { deleteUserAccount } = await import('@/app/actions/compliance')
+      await deleteUserAccount()
+      await signOut({ callbackUrl: '/login' })
+    } catch (e: any) {
+      console.error('Error al eliminar cuenta:', e)
+      setDeleteAccountError(e?.message || 'Error al procesar la eliminación de la cuenta')
+      setIsDeletingAccount(false)
+    }
   }
 
   const handleSaveNotificationEmails = async () => {
@@ -1008,8 +1065,8 @@ export default function SettingsPage() {
                       fill="currentColor"
                       aria-label="Abita AI"
                     >
-                      <path d="M1184.09 248.293L1183.07 246.366C1177.73 236.181 1165.53 231.612 1165.04 231.419C1163.3 230.814 1160.5 230.043 1156.95 229.74C1156.17 229.658 1155.35 229.63 1154.41 229.63C1153.48 229.63 1152.57 229.658 1151.66 229.713H1151.25L1099.75 229.575H1038.17L1066.72 175.129L1092.87 125.28L1116.48 80H1037.21L1015.33 121.922L970.43 207.472H970.541L949.07 248.43C943.951 258.752 944.088 270.561 949.456 280.773C954.796 290.958 964.375 297.729 975.716 299.408C977.147 299.601 978.661 299.738 980.367 299.738H982.074L1050.09 299.656L1131.76 299.904L1158.05 350.028L1186.1 403.483C1186.1 403.483 1188.63 408.218 1192.73 415.98H1271.95L1206.05 290.325C1200.79 280.388 1192.73 265.056 1184.03 248.265L1184.09 248.293Z"/>
-                      <path d="M996.69 356.607C996.69 349.34 993.167 342.651 987.442 339.018L959.751 321.456C950.97 315.896 939.739 315.896 930.959 321.456L903.268 339.018C897.543 342.651 894.019 349.34 894.019 356.607V398.253C893.936 400.07 894.019 404.254 896.496 408.41C897.818 410.585 899.276 411.906 899.854 412.401C904.176 416.062 909.324 416.062 911.14 415.98C922.508 415.457 930.931 415.98 942.602 415.842C943.042 415.842 944.859 415.842 948.465 415.842C963.742 415.787 971.367 415.842 973.376 415.842C975.055 415.842 978.165 415.842 979.789 415.842C980.478 415.842 989.451 415.897 994.185 408.41C996.8 404.254 996.773 399.96 996.663 398.253V356.607H996.69Z"/>
+                      <path d="M1184.09 248.293L1183.07 246.366C1177.73 236.181 1165.53 231.612 1165.04 231.419C1163.3 230.814 1160.5 230.043 1156.95 229.74C1156.17 229.658 1155.35 229.63 1154.41 229.63C1153.48 229.63 1152.57 229.658 1151.66 229.713H1151.25L1099.75 229.575H1038.17L1066.72 175.129L1092.87 125.28L1116.48 80H1037.21L1015.33 121.922L970.43 207.472H970.541L949.07 248.43C943.951 258.752 944.088 270.561 949.456 280.773C954.796 290.958 964.375 297.729 975.716 299.408C977.147 299.601 978.661 299.738 980.367 299.738H982.074L1050.09 299.656L1131.76 299.904L1158.05 350.028L1186.1 403.483C1186.1 403.483 1188.63 408.218 1192.73 415.98H1271.95L1206.05 290.325C1200.79 280.388 1192.73 265.056 1184.03 248.265L1184.09 248.293Z" />
+                      <path d="M996.69 356.607C996.69 349.34 993.167 342.651 987.442 339.018L959.751 321.456C950.97 315.896 939.739 315.896 930.959 321.456L903.268 339.018C897.543 342.651 894.019 349.34 894.019 356.607V398.253C893.936 400.07 894.019 404.254 896.496 408.41C897.818 410.585 899.276 411.906 899.854 412.401C904.176 416.062 909.324 416.062 911.14 415.98C922.508 415.457 930.931 415.98 942.602 415.842C943.042 415.842 944.859 415.842 948.465 415.842C963.742 415.787 971.367 415.842 973.376 415.842C975.055 415.842 978.165 415.842 979.789 415.842C980.478 415.842 989.451 415.897 994.185 408.41C996.8 404.254 996.773 399.96 996.663 398.253V356.607H996.69Z" />
                     </svg>
                   </div>
                   <div>
@@ -1048,10 +1105,10 @@ export default function SettingsPage() {
                       }}
                       className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06] active:scale-[0.99] transition-all text-left"
                     >
-                      <item.icon 
-                        size={18} 
+                      <item.icon
+                        size={18}
                         strokeWidth={1.9}
-                        className="text-[#8A8172] dark:text-[#8E8B85]" 
+                        className="text-[#8A8172] dark:text-[#8E8B85]"
                       />
                       <span className="flex-1 truncate">{item.label}</span>
                     </button>
@@ -1064,10 +1121,10 @@ export default function SettingsPage() {
                       onClick={() => setMobileDrawerTab('settings')}
                       className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[#FF4D00]/15 text-[#FF4D00] border border-[#FF4D00]/25 transition-all text-left"
                     >
-                      <Settings 
-                        size={18} 
+                      <Settings
+                        size={18}
                         strokeWidth={2.4}
-                        className="text-[#FF4D00]" 
+                        className="text-[#FF4D00]"
                       />
                       <span className="flex-1 text-left truncate">Configuración</span>
                       <span className="text-[10px] text-[#FF4D00] font-semibold">›</span>
@@ -1080,34 +1137,49 @@ export default function SettingsPage() {
               <div className={`p-3 space-y-1 ${mobileDrawerTab === 'modules' ? 'hidden md:block' : 'block'}`}>
                 <h3 className="text-[10px] font-bold text-[#FF4D00] uppercase tracking-wider mb-2 px-2">Configuración General</h3>
                 <button
-                  onClick={() => { setActiveSection('profile'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  onClick={() => { setActiveSection('profile'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'profile' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
                   <User size={17} className={activeSection === 'profile' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Mi Perfil</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSection('notifications'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  onClick={() => { setActiveSection('notifications'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'notifications' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
                   <Bell size={17} className={activeSection === 'notifications' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Notificaciones</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSection('connections'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  onClick={() => { setActiveSection('connections'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'connections' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
                   <Globe size={17} className={activeSection === 'connections' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Conexiones</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSection('tools'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  onClick={() => { setActiveSection('tools'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'tools' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
                   <Puzzle size={17} className={activeSection === 'tools' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Herramientas</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSection('botConfig'); setSelectedAgentId(null); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  onClick={() => { setActiveSection('botConfig'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'botConfig' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
                 >
                   <Bot size={17} className={activeSection === 'botConfig' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Asistente IA</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSection('data'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'data' ? 'bg-[#FF4D00]/15 text-[#FF4D00] font-semibold border border-[#FF4D00]/25' : 'text-[#3E3C38] dark:text-[#D5D0C7] hover:bg-black/5 dark:hover:bg-white/[.06]'}`}
+                >
+                  <Database size={17} className={activeSection === 'data' ? 'text-[#FF4D00]' : 'text-[#8A8172] dark:text-[#8E8B85]'} /> <span className="flex-1 text-left">Datos</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSection('deleteAccount'); setSelectedAgentId(null); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${activeSection === 'deleteAccount'
+                      ? 'bg-red-500/15 text-red-600 dark:text-red-400 font-semibold border border-red-500/30'
+                      : 'text-red-600/90 dark:text-red-400/90 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400'
+                    }`}
+                >
+                  <Trash2 size={17} className="text-red-500 shrink-0" /> <span className="flex-1 text-left font-medium text-red-600 dark:text-red-400">Eliminar Cuenta</span>
                 </button>
 
                 {/* Switch de Apariencia (Móvil - Idéntico a MobileNav) */}
@@ -1166,7 +1238,7 @@ export default function SettingsPage() {
                     {agents.map(agent => (
                       <button
                         key={agent.id}
-                        onClick={() => { selectAgent(agent); setActiveSection('agent'); if(window.innerWidth < 768) setIsSidebarOpen(false); }}
+                        onClick={() => { selectAgent(agent); setActiveSection('agent'); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                         className={`w-full text-left p-3 rounded-xl border transition-all group ${activeSection === 'agent' && selectedAgentId === agent.id
                           ? 'border-[#FF4D00] bg-[#FF4D00]/5 dark:bg-[#FF4D00]/10 shadow-sm'
                           : 'border-transparent hover:border-[#DDD5C2] dark:hover:border-zinc-700 hover:bg-white/60 dark:hover:bg-zinc-900/40'
@@ -1248,7 +1320,7 @@ export default function SettingsPage() {
                 )}
               </div>
             )}
-            
+
             {/* Theme Toggle in Settings Sidebar (Solo Desktop) */}
             <div className="hidden md:block mt-auto border-t border-[#DDD5C2] dark:border-zinc-800/60 p-4 pb-4">
               <div className="flex items-center justify-between">
@@ -1279,7 +1351,7 @@ export default function SettingsPage() {
 
           {/* Backdrop para móviles */}
           {isSidebarOpen && (
-            <div 
+            <div
               className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] animate-in fade-in duration-200"
               onClick={() => setIsSidebarOpen(false)}
             />
@@ -1308,275 +1380,206 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                       {/* Visual Identity Card */}
                       <div className="group h-full">
-                    <div className="glass-panel p-6 flex flex-col items-center text-center shadow-lg shadow-black/5 dark:shadow-none hover:-translate-y-0.5 transition-all duration-500 h-full">
+                        <div className="glass-panel p-6 flex flex-col items-center text-center shadow-lg shadow-black/5 dark:shadow-none hover:-translate-y-0.5 transition-all duration-500 h-full">
 
-                      {/* Avatar */}
-                      <div className="relative mb-5">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[#FF4D00] to-[#FF9E7A] rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-                        <div className={`relative w-24 h-24 rounded-full ring-4 ring-[#FF4D00]/10 overflow-hidden transition-transform duration-500 ${!hasMetaConnected ? 'group-hover:scale-105' : ''}`}>
-                          {userAvatarUrl ? (
-                            <img src={userAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                          {/* Avatar */}
+                          <div className="relative mb-5">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-[#FF4D00] to-[#FF9E7A] rounded-full blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                            <div className={`relative w-24 h-24 rounded-full ring-4 ring-[#FF4D00]/10 overflow-hidden transition-transform duration-500 ${!hasMetaConnected ? 'group-hover:scale-105' : ''}`}>
+                              {userAvatarUrl ? (
+                                <img src={userAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full bg-[#FF4D00]/10 text-[#FF4D00] flex items-center justify-center">
+                                  <User size={40} strokeWidth={1.5} />
+                                </div>
+                              )}
+                            </div>
+                            {hasMetaConnected && (
+                              <div className="absolute -bottom-1 -right-1 border-2 border-white dark:border-[#111111] w-7 h-7 rounded-full flex items-center justify-center shadow-md bg-[#25D366]" title="Foto de WhatsApp Business">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-1 mb-4">
+                            <h3 className="text-xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">{userName || 'Usuario'}</h3>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-full">
+                              <ShieldCheck size={10} className="text-[#FF4D00]" />
+                              <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest font-black">{isAdmin ? 'Administrador' : 'Cliente'}</span>
+                            </div>
+                          </div>
+
+                          {/* WhatsApp Business sync — always visible */}
+                          {hasMetaConnected ? (
+                            <div className="w-full mb-4 p-3 rounded-2xl bg-[#25D366]/8 dark:bg-[#25D366]/10 border border-[#25D366]/20 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366" className="shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                                <div className="min-w-0">
+                                  <p className="text-[9px] font-black text-[#25D366] uppercase tracking-widest">WhatsApp Business conectado</p>
+                                  {metaName && <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate">{metaName}</p>}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleSyncMeta}
+                                disabled={isSyncingMeta}
+                                className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 ${syncMetaStatus === 'success' ? 'bg-[#FF4D00] text-white' :
+                                    syncMetaStatus === 'error' ? 'bg-red-500 text-white' :
+                                      'bg-[#25D366] hover:bg-[#1da851] text-white'
+                                  }`}
+                              >
+                                {isSyncingMeta ? <Loader2 size={11} className="animate-spin" /> :
+                                  syncMetaStatus === 'success' ? <><CheckCircle2 size={11} /> Listo</> :
+                                    syncMetaStatus === 'error' ? 'Error' :
+                                      'Sincronizar'}
+                              </button>
+                            </div>
                           ) : (
-                            <div className="w-full h-full bg-[#FF4D00]/10 text-[#FF4D00] flex items-center justify-center">
-                              <User size={40} strokeWidth={1.5} />
+                            <div className="w-full mb-4 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-zinc-400 shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                                <div className="min-w-0">
+                                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">WhatsApp Business</p>
+                                  <p className="text-[10px] text-zinc-400 truncate">Conecta para importar foto y nombre de Meta</p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setActiveSection('connections')}
+                                className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-[#FF4D00] transition-all whitespace-nowrap"
+                              >
+                                Conectar
+                              </button>
                             </div>
                           )}
-                        </div>
-                        {hasMetaConnected && (
-                          <div className="absolute -bottom-1 -right-1 border-2 border-white dark:border-[#111111] w-7 h-7 rounded-full flex items-center justify-center shadow-md bg-[#25D366]" title="Foto de WhatsApp Business">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                          </div>
-                        )}
-                      </div>
 
-                      <div className="space-y-1 mb-4">
-                        <h3 className="text-xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">{userName || 'Usuario'}</h3>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-zinc-100 dark:bg-zinc-800/80 rounded-full">
-                          <ShieldCheck size={10} className="text-[#FF4D00]" />
-                          <span className="text-[9px] text-zinc-500 dark:text-zinc-400 uppercase tracking-widest font-black">{isAdmin ? 'Administrador' : 'Cliente'}</span>
-                        </div>
-                      </div>
-
-                      {/* WhatsApp Business sync — always visible */}
-                      {hasMetaConnected ? (
-                        <div className="w-full mb-4 p-3 rounded-2xl bg-[#25D366]/8 dark:bg-[#25D366]/10 border border-[#25D366]/20 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366" className="shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-black text-[#25D366] uppercase tracking-widest">WhatsApp Business conectado</p>
-                              {metaName && <p className="text-xs text-zinc-600 dark:text-zinc-400 truncate">{metaName}</p>}
+                          <div className="w-full space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800/60 flex-1">
+                            <div className="flex flex-col items-start gap-1">
+                              <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Correo Electrónico</label>
+                              <div className="w-full text-left px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-300 text-xs font-medium">
+                                {userEmail}
+                              </div>
                             </div>
+
+                            <div className="flex flex-col items-start gap-1">
+                              <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Nombre Público</label>
+                              <input
+                                type="text"
+                                value={userName}
+                                onChange={e => setUserName(e.target.value)}
+                                placeholder="Tu nombre"
+                                disabled={hasMetaConnected}
+                                className={`w-full text-xs px-4 py-2.5 rounded-xl outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner ${hasMetaConnected
+                                    ? 'bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 text-zinc-500 cursor-not-allowed'
+                                    : 'bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00]'
+                                  }`}
+                              />
+                            </div>
+
+                            {!hasMetaConnected && (
+                              <div className="flex flex-col items-start gap-1">
+                                <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Foto de Perfil</label>
+                                <label className="w-full flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer hover:border-[#FF4D00] hover:bg-[#FF4D00]/5 transition-all group/upload">
+                                  {isUploadingAvatar ? (
+                                    <Loader2 size={14} className="text-[#FF4D00] animate-spin shrink-0" />
+                                  ) : (
+                                    <Camera size={14} className="text-zinc-400 group-hover/upload:text-[#FF4D00] transition-colors shrink-0" />
+                                  )}
+                                  <span className={`text-xs transition-colors ${avatarUploadStatus === 'success' ? 'text-[#FF4D00] font-bold' : 'text-zinc-500 dark:text-zinc-400 group-hover/upload:text-[#FF4D00]'}`}>
+                                    {isUploadingAvatar ? 'Subiendo...' : avatarUploadStatus === 'success' ? '¡Foto actualizada!' : 'Subir foto · JPG, PNG, WEBP · máx 5MB'}
+                                  </span>
+                                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={isUploadingAvatar} />
+                                </label>
+                              </div>
+                            )}
                           </div>
+
                           <button
-                            type="button"
-                            onClick={handleSyncMeta}
-                            disabled={isSyncingMeta}
-                            className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black transition-all flex items-center gap-1.5 ${
-                              syncMetaStatus === 'success' ? 'bg-[#FF4D00] text-white' :
-                              syncMetaStatus === 'error' ? 'bg-red-500 text-white' :
-                              'bg-[#25D366] hover:bg-[#1da851] text-white'
-                            }`}
+                            onClick={handleUpdateProfile}
+                            disabled={isUpdatingProfile}
+                            className="w-full mt-6 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                           >
-                            {isSyncingMeta ? <Loader2 size={11} className="animate-spin" /> :
-                             syncMetaStatus === 'success' ? <><CheckCircle2 size={11} /> Listo</> :
-                             syncMetaStatus === 'error' ? 'Error' :
-                             'Sincronizar'}
+                            {isUpdatingProfile ? <Loader2 size={16} className="animate-spin" /> : profileStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Hecho!</> : 'Guardar Perfil'}
                           </button>
                         </div>
-                      ) : (
-                        <div className="w-full mb-4 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-zinc-400 shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">WhatsApp Business</p>
-                              <p className="text-[10px] text-zinc-400 truncate">Conecta para importar foto y nombre de Meta</p>
+                      </div>
+
+                      {/* Password Form */}
+                      <div className="h-full">
+                        <div className="glass-panel p-6 h-full flex flex-col hover:-translate-y-0.5 transition-all duration-500">
+                          <div className="flex items-center gap-3 mb-6">
+                            <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
+                              <Lock className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Seguridad</h3>
                             </div>
                           </div>
+
+                          {passwordFeedback && (
+                            <div className={`mb-4 p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 ${passwordStatus === 'success' ? 'bg-[#FFF1EA] dark:bg-[#5C1B00]/10 border-[#FFE5DB] dark:border-[#8A2900] text-[#B33500] dark:text-[#FF8A4C]' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
+                              {passwordStatus === 'success' ? <CheckCircle2 size={14} className="shrink-0 mt-0.5" /> : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
+                              <span>{passwordFeedback}</span>
+                            </div>
+                          )}
+
+                          <div className="space-y-4 flex-1">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Contraseña Actual</label>
+                              <div className="relative group/input">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
+                                <input
+                                  type="password"
+                                  placeholder="••••••••••••"
+                                  value={oldPassword}
+                                  onChange={e => setOldPassword(e.target.value)}
+                                  className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1 pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
+                              <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Nueva Contraseña</label>
+                              <div className="relative group/input">
+                                <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
+                                <input
+                                  type="password"
+                                  placeholder="Mínimo 8 caracteres"
+                                  value={userPassword}
+                                  onChange={e => setUserPassword(e.target.value)}
+                                  className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Confirmar Nueva</label>
+                              <div className="relative group/input">
+                                <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
+                                <input
+                                  type="password"
+                                  placeholder="Repita la contraseña"
+                                  value={confirmPassword}
+                                  onChange={e => setConfirmPassword(e.target.value)}
+                                  className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/30 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
                           <button
-                            type="button"
-                            onClick={() => setActiveSection('connections')}
-                            className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-[#FF4D00] transition-all whitespace-nowrap"
+                            onClick={handleUpdatePassword}
+                            disabled={isUpdatingPassword || !userPassword || !oldPassword || !confirmPassword}
+                            className="w-full mt-6 bg-[#111111] dark:bg-zinc-800 text-white py-3 rounded-xl text-xs font-black tracking-tight shadow-lg hover:bg-[#FF4D00] transition-all active:scale-[0.98] disabled:opacity-30 flex items-center justify-center gap-2"
                           >
-                            Conectar
+                            {isUpdatingPassword ? <Loader2 size={16} className="animate-spin" /> : passwordStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Listo!</> : 'Actualizar Pass'}
                           </button>
                         </div>
-                      )}
-
-                      <div className="w-full space-y-3 pt-4 border-t border-zinc-100 dark:border-zinc-800/60 flex-1">
-                        <div className="flex flex-col items-start gap-1">
-                          <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Correo Electrónico</label>
-                          <div className="w-full text-left px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl text-zinc-700 dark:text-zinc-300 text-xs font-medium">
-                            {userEmail}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col items-start gap-1">
-                          <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Nombre Público</label>
-                          <input
-                            type="text"
-                            value={userName}
-                            onChange={e => setUserName(e.target.value)}
-                            placeholder="Tu nombre"
-                            disabled={hasMetaConnected}
-                            className={`w-full text-xs px-4 py-2.5 rounded-xl outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner ${
-                              hasMetaConnected 
-                                ? 'bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 text-zinc-500 cursor-not-allowed'
-                                : 'bg-white dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00]'
-                            }`}
-                          />
-                        </div>
-
-                        {!hasMetaConnected && (
-                          <div className="flex flex-col items-start gap-1">
-                            <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Foto de Perfil</label>
-                            <label className="w-full flex items-center gap-3 px-4 py-3 bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl cursor-pointer hover:border-[#FF4D00] hover:bg-[#FF4D00]/5 transition-all group/upload">
-                              {isUploadingAvatar ? (
-                                <Loader2 size={14} className="text-[#FF4D00] animate-spin shrink-0" />
-                              ) : (
-                                <Camera size={14} className="text-zinc-400 group-hover/upload:text-[#FF4D00] transition-colors shrink-0" />
-                              )}
-                              <span className={`text-xs transition-colors ${avatarUploadStatus === 'success' ? 'text-[#FF4D00] font-bold' : 'text-zinc-500 dark:text-zinc-400 group-hover/upload:text-[#FF4D00]'}`}>
-                                {isUploadingAvatar ? 'Subiendo...' : avatarUploadStatus === 'success' ? '¡Foto actualizada!' : 'Subir foto · JPG, PNG, WEBP · máx 5MB'}
-                              </span>
-                              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} disabled={isUploadingAvatar} />
-                            </label>
-                          </div>
-                        )}
                       </div>
-
-                      <button
-                        onClick={handleUpdateProfile}
-                        disabled={isUpdatingProfile}
-                        className="w-full mt-6 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {isUpdatingProfile ? <Loader2 size={16} className="animate-spin" /> : profileStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Hecho!</> : 'Guardar Perfil'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Password Form */}
-                  <div className="h-full">
-                    <div className="glass-panel p-6 h-full flex flex-col hover:-translate-y-0.5 transition-all duration-500">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
-                          <Lock className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Seguridad</h3>
-                        </div>
-                      </div>
-
-                      {passwordFeedback && (
-                        <div className={`mb-4 p-3 rounded-xl border text-xs font-semibold flex items-start gap-2 ${passwordStatus === 'success' ? 'bg-[#FFF1EA] dark:bg-[#5C1B00]/10 border-[#FFE5DB] dark:border-[#8A2900] text-[#B33500] dark:text-[#FF8A4C]' : 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-800 text-red-700 dark:text-red-400'}`}>
-                          {passwordStatus === 'success' ? <CheckCircle2 size={14} className="shrink-0 mt-0.5" /> : <AlertCircle size={14} className="shrink-0 mt-0.5" />}
-                          <span>{passwordFeedback}</span>
-                        </div>
-                      )}
-
-                      <div className="space-y-4 flex-1">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Contraseña Actual</label>
-                          <div className="relative group/input">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
-                            <input
-                              type="password"
-                              placeholder="••••••••••••"
-                              value={oldPassword}
-                              onChange={e => setOldPassword(e.target.value)}
-                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1 pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
-                          <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Nueva Contraseña</label>
-                          <div className="relative group/input">
-                            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
-                            <input
-                              type="password"
-                              placeholder="Mínimo 8 caracteres"
-                              value={userPassword}
-                              onChange={e => setUserPassword(e.target.value)}
-                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/50 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-1">Confirmar Nueva</label>
-                          <div className="relative group/input">
-                            <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within/input:text-[#FF4D00] transition-colors" size={14} />
-                            <input
-                              type="password"
-                              placeholder="Repita la contraseña"
-                              value={confirmPassword}
-                              onChange={e => setConfirmPassword(e.target.value)}
-                              className="w-full text-xs pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#FF4D00]/30 focus:border-[#FF4D00] outline-none transition-all text-zinc-900 dark:text-zinc-100 shadow-inner"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleUpdatePassword}
-                        disabled={isUpdatingPassword || !userPassword || !oldPassword || !confirmPassword}
-                        className="w-full mt-6 bg-[#111111] dark:bg-zinc-800 text-white py-3 rounded-xl text-xs font-black tracking-tight shadow-lg hover:bg-[#FF4D00] transition-all active:scale-[0.98] disabled:opacity-30 flex items-center justify-center gap-2"
-                      >
-                        {isUpdatingPassword ? <Loader2 size={16} className="animate-spin" /> : passwordStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Listo!</> : 'Actualizar Pass'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-
-
-                {/* PRIVACY & COMPLIANCE SECTION */}
-                <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-red-500/10 rounded-xl">
-                      <ShieldX className="text-red-500" size={20} strokeWidth={2.5} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Privacidad y Datos</h3>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Gestión de tus datos de acuerdo con las políticas de privacidad.</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
-                      <div className="flex flex-col gap-1 pr-4">
-                        <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Exportar Datos</span>
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                          Descarga una copia de todos tus datos personales, configuraciones y leads en formato JSON.
-                        </span>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const { exportUserData } = await import('@/app/actions/compliance');
-                            const data = await exportUserData();
-                            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `abitaai-data-${new Date().toISOString()}.json`;
-                            a.click();
-                          } catch (e: any) {
-                            alert(e.message || 'Error al exportar datos');
-                          }
-                        }}
-                        className="px-4 py-2 btn-primary-abita rounded-xl text-xs font-bold whitespace-nowrap"
-                      >
-                        Exportar Datos
-                      </button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-2xl">
-                      <div className="flex flex-col gap-1 pr-4">
-                        <span className="text-sm font-bold text-red-600 dark:text-red-400">Eliminar Cuenta</span>
-                        <span className="text-xs text-red-500/80 dark:text-red-400/80 leading-relaxed">
-                          Elimina permanentemente tu cuenta y todos tus datos. Esta acción no se puede deshacer.
-                        </span>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          if (confirm('¿Estás SEGURO de que quieres eliminar tu cuenta? TODOS tus datos, configuraciones, y leads serán borrados PERMANENTEMENTE.')) {
-                            try {
-                              const { deleteUserAccount } = await import('@/app/actions/compliance');
-                              await deleteUserAccount();
-                              window.location.href = '/login';
-                            } catch (e: any) {
-                              alert(e.message || 'Error al eliminar cuenta');
-                            }
-                          }
-                        }}
-                        className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-colors whitespace-nowrap"
-                      >
-                        Eliminar Cuenta
-                      </button>
-                    </div>
-                  </div>
-                </div>
+
+
                   </>
                 )}
               </div>
@@ -1586,13 +1589,16 @@ export default function SettingsPage() {
 
             {/* NOTIFICATIONS SECTION */}
             {activeSection === 'notifications' && (
-              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+              <div className="h-full flex flex-col p-6 pb-28 lg:p-8 lg:pb-8 max-w-7xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
                 <header className="mb-6">
                   <div className="flex items-center gap-2 mb-1">
                     <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
                     <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Centro de Alertas</span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Notificaciones</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Configura los canales y reglas de alerta para que tu equipo atienda leads y handoffs sin demoras.
+                  </p>
                 </header>
 
                 {isLoadingSection && !sectionLoaded['notifications'] ? (
@@ -1600,284 +1606,341 @@ export default function SettingsPage() {
                     <Loader2 size={28} className="animate-spin text-[#FF4D00]" />
                   </div>
                 ) : (
-                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
 
-                  {/* Web Push Notifications Card */}
-                  <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500 relative overflow-hidden">
-                    {/* Modal Confirmación Handoff */}
-                    {showHandoffConfirmModal && (
-                      <div className="absolute inset-0 bg-white/95 dark:bg-[#111111]/95 z-10 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm animate-in fade-in">
-                        <AlertCircle className="text-red-500 mb-3" size={32} />
-                        <h4 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0] mb-2">¿Desactivar Handoffs?</h4>
-                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">Si desactivas esto, podrías no enterarte cuando un cliente necesite atención humana urgente.</p>
-                        <div className="flex gap-3 w-full max-w-[200px]">
-                          <button onClick={() => setShowHandoffConfirmModal(false)} className="flex-1 py-2 rounded-xl text-xs font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-                          <button onClick={() => handleTogglePushSetting('handoff')} className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-colors flex items-center justify-center">
-                            {isUpdatingPushSettings ? <Loader2 size={14} className="animate-spin" /> : 'Sí, apagar'}
-                          </button>
+                    {/* Web Push Notifications Card */}
+                    <div className="glass-panel p-6 sm:p-7 hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden flex flex-col h-full justify-between">
+                      {/* Modal Confirmación Handoff */}
+                      {showHandoffConfirmModal && (
+                        <div className="absolute inset-0 bg-white/95 dark:bg-[#111111]/95 z-20 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm animate-in fade-in">
+                          <AlertCircle className="text-red-500 mb-3" size={32} />
+                          <h4 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0] mb-2">¿Desactivar Handoffs?</h4>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed">
+                            Si desactivas esto, podrías no enterarte cuando un cliente necesite atención humana urgente.
+                          </p>
+                          <div className="flex gap-3 w-full max-w-[200px]">
+                            <button
+                              onClick={() => setShowHandoffConfirmModal(false)}
+                              className="flex-1 py-2 rounded-xl text-xs font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleTogglePushSetting('handoff')}
+                              className="flex-1 py-2 rounded-xl text-xs font-bold bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-600 transition-colors flex items-center justify-center"
+                            >
+                              {isUpdatingPushSettings ? <Loader2 size={14} className="animate-spin" /> : 'Sí, apagar'}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
-                        <Bell className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
-                      </div>
                       <div>
-                        <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones Web (Push)</h3>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Recibe alertas en este dispositivo.</p>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2.5 bg-[#FF4D00]/10 rounded-xl shrink-0">
+                            <Bell className="text-[#FF4D00]" size={20} strokeWidth={2.5} />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-base text-zinc-900 dark:text-[#EDE9E0]">Notificaciones Push</h3>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Alertas push.</p>
+                          </div>
+                        </div>
+
+                        {(!pushPermissionGranted || !pushEndpoint) ? (
+                          <div className="space-y-3">
+                            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                              Recibe avisos visuales y sonoros instantáneos cuando los usuarios soliciten hablar con un asesor o llegue un mensaje nuevo.
+                            </p>
+                            <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-xl border border-zinc-100 dark:border-zinc-800 space-y-1.5">
+                              <div className="flex items-center gap-2 text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
+                                <CheckCircle2 size={13} className="text-[#FF4D00]" />
+                                <span>No requiere instalar aplicaciones</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
+                                <CheckCircle2 size={13} className="text-[#FF4D00]" />
+                                <span>Alertas con pestaña en segundo plano</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-4 border-t border-[#DDD5C2] dark:border-zinc-800/80 pt-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex flex-col pr-4">
+                                <span className="text-xs font-bold text-zinc-900 dark:text-[#EDE9E0]">Handoffs</span>
+                                <span className="text-[11px] text-zinc-500">Alerta cuando requieran atención manual.</span>
+                              </div>
+                              <button
+                                onClick={() => notifyHandoffs ? setShowHandoffConfirmModal(true) : handleTogglePushSetting('handoff')}
+                                disabled={isUpdatingPushSettings && !showHandoffConfirmModal}
+                                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyHandoffs ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'} ${(isUpdatingPushSettings && !showHandoffConfirmModal) ? 'opacity-50' : ''}`}
+                              >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyHandoffs ? 'translate-x-5' : 'translate-x-0'}`} />
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex flex-col pr-4">
+                                <span className="text-xs font-bold text-zinc-900 dark:text-[#EDE9E0]">Todos los mensajes</span>
+                                <span className="text-[11px] text-zinc-500">Recibe notificación por cada mensaje.</span>
+                              </div>
+                              <button
+                                onClick={() => handleTogglePushSetting('all')}
+                                disabled={isUpdatingPushSettings}
+                                className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyAllMessages ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'} ${isUpdatingPushSettings ? 'opacity-50' : ''}`}
+                              >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyAllMessages ? 'translate-x-5' : 'translate-x-0'}`} />
+                              </button>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center justify-center gap-2">
+                              <CheckCircle2 size={14} />
+                              <span>Navegador suscrito a notificaciones</span>
+                            </div>
+                          </div>
+                        )}
+                        {pushStatus === 'error' && <p className="text-red-500 text-xs mt-2 text-center">{pushErrorMsg}</p>}
                       </div>
+
+                      {(!pushPermissionGranted || !pushEndpoint) && (
+                        <button
+                          onClick={handleSubscribePush}
+                          disabled={isSubscribingPush}
+                          className="w-full mt-4 btn-primary-abita py-2.5 rounded-xl text-xs font-black tracking-tight flex items-center justify-center gap-2 active:scale-[0.98]"
+                        >
+                          {isSubscribingPush ? <Loader2 size={16} className="animate-spin" /> : 'Activar Notificaciones Web'}
+                        </button>
+                      )}
                     </div>
-                    
-                    {(!pushPermissionGranted || !pushEndpoint) ? (
-                      <button
-                        onClick={handleSubscribePush}
-                        disabled={isSubscribingPush}
-                        className={`w-full btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight flex items-center justify-center gap-2 active:scale-[0.98]`}
-                      >
-                        {isSubscribingPush ? <Loader2 size={16} className="animate-spin" /> : 'Activar Notificaciones Web'}
-                      </button>
-                    ) : (
-                      <div className="space-y-5 border-t border-[#DDD5C2] dark:border-zinc-800/80 pt-5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-col pr-4">
-                            <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Handoffs</span>
-                            <span className="text-xs text-zinc-500 mt-0.5">Alerta cuando requieran atención manual.</span>
+
+                    {/* WhatsApp Notification Card */}
+                    <div className="glass-panel p-6 sm:p-7 hover:-translate-y-0.5 transition-all duration-300 flex flex-col h-full justify-between">
+                      <div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2.5 bg-[#25D366]/10 rounded-xl shrink-0">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-[#25D366]"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.117 1.524 5.847L.057 23.571a.5.5 0 0 0 .612.612l5.724-1.467A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.98 0-3.84-.524-5.448-1.44l-.39-.228-4.047 1.038 1.057-3.96-.25-.405A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
                           </div>
-                          <button
-                            onClick={() => notifyHandoffs ? setShowHandoffConfirmModal(true) : handleTogglePushSetting('handoff')}
-                            disabled={isUpdatingPushSettings && !showHandoffConfirmModal}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyHandoffs ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'} ${(isUpdatingPushSettings && !showHandoffConfirmModal) ? 'opacity-50' : ''}`}
-                          >
-                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyHandoffs ? 'translate-x-5' : 'translate-x-0'}`} />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex flex-col pr-4">
-                            <span className="text-sm font-bold text-zinc-900 dark:text-[#EDE9E0]">Todos los mensajes</span>
-                            <span className="text-xs text-zinc-500 mt-0.5">Recibe notificación por cada mensaje.</span>
+                          <div>
+                            <h3 className="font-bold text-base text-zinc-900 dark:text-[#EDE9E0]">WhatsApp</h3>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Mensajes a celulares ante handoff.</p>
                           </div>
-                          <button
-                            onClick={() => handleTogglePushSetting('all')}
-                            disabled={isUpdatingPushSettings}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${notifyAllMessages ? 'bg-[#FF4D00]' : 'bg-zinc-300 dark:bg-zinc-700'} ${isUpdatingPushSettings ? 'opacity-50' : ''}`}
-                          >
-                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notifyAllMessages ? 'translate-x-5' : 'translate-x-0'}`} />
-                          </button>
                         </div>
+
+                        {!whatsappPhoneId ? (
+                          <div className="rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 p-4 text-center my-3">
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                              Conecta tu número oficial en el módulo de Conexiones para activar las alertas por WhatsApp.
+                            </p>
+                          </div>
+                        ) : !handoffTemplateStatus ? (
+                          <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-4 space-y-3 mb-3">
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                              Meta requiere una <strong className="text-zinc-700 dark:text-zinc-300">Plantilla pre-aprobada</strong> para enviar mensajes fuera del horario de atención.
+                            </p>
+                            {templateError && <p className="text-xs text-red-500">{templateError}</p>}
+                          </div>
+                        ) : handoffTemplateStatus === 'PENDING' ? (
+                          <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4 space-y-3 mb-3">
+                            <p className="text-xs text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
+                              Plantilla enviada a Meta y en revisión. Puede tardar un par de horas en aprobarse.
+                            </p>
+                            {checkTemplateFeedback && (
+                              <p className="text-xs font-bold text-amber-800 dark:text-amber-300 animate-in fade-in">{checkTemplateFeedback}</p>
+                            )}
+                          </div>
+                        ) : handoffTemplateStatus === 'REJECTED' ? (
+                          <div className="rounded-2xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4 space-y-3 mb-3">
+                            <p className="text-xs text-red-600 dark:text-red-400 font-medium">Meta rechazó la plantilla.</p>
+                            {templateError && <p className="text-xs text-red-500">{templateError}</p>}
+                          </div>
+                        ) : (
+                          /* APPROVED */
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="h-2 w-2 rounded-full bg-[#25D366]"></div>
+                              <span className="text-[11px] font-bold text-[#25D366]">Plantilla activa en Meta</span>
+                            </div>
+
+                            {notificationPhones.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5 py-1">
+                                {notificationPhones.map((phone) => (
+                                  <div key={phone} className="flex items-center gap-1.5 px-2.5 py-1 bg-[#25D366]/10 border border-[#25D366]/20 rounded-full text-[11px] font-medium text-[#1da851] dark:text-[#25D366]">
+                                    <span>{phone.startsWith('+') ? phone : `+${phone}`}</span>
+                                    <button
+                                      onClick={() => setNotificationPhones(prev => prev.filter(p => p !== phone))}
+                                      className="hover:text-red-500 transition-colors"
+                                    >
+                                      <X size={11} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-zinc-400 italic">No hay números registrados aún.</p>
+                            )}
+
+                            <div className="flex gap-2 items-stretch h-[38px]">
+                              <div className="flex-1 px-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-[#FF4D00]/50 focus-within:border-[#FF4D00] transition-all flex items-center text-zinc-900 dark:text-zinc-100">
+                                <PhoneInput
+                                  international={false}
+                                  country={phoneCountry}
+                                  onCountryChange={setPhoneCountry}
+                                  value={notificationPhoneInput}
+                                  onChange={setNotificationPhoneInput}
+                                  inputComponent={CustomPhoneInput}
+                                  callingCode={phoneCountry ? getCountryCallingCode(phoneCountry) : ''}
+                                  className="flex-1 bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs placeholder-zinc-400 h-full py-2 custom-phone-input"
+                                  onKeyDown={(e: any) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
+                                      if (trimmed && !notificationPhones.includes(trimmed)) {
+                                        setNotificationPhones(prev => [...prev, trimmed])
+                                        setNotificationPhoneInput('')
+                                      }
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
+                                  if (trimmed && !notificationPhones.includes(trimmed)) {
+                                    setNotificationPhones(prev => [...prev, trimmed])
+                                    setNotificationPhoneInput('')
+                                  }
+                                }}
+                                className="px-3 bg-[#FF4D00]/10 text-[#FF4D00] rounded-xl text-xs font-bold hover:bg-[#FF4D00] hover:text-white transition-all shrink-0"
+                              >
+                                <Plus size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {pushStatus === 'error' && <p className="text-red-500 text-xs mt-3 text-center">{pushErrorMsg}</p>}
-                  </div>
 
-                  {/* WhatsApp Notification Card — FIRST */}
-                  {whatsappPhoneId && (
-                    <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500">
-                      <div className="flex items-center gap-3 mb-5">
-                        <div className="p-2 bg-[#FF4D00]/10 rounded-xl">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-[#FF4D00]"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.117 1.524 5.847L.057 23.571a.5.5 0 0 0 .612.612l5.724-1.467A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.98 0-3.84-.524-5.448-1.44l-.39-.228-4.047 1.038 1.057-3.96-.25-.405A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por WhatsApp</h3>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400">Recibe un mensaje de WhatsApp directo en tu celular cuando ocurra un handoff.</p>
-                        </div>
-                      </div>
+                      {/* Botón de acción al pie de la tarjeta */}
+                      {!whatsappPhoneId ? (
+                        <button
+                          onClick={() => setActiveSection('connections')}
+                          className="w-full mt-4 py-2.5 bg-[#111111] dark:bg-zinc-800 text-white rounded-xl text-xs font-bold hover:bg-[#FF4D00] transition-colors"
+                        >
+                          Ir a Conexiones
+                        </button>
+                      ) : !handoffTemplateStatus ? (
+                        <button
+                          onClick={handleCreateHandoffTemplate}
+                          disabled={isCreatingTemplate}
+                          className="w-full mt-4 py-2.5 bg-[#FF4D00] text-white rounded-xl text-xs font-black tracking-tight hover:bg-[#E64500] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isCreatingTemplate ? <><Loader2 size={16} className="animate-spin" /> Creando plantilla...</> : 'Crear Plantilla en Meta'}
+                        </button>
+                      ) : handoffTemplateStatus === 'PENDING' ? (
+                        <button
+                          onClick={handleCheckTemplateStatus}
+                          disabled={isCheckingTemplate}
+                          className="w-full mt-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isCheckingTemplate ? <><Loader2 size={14} className="animate-spin" /> Verificando...</> : 'Verificar estado ahora'}
+                        </button>
+                      ) : handoffTemplateStatus === 'REJECTED' ? (
+                        <button
+                          onClick={handleCreateHandoffTemplate}
+                          disabled={isCreatingTemplate}
+                          className="w-full mt-4 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-colors"
+                        >
+                          Reintentar creación
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleSaveNotificationPhones}
+                          disabled={isSavingNotificationPhones}
+                          className="w-full mt-4 btn-primary-abita py-2.5 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isSavingNotificationPhones ? <Loader2 size={16} className="animate-spin" /> : notificationPhonesStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar números'}
+                        </button>
+                      )}
+                    </div>
 
-                      {/* STEP 1 — Template not created */}
-                      {!handoffTemplateStatus && (
-                        <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-5 flex flex-col gap-4">
-                          <div className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                            Para poder enviarte mensajes de WhatsApp fuera del horario de atención, Meta requiere una <strong className="text-zinc-700 dark:text-zinc-300">Plantilla pre-aprobada</strong>.
-                            Al presionar el botón, la crearemos automáticamente en tu cuenta. El proceso puede tomar un par de minutoss.
+                    {/* Notification Emails Card */}
+                    <div className="glass-panel p-6 sm:p-7 hover:-translate-y-0.5 transition-all duration-300 flex flex-col h-full justify-between">
+                      <div>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2.5 bg-[#8A8172]/10 dark:bg-zinc-800 rounded-xl shrink-0">
+                            <Mail className="text-[#8A8172] dark:text-[#EDE9E0]" size={20} strokeWidth={2.5} />
                           </div>
-                          {templateError && <p className="text-xs text-red-500">{templateError}</p>}
-                          <button
-                            onClick={handleCreateHandoffTemplate}
-                            disabled={isCreatingTemplate}
-                            className="w-full py-3 bg-[#FF4D00] text-white rounded-xl text-xs font-black tracking-tight hover:bg-[#E64500] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                          >
-                            {isCreatingTemplate ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg> Creando plantilla...</> : 'Crear Plantilla de Alerta en Meta'}
-                          </button>
+                          <div>
+                            <h3 className="font-bold text-base text-zinc-900 dark:text-[#EDE9E0]">Correo Electrónico</h3>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Avisos por email ante transferencias.</p>
+                          </div>
                         </div>
-                      )}
 
-                      {/* STEP 2 — Template pending approval */}
-                      {handoffTemplateStatus === 'PENDING' && (
-                        <div className="rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-5 flex flex-col gap-3">
-                          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Plantilla enviada a Meta y en revisión. Los templates pueden llegar a tardar un par de horas en ser aprobados. Haz clic en Verificar para actualizar el estado.</p>
-
-                          {checkTemplateFeedback && (
-                            <p className="text-xs font-bold text-amber-800 dark:text-amber-300 animate-in fade-in">{checkTemplateFeedback}</p>
-                          )}
-
-                          <button
-                            onClick={handleCheckTemplateStatus}
-                            disabled={isCheckingTemplate}
-                            className="text-xs font-bold text-amber-700 dark:text-amber-300 underline underline-offset-2 hover:no-underline disabled:opacity-50 disabled:no-underline flex items-center gap-1.5 w-fit"
-                          >
-                            {isCheckingTemplate ? <><Loader2 size={14} className="animate-spin" /> Verificando...</> : 'Verificar estado ahora'}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* STEP 3 — Template rejected */}
-                      {handoffTemplateStatus === 'REJECTED' && (
-                        <div className="rounded-2xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-5 flex flex-col gap-3">
-                          <p className="text-xs text-red-600 dark:text-red-400 font-medium">Meta rechazó la plantilla. Esto puede ocurrir si ya existe una con el mismo nombre o hay restricciones en tu cuenta. Contáctanos para resolverlo.</p>
-                          {templateError && <p className="text-xs text-red-500">{templateError}</p>}
-                          <button
-                            onClick={handleCreateHandoffTemplate}
-                            disabled={isCreatingTemplate}
-                            className="text-xs font-bold text-red-600 dark:text-red-400 underline underline-offset-2"
-                          >Reintentar</button>
-                        </div>
-                      )}
-
-                      {/* STEP 4 — Approved: show phone input */}
-                      {handoffTemplateStatus === 'APPROVED' && (
                         <div className="space-y-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="h-2 w-2 rounded-full bg-[#FF4D00]"></div>
-                            <span className="text-xs font-bold text-[#E64500] dark:text-[#FF8A4C]">Plantilla activa y aprobada por Meta</span>
-                          </div>
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                            Cuando el bot transfiera a un asesor humano, se enviará una notificación con el enlace directo del chat a estos correos.
+                          </p>
 
-                          {notificationPhones.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              {notificationPhones.map((phone) => (
-                                <div key={phone} className="flex items-center gap-2 px-3 py-1.5 bg-[#FF4D00]/10 border border-[#FF4D00]/20 rounded-full text-xs font-medium text-[#E64500] dark:text-[#FF8A4C]">
-                                  <span>{phone.startsWith('+') ? phone : `+${phone}`}</span>
+                          {notificationEmails.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5 py-1">
+                              {notificationEmails.map((email) => (
+                                <div key={email} className="flex items-center gap-1.5 px-2.5 py-1 bg-[#8A8172]/10 border border-[#8A8172]/20 rounded-full text-[11px] font-medium text-[#8A8172] dark:text-zinc-300">
+                                  <span className="truncate max-w-[170px]">{email}</span>
                                   <button
-                                    onClick={() => setNotificationPhones(prev => prev.filter(p => p !== phone))}
-                                    className="hover:text-red-500 transition-colors"
+                                    onClick={() => setNotificationEmails(prev => prev.filter(e => e !== email))}
+                                    className="hover:text-red-500 transition-colors shrink-0"
                                   >
-                                    <X size={12} />
+                                    <X size={11} />
                                   </button>
                                 </div>
                               ))}
                             </div>
+                          ) : (
+                            <p className="text-[11px] text-zinc-400 italic">No hay correos registrados aún.</p>
                           )}
 
-                          <div className="flex gap-2 items-stretch h-[42px]">
-                            <div className="flex-1 px-3 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-[#FF4D00]/50 focus-within:border-[#FF4D00] transition-all flex items-center text-zinc-900 dark:text-zinc-100">
-                              <PhoneInput
-                                international={false}
-                                country={phoneCountry}
-                                onCountryChange={setPhoneCountry}
-                                value={notificationPhoneInput}
-                                onChange={setNotificationPhoneInput}
-                                inputComponent={CustomPhoneInput}
-                                callingCode={phoneCountry ? getCountryCallingCode(phoneCountry) : ''}
-                                className="flex-1 bg-transparent outline-none text-zinc-900 dark:text-zinc-100 text-xs placeholder-zinc-400 h-full py-2.5 custom-phone-input"
-                                onKeyDown={(e: any) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
-                                    if (trimmed && !notificationPhones.includes(trimmed)) {
-                                      setNotificationPhones(prev => [...prev, trimmed])
-                                      setNotificationPhoneInput('')
-                                    }
+                          <div className="flex gap-2">
+                            <input
+                              id="notification-email-input"
+                              type="email"
+                              placeholder="correo@ejemplo.com"
+                              value={notificationEmailInput}
+                              onChange={e => setNotificationEmailInput(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const trimmed = notificationEmailInput.trim();
+                                  if (trimmed && !notificationEmails.includes(trimmed)) {
+                                    setNotificationEmails(prev => [...prev, trimmed]);
+                                    setNotificationEmailInput('');
                                   }
-                                }}
-                              />
-                            </div>
-                            <button
-                              onClick={() => {
-                                const trimmed = (notificationPhoneInput || '').trim().replace(/[^0-9+]/g, '')
-                                if (trimmed && !notificationPhones.includes(trimmed)) {
-                                  setNotificationPhones(prev => [...prev, trimmed])
-                                  setNotificationPhoneInput('')
                                 }
                               }}
-                              className="px-4 py-2.5 bg-[#FF4D00]/10 text-[#E64500] rounded-xl text-xs font-bold hover:bg-[#FF4D00] hover:text-white transition-all"
+                              className="flex-1 text-xs px-3 py-2 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#8A8172]/50 focus:border-[#8A8172] outline-none transition-all text-zinc-900 dark:text-zinc-100"
+                            />
+                            <button
+                              onClick={() => {
+                                const trimmed = notificationEmailInput.trim();
+                                if (trimmed && !notificationEmails.includes(trimmed)) {
+                                  setNotificationEmails(prev => [...prev, trimmed]);
+                                  setNotificationEmailInput('');
+                                }
+                              }}
+                              className="px-3 bg-[#8A8172]/10 text-[#8A8172] dark:text-zinc-300 rounded-xl text-xs font-bold hover:bg-[#8A8172] hover:text-white transition-all shrink-0"
                             >
-                              <Plus size={16} />
+                              <Plus size={15} />
                             </button>
                           </div>
-
-                          <button
-                            onClick={handleSaveNotificationPhones}
-                            disabled={isSavingNotificationPhones}
-                            className="w-full mt-2 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                          >
-                            {isSavingNotificationPhones ? <Loader2 size={16} className="animate-spin" /> : notificationPhonesStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar números'}
-                          </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Notification Emails Card — SECOND */}
-                  <div className="mt-6 glass-panel p-6 hover:-translate-y-0.5 transition-all duration-500">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="p-2 bg-[#8A8172]/10 rounded-xl">
-                        <MessageSquare className="text-[#8A8172]" size={20} strokeWidth={2.5} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg text-zinc-900 dark:text-[#EDE9E0]">Notificaciones por Correo</h3>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Cuando el bot transfiera a un asesor, se enviará un correo a estas direcciones.</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      {notificationEmails.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {notificationEmails.map((email) => (
-                            <div key={email} className="flex items-center gap-2 px-3 py-1.5 bg-[#8A8172]/10 border border-[#8A8172]/20 rounded-full text-xs font-medium text-[#8A8172]">
-                              <span>{email}</span>
-                              <button
-                                onClick={() => setNotificationEmails(prev => prev.filter(e => e !== email))}
-                                className="hover:text-red-500 transition-colors"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <input
-                          id="notification-email-input"
-                          type="email"
-                          placeholder="correo@ejemplo.com"
-                          value={notificationEmailInput}
-                          onChange={e => setNotificationEmailInput(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              const trimmed = notificationEmailInput.trim();
-                              if (trimmed && !notificationEmails.includes(trimmed)) {
-                                setNotificationEmails(prev => [...prev, trimmed]);
-                                setNotificationEmailInput('');
-                              }
-                            }
-                          }}
-                          className="flex-1 text-xs px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-[#8A8172]/50 focus:border-[#8A8172] outline-none transition-all text-zinc-900 dark:text-zinc-100"
-                        />
-                        <button
-                          onClick={() => {
-                            const trimmed = notificationEmailInput.trim();
-                            if (trimmed && !notificationEmails.includes(trimmed)) {
-                              setNotificationEmails(prev => [...prev, trimmed]);
-                              setNotificationEmailInput('');
-                            }
-                          }}
-                          className="px-4 py-2.5 bg-[#8A8172]/10 text-[#8A8172] rounded-xl text-xs font-bold hover:bg-[#8A8172] hover:text-white transition-all"
-                        >
-                          <Plus size={16} />
-                        </button>
                       </div>
 
                       <button
                         onClick={handleSaveNotificationEmails}
                         disabled={isSavingNotificationEmails}
-                        className="w-full mt-2 btn-primary-abita py-3 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full mt-4 btn-primary-abita py-2.5 rounded-xl text-xs font-black tracking-tight active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {isSavingNotificationEmails ? <Loader2 size={16} className="animate-spin" /> : notificationEmailsStatus === 'success' ? <><CheckCircle2 size={16} /> ¡Guardado!</> : 'Guardar correos'}
                       </button>
                     </div>
+
                   </div>
-                </div>
                 )}
               </div>
             )}
@@ -2096,6 +2159,247 @@ export default function SettingsPage() {
                       </div>
                     )
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* DATA MANAGEMENT & PORTABILITY SECTION */}
+            {activeSection === 'data' && (
+              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-5xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+                <header className="mb-6">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-1 w-6 bg-[#FF4D00] rounded-full" />
+                    <span className="text-[9px] font-black text-[#FF4D00] uppercase tracking-[0.2em]">Gestión y Portabilidad</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-zinc-900 dark:text-[#EDE9E0] tracking-tight">Datos y Privacidad</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Controla, respalda y exporta toda tu información de conformidad con los estándares de privacidad y portabilidad.
+                  </p>
+                </header>
+
+                <div className="space-y-6">
+                  {/* Card Principal: Exportar Datos */}
+                  <div className="glass-panel p-6 sm:p-8 hover:-translate-y-0.5 transition-all duration-500">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-[#FF4D00]/10 text-[#FF4D00] rounded-2xl shrink-0">
+                          <Database size={24} strokeWidth={2} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-zinc-900 dark:text-[#EDE9E0]">Exportar Copia de Seguridad Completa</h3>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed max-w-xl">
+                            Genera y descarga un archivo en formato JSON estructurado que reúne todos los registros vinculados a tu cuenta y proyectos en Abita AI.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleExportData}
+                        disabled={isExportingData}
+                        className="px-5 py-3 btn-primary-abita rounded-xl text-xs font-bold whitespace-nowrap flex items-center justify-center gap-2 shrink-0 shadow-lg shadow-[#FF4D00]/20 disabled:opacity-50"
+                      >
+                        {isExportingData ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            <span>Exportando datos...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download size={16} />
+                            <span>Exportar mis Datos (JSON)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Feedback Status */}
+                    {exportDataStatus === 'success' && (
+                      <div className="mt-4 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+                        <CheckCircle2 size={16} className="shrink-0" />
+                        <span>¡Descarga completada! El archivo JSON con tus datos se ha generado exitosamente.</span>
+                      </div>
+                    )}
+
+                    {exportDataStatus === 'error' && (
+                      <div className="mt-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+                        <AlertCircle size={16} className="shrink-0" />
+                        <span>{exportDataError || 'Ocurrió un error al intentar exportar los datos. Por favor intenta nuevamente.'}</span>
+                      </div>
+                    )}
+
+                    {/* Resumen de elementos incluidos */}
+                    <div className="mt-6">
+                      <h4 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest mb-3">
+                        ¿Qué información contiene el archivo exportado?
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900 dark:text-[#EDE9E0] mb-1">
+                            <User size={14} className="text-[#FF4D00]" />
+                            <span>Perfil y Cuenta</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                            Nombre, correo, fecha de registro y preferencias asociadas.
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900 dark:text-[#EDE9E0] mb-1">
+                            <UserCheck size={14} className="text-[#FF4D00]" />
+                            <span>Leads y Calificaciones</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                            Contactos capturados, etiquetas, scoring y etapa de embudo.
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900 dark:text-[#EDE9E0] mb-1">
+                            <MessageSquare size={14} className="text-[#FF4D00]" />
+                            <span>Mensajes y Conversaciones</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                            Historial completo de chats de WhatsApp e Instagram.
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900 dark:text-[#EDE9E0] mb-1">
+                            <Bot size={14} className="text-[#FF4D00]" />
+                            <span>Asistente y Reglas</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                            Prompts, instrucciones de negocio y base de conocimientos.
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900 dark:text-[#EDE9E0] mb-1">
+                            <Megaphone size={14} className="text-[#FF4D00]" />
+                            <span>Campañas y Difusiones</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                            Plantillas enviadas, fechas de ejecución y audiencias.
+                          </p>
+                        </div>
+
+                        <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900 dark:text-[#EDE9E0] mb-1">
+                            <ShieldCheck size={14} className="text-[#FF4D00]" />
+                            <span>Registros de Auditoría</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal">
+                            Trazabilidad de accesos, consentimientos y cambios de seguridad.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Secundaria: Transparencia y Protección */}
+                  <div className="glass-panel p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800/70 text-zinc-600 dark:text-zinc-300 rounded-xl shrink-0">
+                        <Lock size={18} />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-sm text-zinc-900 dark:text-[#EDE9E0]">Políticas de Privacidad y Cumplimiento</h4>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                          Tus datos se encuentran cifrados en tránsito y en reposo. Abita AI no comercializa ni comparte tu información con terceros no autorizados. Esta funcionalidad responde al derecho legal de portabilidad y acceso de información del usuario.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* DELETE ACCOUNT SECTION (DANGER ZONE) */}
+            {activeSection === 'deleteAccount' && (
+              <div className="h-full flex flex-col p-6 pb-36 lg:p-8 lg:pb-8 max-w-4xl mx-auto animate-in fade-in transition-all duration-500 overflow-y-auto">
+                <header className="mb-6">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-1 w-6 bg-red-500 rounded-full" />
+                    <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">Zona de Peligro</span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-red-600 dark:text-red-400 tracking-tight">Eliminar Cuenta</h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Supresión definitiva de tu cuenta y borrado total e irreversible de todos tus registros.
+                  </p>
+                </header>
+
+                <div className="space-y-6">
+                  {/* Warning Box */}
+                  <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/25 space-y-4">
+                    <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+                      <AlertTriangle size={24} className="shrink-0" />
+                      <h3 className="font-bold text-base">Esta acción es permanente y no se puede deshacer</h3>
+                    </div>
+                    <p className="text-xs text-red-600/90 dark:text-red-300/90 leading-relaxed">
+                      Si procedes con la eliminación, tu cuenta de Abita AI será borrada de forma inmediata y automática junto con todos los datos relacionados:
+                    </p>
+                    <ul className="text-xs text-red-600/80 dark:text-red-300/80 space-y-1.5 pl-5 list-disc">
+                      <li>Perderás acceso inmediato a tu sesión y a la plataforma.</li>
+                      <li>Se desconectarán y desvincularán tus cuentas de WhatsApp Business e Instagram.</li>
+                      <li>Se destruirán todos los agentes de IA, instrucciones, prompts y bases de conocimiento.</li>
+                      <li>Se suprimirán todas las conversaciones, mensajes, audios e imágenes recibidas.</li>
+                      <li>Se eliminarán todos los leads capturados y el historial de campañas.</li>
+                    </ul>
+                  </div>
+
+                  {/* Confirmation Card */}
+                  <div className="glass-panel p-6 sm:p-8 border-red-200 dark:border-red-950/40">
+                    <div className="space-y-4">
+                      <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                        Para confirmar la eliminación permanente, escribe <span className="font-mono font-black text-red-600 dark:text-red-400">ELIMINAR</span> en el campo inferior:
+                      </label>
+                      <input
+                        type="text"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="Escribe ELIMINAR para continuar"
+                        className="w-full text-xs px-4 py-3 bg-zinc-50 dark:bg-zinc-900/60 border border-red-300/60 dark:border-red-900/60 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 outline-none transition-all text-zinc-900 dark:text-zinc-100 font-medium"
+                      />
+
+                      {deleteAccountError && (
+                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs flex items-center gap-2">
+                          <AlertCircle size={15} className="shrink-0" />
+                          <span>{deleteAccountError}</span>
+                        </div>
+                      )}
+
+                      <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                        <button
+                          onClick={handleDeleteAccount}
+                          disabled={deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR' || isDeletingAccount}
+                          className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-950/40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-red-600/20 active:scale-[0.98] flex items-center justify-center gap-2"
+                        >
+                          {isDeletingAccount ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              <span>Eliminando cuenta y datos...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 size={16} />
+                              <span>Eliminar mi cuenta definitivamente</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteConfirmText('')
+                            setActiveSection('profile')
+                          }}
+                          className="w-full sm:w-auto px-5 py-3 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5 transition-all text-center"
+                        >
+                          Cancelar y volver a Mi Perfil
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -2320,8 +2624,8 @@ export default function SettingsPage() {
                   setDefaultBotActive(!defaultBotActive);
                 }}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${defaultBotActive
-                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                    : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                  : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
                   }`}
               >
                 {defaultBotActive ? 'Sí, desactivar' : 'Sí, activar'}
@@ -2379,8 +2683,8 @@ export default function SettingsPage() {
                   }
                 }}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${botAutoWakeHours !== null
-                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
-                    : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
+                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
+                  : 'bg-[#FF4D00] hover:bg-[#E64500] shadow-[#FF4D00]/20'
                   }`}
               >
                 {botAutoWakeHours !== null ? 'Sí, desactivar' : 'Sí, activar'}

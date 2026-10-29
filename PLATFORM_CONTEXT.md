@@ -352,6 +352,16 @@ Si la llamada a Anthropic Claude falla (por límite de velocidad, caída del pro
 - Auditoría global (`AuditLog`) y monitoreo de costos por consumo de tokens de IA.
 - Editor de Bloques Globales del Prompt (`PromptBlock`).
 
+### 7.8 Módulo de Configuración y Privacidad (`/settings`)
+El panel de ajustes está estructurado de forma modular e intuitiva:
+1. **Mi Perfil (`profile`):** Identidad del usuario, sincronización de foto de perfil desde WhatsApp Business y cambio seguro de contraseña.
+2. **Notificaciones (`notifications`):** Configuración de correos, números de WhatsApp y Web Push Notifications para handoffs y nuevos mensajes.
+3. **Conexiones (`connections`):** Gestión de canales oficiales (Meta WhatsApp Cloud API, Instagram Messaging).
+4. **Herramientas (`tools`):** Conexión con servicios externos (Google Calendar y Google Sheets para agendas y sincronización de leads).
+5. **Asistente IA (`botConfig`):** Control del interruptor general del bot y temporizadores de auto-reactivación.
+6. **Datos (`data`):** Módulo independiente de portabilidad y respaldo. Permite exportar en formato JSON estructurado toda la información (perfil, leads, scoring, conversaciones, reglas de IA, auditoría).
+7. **Eliminar Cuenta (`deleteAccount`):** Zona de peligro visualmente destacada en rojo. Cuenta con verificación de seguridad mediante confirmación explícita (escritura de "ELIMINAR") para suprimir irrevocablemente la cuenta y sus datos asociados.
+
 ---
 
 ## 8. Seguridad, Cifrado y Gobernanza
