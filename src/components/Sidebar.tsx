@@ -11,18 +11,22 @@ import {
 
 import { useEffect, useState, useRef } from 'react'
 import { useTheme } from 'next-themes'
-import { getSubscriptionUsageAction, getProfileWithMeta } from '@/app/actions/settings'
 import { AbitaBotBubble } from '@/components/AbitaBotBubble'
+import { useSidebarData, prefetchAnalytics } from '@/lib/client-cache/hooks'
+import { clearClientCache } from '@/lib/client-cache/storage-provider'
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { data: session } = useSession() as any
   const { theme, resolvedTheme, setTheme } = useTheme()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const [isCollapsed, setIsCollapsed] = useState(true)
-  const [usageData, setUsageData] = useState<{ limit: number | null, usage: number } | null>(null)
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+
+  // Datos de uso y avatar unificados y cacheados mediante SWR
+  const { data: sidebarData } = useSidebarData()
+  const usageData = sidebarData?.usage ?? null
+  const avatarUrl = sidebarData?.avatarUrl ?? null
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -38,29 +42,14 @@ export function Sidebar() {
     }
   }, [isProfileMenuOpen])
 
-  useEffect(() => {
-    const fetchUsage = () => {
-      getSubscriptionUsageAction().then(res => {
-        if (res) setUsageData(res)
-      }).catch(console.error)
-    };
-
-    fetchUsage();
-    const interval = setInterval(fetchUsage, 30000);
-
-    // Load avatar
-    getProfileWithMeta().then(p => {
-      if (p.avatarUrl) setAvatarUrl(p.avatarUrl)
-    }).catch(() => {})
-
-    return () => clearInterval(interval);
-  }, [pathname])
-
   const usagePct = usageData && usageData.limit ? Math.round((usageData.usage / usageData.limit) * 100) : 0;
   
   const userInitial = session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'A'
 
   const handleLogout = async () => {
+    // Limpiar caché local y memoria del dispositivo para el usuario
+    clearClientCache(session?.user?.id)
+
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       try {
         const reg = await navigator.serviceWorker.ready
@@ -125,6 +114,12 @@ export function Sidebar() {
             <Link
               key={item.label}
               href={item.href}
+              onMouseEnter={() => {
+                if (item.href === '/analytics') prefetchAnalytics();
+              }}
+              onTouchStart={() => {
+                if (item.href === '/analytics') prefetchAnalytics();
+              }}
               className={`flex items-center gap-4 px-3 py-2 rounded-full text-sm tracking-tight transition-all duration-200 group relative ${
                 isActive
                   ? 'bg-black/5 dark:bg-white/[.08] border border-black/5 dark:border-white/10 font-semibold text-[#111111] dark:text-[#EDE9E0]'

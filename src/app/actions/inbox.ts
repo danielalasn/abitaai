@@ -9,58 +9,61 @@ import { updateLeadAISummaryInternal } from '@/app/actions/leads';
 import { unstable_noStore as noStore } from 'next/cache';
 import { decrypt } from '@/lib/encryption';
 import { sendHandoffNotification, sendHandoffWhatsAppNotification } from '@/lib/email';
+import { withTiming } from '@/lib/perf';
 
 // Obtiene todos los chats con el último mensaje para la lista de la izquierda
 export async function getActiveChats(_timestamp?: number) {
-  noStore();
-  const project = await getCurrentProject();
-  if (!project) return [];
+  return withTiming('getActiveChats', async () => {
+    noStore();
+    const project = await getCurrentProject();
+    if (!project) return [];
 
-  // 1. Obtener los chats activos con el último mensaje incluido
-  const chats = await prisma.chat.findMany({
-    where: {
-      isArchived: false,
-      lead: {
-        projectId: project.id,
-        NOT: { channel: 'simulator' }
-      }
-    },
-    include: {
-      lead: {
-        include: {
-          project: { select: { leadScoringEnabled: true } },
-          latestCampaign: { select: { name: true } }
+    // 1. Obtener los chats activos con el último mensaje incluido
+    const chats = await prisma.chat.findMany({
+      where: {
+        isArchived: false,
+        lead: {
+          projectId: project.id,
+          NOT: { channel: 'simulator' }
         }
       },
-      messages: {
-        orderBy: { createdAt: 'desc' },
-        take: 1
-      }
-    },
-    orderBy: { lastActiveAt: 'desc' }
-  });
+      include: {
+        lead: {
+          include: {
+            project: { select: { leadScoringEnabled: true } },
+            latestCampaign: { select: { name: true } }
+          }
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      },
+      orderBy: { lastActiveAt: 'desc' }
+    });
 
-  // 2. Obtener los logs de campaña para los teléfonos de los leads
-  const phones = chats.map(c => c.lead.phone).filter(Boolean);
-  const logs = await prisma.campaignLog.findMany({
-    where: { phone: { in: phones }, campaign: { projectId: project.id } },
-    select: { phone: true, campaign: { select: { id: true, name: true } } },
-    distinct: ['phone', 'campaignId']
-  });
+    // 2. Obtener los logs de campaña para los teléfonos de los leads
+    const phones = chats.map(c => c.lead.phone).filter(Boolean);
+    const logs = await prisma.campaignLog.findMany({
+      where: { phone: { in: phones }, campaign: { projectId: project.id } },
+      select: { phone: true, campaign: { select: { id: true, name: true } } },
+      distinct: ['phone', 'campaignId']
+    });
 
-  // 3. Mapear campañas a cada chat
-  const campaignsByPhone: Record<string, { id: string, name: string }[]> = {};
-  logs.forEach(log => {
-    if (!campaignsByPhone[log.phone]) campaignsByPhone[log.phone] = [];
-    campaignsByPhone[log.phone].push(log.campaign);
-  });
+    // 3. Mapear campañas a cada chat
+    const campaignsByPhone: Record<string, { id: string, name: string }[]> = {};
+    logs.forEach(log => {
+      if (!campaignsByPhone[log.phone]) campaignsByPhone[log.phone] = [];
+      campaignsByPhone[log.phone].push(log.campaign);
+    });
 
-  const finalChats = chats.map(chat => {
-    (chat.lead as any).allCampaigns = campaignsByPhone[chat.lead.phone] || [];
-    return chat;
-  });
+    const finalChats = chats.map(chat => {
+      (chat.lead as any).allCampaigns = campaignsByPhone[chat.lead.phone] || [];
+      return chat;
+    });
 
-  return finalChats;
+    return finalChats;
+  });
 }
 
 export async function getChatMessages(chatId: string) {
@@ -68,13 +71,13 @@ export async function getChatMessages(chatId: string) {
   const project = await getCurrentProject();
   if (!project) return null;
 
-  // 1. Obtener el chat base
+  // 1. Obtener el chat base con solo campos necesarios de project
   const chat = await prisma.chat.findUnique({
     where: { id: chatId },
     include: {
       lead: {
         include: {
-          project: true,
+          project: { select: { leadScoringEnabled: true } },
           latestCampaign: { select: { name: true } }
         }
       }
@@ -83,20 +86,18 @@ export async function getChatMessages(chatId: string) {
 
   if (!chat || chat.lead.projectId !== project.id) return null;
 
-  if (!chat) return null;
-
-  // 2. Obtener TODAS las conversaciones de este chat
-  const messages = await prisma.message.findMany({
-    where: { chatId },
-    orderBy: { createdAt: 'asc' }
-  });
-
-  // 3. Obtener todas las campañas de las que ha sido parte
-  const campaignLogs = await prisma.campaignLog.findMany({
-    where: { phone: chat.lead.phone, campaign: { projectId: project.id } },
-    select: { campaign: { select: { id: true, name: true } } },
-    distinct: ['campaignId']
-  });
+  // 2. Obtener TODAS las conversaciones de este chat y las campañas en paralelo
+  const [messages, campaignLogs] = await Promise.all([
+    prisma.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: 'asc' }
+    }),
+    prisma.campaignLog.findMany({
+      where: { phone: chat.lead.phone, campaign: { projectId: project.id } },
+      select: { campaign: { select: { id: true, name: true } } },
+      distinct: ['campaignId']
+    })
+  ]);
 
   (chat.lead as any).allCampaigns = campaignLogs.map(l => l.campaign);
 
@@ -108,49 +109,50 @@ export async function getChatMessages(chatId: string) {
 
 // Versión paginada: carga solo los últimos `limit` mensajes de forma rápida
 export async function getChatMessagesPaginated(chatId: string, limit = 30) {
-  noStore();
-  const project = await getCurrentProject();
-  if (!project) return null;
+  return withTiming(`getChatMessagesPaginated(${chatId.slice(-4)})`, async () => {
+    noStore();
+    const project = await getCurrentProject();
+    if (!project) return null;
 
-  const chat = await prisma.chat.findUnique({
-    where: { id: chatId },
-    include: {
-      lead: {
+    // Lanzar chat, total count y mensajes en paralelo (ahorra 1 roundtrip a Postgres)
+    const [chat, total, messages] = await Promise.all([
+      prisma.chat.findUnique({
+        where: { id: chatId },
         include: {
-          project: true,
-          latestCampaign: { select: { name: true } }
+          lead: {
+            include: {
+              project: { select: { leadScoringEnabled: true } },
+              latestCampaign: { select: { name: true } }
+            }
+          }
         }
-      }
-    }
-  });
+      }),
+      prisma.message.count({ where: { chatId } }),
+      prisma.message.findMany({
+        where: { chatId },
+        orderBy: { createdAt: 'desc' },
+        take: limit
+      })
+    ]);
 
-  if (!chat || chat.lead.projectId !== project.id) return null;
+    if (!chat || chat.lead.projectId !== project.id) return null;
 
-  if (!chat) return null;
-
-  const [total, messages, campaignLogs] = await Promise.all([
-    prisma.message.count({ where: { chatId } }),
-    prisma.message.findMany({
-      where: { chatId },
-      orderBy: { createdAt: 'desc' },
-      take: limit
-    }),
-    prisma.campaignLog.findMany({
+    const campaignLogs = await prisma.campaignLog.findMany({
       where: { phone: chat.lead.phone, campaign: { projectId: project.id } },
       select: { campaign: { select: { id: true, name: true } } },
       distinct: ['campaignId']
-    })
-  ]);
+    });
 
-  (chat.lead as any).allCampaigns = campaignLogs.map(l => l.campaign);
+    (chat.lead as any).allCampaigns = campaignLogs.map(l => l.campaign);
 
-  // Devolvemos en orden cronológico (asc) para renderizar correctamente
-  return {
-    ...chat,
-    messages: messages.reverse(),
-    totalMessages: total,
-    hasMore: total > limit
-  };
+    // Devolvemos en orden cronológico (asc) para renderizar correctamente
+    return {
+      ...chat,
+      messages: messages.reverse(),
+      totalMessages: total,
+      hasMore: total > limit
+    };
+  });
 }
 
 // Carga mensajes más antiguos (infinite scroll hacia arriba)

@@ -140,7 +140,9 @@ flowchart TD
 | **Integraciones Externas**| [Nango HQ](https://www.nango.dev/) | Conectividad OAuth gestionada con Google Calendar y Google Sheets. |
 | **Email Transaccional**| [Resend](https://resend.com/) | Envío de notificaciones inmediatas de handoff hacia el equipo del cliente. |
 | **Push Notifications**| `web-push` (Service Worker) | Alertas nativas de navegador para nuevos mensajes y transferencias a humanos. |
+| **Caché & SWR** | [SWR 2.5](https://swr.vercel.app/) + Redis | Stale-while-revalidate por dispositivo, prefetch en navegación y caché de integraciones. |
 | **Observabilidad** | `@sentry/nextjs` | Trazabilidad de errores en el servidor, edge y cliente. |
+
 
 ---
 
@@ -361,6 +363,30 @@ El panel de ajustes está estructurado de forma modular e intuitiva:
 5. **Asistente IA (`botConfig`):** Control del interruptor general del bot y temporizadores de auto-reactivación.
 6. **Datos (`data`):** Módulo independiente de portabilidad y respaldo. Permite exportar en formato JSON estructurado toda la información (perfil, leads, scoring, conversaciones, reglas de IA, auditoría).
 7. **Eliminar Cuenta (`deleteAccount`):** Zona de peligro visualmente destacada en rojo. Cuenta con verificación de seguridad mediante confirmación explícita (escritura de "ELIMINAR") para suprimir irrevocablemente la cuenta y sus datos asociados.
+
+### 7.9 Capa de Rendimiento y Aceleración de Navegación (Performance & Cache Layer)
+
+Para garantizar transiciones instantáneas (0ms) entre la Bandeja de Entrada (`/inbox`) y el Dashboard (`/analytics`):
+1. **Paralelismo de Consultas en Servidor (`getAnalyticsData`):**
+   - Ejecuta las ~20 consultas analíticas e históricas concurrentemente mediante `Promise.all`, reduciendo el tiempo de cálculo de métricas de ~5s a menos de 1s.
+2. **Caché en Redis de Integraciones Lentas:**
+   - El límite de mensajería de Meta (`wa:tier:{phoneId}`) se almacena en Redis con TTL de 1 hora y timeout estricto de 3s (fail-open), evitando que caídas o lentitud de Graph API demoren la interfaz.
+3. **Acción Unificada de Layout (`getSidebarData`):**
+   - Obtiene el uso mensual acumulado y el avatar del usuario en un solo viaje de base de datos a partir de la sesión activa, eliminando las consultas duplicadas a Meta en cada cambio de ruta (`pathname`).
+4. **Índices Aditivos en PostgreSQL:**
+   - Se crearon índices concurrentes sin bloqueo para optimizar los cuellos de botella más severos:
+     - `Message(chatId, createdAt DESC)` y `Message(createdAt DESC)`
+     - `Lead(projectId)`
+     - `CampaignLog(campaignId)` y `CampaignLog(phone)`
+     - `Campaign(projectId)`
+     - `Project(clientId)`
+     - `Chat(lastActiveAt DESC)`
+5. **Caché Stale-While-Revalidate en el Dispositivo (`SWR` + `DashboardCacheProvider`):**
+   - **Aislamiento por usuario:** Todo el estado se aísla mediante `userId` de sesión para garantizar cero mezcla entre cuentas.
+   - **Persistencia selectiva:** Solo métricas del dashboard y avatar se guardan en `localStorage` (`abita:cache:v1:{userId}`). Los chats, mensajes y datos PII **nunca** tocan el almacenamiento persistente.
+   - **Memoria de Inbox (`inbox-memory.ts`):** Preserva la lista de conversaciones cargadas en memoria RAM del navegador. Al regresar de otra pestaña, el render es instantáneo (0ms) y sincroniza en segundo plano.
+   - **Prefetch Inteligente:** Al pasar el cursor (hover o touch) sobre los enlaces de navegación, los datos de la vista destino se precargan anticipadamente.
+   - **Limpieza en Cierre de Sesión:** `clearClientCache()` purga tanto la memoria como el almacenamiento local al hacer logout.
 
 ---
 

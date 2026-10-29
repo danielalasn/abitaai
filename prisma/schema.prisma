@@ -74,6 +74,8 @@ model Project {
   unansweredQuestions UnansweredQuestion[]
   userBookings        UserBooking[]
   botFiles            BotFile[]
+
+  @@index([clientId])
 }
 
 model BotConfig {
@@ -114,6 +116,7 @@ model Lead {
   project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([phone, projectId])
+  @@index([projectId])
 }
 
 model Chat {
@@ -128,6 +131,8 @@ model Chat {
   disabledDueToLimit Boolean @default(false)
   lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
   messages     Message[]
+
+  @@index([lastActiveAt])
 }
 
 model Message {
@@ -151,6 +156,9 @@ model Message {
   sendError     String?
   buttonsConfig String?
   chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@index([createdAt])
 }
 
 model Campaign {
@@ -170,6 +178,8 @@ model Campaign {
   project          Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   logs             CampaignLog[]
   leadsGenerated   Lead[]
+
+  @@index([projectId])
 }
 
 model CampaignLog {
@@ -181,6 +191,9 @@ model CampaignLog {
   createdAt  DateTime @default(now())
   wamid      String?  @unique
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([phone])
 }
 
 model UnansweredQuestion {

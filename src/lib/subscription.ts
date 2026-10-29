@@ -3,13 +3,16 @@ import { prisma } from './prisma';
 /**
  * Obtiene el uso mensual de mensajes automatizados (bot y campañas) para un cliente.
  */
-export async function getCurrentMonthUsage(clientId: string): Promise<number> {
-  const client = await prisma.client.findUnique({
-    where: { id: clientId },
-    select: { subscriptionResetDay: true }
-  });
+export async function getCurrentMonthUsage(clientId: string, knownResetDay?: number): Promise<number> {
+  let resetDay = knownResetDay;
+  if (resetDay === undefined) {
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: { subscriptionResetDay: true }
+    });
+    resetDay = client?.subscriptionResetDay || 1;
+  }
 
-  const resetDay = client?.subscriptionResetDay || 1;
   const now = new Date();
   const startOfMonth = new Date();
   

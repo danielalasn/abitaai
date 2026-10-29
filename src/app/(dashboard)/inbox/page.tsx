@@ -11,8 +11,9 @@ import {
   Mic, Square, ChevronDown, LogOut, Camera, MapPin, ExternalLink, Navigation, ArrowUpRight,
   Reply
 } from "lucide-react";
-import { getProfileWithMeta } from '@/app/actions/settings';
 import { formatWhatsAppText } from '@/lib/utils';
+import { useSidebarData } from '@/lib/client-cache/hooks';
+import { getMemoryChats, setMemoryChats, getMemoryChatsMap, setMemoryChatDetail } from '@/lib/client-cache/inbox-memory';
 import nextDynamic from 'next/dynamic';
 const EmojiPicker = nextDynamic(() => import('emoji-picker-react'), { ssr: false });
 import { VoiceNotePlayer } from "@/components/VoiceNotePlayer";
@@ -130,24 +131,20 @@ const formatSidebarDate = (date: Date) => {
 
 export default function InboxPage() {
   const { data: session, status } = useSession();
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    getProfileWithMeta().then(p => {
-      if (p.avatarUrl) setUserAvatarUrl(p.avatarUrl);
-    }).catch(console.error);
-  }, []);
+  const { data: sidebarData } = useSidebarData();
+  const userAvatarUrl = sidebarData?.avatarUrl || null;
   const router = useRouter();
 
-  const [chats, setChats] = useState<any[]>([]);
+  // Inicializar inmediatamente con datos en memoria si existen (0ms de espera)
+  const [chats, setChats] = useState<any[]>(() => getMemoryChats() || []);
   const [activeChat, setActiveChat] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => getMemoryChats() === null);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Cache de chats abiertos para cambio instantáneo
-  const [chatsCache, setChatsCache] = useState<Record<string, any>>({});
+  const [chatsCache, setChatsCache] = useState<Record<string, any>>(() => getMemoryChatsMap() || {});
 
   // Paginación de mensajes
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -319,8 +316,16 @@ export default function InboxPage() {
   useEffect(() => {
     if (activeChat?.id) {
       setChatsCache(prev => ({ ...prev, [activeChat.id]: activeChat }));
+      setMemoryChatDetail(activeChat.id, activeChat);
     }
   }, [activeChat]);
+
+  // Sincronizar memoria de chats en memoria para transiciones instantáneas entre páginas
+  useEffect(() => {
+    if (chats && chats.length > 0) {
+      setMemoryChats(chats);
+    }
+  }, [chats]);
 
   // Efecto inicial sin selección automática
   useEffect(() => {
@@ -433,8 +438,10 @@ export default function InboxPage() {
             }
           });
 
-          // Ajustar polling interval según si hay nuevos mensajes
-          if (hasNewMessages) {
+          // Ajustar polling interval: 15s si la pestaña está oculta, o progresivo si está visible
+          if (typeof document !== 'undefined' && document.hidden) {
+            pollIntervalRef.current = 15000;
+          } else if (hasNewMessages) {
             pollIntervalRef.current = 3000;
           } else {
             // Incrementar progresivamente: 3s -> 5s -> 10s
@@ -452,7 +459,7 @@ export default function InboxPage() {
           return mergeChats(latestChats, prev, 'polling');
         });
       } catch (e) {
-        // Silenciar errores de polling para no romper la app
+        console.error('[inbox][polling] Error al sincronizar datos:', e);
       }
 
       // Programar el siguiente ciclo DESPUÉS de que termine este

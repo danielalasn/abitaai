@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { BarChart3, Users, MessageSquareText, Megaphone, Flame, TrendingUp, Zap, HelpCircle, Bot, AlertCircle, Loader2, Clock, CheckCircle2, CheckCheck, Smartphone, Cpu, Info, Shield, ArrowUp, Send, X } from 'lucide-react'
-import { getAnalyticsData } from '@/app/actions/analytics'
+import { useAnalytics } from '@/lib/client-cache/hooks'
 import Link from 'next/link'
 import DateRangePicker from '@/components/ui/DateRangePicker'
 import { format, startOfMonth } from 'date-fns'
@@ -214,8 +214,6 @@ function Tooltip({ text }: { text: string }) {
 }
 
 export default function AnalyticsDashboard() {
-  const [data, setData] = useState<Analytics>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [isInitialized, setIsInitialized] = useState(false)
   const [showTierInfo, setShowTierInfo] = useState(false)
@@ -250,14 +248,9 @@ export default function AnalyticsDashboard() {
     }
   }, [dateRange, isInitialized])
 
-  useEffect(() => {
-    if (isInitialized) {
-      fetchData()
-    }
-  }, [dateRange, isInitialized])
-
-  const fetchData = async () => {
-    setIsLoading(true)
+  // Rango memoizado para SWR
+  const analyticsRange = useMemo(() => {
+    if (!isInitialized) return undefined;
     let startIso, endIso;
     if (dateRange.start) {
       startIso = new Date(dateRange.start + 'T00:00:00').toISOString();
@@ -265,10 +258,13 @@ export default function AnalyticsDashboard() {
     if (dateRange.end) {
       endIso = new Date(dateRange.end + 'T23:59:59.999').toISOString();
     }
-    const res = await getAnalyticsData({ start: startIso, end: endIso }) as Analytics
-    setData(res)
-    setIsLoading(false)
-  }
+    return { start: startIso, end: endIso };
+  }, [dateRange, isInitialized]);
+
+  // Hook SWR con caché persistida por usuario y revalidación en segundo plano
+  const { data: swrData, isLoading: swrIsLoading, isValidating } = useAnalytics(analyticsRange);
+  const data = (swrData ?? null) as Analytics;
+  const isLoading = swrIsLoading || (!data && !isInitialized);
 
   if (isLoading && !data) {
     return (
@@ -311,7 +307,7 @@ export default function AnalyticsDashboard() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            {isLoading && data && (
+            {isValidating && data && (
               <Loader2 size={16} className="text-[#FF4D00] animate-spin" />
             )}
             <DateRangePicker value={dateRange} onChange={setDateRange} onClear={() => setDateRange(getDefaultDateRange())} />

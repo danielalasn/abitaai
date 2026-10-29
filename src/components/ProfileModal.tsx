@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { updateProfile, verifyCurrentPassword } from '@/app/actions/client';
-import { getProfileWithMeta } from '@/app/actions/settings';
+import { useSidebarData } from '@/lib/client-cache/hooks';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface ProfileModalProps {
 
 export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const { data: session, update } = useSession();
+  const { data: sidebarData } = useSidebarData();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,10 +40,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       setIsPasswordVerified(false);
       setIsVerifying(false);
       setMessage(null);
-      // Load avatar
-      getProfileWithMeta().then(p => { if (p.avatarUrl) setAvatarUrl(p.avatarUrl) }).catch(() => {})
+      // Usar avatar del caché de sidebar sin llamar a Meta
+      if (sidebarData?.avatarUrl) {
+        setAvatarUrl(sidebarData.avatarUrl);
+      }
     }
-  }, [isOpen, session]);
+  }, [isOpen, session, sidebarData]);
 
   const handleVerifyPassword = async () => {
     if (!currentPassword) return;

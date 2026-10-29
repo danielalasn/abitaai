@@ -4,31 +4,37 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
+import { DashboardCacheProvider } from '@/lib/client-cache/DashboardCacheProvider';
+
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions) as any;
 
   // Si el usuario es el administrador principal, no tiene proyectos de cliente comunes, lo enviamos a su panel
   if (session?.user?.email === 'info@abitaai.com') {
     redirect('/admin');
   }
 
+  const userId = session?.user?.id || 'default-user';
+
   return (
-    <div
-      className="flex flex-col md:flex-row fixed top-0 left-0 right-0 w-full overflow-hidden font-sans bg-zinc-50 dark:bg-zinc-950"
-      style={{ height: 'var(--app-height, 100dvh)' }}
-    >
-      {/* Sidebar solo visible en desktop */}
-      <div className="hidden md:flex relative z-30">
-        <Sidebar />
+    <DashboardCacheProvider userId={userId}>
+      <div
+        className="flex flex-col md:flex-row fixed top-0 left-0 right-0 w-full overflow-hidden font-sans bg-zinc-50 dark:bg-zinc-950"
+        style={{ height: 'var(--app-height, 100dvh)' }}
+      >
+        {/* Sidebar solo visible en desktop */}
+        <div className="hidden md:flex relative z-30">
+          <Sidebar />
+        </div>
+        <main className="flex-1 flex flex-col overflow-hidden relative min-w-0 min-h-0 bg-[#EBE4D6] dark:bg-[#1A1714]">
+          {children}
+        </main>
+        <MobileNav />
       </div>
-      <main className="flex-1 flex flex-col overflow-hidden relative min-w-0 min-h-0 bg-[#EBE4D6] dark:bg-[#1A1714]">
-        {children}
-      </main>
-      <MobileNav />
-    </div>
+    </DashboardCacheProvider>
   )
 }
